@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Observatory</title>
+
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'">
+
+  <link rel="stylesheet" href="panel.css" />
+
+  <script src="../../prelude/prelude.js"></script>
+  <script src="display-vfs.js"></script>
+</head>
+<body>
+  <div id="titlebar"></div>
+  <div id="menu">
+    <input id="directory-location" value="/" />
+    <button id="begin-scan-button">Observe</button>
+  </div>
+  <div id="loading">
+  </div>
+  <div id="tree">
+    <div id="tree-display"></div>
+    <div id="tree-garbage">Throw things away in me!!!</div>
+    <div id="tree-list-container">
+      <div id="bar">
+        <span id="controls">
+          <button id="back"></button>
+        </span>
+        <h1 id="header"></h1>
+        <span id="something"></span>
+      </div>
+
+      <ol id="tree-list"></ol>
+      <ol id="tree-collapsed-list"></ol>
+      <button id="tree-expander">Show more</button>
+    </div>
+  </div>
+
+  <div id="follower">
+  </div>
+</body>
+</html>

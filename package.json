@@ -1,0 +1,11 @@
+{
+  "name": "observatory",
+  "version": "0.0.1",
+  "description": "Disk usage analyzer",
+  "main": "app.js",
+  "author": "McKayla Washburn",
+  "license": "MIT",
+  "dependencies": {
+    "gardens": "^4.0.2"
+  }
+}
