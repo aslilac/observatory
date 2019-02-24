@@ -1,1 +1,0 @@
-{"name":"electron-boilerplate-windows","version":"1.0.0","description":"Windows wrapper for Electron apps","main":"../../app.js","author":"McKayla Washburn","license":"MIT","devDependencies":{"electron":"^2.0.5"}}

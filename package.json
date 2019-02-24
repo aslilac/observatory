@@ -6,6 +6,7 @@
   "author": "McKayla Washburn",
   "license": "MIT",
   "dependencies": {
+    "electron": "^4.0.5",
     "gardens": "^4.0.2"
   }
 }

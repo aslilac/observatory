@@ -1,1 +1,0 @@
-{"name":"electron-boilerplate-macos","version":"1.0.0","description":"macOS wrapper for Electron apps","main":"../../app.js","author":"McKayla Washburn","license":"MIT","devDependencies":{"electron":"^3.0.8"},"dependencies":{"observatory":"file:../.."}}
