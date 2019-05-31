@@ -8,6 +8,7 @@
   "repository": "partheseas/observatory",
   "bugs": "https://github.com/partheseas/observatory/issues",
   "dependencies": {
+    "drivelist": "^8.0.6",
     "gardens": "^4.1.1",
     "react": "^16.8.6",
     "react-dom": "^16.8.6"
