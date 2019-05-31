@@ -1,7 +1,8 @@
 const fs = require( 'fs' )
 const path = require( 'path' )
 const readline = require( 'readline' )
-const garden = new (require( 'gardens' ).constructor)( 'VirtualFileSystem' )
+
+const garden = require( '../gardens.config' ).scope( 'VirtualFileSystem' )
 
 class VirtualFileSystem {
   constructor( rootDirectory ) {
@@ -129,4 +130,4 @@ class VirtualFileSystem {
 
 }
 
-module.exports.VirtualFileSystem = VirtualFileSystem
+module.exports = VirtualFileSystem

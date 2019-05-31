@@ -1,0 +1,349 @@
+$accent-color: #423e5d
+
+body
+  -webkit-user-select: none
+  background-color: #2f3039
+  color: #bdbfed
+
+#application
+  display: grid
+  height: 100%
+  width: 100%
+
+  grid-template-rows: auto 1fr
+  grid-template-areas: "titlebar" "tree"
+
+#titlebar
+  display: none
+  grid-area: titlebar
+
+  height: 0
+
+  transition: background-color, color, height 300ms
+
+.darwin #titlebar, #titlebar.trash
+  -webkit-app-region: drag
+  -webkit-user-select: none
+
+  display: block
+  background-color: #202245
+  background-image: linear-gradient( #20224500, #12142d )
+  box-shadow: 0 0 15px #252525
+  height: 37px
+
+  color: #4f55a7
+  text-align: center
+
+  & h1
+    font-size: 17px
+    font-weight: 200
+
+#titlebar.trash
+  background-color: #ed2424
+  color: #c85151
+  height: 80px
+
+  & ::after
+    display: block
+    content: "Drop here to delete"
+
+    font-size: 1.4em
+
+.loading
+  text-align: center
+
+#fs-display
+  grid-area: tree
+
+  display: grid
+  grid-template-columns: 1fr 3.8in
+  grid-template-rows: 1px 1fr
+  grid-template-areas: "navbar list" "sunburst list"
+
+  overflow: hidden
+
+#fs-display-navbar
+  position: relative
+  // overflow-x: scroll
+
+  grid-area: navbar
+  padding: 0.1in 0.2in
+
+#fs-display-sunburst
+  grid-area: sunburst
+
+  height: 100%
+  width: 100%
+
+#fs-display-sunburst-float
+  -webkit-user-select: none
+  transition: opacity 300ms
+  opacity: 0
+  position: fixed
+  padding: 0.2in
+  border-radius: 4px
+
+  background-color: $accent-color
+  color: #ffffff
+
+  & ol, & ol li
+    padding-right: 0
+    padding-bottom: 0
+
+  & .size
+    padding-left: 0.2in
+
+#fs-display-list
+  grid-area: list
+  // background-color: #1d275b
+
+  padding-left: 0
+
+  & ol
+    padding-left: 0.35in
+
+  overflow-y: scroll
+  word-wrap: break-word
+
+  & h1 img
+    // color: #ffffff
+    // fill: #ffffff
+    background-color: $accent-color
+    border-radius: 50%
+    display: inline-block
+    margin: 0 0.1in -0.05in 0.05in
+    padding: 0.04in 0.05in
+
+    height: 0.3in
+    width: 0.3in
+
+    transition: opacity, margin 300ms
+
+    &:hover
+      margin-left: 0
+      margin-right: 0.15in
+
+    &.hidden
+      opacity: 0
+
+  & li
+    border-radius: 4px
+    cursor: default
+
+    margin-bottom: -0.04in
+
+    transition: background-color 300ms
+
+    &:hover
+      background-color: $accent-color
+
+
+span.size
+  float: right
+
+/*
+  .darwin #titlebar {
+  -webkit-user-select: none
+  -webkit-app-region: drag
+
+  background-image: linear-gradient( 0deg, #1b1b1b, #3b3b3e )
+
+  display: block
+  height: 2.3em
+  }
+
+  button:focus {
+    outline: none
+  }
+
+  #bar {
+    display: grid
+
+    grid-template-rows: 100%
+    grid-template-columns: 1fr 4fr 1fr
+
+    height: 40px
+    background-color: #8d8fc2
+  }
+
+  #back {
+    background-image: url( 'assets/arrow-left.svg' )
+    background-color: transparent
+    background-position: center
+    background-repeat: no-repeat
+    background-size: 70%
+    border-style: none
+
+    box-sizing: border-box
+    width: 30px
+    height: 30px
+
+    margin: 5px
+    border-radius: 5px
+
+    transition: 0.2s background-color
+  }
+
+  #back:hover {
+    background-color: white
+  }
+
+  #header {
+    display: inline-block
+    font-size: 15pt
+    text-align: center
+  }
+
+  #loading {
+    position: fixed
+    top: 0px
+    left: 0px
+    width: 100%
+    height: 100%
+
+    background-image: url( 'assets/ellipsis.svg' )
+    background-position: center
+    background-repeat: no-repeat
+  }
+
+  #tree {
+    display: grid
+
+    grid-template-rows: 3fr 3em 1fr
+    grid-template-columns: 1fr
+
+    height: 100%
+    width: 100%
+  }
+
+
+
+  #tree-list-container {
+    background-color: #080808
+    box-shadow: 0 0 1em #080808
+
+    padding: 0px
+    margin: 0
+
+    font-size: 10pt
+
+    height: 100%
+    max-height: 100%
+    overflow: auto
+  }
+
+  #tree-list-container ol {
+    list-style-type: none
+    padding: 10px
+    margin: 0
+
+    font-size: 10pt
+  }
+
+  #tree-list-container li.tree-list-header {
+    font-size: 18pt
+    padding: 7px 0 7px 0
+    display: block
+    width: 45%
+    max-width: 600px
+  }
+
+  #tree-list-container li {
+    cursor: default
+    border-radius: 7px
+    display: inline-block
+    width: 340px
+  }
+
+  #tree-list-container.expanded li {
+    display: block
+  }
+
+  #tree-list-container li > * {
+    display: inline-block
+    vertical-align: middle
+    margin: 5px
+  }
+
+  #tree-list-container li mark {
+    border-radius: 50%
+    width: 11px
+    height: 11px
+    box-shadow: 0px 0px 5px black
+  }
+
+  #tree-list-container li label {
+    display: inline-block
+    max-width: 250px
+    overflow: hidden
+  }
+
+  #tree-list-container li label:first-of-type {
+    float: right
+  }
+
+  #tree-display {
+    width: 100%
+  }
+
+  #tree-display :first-child {
+    border-left-width: 1px
+  }
+
+  #tree-display span {
+    display: inline-block
+    cursor: default
+
+    margin: 0
+    padding: 0
+
+    box-sizing: border-box
+    border-style: solid
+    border-width: 1px 1px 1px 0
+
+    height: 35px
+  }
+
+  #tree-display span, #tree-list-container li {
+    transition-duration: 0.2s
+    transition-property: filter, background-color
+  }
+
+  #tree-display span:hover, #tree-list-container li:hover {
+    filter: contrast(200%)
+  }
+
+  #tree-list-container li:hover {
+    background-color: #2a2a2a
+  }
+
+  #tree-collapsed-list {
+    display: none
+  }
+
+  #tree-expander {
+    border-style: none
+    border-radius: 10px
+
+    padding: 0.5em 2em
+    margin: 0.5em auto
+
+    background-image: linear-gradient( 0deg, #484af9, #3e3fd5 )
+
+    color: white
+  }
+
+  #follower {
+    position: fixed
+    display: none
+
+    background-color: #cfeef0
+    color: grey
+
+    border-radius: 5px
+
+    box-shadow: 2px 2px 15px #131313
+
+    margin: 0
+    padding: 5px
+  }

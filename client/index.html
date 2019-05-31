@@ -3,16 +3,24 @@
 <head>
   <title>Observatory</title>
 
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'">
 
-  <link rel="stylesheet" href="panel.css" />
-
-  <script src="../../prelude/prelude.js"></script>
-  <script src="display-vfs.js"></script>
+  <!--
+    XXX: I need to figure out what to do with using oui in this project.
+  -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://mckay.la https://fonts.googleapis.com/ https://fonts.gstatic.com/" />
+  <link rel="stylesheet" type="text/css" href="https://mckay.la/resources/oui/oui.min.css" />
+  <link rel="stylesheet" type="text/css" href="resources/app.css" />
 </head>
 <body>
-  <div id="titlebar"></div>
-  <div id="menu">
+  <div id="application">
+    <div id="titlebar"><h1>Observatory</h1></div>
+    <div id="fs-display">
+      <div id="fs-display-list">
+      </div>
+      <!-- <img class="loading" src="assets/ellipsis.svg" /> -->
+    </div>
+  </div>
+  <!-- <div id="menu">
     <input id="directory-location" value="/" />
     <button id="begin-scan-button">Observe</button>
   </div>
@@ -37,6 +45,8 @@
   </div>
 
   <div id="follower">
-  </div>
+  </div> -->
+
+  <script src="ipc.js"></script>
 </body>
 </html>

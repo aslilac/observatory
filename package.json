@@ -1,12 +1,18 @@
 {
-  "name": "observatory",
-  "version": "0.0.1",
+  "name": "Observatory",
+  "version": "0.0.2",
   "description": "Disk usage analyzer",
-  "main": "app.js",
+  "main": "electron/app.js",
   "author": "McKayla Washburn",
   "license": "MIT",
+  "repository": "partheseas/observatory",
+  "bugs": "https://github.com/partheseas/observatory/issues",
   "dependencies": {
-    "electron": "^4.0.5",
-    "gardens": "^4.0.2"
+    "gardens": "^4.1.1",
+    "react": "^16.8.6",
+    "react-dom": "^16.8.6"
+  },
+  "devDependencies": {
+    "electron-nightly": "^7.0.0-nightly.20190521"
   }
 }
