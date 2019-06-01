@@ -1,5 +1,7 @@
 const React = require( 'react' )
 
+const garden = require( '../gardens.config' ).scope( 'renderer', 'sunburst' )
+
 const DIRECTORY = 0
 const FILE = 1
 const SYMLINK = 2
