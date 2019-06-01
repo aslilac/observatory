@@ -27,6 +27,7 @@ class VirtualFileSystem extends EventEmitter {
         this._scan( location ).then( async vfs => {
           clearInterval( status )
           garden.log( this.counts )
+          vfs.name = path.basename( location )
           garden.timeEnd( 'vfs creation' )
 
           let list = await drivelist.list()
@@ -67,7 +68,6 @@ class VirtualFileSystem extends EventEmitter {
   async _scan( location ) {
     let state = {
       type: DIRECTORY,
-      name: path.basename( location ),
       size: 0,
       files: []
     }
@@ -111,10 +111,11 @@ class VirtualFileSystem extends EventEmitter {
 
       else if ( stats.isDirectory() ) {
         this.counts.directories++
+
         if ( process.platform === 'linux' && entity === '/proc' ) return state
-        if ( location === '/' ) garden.time( entity )
+        if ( process.platform === 'darwin' && entity === '/Volumes' ) return state
+
         let directory = await this._scan( entity )
-        if ( location === '/' ) garden.timeEnd( entity )
         state.files.push({
           name,
           ...directory

@@ -305,7 +305,6 @@ class Sunburst extends React.Component {
     }
 
     // Set styles
-    garden.log( (position + size/2)*colorScale, layer, this.props.position, this.props.size / this.props.rootSize )
     this._2d.fillStyle = this._hsl( (position + size/2)*colorScale, layer, this.props.position, this.props.size / this.props.rootSize )
     this._2d.strokeStyle = '#3d3350'
 
