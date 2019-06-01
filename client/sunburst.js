@@ -34,7 +34,9 @@ class Sunburst extends React.Component {
     // this.state = props.directory
     this.canvasRef = React.createRef()
     this.hoverRef = React.createRef()
-    this._hoverTarget = null
+    this.pendingUpdate = false
+    this.animationRequest = null
+    this.hoverTarget = null
   }
 
   render() {
@@ -54,6 +56,12 @@ class Sunburst extends React.Component {
 
   componentDidMount() {
     window.addEventListener( 'resize', () => this._size() )
+    window.addEventListener( 'focus', () => this.animationRequest = requestAnimationFrame( () => this.animate() ))
+    window.addEventListener( 'blur', () => {
+      this.resetHover()
+      cancelAnimationFrame( this.animationRequest )
+    })
+
     this._size()
     this.pendingUpdate = true
     this.animate()
@@ -115,7 +123,7 @@ class Sunburst extends React.Component {
             hover.style.left = `${event.clientX + 15}px`
             hover.style.top = `${event.clientY + 5}px`
 
-            if ( this._hoverTarget !== file ) this.setHover( file )
+            if ( this.hoverTarget !== file ) this.setHover( file )
 
             if ( event.type === 'click' && file.type === DIRECTORY ) {
               ipcRenderer.send( 'vfs-navigateForward', ...searchPath, file.name )
@@ -169,8 +177,8 @@ class Sunburst extends React.Component {
   }
 
   setHover( file ) {
-    if ( this._hoverTarget ) this._hoverTarget.state.hover = false
-    this._hoverTarget = file
+    if ( this.hoverTarget ) this.hoverTarget.state.hover = false
+    this.hoverTarget = file
     this.animating = true
 
     file.state = {
@@ -190,9 +198,12 @@ class Sunburst extends React.Component {
 
   resetHover() {
     this.hoverRef.current.style.opacity = 0
-    if ( this._hoverTarget ) {
-      this._hoverTarget.state.hover = false
-      this._hoverTarget = null
+    if ( this.hoverTarget ) {
+      this.hoverTarget.state.hover = false
+      this.hoverTarget = null
+      // We don't need to animate every frame anymore, but we do want to run
+      // one last update to make sure the shard color has reset.
+      this.pendingUpdate = true
       this.animating = false
     }
   }
@@ -249,7 +260,7 @@ class Sunburst extends React.Component {
       this.pendingUpdate = false
     }
 
-    requestAnimationFrame( () => this.animate() )
+    this.animationRequest = requestAnimationFrame( () => this.animate() )
   }
 
   drawShard( position, size, layer, state ) {
@@ -294,6 +305,7 @@ class Sunburst extends React.Component {
     }
 
     // Set styles
+    garden.log( (position + size/2)*colorScale, layer, this.props.position, this.props.size / this.props.rootSize )
     this._2d.fillStyle = this._hsl( (position + size/2)*colorScale, layer, this.props.position, this.props.size / this.props.rootSize )
     this._2d.strokeStyle = '#3d3350'
 

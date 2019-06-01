@@ -86,6 +86,8 @@ body
   background-color: $accent-color
   color: #ffffff
 
+  pointer-events: none
+
   & ol, & ol li
     padding-right: 0
     padding-bottom: 0
@@ -105,14 +107,18 @@ body
   overflow-y: scroll
   word-wrap: break-word
 
-  & h1 img
-    // color: #ffffff
-    // fill: #ffffff
+  & h1
+    display: inline-block
+    margin-left: 0.35in
+
+  & .back
+    display: inline-block
+    margin: 0.12in 0.1in -0.05in -0.15in
+    padding: 0.04in 0.05in
     background-color: $accent-color
     border-radius: 50%
-    display: inline-block
-    margin: 0 0.1in -0.05in 0.05in
-    padding: 0.04in 0.05in
+
+    position: absolute
 
     height: 0.3in
     width: 0.3in
@@ -120,8 +126,7 @@ body
     transition: opacity, margin 300ms
 
     &:hover
-      margin-left: 0
-      margin-right: 0.15in
+      margin-left: -0.175in
 
     &.hidden
       opacity: 0

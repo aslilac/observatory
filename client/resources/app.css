@@ -80,6 +80,7 @@ body {
   border-radius: 4px;
   background-color: #423e5d;
   color: #ffffff;
+  pointer-events: none;
 }
 #fs-display-sunburst-float ol, #fs-display-sunburst-float ol li {
   padding-right: 0;
@@ -98,21 +99,25 @@ body {
 #fs-display-list ol {
   padding-left: 0.35in;
 }
-#fs-display-list h1 img {
+#fs-display-list h1 {
+  display: inline-block;
+  margin-left: 0.35in;
+}
+#fs-display-list .back {
+  display: inline-block;
+  margin: 0.12in 0.1in -0.05in -0.15in;
+  padding: 0.04in 0.05in;
   background-color: #423e5d;
   border-radius: 50%;
-  display: inline-block;
-  margin: 0 0.1in -0.05in 0.05in;
-  padding: 0.04in 0.05in;
+  position: absolute;
   height: 0.3in;
   width: 0.3in;
   transition: opacity, margin 300ms;
 }
-#fs-display-list h1 img:hover {
-  margin-left: 0;
-  margin-right: 0.15in;
+#fs-display-list .back:hover {
+  margin-left: -0.175in;
 }
-#fs-display-list h1 img.hidden {
+#fs-display-list .back.hidden {
   opacity: 0;
 }
 #fs-display-list li {

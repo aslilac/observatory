@@ -1,3 +1,4 @@
+const drivelist = require( 'drivelist' )
 const { ipcMain } = require( 'electron' )
 
 const Vfs = require( './vfs' )
@@ -14,6 +15,11 @@ exports.push = function ( location, view ) {
     vfs.push( view )
   })
 }
+
+ipcMain.on( 'drivelist-create', async event => {
+  let list = await drivelist.list()
+  event.reply( 'drivelist-render', list )
+})
 
 // XXX: In the future we should see if we have actually already scanned
 // this **(possibly nested)** and use an existing vfs.

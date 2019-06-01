@@ -54,7 +54,7 @@ module.exports = function Display( props ) {
   // If I ever use Babel or anything for this
   // <> </>
 
-  garden.log( props )
+  let { sunburst, list, ...shared } = props
 
   return React.createElement(
     React.Fragment,
@@ -62,7 +62,7 @@ module.exports = function Display( props ) {
     React.createElement( 'section', { id: 'fs-display-navbar' },
       React.createElement( 'button', {
         onClick() {
-          menu.showMenu()
+          ipcRenderer.send( 'drivelist-create' )
         }
       }, 'Disks and folders' ),
       React.createElement( 'button', {
@@ -70,7 +70,7 @@ module.exports = function Display( props ) {
           // navigateTo with no arguments goes to root
           ipcRenderer.send( 'vfs-navigateTo' )
         }
-      }, path.basename( props.name ) ),
+      }, props.name),
       props.cursor.map( ( piece, key ) => React.createElement(
         'button',
         { key, onClick() {
@@ -80,30 +80,35 @@ module.exports = function Display( props ) {
         piece
       ))
     ),
-    React.createElement( Sunburst, { id: 'fs-display-sunburst', ...props.sunburst }),
+    React.createElement( Sunburst, {
+      id: 'fs-display-sunburst',
+      files: sunburst.files,
+      ...shared
+    }),
     React.createElement( 'section', { id: 'fs-display-list', directory: props.list },
-      React.createElement( 'h1', null,
-        React.createElement( 'img', {
-          src: 'assets/arrow-left.svg',
+      React.createElement( 'img', {
+        src: 'assets/arrow-left.svg',
+        className: 'back',
 
-          onClick() { history.back() },
-          onKeyPress( event ) {
-            garden.log( event )
-          }
-        }),
+        onClick() { history.back() },
+        onKeyPress( event ) {
+          garden.log( event )
+        }
+      }),
+      React.createElement( 'h1', null,
         props.cursor.length
           ? props.cursor[ props.cursor.length - 1 ]
-          : path.basename( props.name )
+          : props.name
       ),
       // XXX: Should we make this expandable like it was before?
       React.createElement( 'ol', null,
-        props.list.files.map( ( file, key ) => React.createElement(
+        list.files.map( ( file, key ) => React.createElement(
           'li',
           {
             draggable: true,
             key,
             onClick() {
-              if ( file.type === DIRECTORY ) ipcRenderer.send( 'vfs-navigateForward', file.name )
+              if ( shared.type === DIRECTORY ) ipcRenderer.send( 'vfs-navigateForward', file.name )
             },
             onDragStart( event ) {
               titlebar.className = 'trash'

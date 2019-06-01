@@ -1,3 +1,4 @@
+const drivelist = require( 'drivelist' )
 const { EventEmitter } = require( 'events' )
 const fs = require( 'fs' ).promises
 const path = require( 'path' )
@@ -22,18 +23,23 @@ class VirtualFileSystem extends EventEmitter {
         }, 5000 )
 
         garden.time( 'vfs creation' )
-        this._scan( location ).then( vfs => {
+
+        this._scan( location ).then( async vfs => {
           clearInterval( status )
           garden.log( this.counts )
           garden.timeEnd( 'vfs creation' )
 
-          if ( location === '/' ) {
-            vfs.capacity = (process.platform === 'darwin' ? 256 : 500) * 1000 ** 3
-          }
+          let list = await drivelist.list()
 
-          if ( location === 'D:\\' ) {
-            vfs.capacity = 2 * 1000 ** 4
-          }
+          list.some( device =>
+            device.mountpoints.some( mount => {
+
+              if ( mount.path === this.location ) {
+                vfs.name = mount.label || `${device.description} (${mount.path})`
+                vfs.capacity = device.size
+              }
+            })
+          )
 
           this.root = vfs
           this.emit( 'ready' )
@@ -41,7 +47,7 @@ class VirtualFileSystem extends EventEmitter {
       })
       .catch( error => garden.catch( error ) )
 
-    this.location = location
+    this.location = path.normalize( location )
     this.root = null
     this.cursor = []
 
@@ -61,6 +67,7 @@ class VirtualFileSystem extends EventEmitter {
   async _scan( location ) {
     let state = {
       type: DIRECTORY,
+      name: path.basename( location ),
       size: 0,
       files: []
     }
@@ -187,27 +194,22 @@ class VirtualFileSystem extends EventEmitter {
     })
 
     let packet = {
-      name: this.location === '/'
-        ? 'SSD'
-        : this.location === 'D:\\'
-          ? 'HDD'
-          : this.location,
+      name: this.root.name,
       cursor: cursor,
+
+      type: DIRECTORY,
+      rootCapacity: this.root.capacity || this.root.size,
+      rootSize: this.root.size,
+      capacity: directory.capacity || directory.size,
+      position: directory.position,
+      size: directory.size,
       // Basically, we just want to strip out any files lists from directories
       // so that we only have to serialize a single layer in JSON, because
       // it is *reeeeeeally* slow.
       list: {
-        type: DIRECTORY,
-        size: directory.size,
         files: directory.files.map( sanitize() )
       },
       sunburst: {
-        type: DIRECTORY,
-        position: directory.position,
-        rootCapacity: this.root.capacity || this.root.size,
-        rootSize: this.root.size,
-        capacity: directory.capacity || directory.size,
-        size: directory.size,
         files: directory.files.filter( isLargeEnough ).map( sanitize( 6 ) )
       }
     }
