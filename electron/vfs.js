@@ -204,9 +204,9 @@ class VirtualFileSystem extends EventEmitter {
       capacity: directory.capacity || directory.size,
       position: directory.position,
       size: directory.size,
-      // Basically, we just want to strip out any files lists from directories
-      // so that we only have to serialize a single layer in JSON, because
-      // it is *reeeeeeally* slow.
+      // Basically, we just want to strip out any files that won't be rendered
+      // on the list or the sunburst so that we don't have to serialize the
+      // entire Vfs because that would be reaaaaally slow.
       list: {
         files: directory.files.map( sanitize() )
       },

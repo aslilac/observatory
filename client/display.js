@@ -11,9 +11,7 @@ const garden = require( '../gardens.config' ).scope( 'renderer' )
 document.body.className += ` ${process.platform}`
 
 let titlebar = document.getElementById( 'titlebar' )
-
 titlebar.addEventListener( 'dragover', drag => drag.preventDefault() )
-
 titlebar.addEventListener( 'drop', drop => {
     let pointer = drop.dataTransfer.getData( 'filePointer' )
     console.log( 'drop:', pointer )
@@ -30,9 +28,6 @@ titlebar.addEventListener( 'drop', drop => {
 })
 
 module.exports = function Display( props ) {
-  // If I ever use Babel or anything for this
-  // <> </>
-
   let { sunburst, list, ...shared } = props
 
   return React.createElement(

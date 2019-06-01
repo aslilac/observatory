@@ -67,6 +67,3 @@ ipcRenderer.on( 'drivelist-render', ( event, list ) => {
 })
 
 ipcRenderer.send( 'drivelist-create' )
-
-// ipcRenderer.send( 'vfs-create', '/src' )
-// ipcRenderer.send( 'vfs-create', '/' )

@@ -3,7 +3,6 @@ const { Menu, shell } = require( 'electron' )
 const showAboutWindow = require( './about' )
 
 const garden = require( '../../gardens.config' ).scope( 'system', 'menu' )
-const xd = require( '../../gardens.config' ).scope( 'system', 'touchbar', 'XD' )
 
 const template = [
   // { role: 'appMenu' }
@@ -26,8 +25,6 @@ const template = [
       { role: 'quit' }
     ]
   }] : []),
-  // { role: 'fileMenu' }
-  // { role: 'editMenu' }
   {
     label: 'Edit',
     submenu: [
@@ -37,7 +34,6 @@ const template = [
       { role: 'delete' }
     ]
   },
-  // { role: 'viewMenu' }
   {
     label: 'View',
     submenu: [
@@ -48,7 +44,6 @@ const template = [
       { role: 'togglefullscreen' }
     ]
   },
-  // { role: 'windowMenu' }
   {
     label: 'Window',
     submenu: [

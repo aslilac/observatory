@@ -25,7 +25,7 @@ const HUMAN_READABLE_SIZE = function ( size ) {
 }
 
 
-let titlebar = document.getElementById( 'titlebar' )
+// let titlebar = document.getElementById( 'titlebar' )
 
 
 
