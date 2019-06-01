@@ -35,7 +35,7 @@ function createWindow() {
       useGlobal: true
     })
     Object.assign( x.context, {
-      Vfs, Old: require( '../old/VirtualFileSystem' ),
+      Vfs,
       view
     })
     x.on( 'exit', () => app.quit() )
