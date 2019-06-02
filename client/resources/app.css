@@ -9,7 +9,7 @@ body {
   height: 100%;
   width: 100%;
   grid-template-rows: auto 1fr;
-  grid-template-areas: "titlebar" "tree";
+  grid-template-areas: "titlebar" "display";
 }
 
 #titlebar {
@@ -21,7 +21,6 @@ body {
 
 .darwin #titlebar, #titlebar.trash {
   -webkit-app-region: drag;
-  -webkit-user-select: none;
   display: block;
   background-color: #202245;
   background-image: linear-gradient(#20224500, #12142d);
@@ -46,12 +45,23 @@ body {
   font-size: 1.4em;
 }
 
-.loading {
+#loading {
+  -webkit-app-region: drag;
+  display: none;
+  position: fixed;
+  left: 0px;
+  top: 0px;
+  background-color: #2f3039;
+  background-image: url("../assets/ellipsis.svg");
+  background-position: center;
+  background-repeat: no-repeat;
+  height: 100%;
+  width: 100%;
   text-align: center;
 }
 
 #fs-display {
-  grid-area: tree;
+  grid-area: display;
   display: grid;
   grid-template-columns: 1fr 3.8in;
   grid-template-rows: 1px 1fr;

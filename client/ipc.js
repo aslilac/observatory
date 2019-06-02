@@ -6,19 +6,18 @@ const ReactDOM = require( 'react-dom' )
 const Display = require( './display' )
 const menu = require( './menu' )
 
-// This is a bit jancky, but it works.
+// This is a bit janky, but it works.
 let inPopState = false
 
 ipcRenderer.on( 'vfs-render', ( event, packet ) => {
   console.log( packet )
 
-
-
   ReactDOM.render(
     React.createElement( Display, {
       ...packet
     }),
-    document.getElementById( 'fs-display' )
+    document.getElementById( 'fs-display' ),
+    () => document.getElementById( 'loading' ).style.display = 'none'
   )
 
   // If we push before render it looks like we can go back even if we can't
@@ -44,6 +43,7 @@ ipcRenderer.on( 'drivelist-render', ( event, list ) => {
             {
               key,
               onClick() {
+                document.getElementById( 'loading' ).style.display = 'block'
                 ipcRenderer.send( 'vfs-create', mount.path )
               }
             },
@@ -55,13 +55,14 @@ ipcRenderer.on( 'drivelist-render', ( event, list ) => {
       React.createElement( 'button',
         {
           onClick() {
+            document.getElementById( 'loading' ).style.display = 'block'
             ipcRenderer.send( 'vfs-create', '/src' )
           }
         },
         '/src'
       )
     ),
-    document.getElementById( 'fs-display-list' )
+    document.getElementById( 'fs-display' )
   )
   menu.showMenu()
 })

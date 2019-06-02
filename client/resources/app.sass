@@ -1,8 +1,11 @@
+$background-color: #2f3039
 $accent-color: #423e5d
+
+
 
 body
   -webkit-user-select: none
-  background-color: #2f3039
+  background-color: $background-color
   color: #bdbfed
 
 #application
@@ -11,7 +14,7 @@ body
   width: 100%
 
   grid-template-rows: auto 1fr
-  grid-template-areas: "titlebar" "tree"
+  grid-template-areas: "titlebar" "display"
 
 #titlebar
   display: none
@@ -23,7 +26,6 @@ body
 
 .darwin #titlebar, #titlebar.trash
   -webkit-app-region: drag
-  -webkit-user-select: none
 
   display: block
   background-color: #202245
@@ -49,11 +51,26 @@ body
 
     font-size: 1.4em
 
-.loading
+#loading
+  -webkit-app-region: drag
+
+  display: none
+  position: fixed
+  left: 0px
+  top: 0px
+
+  background-color: $background-color
+  background-image: url( '../assets/ellipsis.svg' )
+  background-position: center
+  background-repeat: no-repeat
+
+  height: 100%
+  width: 100%
+
   text-align: center
 
 #fs-display
-  grid-area: tree
+  grid-area: display
 
   display: grid
   grid-template-columns: 1fr 3.8in
