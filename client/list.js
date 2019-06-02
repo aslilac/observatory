@@ -39,7 +39,8 @@ module.exports = function List( props ) {
     React.createElement( 'h1', null,
       props.cursor.length
         ? props.cursor[ props.cursor.length - 1 ]
-        : props.name
+        : props.name,
+        React.createElement( 'span', { className: 'size' }, HUMAN_READABLE_SIZE( props.size ) )
     ),
     // XXX: Should we make this expandable like it was before?
     React.createElement( 'ol', null,
@@ -50,7 +51,7 @@ module.exports = function List( props ) {
             draggable: true,
             key,
             onClick() {
-              if ( shared.type === DIRECTORY ) ipcRenderer.send( 'vfs-navigateForward', file.name )
+              if ( props.type === DIRECTORY ) ipcRenderer.send( 'vfs-navigateForward', file.name )
             },
             onDragStart( event ) {
               titlebar.className = 'trash'
