@@ -65,7 +65,6 @@ class Sunburst extends React.Component {
     })
 
     this._size()
-    this.pendingUpdate = true
     this.animate()
 
     // SyntheticEvents suck.
@@ -78,7 +77,6 @@ class Sunburst extends React.Component {
 
   componentDidUpdate() {
     this._size()
-    this.pendingUpdate = true
   }
 
   handleMouseEvents( event ) {
@@ -221,6 +219,8 @@ class Sunburst extends React.Component {
 
     let scale = this.windowScale = Math.min( bounds.height, bounds.width ) / 575
     this._2d.scale( scale * dpr, scale * dpr )
+
+    this.pendingUpdate = true
   }
 
   _hsl( hue, layer, min = 0, range = 1 ) {
