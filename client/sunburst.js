@@ -1,5 +1,7 @@
 const React = require( 'react' )
 
+const readableSize = require( './size' )
+
 const garden = require( '../gardens.config' ).scope( 'renderer', 'sunburst' )
 
 const DIRECTORY = 0
@@ -7,26 +9,9 @@ const FILE = 1
 const SYMLINK = 2
 const DEVICE = 3
 const UNKNOWN = 4
-const HUMAN_READABLE_SUFFIXES = [ 'bytes', 'KB', 'MB', 'GB', 'TB', 'PB' ]
-
-const HUMAN_READABLE_SIZE = function ( size ) {
-  let power = 0
-  let sizeString
-  while ( power + 1 < HUMAN_READABLE_SUFFIXES.length && size > 1000 ) {
-    size /= process.platform === 'darwin' ? 1000 : 1024
-    power += 1
-  }
-
-  sizeString = Math.trunc( size ) === size
-    ? size.toString()
-    : size.toPrecision( 3 )
-
-  return sizeString + ' ' + HUMAN_READABLE_SUFFIXES[ power ];
-}
 
 
 // let titlebar = document.getElementById( 'titlebar' )
-
 
 
 class Sunburst extends React.Component {
@@ -186,13 +171,13 @@ class Sunburst extends React.Component {
       hoverAnimation: 1
     }
 
-    React.createElement( 'span', { className: 'size' }, HUMAN_READABLE_SIZE( file.size ) )
+    React.createElement( 'span', { className: 'size' }, readableSize( file.size ) )
 
     // This is bad and horrible and sad but whatever
     this.hoverRef.current.style.opacity = 1
-    this.hoverRef.current.innerHTML = `${file.name}<span class="size">${HUMAN_READABLE_SIZE(file.size)}</span>${
+    this.hoverRef.current.innerHTML = `${file.name}<span class="size">${readableSize(file.size)}</span>${
       file.type === DIRECTORY && file.files.length ? `<br/><ol><li>${
-        file.files.slice( 0, 7 ).map( file => `${file.name}<span class="size">${HUMAN_READABLE_SIZE(file.size)}</span>`).join( '</li><li>' )
+        file.files.slice( 0, 7 ).map( file => `${file.name}<span class="size">${readableSize(file.size)}</span>`).join( '</li><li>' )
       }</li></ol>` : '' }`
   }
 

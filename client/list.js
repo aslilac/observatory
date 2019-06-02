@@ -1,5 +1,7 @@
 const { useState, ...React } = require( 'react' )
 
+const readableSize = require( './size' )
+
 const garden = require( '../gardens.config' ).scope( 'renderer', 'list' )
 
 const DIRECTORY = 0
@@ -7,22 +9,6 @@ const FILE = 1
 const SYMLINK = 2
 const DEVICE = 3
 const UNKNOWN = 4
-const HUMAN_READABLE_SUFFIXES = [ 'bytes', 'KB', 'MB', 'GB', 'TB', 'PB' ]
-
-const HUMAN_READABLE_SIZE = function ( size ) {
-  let power = 0
-  let sizeString
-  while ( power + 1 < HUMAN_READABLE_SUFFIXES.length && size > 1000 ) {
-    size /= process.platform === 'darwin' ? 1000 : 1024
-    power += 1
-  }
-
-  sizeString = Math.trunc( size ) === size
-    ? size.toString()
-    : size.toPrecision( 3 )
-
-  return sizeString + ' ' + HUMAN_READABLE_SUFFIXES[ power ];
-}
 
 module.exports = function List( props ) {
   const [ expanded, setExpanded ] = useState( false )
@@ -40,7 +26,7 @@ module.exports = function List( props ) {
       props.cursor.length
         ? props.cursor[ props.cursor.length - 1 ]
         : props.name,
-        React.createElement( 'span', { className: 'size' }, HUMAN_READABLE_SIZE( props.size ) )
+        React.createElement( 'span', { className: 'size' }, readableSize( props.size ) )
     ),
     // XXX: Should we make this expandable like it was before?
     React.createElement( 'ol', null,
@@ -64,7 +50,7 @@ module.exports = function List( props ) {
             }
           },
           file.name,
-          React.createElement( 'span', { className: 'size' }, HUMAN_READABLE_SIZE( file.size ) )
+          React.createElement( 'span', { className: 'size' }, readableSize( file.size ) )
         )),
       ...( expanded ? [] : [
         React.createElement(
