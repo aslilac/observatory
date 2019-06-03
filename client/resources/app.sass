@@ -1,12 +1,13 @@
 $background-color: #2f3039
 $accent-color: #423e5d
+$text-color: #bdbfed
 
 
 
 body
   -webkit-user-select: none
   background-color: $background-color
-  color: #bdbfed
+  color: $text-color
 
 #application
   display: grid
@@ -36,6 +37,8 @@ body
   color: #4f55a7
   text-align: center
 
+  z-index: 100
+
   & h1
     font-size: 17px
     font-weight: 200
@@ -52,8 +55,6 @@ body
     font-size: 1.4em
 
 #loading
-  -webkit-app-region: drag
-
   display: none
   position: fixed
   left: 0px

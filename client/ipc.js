@@ -1,4 +1,4 @@
-const { ipcRenderer } = require( 'electron' )
+const { ipcRenderer, remote } = require( 'electron' )
 const garden = require( '../gardens.config' ).scope( 'ipc', 'renderer' )
 const React = require( 'react' )
 const ReactDOM = require( 'react-dom' )
@@ -60,6 +60,18 @@ ipcRenderer.on( 'drivelist-render', ( event, list ) => {
           }
         },
         '/src'
+      ),
+      React.createElement( 'button',
+        {
+          onClick() {
+            remote.dialog.showOpenDialog({
+              properties: [ 'openDirectory' ]
+            },  ( folders ) => {
+              if ( folders ) ipc.push( folders[0], view )
+            })
+          }
+        },
+        'Scan directory'
       )
     ),
     document.getElementById( 'fs-display' )

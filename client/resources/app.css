@@ -28,6 +28,7 @@ body {
   height: 37px;
   color: #4f55a7;
   text-align: center;
+  z-index: 100;
 }
 .darwin #titlebar h1, #titlebar.trash h1 {
   font-size: 17px;
@@ -46,7 +47,6 @@ body {
 }
 
 #loading {
-  -webkit-app-region: drag;
   display: none;
   position: fixed;
   left: 0px;

@@ -1,5 +1,5 @@
 const drivelist = require( 'drivelist' )
-const { TouchBar } = require( 'electron' )
+const { dialog, TouchBar } = require( 'electron' )
 const { TouchBarButton, TouchBarLabel, TouchBarSpacer } = TouchBar
 
 const ipc = require( '../ipc' )
@@ -41,6 +41,17 @@ exports.init = async function( view ) {
           label: '/src',
           backgroundColor: '#b0a0ec',
           click() { ipc.push( '/src', view ) }
+        }),
+        new TouchBarButton({
+          label: 'Scan directory',
+          backgroundColor: '#b0a0ec',
+          click() {
+            dialog.showOpenDialog({
+              properties: [ 'openDirectory' ]
+            }, ( folders ) => {
+              if ( folders ) ipc.push( folders[0], view )
+            })
+          }
         }),
         new TouchBarSpacer({
           size: 'large'
