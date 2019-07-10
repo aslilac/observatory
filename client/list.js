@@ -59,7 +59,7 @@ module.exports = function List( props ) {
             onClick() { setExpanded( true ) },
             className: 'expand'
           },
-          'smaller objects...'
+          'show smaller items...'
         )
       ])
     )
