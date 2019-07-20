@@ -4,5 +4,8 @@
 # Dependencies
 node_modules
 
+# Builds
+target
+
 # Logs
 *.log

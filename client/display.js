@@ -3,7 +3,7 @@ const path = require( 'path' )
 const React = require( 'react' )
 
 const menu = require( './menu' )
-const List = require( './List' )
+const List = require( './list' )
 const Sunburst = require( './sunburst' )
 
 const garden = require( '../gardens.config' ).scope( 'renderer' )
@@ -44,7 +44,7 @@ module.exports = function Display( props ) {
           // navigateTo with no arguments goes to root
           ipcRenderer.send( 'vfs-navigateTo' )
         }
-      }, props.name),
+      }, props.name ),
       props.cursor.map( ( piece, key ) => React.createElement(
         'button',
         { key, onClick() {

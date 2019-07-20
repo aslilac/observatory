@@ -15,25 +15,18 @@
   },
   "devDependencies": {
     "electron": "^5.0.7",
-    "electron-builder": "^21.1.1",
+    "electron-forge": "^5.2.4",
     "electron-rebuild": "^1.8.5"
   },
-  "build": {
-    "appId": "la.mckay.observatory",
-    "productName": "Observatory",
-    "directories": {
-      "output": "target"
-    },
-    "mac": {
-      "target": "dmg",
-      "category": "public.app-category.utilities",
-      "darkModeSupport": true
-    },
-    "win": {
-      "target": "nsis"
-    },
-    "dmg": {
-      "backgroundColor": "#12142d"
+  "config": {
+    "forge": {
+      "packagerConfig": {
+        "appBundleId": "la.mckay.observatory",
+        "appCategoryType": "public.app-category.utilities",
+        "appCopyright": "&copy; 2019 &hearts; McKayla",
+        "darwinDarkModeSupport": true,
+        "name": "Observatory"
+      }
     }
   }
 }

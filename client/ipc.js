@@ -10,7 +10,7 @@ const menu = require( './menu' )
 let inPopState = false
 
 ipcRenderer.on( 'vfs-render', ( event, packet ) => {
-  console.log( packet )
+  garden.log( 'vfs-render packet:', packet )
 
   ReactDOM.render(
     React.createElement( Display, {
@@ -28,7 +28,7 @@ ipcRenderer.on( 'vfs-render', ( event, packet ) => {
 })
 
 window.addEventListener( 'popstate', event => {
-  garden.log( event.state )
+  garden.log( 'popstate event.state:', event.state )
   inPopState = true
   if ( event.state ) ipcRenderer.send( 'vfs-navigateTo', ...event.state )
 })
