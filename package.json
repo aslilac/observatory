@@ -1,39 +1,33 @@
 {
   "name": "observatory",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Disk usage analyzer",
-  "main": "electron/app.js",
+  "main": "target/app.js",
   "author": "McKayla Washburn",
   "license": "MIT",
   "repository": "partheseas/observatory",
   "bugs": "https://github.com/partheseas/observatory/issues",
   "dependencies": {
     "drivelist": "^8.0.6",
+    "electron-squirrel-startup": "^1.0.0",
     "gardens": "^4.1.1",
     "react": "^16.8.6",
     "react-dom": "^16.8.6"
   },
   "devDependencies": {
+    "@babel/core": "^7.5.5",
+    "@electron-forge/cli": "^6.0.0-beta.43",
+    "@electron-forge/maker-dmg": "^6.0.0-beta.43",
+    "@electron-forge/maker-squirrel": "^6.0.0-beta.43",
+    "babel-preset-react": "^6.24.1",
     "electron": "^5.0.7",
-    "electron-builder": "^21.1.1",
-    "electron-rebuild": "^1.8.5"
+    "electron-rebuild": "^1.8.5",
+    "rollup": "^1.17.0",
+    "rollup-plugin-babel": "^4.3.3",
+    "rollup-plugin-babel-minify": "^9.0.0",
+    "source-map-support": "^0.5.12"    
   },
-  "build": {
-    "appId": "la.mckay.observatory",
-    "productName": "Observatory",
-    "directories": {
-      "output": "target"
-    },
-    "mac": {
-      "target": "dmg",
-      "category": "public.app-category.utilities",
-      "darkModeSupport": true
-    },
-    "win": {
-      "target": "nsis"
-    },
-    "dmg": {
-      "backgroundColor": "#12142d"
-    }
+  "config": {
+    "forge": "forge.config.js"
   }
 }

@@ -1,6 +1,7 @@
-const { systemPreferences } = require( 'electron' )
+import { systemPreferences } from 'electron'
 
-const garden = require( '../../gardens.config' ).scope( 'systemPreferences', 'theme' )
+import gardens from '../../gardens.config'
+const garden = gardens.scope( 'systemPreferences', 'theme' )
 
 if ( process.platform === 'darwin' ) {
   systemPreferences.subscribeNotification(

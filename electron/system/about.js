@@ -1,7 +1,9 @@
-const { BrowserWindow, shell, TouchBar } = require( 'electron' )
+import { BrowserWindow, shell, TouchBar } from 'electron'
 const { TouchBarButton, TouchBarLabel, TouchBarSpacer } = TouchBar
-const path = require( 'path' )
-const url = require( 'url' )
+import path from 'path'
+import url from 'url'
+
+// import { version } from '../../package.json'
 
 let aboutWindow = null
 
@@ -36,7 +38,7 @@ function showAboutWindow() {
 
     // Emitted when the window is closed.
     aboutWindow.on( 'closed', () => {
-      // Dereference the window object, so that Electron can close gracefully
+      // Dereference the window object, so that Electron can close it gracefully
       aboutWindow = null
     })
 
@@ -52,7 +54,7 @@ function showAboutWindow() {
           })
         ],
         escapeItem: new TouchBarButton({
-          label: `v${require( '../../package.json' ).version}`,
+          label: `v${ '0.3.0' }`,
           backgroundColor: '#fa4873',
           click() { aboutWindow.close() }
         })
@@ -66,4 +68,4 @@ function showAboutWindow() {
 }
 
 
-module.exports = showAboutWindow
+export default showAboutWindow

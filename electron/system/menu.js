@@ -1,8 +1,9 @@
-const { Menu, shell } = require( 'electron' )
+import { Menu, shell } from 'electron'
 
-const showAboutWindow = require( './about' )
+import showAboutWindow from './about'
 
-const garden = require( '../../gardens.config' ).scope( 'system', 'menu' )
+import gardens from '../../gardens.config'
+const garden = gardens.scope( 'system', 'menu' )
 
 const template = [
   // { role: 'appMenu' }
@@ -87,7 +88,9 @@ Menu.setApplicationMenu(
   Menu.buildFromTemplate( template )
 )
 
-exports.init = function( view ) {
+export function init( view ) {
   // Electron should do this by default, but...
   // view.setMenu( menu )
 }
+
+export default { init }

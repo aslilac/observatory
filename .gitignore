@@ -5,6 +5,7 @@
 node_modules
 
 # Builds
+out
 target
 
 # Logs

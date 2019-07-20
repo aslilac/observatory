@@ -23,29 +23,23 @@ them if you want.
 Observatory is open source and available free of charge. I put a lot of love and work into it, and
 if you'd like to [show appreciation](https://cash.app/$partheseas) I'd be incredibly thankful!
 
-# Usage
-To use Observatory, you'll first need to install the latest version of [Node.js](https://nodejs.org)
-and have some familiarity with using the command line. One installed, clone this repository
+# Build
+To build Observatory, you'll first need to install the latest versions of [Node.js](https://nodejs.org)
+and [Yarn](https://yarnpkg.com) One installed, clone this repository
 to your computer and run the following commands inside of it to install the rest of
 Observatory's dependencies.
 
-```shell
-npm i .
-npx electron-rebuild
-npx electron .
-```
-
-If you already use Node.js and have [Yarn](https://yarnpkg.com) installed you can
-also run the following commands instead.
-
+To run in development:
 ```shell
 yarn
 yarn run electron-rebuild
 yarn run electron .
 ```
 
-I'll probably have some easier to use packaged versions of the application later,
-but I've yet to decide on an Electron build system that I like.
+Build for release:
+```shell
+yarn run electron-forge make
+```
 
 ## Performance
 - DaisyDisk: 13.20s - 219.7MB

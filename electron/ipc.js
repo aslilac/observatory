@@ -1,15 +1,16 @@
-const drivelist = require( 'drivelist' )
-const { ipcMain } = require( 'electron' )
+import drivelist from 'drivelist'
+import { ipcMain } from 'electron'
 
-const Vfs = require( './vfs' )
+import Vfs from './vfs'
 
-const garden = require( '../gardens.config' ).scope( 'ipc', 'main' )
+import gardens from '../gardens.config'
+const garden = gardens.scope( 'ipc', 'main' )
 
 let vfs = null
 
 // XXX: In the future we should see if we have actually already scanned
 // this (possibly nested) and use an existing vfs.
-exports.push = function ( location, view ) {
+export function push( location, view ) {
   vfs = new Vfs( location )
   vfs.ready( () => {
     vfs.push( view )
@@ -76,3 +77,5 @@ ipcMain.on( 'vfs-navigateTo', ( event, ...names ) => {
 ipcMain.on( 'vfs-inspect', ( event, ...names ) => {
 
 })
+
+export default { push }

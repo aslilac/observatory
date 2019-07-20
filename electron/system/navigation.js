@@ -1,6 +1,7 @@
-const garden = require( '../../gardens.config' ).scope( 'electron', 'navigation' )
+import gardens from '../../gardens.config'
+const garden = gardens.scope( 'system', 'navigation' )
 
-exports.init = function ( view ) {
+export function init( view ) {
     view.on( 'app-command', ( event, command ) => {
         garden.log( 'app-command', event, command )
         // Navigate the window back when the user hits their mouse back button
@@ -38,3 +39,5 @@ exports.init = function ( view ) {
 
     })
 }
+
+export default { init }

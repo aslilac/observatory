@@ -1,3 +1,7 @@
-exports.showMenu = function () {
+export function showMenu() {
   
+}
+
+export default {
+    showMenu
 }

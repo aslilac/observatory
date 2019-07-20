@@ -1,12 +1,13 @@
-const { ipcRenderer } = require( 'electron' )
-const path = require( 'path' )
-const React = require( 'react' )
+import { ipcRenderer } from 'electron'
+import path from 'path'
+import React, { Fragment } from 'react'
 
-const menu = require( './menu' )
-const List = require( './list' )
-const Sunburst = require( './sunburst' )
+import menu from './menu'
+import List from './list'
+import Sunburst from './sunburst'
 
-const garden = require( '../gardens.config' ).scope( 'renderer' )
+import gardens from '../gardens.config'
+const garden = gardens.scope( 'renderer' )
 
 document.body.className += ` ${process.platform}`
 
@@ -27,40 +28,19 @@ titlebar.addEventListener( 'drop', drop => {
     }
 })
 
-module.exports = function Display( props ) {
+export default function Display( props ) {
   let { sunburst, list, ...shared } = props
 
-  return React.createElement(
-    React.Fragment,
-    null,
-    React.createElement( 'section', { id: 'fs-display-navbar' },
-      React.createElement( 'button', {
-        onClick() {
-          ipcRenderer.send( 'drivelist-create' )
-        }
-      }, 'Disks and folders' ),
-      React.createElement( 'button', {
-        onClick() {
-          // navigateTo with no arguments goes to root
-          ipcRenderer.send( 'vfs-navigateTo' )
-        }
-      }, props.name ),
-      props.cursor.map( ( piece, key ) => React.createElement(
-        'button',
-        { key, onClick() {
-          garden.log( props.cursor.slice( 0, key + 1 ) )
-          ipcRenderer.send( 'vfs-navigateTo', ...props.cursor.slice( 0, key + 1 ) )
-        } },
-        piece
-      ))
-    ),
-    React.createElement( Sunburst, {
-      files: sunburst.files,
-      ...shared
-    }),
-    React.createElement( List, {
-      files: list.files,
-      ...shared
-    })
-  )
+  return <Fragment>
+    <section id="fs-display-navbar">
+      <button onClick={() => ipcRenderer.send( 'drivelist-create' )}>Disks and folders</button>
+      <button onClick={() => ipcRenderer.send( 'vfs-navigateTo' )}>{props.name}</button>
+      {props.cursor.map( ( piece, key ) => <button key={key} onClick={ () => {
+        garden.log( props.cursor.slice( 0, key + 1 ) )
+        ipcRenderer.send( 'vfs-navigateTo', ...props.cursor.slice( 0, key + 1 ) )
+      }}>{piece}</button>)}
+    </section>
+    <Sunburst files={sunburst.files} {...shared} />
+    <List files={list.files} {...shared} />
+  </Fragment>
 }

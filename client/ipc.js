@@ -1,10 +1,12 @@
-const { ipcRenderer, remote } = require( 'electron' )
-const garden = require( '../gardens.config' ).scope( 'ipc', 'renderer' )
-const React = require( 'react' )
-const ReactDOM = require( 'react-dom' )
+import { ipcRenderer, remote } from 'electron'
+import React from 'react'
+import ReactDOM from 'react-dom'
 
-const Display = require( './display' )
-const menu = require( './menu' )
+import Display from './display'
+import menu from './menu'
+
+import gardens from '../gardens.config'
+const garden = gardens.scope( 'ipc', 'renderer' )
 
 // This is a bit janky, but it works.
 let inPopState = false
@@ -35,45 +37,30 @@ window.addEventListener( 'popstate', event => {
 
 ipcRenderer.on( 'drivelist-render', ( event, list ) => {
   ReactDOM.render(
-    React.createElement( 'section', null,
-      list.map( device =>
-        device.mountpoints.map( ( mount, key ) =>
-          React.createElement(
-            'button',
-            {
-              key,
-              onClick() {
-                document.getElementById( 'loading' ).style.display = 'block'
-                ipcRenderer.send( 'vfs-create', mount.path )
-              }
-            },
-            mount.label || `${mount.path} (${device.description})`
+    <section>
+      {
+        list.map( ( device, dIndex ) =>
+          device.mountpoints.map( ( mount, mIndex ) =>
+            <button key={`${dIndex}-${mIndex}`} onClick={ () => {
+              document.getElementById( 'loading' ).style.display = 'block'
+              ipcRenderer.send( 'vfs-create', mount.path )
+            }}>{mount.label || `${mount.path} (${device.description})`}</button>
           )
-        )
-      ).flat(),
-      // This is for development, I need a way to remove it eventually
-      React.createElement( 'button',
-        {
-          onClick() {
-            document.getElementById( 'loading' ).style.display = 'block'
-            ipcRenderer.send( 'vfs-create', '/src' )
-          }
-        },
-        '/src'
-      ),
-      React.createElement( 'button',
-        {
-          onClick() {
-            remote.dialog.showOpenDialog({
-              properties: [ 'openDirectory' ]
-            },  ( folders ) => {
-              if ( folders ) ipc.push( folders[0], view )
-            })
-          }
-        },
-        'Scan directory'
-      )
-    ),
+        ).flat()
+      }
+      {/* This button needs to go away eventually. */}
+      <button onClick={ () => {
+        document.getElementById( 'loading' ).style.display = 'block'
+        ipcRenderer.send( 'vfs-create', '/src' )
+      }}>/src</button>
+      <button onClick={ () => {
+        remote.dialog.showOpenDialog({
+          properties: [ 'openDirectory' ]
+        },  ( folders ) => {
+          if ( folders ) ipc.push( folders[0], view )
+        })
+      }}>Scan directory</button>
+    </section>,
     document.getElementById( 'fs-display' )
   )
   menu.showMenu()

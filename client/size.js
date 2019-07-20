@@ -1,6 +1,6 @@
 const SUFFIXES = [ 'bytes', 'KB', 'MB', 'GB', 'TB', 'PB' ]
 
-module.exports = function ( size ) {
+export default function( size ) {
   let power = 0
 
   // Make sure we actually have a suffix and check if we need to step to it

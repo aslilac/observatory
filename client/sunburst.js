@@ -1,8 +1,10 @@
-const React = require( 'react' )
+import { ipcRenderer } from 'electron'
+import React, { Fragment } from 'react'
 
-const readableSize = require( './size' )
+import readableSize from './size'
 
-const garden = require( '../gardens.config' ).scope( 'renderer', 'sunburst' )
+import gardens from '../gardens.config'
+const garden = gardens.scope( 'renderer', 'sunburst' )
 
 const DIRECTORY = 0
 const FILE = 1
@@ -12,7 +14,6 @@ const UNKNOWN = 4
 
 
 // let titlebar = document.getElementById( 'titlebar' )
-
 
 class Sunburst extends React.Component {
   constructor( props ) {
@@ -28,17 +29,10 @@ class Sunburst extends React.Component {
 
   render() {
     garden.log( this.props )
-    return React.createElement( React.Fragment, null,
-      React.createElement( 'canvas', {
-        id: 'fs-display-sunburst',
-        ref: this.canvasRef
-        // draggable: true
-      }),
-      React.createElement( 'span', {
-        id: 'fs-display-sunburst-float',
-        ref: this.hoverRef
-      })
-    )
+    return <Fragment>
+      <canvas id="fs-display-sunburst" ref={this.canvasRef}></canvas>
+      <span id="fs-display-sunburst-float" ref={this.hoverRef}></span>
+    </Fragment>
   }
 
   componentDidMount() {
@@ -301,4 +295,4 @@ class Sunburst extends React.Component {
   }
 }
 
-module.exports = Sunburst
+export default Sunburst

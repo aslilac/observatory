@@ -1,4 +1,4 @@
-const gardens = require( 'gardens' )
+import gardens from 'gardens'
 
 const manager = gardens.createManager( 'observatory' )
 
@@ -8,4 +8,4 @@ manager.scope( 'system', 'touchbar', 'XD' ).configure({
   }
 })
 
-module.exports = manager
+export default manager

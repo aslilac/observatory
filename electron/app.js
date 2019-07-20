@@ -1,17 +1,20 @@
-const { app, BrowserWindow } = require( 'electron' )
-const path = require( 'path' )
-const url = require( 'url' )
+// Handle initial platform setup
+import './system/windows'
 
-const menu = require( './system/menu' )
-const navigation = require( './system/navigation' )
-const theme = require( './system/theme' )
-const touchbar = require( './system/touchbar' )
-const ipc = require( './ipc' )
-const Vfs = require( './vfs' )
+// Now we get to the actual app code.
+import { app, BrowserWindow } from 'electron'
+import path from 'path'
+import url from 'url'
 
+import menu from './system/menu'
+import navigation from './system/navigation'
+import './system/theme'
+import touchbar from './system/touchbar'
+
+let smsr = false
 let view = null
 
-function createWindow() {
+async function createWindow() {
   // Create the browser window.
   view = new BrowserWindow({
     backgroundColor: '#e73219',
@@ -24,22 +27,28 @@ function createWindow() {
     }
   })
 
+  // Source map support
+  // We put it here because we need to await it, and can't at top level.
+  // Putting it here ensures we don't go very far without it in development.
+  if ( !smsr && !app.isPackaged ) {
+    await import( 'source-map-support/register' )
+    smsr = true
+  }
+
   // REPL!
-  // For some reason Windows shits it's pants if we try to do this, not
-  // that I'm fucking surprised.
-  // This also super-breaks launching on macOS when not done through the console.
-  // if ( process.platform === 'darwin' ) {
-  //   const repl = require( 'repl' )
-  //   let x = repl.start({
-  //     prompt: '> ',
-  //     useGlobal: true
-  //   })
-  //   Object.assign( x.context, {
-  //     Vfs,
-  //     view
-  //   })
-  //   x.on( 'exit', () => app.quit() )
-  // }
+  // This also super-breaks launching on macOS when packaged and doesn't
+  // work on Windows literally ever.
+  if ( process.platform === 'darwin' && !app.isPackaged ) {
+    const repl = require( 'repl' )
+    let x = repl.start({
+      prompt: '> ',
+      useGlobal: true
+    })
+    Object.assign( x.context, {
+      view
+    })
+    x.on( 'exit', () => app.quit() )
+  }
 
   // Load the app.
   view.loadURL( url.format({
@@ -48,6 +57,7 @@ function createWindow() {
     slashes: true
   }) )
 
+  // Prevent seeing an unpopulated screen.
   view.on( 'ready-to-show', () => {
     view.show()
   })
@@ -58,23 +68,25 @@ function createWindow() {
     view = null
   })
 
+  // Attach everything to the window.
   menu.init( view )
   navigation.init( view )
   touchbar.init( view )
 }
 
+// Launch on startup.
 app.on( 'ready', () => {
   createWindow()
 })
 
-// Might not be necessary if we quit on window-all-closed
-app.on( 'activate', () => {
-  // On macOS it's common to re-create a window in the app when the
-  // dock icon is clicked and there are no other windows open.
-  if ( view == null ) {
-    createWindow()
-  }
-})
+// XXX: Might not be necessary if we quit on window-all-closed
+// app.on( 'activate', () => {
+//   // On macOS it's common to re-create a window in the app when the
+//   // dock icon is clicked and there are no other windows open.
+//   if ( view == null ) {
+//     createWindow()
+//   }
+// })
 
 app.on( 'window-all-closed', () => {
   app.quit()

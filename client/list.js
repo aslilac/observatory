@@ -1,8 +1,10 @@
-const { useState, ...React } = require( 'react' )
+import { ipcRenderer } from 'electron'
+import React, { useState } from 'react'
 
-const readableSize = require( './size' )
+import readableSize from './size'
 
-const garden = require( '../gardens.config' ).scope( 'renderer', 'list' )
+import gardens from '../gardens.config'
+const garden = gardens.scope( 'renderer', 'list' )
 
 const DIRECTORY = 0
 const FILE = 1
@@ -10,58 +12,38 @@ const SYMLINK = 2
 const DEVICE = 3
 const UNKNOWN = 4
 
-module.exports = function List( props ) {
+export default function List( props ) {
   const [ expanded, setExpanded ] = useState( false )
 
   garden.log( props )
 
-  return React.createElement( 'section', { id: 'fs-display-list' },
-    React.createElement( 'img', {
-      src: 'assets/arrow-left.svg',
-      className: 'back',
+  // function onDragStart() {
+  //   titlebar.className = 'trash'
+  //   let id = event.target.id = Math.floor( Math.random() * 899999 + 100000 )
+  //   event.dataTransfer.setData( 'filePointer', id )
+  //   event.dataTransfer.effectAllowed = 'move'
+  // }
 
-      onClick() { history.back() }
-    }),
-    React.createElement( 'h1', null,
-      props.cursor.length
+  // function onDragEnd() {
+  //   titlebar.className = ''
+  // }
+
+  return <section id="fs-display-list">
+    <img src="assets/arrow-left.svg" className="back" onClick={() => history.back()} />
+    <h1>{props.cursor.length
         ? props.cursor[ props.cursor.length - 1 ]
-        : props.name,
-        React.createElement( 'span', { className: 'size' }, readableSize( props.size ) )
-    ),
-    // XXX: Should we make this expandable like it was before?
-    React.createElement( 'ol', null,
-      ( expanded ? props.files : props.files.filter( file => file.size >= props.size / 100 ) )
-        .map( ( file, key ) => React.createElement(
-          'li',
-          {
-            draggable: true,
-            key,
-            onClick() {
-              if ( props.type === DIRECTORY ) ipcRenderer.send( 'vfs-navigateForward', file.name )
-            },
-            onDragStart( event ) {
-              titlebar.className = 'trash'
-              let id = event.target.id = Math.floor( Math.random() * 899999 + 100000 )
-              event.dataTransfer.setData( 'filePointer', id )
-              event.dataTransfer.effectAllowed = 'move'
-            },
-            onDragEnd() {
-              titlebar.className = ''
-            }
-          },
-          file.name,
-          React.createElement( 'span', { className: 'size' }, readableSize( file.size ) )
-        )),
-      ...( expanded ? [] : [
-        React.createElement(
-          'li',
-          {
-            onClick() { setExpanded( true ) },
-            className: 'expand'
-          },
-          'show smaller items...'
-        )
-      ])
-    )
-  )
+        : props.name}
+      <span className="size">{ readableSize( props.size ) }</span>
+    </h1>
+    <ol>
+      {
+        ( expanded ? props.files : props.files.filter( file => file.size >= props.size / 100 ) )
+          .map( ( file, key ) => <li draggable key={key} onClick={() => { if ( props.type === DIRECTORY ) ipcRenderer.send( 'vfs-navigateForward', file.name ) }}>
+            {file.name}
+            <span className="size">{readableSize( file.size )}</span>
+          </li> )
+      }
+      { expanded || <li className="expand" onClick={() => setExpanded( true ) }>show smaller items...</li> }
+    </ol>
+  </section>
 }

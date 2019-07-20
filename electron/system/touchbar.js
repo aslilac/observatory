@@ -1,13 +1,14 @@
-const drivelist = require( 'drivelist' )
-const { dialog, TouchBar } = require( 'electron' )
+import drivelist from 'drivelist'
+import { dialog, TouchBar } from 'electron'
 const { TouchBarButton, TouchBarLabel, TouchBarSpacer } = TouchBar
 
-const ipc = require( '../ipc' )
+import ipc from '../ipc'
 
-const garden = require( '../../gardens.config' ).scope( 'system', 'touchbar' )
-const xd = require( '../../gardens.config' ).scope( 'system', 'touchbar', 'XD' )
+import gardens from '../../gardens.config'
+const garden = gardens.scope( 'system', 'touchbar' )
+const xd = gardens.scope( 'system', 'touchbar', 'XD' )
 
-exports.init = async function( view ) {
+export async function init( view ) {
   let list = await drivelist.list()
   view.setTouchBar(
     new TouchBar({
@@ -60,3 +61,5 @@ exports.init = async function( view ) {
     })
   )
 }
+
+export default { init }

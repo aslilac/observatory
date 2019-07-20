@@ -1,9 +1,10 @@
-const drivelist = require( 'drivelist' )
-const { EventEmitter } = require( 'events' )
-const fs = require( 'fs' ).promises
-const path = require( 'path' )
+import drivelist from 'drivelist'
+import { EventEmitter } from 'events'
+import { promises as fs } from 'fs'
+import path from 'path'
 
-const garden = require( '../gardens.config' ).scope( 'VirtualFileSystem' )
+import gardens from '../gardens.config'
+const garden = gardens.scope( 'VirtualFileSystem' )
 
 const DIRECTORY = 0
 const FILE = 1
@@ -219,4 +220,4 @@ class VirtualFileSystem extends EventEmitter {
   }
 }
 
-module.exports = VirtualFileSystem
+export default VirtualFileSystem
