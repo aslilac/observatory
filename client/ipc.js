@@ -15,9 +15,7 @@ ipcRenderer.on( 'vfs-render', ( event, packet ) => {
   garden.log( 'vfs-render packet:', packet )
 
   ReactDOM.render(
-    React.createElement( Display, {
-      ...packet
-    }),
+    <Display { ...packet } />,
     document.getElementById( 'fs-display' ),
     () => document.getElementById( 'loading' ).style.display = 'none'
   )
