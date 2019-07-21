@@ -1,5 +1,4 @@
 import { ipcRenderer } from 'electron'
-import path from 'path'
 import React, { Fragment } from 'react'
 
 import menu from './menu'

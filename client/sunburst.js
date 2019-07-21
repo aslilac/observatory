@@ -1,5 +1,5 @@
 import { ipcRenderer } from 'electron'
-import React, { Fragment } from 'react'
+import React, { Component, Fragment } from 'react'
 
 import readableSize from './size'
 
@@ -12,10 +12,9 @@ const SYMLINK = 2
 const DEVICE = 3
 const UNKNOWN = 4
 
-
 // let titlebar = document.getElementById( 'titlebar' )
 
-class Sunburst extends React.Component {
+class Sunburst extends Component {
   constructor( props ) {
     super( props )
 
@@ -71,7 +70,8 @@ class Sunburst extends React.Component {
     let dy = oy - cy
 
     let h = Math.hypot( dx, dy )
-    // We use acos because it's always positive and makes life easier
+    // We use acos because it's always positive and makes life easier.
+    // asin could also totally work, but adds some complexity that we can avoid this way.
     let c = Math.acos( dx / h ) / (2*Math.PI)
     let t = (dy < 0 ? 0.5 + 0.5 - c : c) - baseAngle
 
@@ -136,10 +136,10 @@ class Sunburst extends React.Component {
             file.files.some( search( ...searchPath, file.name ) )
           } else {
             // No match
-            // We return true to short circuit if the range matched correctly,
-            // even if we didn't actually match.
             this.resetHover()
           }
+          // We return true to short circuit if the range matched correctly,
+          // even if we didn't actually match.
           return true
         } else {
           // No match
@@ -165,9 +165,7 @@ class Sunburst extends React.Component {
       hoverAnimation: 1
     }
 
-    React.createElement( 'span', { className: 'size' }, readableSize( file.size ) )
-
-    // This is bad and horrible and sad but whatever
+    // XXX: This is bad and horrible and sad
     this.hoverRef.current.style.opacity = 1
     this.hoverRef.current.innerHTML = `${file.name}<span class="size">${readableSize(file.size)}</span>${
       file.type === DIRECTORY && file.files.length ? `<br/><ol><li>${

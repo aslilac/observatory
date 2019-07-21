@@ -1,5 +1,5 @@
 import { BrowserWindow, shell, TouchBar } from 'electron'
-const { TouchBarButton, TouchBarLabel, TouchBarSpacer } = TouchBar
+const { TouchBarButton } = TouchBar
 import path from 'path'
 import url from 'url'
 
