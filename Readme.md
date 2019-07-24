@@ -1,5 +1,5 @@
 # Observatory
-![package version](https://img.shields.io/badge/observatory-v0.2.1-12142d.svg)
+![package version](https://img.shields.io/badge/observatory-v0.3.0-12142d.svg)
 ![stability](https://img.shields.io/badge/stability-beta-6680f2.svg)
 
 Observatory was made out of a desire for a higher quality and modern disk usage
@@ -32,13 +32,13 @@ Observatory's dependencies.
 To run in development:
 ```shell
 yarn
-yarn run electron-rebuild
-yarn run electron .
+yarn electron-rebuild
+yarn electron .
 ```
 
 Build for release:
 ```shell
-yarn run electron-forge make
+yarn electron-forge make
 ```
 
 ## Performance
