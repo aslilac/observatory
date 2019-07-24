@@ -1,19 +1,19 @@
-import { Menu, shell } from 'electron'
+import { Menu, shell } from 'electron';
 
-import showAboutWindow from './about'
+import showAboutWindow from './about';
 
-import gardens from '../../gardens.config'
-const garden = gardens.scope( 'system', 'menu' )
+import gardens from '../../gardens.config';
+const garden = gardens.scope( 'system', 'menu' );
 
 const template = [
   // { role: 'appMenu' }
-  ...(process.platform === 'darwin' ? [{
+  ...process.platform === 'darwin' ? [{
     label: 'dickbutt',
     submenu: [
       {
         label: 'About Observatory',
         click() {
-          showAboutWindow()
+          showAboutWindow();
         }
       },
       { type: 'separator' },
@@ -25,7 +25,7 @@ const template = [
       { type: 'separator' },
       { role: 'quit' }
     ]
-  }] : []),
+  }] : [],
   {
     label: 'Edit',
     submenu: [
@@ -50,14 +50,14 @@ const template = [
     submenu: [
       { role: 'close' },
       { role: 'minimize' },
-      ...(process.platform === 'darwin' ? [
+      ...process.platform === 'darwin' ? [
         // Remember that this is what macOS calls maximizing
         { role: 'zoom' },
         { type: 'separator' },
         { role: 'front' },
         { type: 'separator' },
         { role: 'window' }
-      ] : [])
+      ] : []
     ]
   },
   {
@@ -65,32 +65,36 @@ const template = [
     submenu: [
       {
         label: 'Visit GitHub',
-        click() { shell.openExternal( 'https://github.com/partheseas/observatory' ) }
+        click() {
+          shell.openExternal( 'https://github.com/partheseas/observatory' );
+        }
       },
       {
         label: 'Report an issue 🐛',
-        click() { shell.openExternal( 'https://github.com/partheseas/observatory/issues' ) }
+        click() {
+          shell.openExternal( 'https://github.com/partheseas/observatory/issues' );
+        }
       },
-      ...(process.platform === 'darwin' ? [] : [
+      ...process.platform === 'darwin' ? [] : [
         { type: 'separator' },
         {
           label: 'About Observatory',
           click() {
-            showAboutWindow()
+            showAboutWindow();
           }
         }
-      ])
+      ]
     ]
   }
-]
+];
 
 Menu.setApplicationMenu(
   Menu.buildFromTemplate( template )
-)
+);
 
 export function init( view ) {
   // Electron should do this by default, but...
   // view.setMenu( menu )
 }
 
-export default { init }
+export default { init };

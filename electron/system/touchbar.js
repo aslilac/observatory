@@ -1,22 +1,24 @@
-import drivelist from 'drivelist'
-import { dialog, TouchBar } from 'electron'
-const { TouchBarButton, TouchBarLabel, TouchBarSpacer } = TouchBar
+import drivelist from 'drivelist';
+import { dialog, TouchBar } from 'electron';
+const { TouchBarButton, TouchBarLabel, TouchBarSpacer } = TouchBar;
 
-import ipc from '../ipc'
+import ipc from '../ipc';
 
-import gardens from '../../gardens.config'
-const garden = gardens.scope( 'system', 'touchbar' )
-const xd = gardens.scope( 'system', 'touchbar', 'XD' )
+import gardens from '../../gardens.config';
+const garden = gardens.scope( 'system', 'touchbar' );
+const xd = gardens.scope( 'system', 'touchbar', 'XD' );
 
 export async function init( view ) {
-  let list = await drivelist.list()
+  const list = await drivelist.list();
   view.setTouchBar(
     new TouchBar({
       items: [
         new TouchBarButton({
           label: 'Disks and folders',
           backgroundColor: '#232358',
-          click() { garden.log( 'Hello' ) }
+          click() {
+            garden.log( 'Hello' );
+          }
         }),
         new TouchBarSpacer({
           size: 'large'
@@ -25,15 +27,17 @@ export async function init( view ) {
           label: 'Scan ',
           textColor: '#b991e6'
         }),
-        ...(list.map( device =>
+        ...list.map( device =>
           device.mountpoints.map( mount =>
             new TouchBarButton({
               label: mount.label || `${mount.path} (${device.description})`,
               backgroundColor: '#9680ed',
-              click() { ipc.push( mount.path, view ) }
+              click() {
+                ipc.push( mount.path, view );
+              }
             })
           )
-        ).flat()),
+        ).flat(),
         new TouchBarSpacer({
           size: 'small'
         }),
@@ -41,7 +45,9 @@ export async function init( view ) {
         new TouchBarButton({
           label: '/src',
           backgroundColor: '#b0a0ec',
-          click() { ipc.push( '/src', view ) }
+          click() {
+            ipc.push( '/src', view );
+          }
         }),
         new TouchBarButton({
           label: 'Scan directory',
@@ -49,9 +55,9 @@ export async function init( view ) {
           click() {
             dialog.showOpenDialog({
               properties: [ 'openDirectory' ]
-            }, ( folders ) => {
-              if ( folders ) ipc.push( folders[0], view )
-            })
+            }, folders => {
+              if ( folders ) ipc.push( folders[0], view );
+            });
           }
         }),
         new TouchBarSpacer({
@@ -59,7 +65,7 @@ export async function init( view ) {
         })
       ]
     })
-  )
+  );
 }
 
-export default { init }
+export default { init };

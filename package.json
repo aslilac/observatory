@@ -24,6 +24,7 @@
     "electron": "^5.0.7",
     "electron-rebuild": "^1.8.5",
     "eslint": "^6.1.0",
+    "eslint-plugin-react": "^7.14.3",
     "rollup": "^1.17.0",
     "rollup-plugin-babel": "^4.3.3",
     "rollup-plugin-babel-minify": "^9.0.0",

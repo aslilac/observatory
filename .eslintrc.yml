@@ -1,7 +1,24 @@
 env:
   es6: true
+plugins:
+  - eslint-plugin-react
 parser: babel-eslint
 rules:
+  # React rules
+  jsx-quotes:
+    - error
+    - prefer-double
+  react/jsx-props-no-multi-spaces: error
+  react/jsx-tag-spacing: error
+  react/jsx-uses-react: error
+  react/jsx-uses-vars: error
+  react/no-did-mount-set-state: error
+  react/no-did-update-set-state: error
+  react/no-direct-mutation-state: error
+  react/no-this-in-sfc: error
+  # react/self-closing-comp: error
+  react/react-in-jsx-scope: error
+  # General rules
   arrow-body-style: error
   arrow-parens:
     - error
@@ -26,9 +43,6 @@ rules:
       ignoredNodes:
       - TemplateLiteral
       - SwitchCase BreakStatement
-  jsx-quotes:
-    - error
-    - prefer-double
   keyword-spacing: error
   linebreak-style: error
   lines-between-class-members: error
@@ -76,7 +90,7 @@ rules:
   no-undefined: error
   no-unexpected-multiline: error
   no-unreachable: error
-  no-unused-vars: error
+  no-unused-vars: warn
   no-useless-computed-key: error
   no-useless-concat: error
   no-useless-escape: error
