@@ -6,7 +6,6 @@ import ipc from '../ipc';
 
 import gardens from '../../gardens.config';
 const garden = gardens.scope( 'system', 'touchbar' );
-const xd = gardens.scope( 'system', 'touchbar', 'XD' );
 
 export async function init( view ) {
   const list = await drivelist.list();
@@ -40,14 +39,6 @@ export async function init( view ) {
         ).flat(),
         new TouchBarSpacer({
           size: 'small'
-        }),
-        // This is for development, I need a way to remove it eventually
-        new TouchBarButton({
-          label: '/src',
-          backgroundColor: '#b0a0ec',
-          click() {
-            ipc.push( '/src', view );
-          }
         }),
         new TouchBarButton({
           label: 'Scan directory',

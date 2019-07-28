@@ -12,7 +12,6 @@ body
 #application
   display: grid
   height: 100vh
-  width: 100vw
 
   grid-template-rows: auto 1fr
   grid-template-areas: "titlebar" "display"
@@ -56,31 +55,29 @@ body
 
     font-size: 1.4em
 
-#loading
-  display: none
-  position: fixed
-  left: 0px
-  top: 0px
-
-  background-color: $background-color
-  background-image: url( '../assets/ellipsis.svg' )
-  background-position: center
-  background-repeat: no-repeat
-
-  height: 100%
-  width: 100%
-
-  text-align: center
-
-#fs-display
+#application-display
   grid-area: display
-
   display: grid
-  grid-template-columns: 1fr 3.8in
-  grid-template-rows: 1px 1fr
-  grid-template-areas: "navbar list" "sunburst list"
 
-  overflow: hidden
+  &.loading
+    background:
+      image: url( '../assets/ellipsis.svg' )
+      position: center
+      repeat: no-repeat
+
+  &.fs
+    grid-template-columns: 1fr 3.8in
+    grid-template-rows: 1px 1fr
+    grid-template-areas: "navbar list" "sunburst list"
+
+    overflow: hidden
+
+#menu-drivelist
+  border: 1px white solid
+  border-radius: 4px
+
+  button
+    float: right
 
 #fs-display-navbar
   position: relative
@@ -169,21 +166,9 @@ body
     float: right
 
 /*
-  #loading {
-    position: fixed
-    top: 0px
-    left: 0px
-    width: 100%
-    height: 100%
 
-    background-image: url( 'assets/ellipsis.svg' )
-    background-position: center
-    background-repeat: no-repeat
-  }
-
-  #tree-list-container li mark {
+  #tree-list-container li mark
     border-radius: 50%
     width: 11px
     height: 11px
     box-shadow: 0px 0px 5px black
-  }

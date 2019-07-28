@@ -8,9 +8,9 @@ const garden = gardens.scope( 'VirtualFileSystem' );
 
 const DIRECTORY = 0;
 const FILE = 1;
-const SYMLINK = 2;
-const DEVICE = 3;
-const UNKNOWN = 4;
+// const SYMLINK = 2;
+// const DEVICE = 3;
+// const UNKNOWN = 4;
 
 class VirtualFileSystem extends EventEmitter {
   constructor( location ) {

@@ -1,7 +1,7 @@
 import { ipcRenderer } from 'electron';
-import React, { Fragment } from 'react';
+import React, { Fragment, useState } from 'react';
 
-import menu from './menu';
+import Application from './application';
 import List from './list';
 import Sunburst from './sunburst';
 
@@ -10,27 +10,27 @@ const garden = gardens.scope( 'renderer' );
 
 document.body.className += ` ${process.platform}`;
 
-const titlebar = document.getElementById( 'titlebar' );
-titlebar.addEventListener( 'dragover', drag => drag.preventDefault() );
-titlebar.addEventListener( 'drop', drop => {
-  const pointer = drop.dataTransfer.getData( 'filePointer' );
-  console.log( 'drop:', pointer );
-  if ( pointer ) {
-    drop.preventDefault();
-    garden.log( 'deleting', pointer );
+// const titlebar = document.getElementById( 'titlebar' );
+// titlebar.addEventListener( 'dragover', drag => drag.preventDefault() );
+// titlebar.addEventListener( 'drop', drop => {
+//   const pointer = drop.dataTransfer.getData( 'filePointer' );
+//   console.log( 'drop:', pointer );
+//   if ( pointer ) {
+//     drop.preventDefault();
+//     garden.log( 'deleting', pointer );
 
-    const e = document.getElementById( pointer );
-    garden.log( e );
+//     const e = document.getElementById( pointer );
+//     garden.log( e );
 
-    e.parentElement.removeChild( e );
-    titlebar.appendChild( e );
-  }
-});
+//     e.parentElement.removeChild( e );
+//     titlebar.appendChild( e );
+//   }
+// });
 
 export default function Display( props ) {
   const { sunburst, list, ...shared } = props;
 
-  return <Fragment>
+  return <Application screen="fs">
     <section id="fs-display-navbar">
       <button onClick={() => ipcRenderer.send( 'drivelist-create' )}>Disks and folders</button>
       <button onClick={() => ipcRenderer.send( 'vfs-navigateTo' )}>{props.name}</button>
@@ -41,5 +41,5 @@ export default function Display( props ) {
     </section>
     <Sunburst files={sunburst.files} {...shared} />
     <List files={list.files} {...shared} />
-  </Fragment>;
+  </Application>;
 }

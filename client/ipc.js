@@ -1,12 +1,16 @@
-import { ipcRenderer, remote } from 'electron';
-import React from 'react';
+import { ipcRenderer } from 'electron';
+import React, { createContext, Fragment } from 'react';
 import ReactDOM from 'react-dom';
 
+import Application from './application';
 import Display from './display';
-import menu from './menu';
+import Menu from './menu';
 
 import gardens from '../gardens.config';
 const garden = gardens.scope( 'ipc', 'renderer' );
+
+const CurrentScreen = createContext( 'menu' );
+// Can be 'menu', 'loading' or 'fs'
 
 // This is a bit janky, but it works.
 let inPopState = false;
@@ -16,8 +20,7 @@ ipcRenderer.on( 'vfs-render', ( event, packet ) => {
 
   ReactDOM.render(
     <Display { ...packet } />,
-    document.getElementById( 'fs-display' ),
-    () => document.getElementById( 'loading' ).style.display = 'none'
+    document.querySelector( '#application' ),
   );
 
   // If we push before render it looks like we can go back even if we can't
@@ -33,33 +36,20 @@ window.addEventListener( 'popstate', event => {
   if ( event.state ) ipcRenderer.send( 'vfs-navigateTo', ...event.state );
 });
 
-ipcRenderer.on( 'drivelist-render', ( event, list ) => {
+ipcRenderer.on( 'drivelist-render', ( _, list ) => {
   ReactDOM.render(
-    <section>
-      {
-        list.map( ( device, dIndex ) =>
-          device.mountpoints.map( ( mount, mIndex ) =>
-            <button key={`${dIndex}-${mIndex}`} onClick={ () => {
-              document.getElementById( 'loading' ).style.display = 'block';
-              ipcRenderer.send( 'vfs-create', mount.path );
-            }}>{mount.label || `${mount.path} (${device.description})`}</button>
-          )
-        ).flat()
-      }
-      <button onClick={ () => {
-        remote.dialog.showOpenDialog({
-          properties: [ 'openDirectory' ]
-        },  folders => {
-          if ( folders ) {
-            document.getElementById( 'loading' ).style.display = 'block';
-            ipcRenderer.send( 'vfs-create', folders[0] );
-          }
-        });
-      }}>Scan directory</button>
-    </section>,
-    document.getElementById( 'fs-display' )
+    <CurrentScreen.Provider value={{ currentScreen: 'menu', sandwich: 'yum' }}>
+      <Application screen="menu">
+        <Menu list={list} />
+      </Application>
+      <section>
+        <CurrentScreen.Consumer>{
+          context => <p>Sandwich? {context.sandwich}</p>
+        }</CurrentScreen.Consumer>
+      </section>
+    </CurrentScreen.Provider>,
+    document.querySelector( '#application' )
   );
-  menu.showMenu();
 });
 
 ipcRenderer.send( 'drivelist-create' );

@@ -1,4 +1,4 @@
-// Handle initial platform setup
+// Handle initial platform setup before we do any heavy lifting
 import './system/windows';
 
 // Now we get to the actual app code.
@@ -6,7 +6,7 @@ import { app, BrowserWindow } from 'electron';
 import path from 'path';
 import url from 'url';
 
-import menu from './system/menu';
+import './system/menu';
 import navigation from './system/navigation';
 import './system/theme';
 import touchbar from './system/touchbar';
@@ -52,7 +52,7 @@ async function createWindow() {
 
   // Load the app.
   view.loadURL( url.format({
-    pathname: path.join( __dirname, '../client/index.html' ),
+    pathname: path.join( __dirname, '../dist/index.html' ),
     protocol: 'file:',
     slashes: true
   }) );
@@ -69,7 +69,6 @@ async function createWindow() {
   });
 
   // Attach everything to the window.
-  menu.init( view );
   navigation.init( view );
   touchbar.init( view );
 }

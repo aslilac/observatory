@@ -74,8 +74,9 @@ ipcMain.on( 'vfs-navigateTo', ( event, ...names ) => {
   event.reply( 'vfs-render', vfs._prepIpcPacket() );
 });
 
-ipcMain.on( 'vfs-inspect', ( event, ...names ) => {
-
-});
+// TODO:
+// ipcMain.on( 'vfs-inspect', ( event, ...names ) => {
+//
+// });
 
 export default { push };

@@ -7,10 +7,10 @@ import gardens from '../gardens.config';
 const garden = gardens.scope( 'renderer', 'list' );
 
 const DIRECTORY = 0;
-const FILE = 1;
-const SYMLINK = 2;
-const DEVICE = 3;
-const UNKNOWN = 4;
+// const FILE = 1;
+// const SYMLINK = 2;
+// const DEVICE = 3;
+// const UNKNOWN = 4;
 
 export default function List( props ) {
   const [ expanded, setExpanded ] = useState( false );

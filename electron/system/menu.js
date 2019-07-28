@@ -91,10 +91,3 @@ const template = [
 Menu.setApplicationMenu(
   Menu.buildFromTemplate( template )
 );
-
-export function init( view ) {
-  // Electron should do this by default, but...
-  // view.setMenu( menu )
-}
-
-export default { init };

@@ -20,17 +20,20 @@
     "@electron-forge/maker-dmg": "^6.0.0-beta.43",
     "@electron-forge/maker-squirrel": "^6.0.0-beta.43",
     "babel-eslint": "^10.0.2",
-    "babel-preset-react": "^6.24.1",
     "electron": "^5.0.7",
     "electron-rebuild": "^1.8.5",
     "eslint": "^6.1.0",
     "eslint-plugin-react": "^7.14.3",
+    "parcel-bundler": "^1.12.3",
     "rollup": "^1.17.0",
-    "rollup-plugin-babel": "^4.3.3",
     "rollup-plugin-babel-minify": "^9.0.0",
+    "sass": "^1.22.7",
     "source-map-support": "^0.5.12"
   },
   "config": {
     "forge": "forge.config.js"
+  },
+  "scripts": {
+    "start": "parcel build client/index.html client/about.html --target electron --public-url . && rollup -c && electron ."
   }
 }

@@ -5,8 +5,8 @@
 node_modules
 
 # Builds
-client/**/*.css
-client/**/*.css.map
+.cache
+dist
 out
 target
 

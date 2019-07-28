@@ -1,5 +1,6 @@
 import { ipcRenderer } from 'electron';
-import React, { Component, Fragment } from 'react';
+import React, { Component } from 'react';
+import ReactDOM from 'react-dom';
 
 import readableSize from './size';
 
@@ -7,12 +8,16 @@ import gardens from '../gardens.config';
 const garden = gardens.scope( 'renderer', 'sunburst' );
 
 const DIRECTORY = 0;
-const FILE = 1;
-const SYMLINK = 2;
-const DEVICE = 3;
-const UNKNOWN = 4;
+// const FILE = 1;
+// const SYMLINK = 2;
+// const DEVICE = 3;
+// const UNKNOWN = 4;
 
 // let titlebar = document.getElementById( 'titlebar' )
+
+function hsl( hue, layer, min = 0, range = 1 ) {
+  return `hsl(${( ( min+hue*range )*280 ).toFixed( 2 )}, 85%, ${layer*5 + 60}%)`;
+}
 
 class Sunburst extends Component {
   constructor( props ) {
@@ -28,15 +33,17 @@ class Sunburst extends Component {
 
   render() {
     garden.log( this.props );
-    return <Fragment>
+    return <>
       <canvas id="fs-display-sunburst" ref={this.canvasRef}></canvas>
       <span id="fs-display-sunburst-float" ref={this.hoverRef}></span>
-    </Fragment>;
+    </>;
   }
 
   componentDidMount() {
     window.addEventListener( 'resize', () => this._size() );
-    window.addEventListener( 'focus', () => this.animationRequest = requestAnimationFrame( () => this.animate() ) );
+    window.addEventListener( 'focus', () => {
+      this.animationRequest = requestAnimationFrame( () => this.animate() );
+    });
     window.addEventListener( 'blur', () => {
       this.resetHover();
       cancelAnimationFrame( this.animationRequest );
@@ -45,7 +52,7 @@ class Sunburst extends Component {
     this._size();
     this.animate();
 
-    // SyntheticEvents suck.
+    // SyntheticEvents suck, so we use a ref the get real Events.
     const canvas = this.canvasRef.current;
     canvas.addEventListener( 'click', this.handleMouseEvents.bind( this ) );
     canvas.addEventListener( 'mousemove', this.handleMouseEvents.bind( this ) );
@@ -111,7 +118,9 @@ class Sunburst extends Component {
             // else if ( event.type === 'dragstart' ) {
             //   garden.log( 'dragging', file )
             //   titlebar.className = 'trash'
-            //   event.dataTransfer.setData( 'text/plain', Math.floor( Math.random() * 899999 + 100000 ) )
+            //   event.dataTransfer.setData(
+            //     'text/plain', Math.floor( Math.random() * 899999 + 100000 )
+            //   )
             //   event.dataTransfer.effectAllowed = 'move'
             //
             //   let canvas = document.createElement( 'canvas' )
@@ -168,12 +177,30 @@ class Sunburst extends Component {
       hoverAnimation: 1
     };
 
-    // XXX: This is bad and horrible and sad
-    this.hoverRef.current.style.opacity = 1;
-    this.hoverRef.current.innerHTML = `${file.name}<span class="size">${readableSize( file.size )}</span>${
-      file.type === DIRECTORY && file.files.length ? `<br/><ol><li>${
-        file.files.slice( 0, 7 ).map( file => `${file.name}<span class="size">${readableSize( file.size )}</span>` ).join( '</li><li>' )
-      }</li></ol>` : '' }`;
+    // Doing sub renders isn't great, but it works.
+    // If we ever switch to SVG for rendering the graph we could probably
+    // do this a much better way.
+    ReactDOM.render(
+      <Fragment>
+        {file.name}
+        <span className="size">{readableSize( file.size )}</span><br />
+
+        {
+          file.type === DIRECTORY && file.files.length
+            && <ol>{
+              file.files.slice( 0, 7 )
+                .map( ( file, index ) => <li key={file.name + index}>
+                  {file.name}
+                  <span className="size">{readableSize( file.size )}</span>
+                </li> )
+            }</ol>
+        }
+      </Fragment>,
+      this.hoverRef.current,
+      () => {
+        this.hoverRef.current.style.opacity = 1;
+      }
+    );
   }
 
   resetHover() {
@@ -201,10 +228,6 @@ class Sunburst extends Component {
     this._2d.scale( scale * dpr, scale * dpr );
 
     this.pendingUpdate = true;
-  }
-
-  _hsl( hue, layer, min = 0, range = 1 ) {
-    return `hsl(${( ( min+hue*range )*280 ).toFixed( 2 )}, 85%, ${layer*5 + 60}%)`;
   }
 
   animate() {
@@ -287,7 +310,7 @@ class Sunburst extends Component {
     }
 
     // Set styles
-    this._2d.fillStyle = this._hsl( ( position + size/2 )*colorScale, layer, this.props.position, this.props.size / this.props.rootSize );
+    this._2d.fillStyle = hsl( ( position + size/2 )*colorScale, layer, this.props.position, this.props.size / this.props.rootSize );
     this._2d.strokeStyle = '#3d3350';
 
     // Draw frame
