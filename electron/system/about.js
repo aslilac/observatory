@@ -24,7 +24,7 @@ function showAboutWindow() {
 
     // Load the about page
     aboutWindow.loadURL( url.format({
-      pathname: path.join( __dirname, '../client/about.html' ),
+      pathname: path.join( __dirname, '../dist/about.html' ),
       protocol: 'file:',
       slashes: true
     }) );

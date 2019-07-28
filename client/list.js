@@ -1,6 +1,7 @@
 import { ipcRenderer } from 'electron';
 import React, { useState } from 'react';
 
+import backArrow from './assets/arrow-left.svg';
 import readableSize from './size';
 
 import gardens from '../gardens.config';
@@ -29,7 +30,7 @@ export default function List( props ) {
   // }
 
   return <section id="fs-display-list">
-    <img src="assets/arrow-left.svg" className="back" onClick={() => history.back()} />
+    <img src={backArrow} className="back" onClick={() => history.back()} />
     <h1>{props.cursor.length
       ? props.cursor[ props.cursor.length - 1 ]
       : props.name}
