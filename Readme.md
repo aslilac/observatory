@@ -23,22 +23,20 @@ them if you want.
 Observatory is open source and available free of charge. I put a lot of love and work into it, and
 if you'd like to [show appreciation](https://cash.app/$partheseas) I'd be incredibly thankful!
 
-# Build
+## Build
 To build Observatory, you'll first need to install the latest versions of [Node.js](https://nodejs.org)
-and [Yarn](https://yarnpkg.com) One installed, clone this repository
-to your computer and run the following commands inside of it to install the rest of
+and [Yarn](https://yarnpkg.com). Once installed, clone this repository
+to your computer and run `yarn` inside of it to install the rest of
 Observatory's dependencies.
 
 To run in development:
 ```shell
-yarn
-yarn electron-rebuild
-yarn electron .
+yarn start
 ```
 
 Build for release:
 ```shell
-yarn electron-forge make
+yarn forge
 ```
 
 ## Performance

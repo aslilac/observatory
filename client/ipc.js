@@ -1,5 +1,5 @@
 import { ipcRenderer } from 'electron';
-import React, { createContext, Fragment } from 'react';
+import React, { createContext } from 'react';
 import ReactDOM from 'react-dom';
 
 import Application from './application';

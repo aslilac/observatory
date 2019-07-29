@@ -73,11 +73,18 @@ body
     overflow: hidden
 
 #menu-drivelist
-  border: 1px white solid
+  border: 1px #12142d solid
   border-radius: 4px
+  padding: 0
 
-  button
-    float: right
+  li
+    padding: 1rem
+
+    &:nth-child(2n)
+      background-color: #12142d
+
+    button
+      float: right
 
 #fs-display-navbar
   position: relative

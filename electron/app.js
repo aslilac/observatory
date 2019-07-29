@@ -78,15 +78,6 @@ app.on( 'ready', () => {
   createWindow();
 });
 
-// XXX: Might not be necessary if we quit on window-all-closed
-// app.on( 'activate', () => {
-//   // On macOS it's common to re-create a window in the app when the
-//   // dock icon is clicked and there are no other windows open.
-//   if ( view == null ) {
-//     createWindow()
-//   }
-// })
-
 app.on( 'window-all-closed', () => {
   app.quit();
 });
