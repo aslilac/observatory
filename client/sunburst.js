@@ -181,7 +181,7 @@ class Sunburst extends Component {
     // If we ever switch to SVG for rendering the graph we could probably
     // do this a much better way.
     ReactDOM.render(
-      <Fragment>
+      <>
         {file.name}
         <span className="size">{readableSize( file.size )}</span><br />
 
@@ -195,7 +195,7 @@ class Sunburst extends Component {
                 </li> )
             }</ol>
         }
-      </Fragment>,
+      </>,
       this.hoverRef.current,
       () => {
         this.hoverRef.current.style.opacity = 1;

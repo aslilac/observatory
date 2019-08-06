@@ -11,6 +11,9 @@ rules:
   jsx-quotes:
     - error
     - prefer-double
+  react/jsx-fragments:
+    - error
+    - syntax
   react/jsx-props-no-multi-spaces: error
   react/jsx-tag-spacing: error
   react/jsx-uses-react: error
@@ -45,7 +48,6 @@ rules:
     - SwitchCase: 1
       ignoredNodes:
       - TemplateLiteral
-      - SwitchCase BreakStatement
   keyword-spacing: error
   linebreak-style: error
   lines-between-class-members: error
