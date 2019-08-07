@@ -2,7 +2,7 @@
   "name": "observatory",
   "version": "0.3.0",
   "description": "Disk usage analyzer",
-  "main": "target/app.js",
+  "main": ".bundled/rollup/app.js",
   "author": "McKayla Washburn",
   "license": "MIT",
   "repository": "partheseas/observatory",
@@ -32,7 +32,7 @@
     "forge": "forge.config.js"
   },
   "scripts": {
-    "build": "parcel build client/index.html client/about.html --target electron --public-url . && rollup -c",
+    "build": "parcel build client/index.html client/about.html --no-content-hash --target electron --public-url . --out-dir .bundled/parcel && rollup -c",
     "start": "yarn build && electron-forge start",
     "forge": "yarn build && electron-forge make"
   }

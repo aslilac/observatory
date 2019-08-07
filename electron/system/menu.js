@@ -8,7 +8,7 @@ const garden = gardens.scope( 'system', 'menu' );
 const template = [
   // { role: 'appMenu' }
   ...process.platform === 'darwin' ? [{
-    label: 'dickbutt',
+    label: 'File',
     submenu: [
       {
         label: 'About Observatory',

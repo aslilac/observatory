@@ -15,7 +15,7 @@ export default {
   ],
   plugins: [ minify({ comments: false }) ],
   output: {
-    file: 'target/app.js',
+    file: '.bundled/rollup/app.js',
     format: 'cjs',
     sourcemap: true
   }

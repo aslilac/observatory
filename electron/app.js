@@ -38,7 +38,7 @@ async function createWindow() {
   // REPL!
   // This also super-breaks launching on macOS when packaged and doesn't
   // work on Windows literally ever.
-  if ( process.platform === 'darwin' && !app.isPackaged ) {
+  if ( process.platform === 'darwin' /*&& !app.isPackaged*/ ) {
     const repl = require( 'repl' );
     const x = repl.start({
       prompt: '> ',
@@ -52,7 +52,7 @@ async function createWindow() {
 
   // Load the app.
   view.loadURL( url.format({
-    pathname: path.join( __dirname, '../dist/index.html' ),
+    pathname: path.join( __dirname, '../parcel/index.html' ),
     protocol: 'file:',
     slashes: true
   }) );

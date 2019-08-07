@@ -1,5 +1,5 @@
 import { ipcRenderer } from 'electron';
-import React, { Fragment, useState } from 'react';
+import React from 'react';
 
 import Application from './application';
 import List from './list';

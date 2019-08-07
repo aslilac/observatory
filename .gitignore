@@ -5,10 +5,9 @@
 node_modules
 
 # Builds
+.bundled
 .cache
-dist
 out
-target
 
 # Logs
 *.log
