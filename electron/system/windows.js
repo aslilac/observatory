@@ -1,3 +1,3 @@
-import squirrel from 'electron-squirrel-startup';
+import squirrel from "electron-squirrel-startup";
 
-if ( squirrel ) process.exit( 0 );
+if (squirrel) process.exit(0);

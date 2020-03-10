@@ -1,12 +1,12 @@
-import { ipcRenderer } from 'electron';
-import React from 'react';
+import { ipcRenderer } from "electron";
+import React from "react";
 
-import Application from './application';
-import List from './list';
-import Sunburst from './sunburst';
+import Application from "./application";
+import List from "./list";
+import Sunburst from "./sunburst";
 
-import gardens from '../gardens.config';
-const garden = gardens.scope( 'renderer' );
+import gardens from "../gardens.config";
+const garden = gardens.scope("renderer");
 
 document.body.className += ` ${process.platform}`;
 
@@ -27,19 +27,35 @@ document.body.className += ` ${process.platform}`;
 //   }
 // });
 
-export default function Display( props ) {
-  const { sunburst, list, ...shared } = props;
+export default function Display(props) {
+	const { sunburst, list, ...shared } = props;
 
-  return <Application screen="fs">
-    <section id="fs-display-navbar">
-      <button onClick={() => ipcRenderer.send( 'drivelist-create' )}>Disks and folders</button>
-      <button onClick={() => ipcRenderer.send( 'vfs-navigateTo' )}>{props.name}</button>
-      {props.cursor.map( ( piece, key ) => <button key={key} onClick={ () => {
-        garden.log( props.cursor.slice( 0, key + 1 ) );
-        ipcRenderer.send( 'vfs-navigateTo', ...props.cursor.slice( 0, key + 1 ) );
-      }}>{piece}</button> )}
-    </section>
-    <Sunburst files={sunburst.files} {...shared} />
-    <List files={list.files} {...shared} />
-  </Application>;
+	return (
+		<Application screen="fs">
+			<section id="fs-display-navbar">
+				<button onClick={() => ipcRenderer.send("drivelist-create")}>
+					Disks and folders
+				</button>
+				<button onClick={() => ipcRenderer.send("vfs-navigateTo")}>
+					{props.name}
+				</button>
+				{props.cursor.map((piece, key) => (
+					<button
+						key={key}
+						onClick={() => {
+							garden.log(props.cursor.slice(0, key + 1));
+							ipcRenderer.send(
+								"vfs-navigateTo",
+								...props.cursor.slice(0, key + 1),
+							);
+						}}
+					>
+						{piece}
+					</button>
+				))}
+			</section>
+			<Sunburst files={sunburst.files} {...shared} />
+			<List files={list.files} {...shared} />
+		</Application>
+	);
 }

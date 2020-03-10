@@ -1,3 +1,6 @@
-import gardens from 'gardens';
+import gardens from "gardens";
 
-export default gardens.createManager( 'observatory' );
+const manager = gardens.createManager("observatory");
+export default manager;
+
+export const client = manager.scope("client");

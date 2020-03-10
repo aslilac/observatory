@@ -1,39 +1,41 @@
 {
-  "name": "observatory",
-  "version": "0.3.0",
-  "description": "Disk usage analyzer",
-  "main": ".bundled/rollup/app.js",
-  "author": "McKayla Washburn",
-  "license": "MIT",
-  "repository": "partheseas/observatory",
-  "bugs": "https://github.com/partheseas/observatory/issues",
-  "dependencies": {
-    "drivelist": "^8.0.6",
-    "electron-squirrel-startup": "^1.0.0",
-    "gardens": "^4.1.1",
-    "react": "^16.8.6",
-    "react-dom": "^16.8.6"
-  },
-  "devDependencies": {
-    "@electron-forge/cli": "^6.0.0-beta.43",
-    "@electron-forge/maker-dmg": "^6.0.0-beta.43",
-    "@electron-forge/maker-squirrel": "^6.0.0-beta.43",
-    "babel-eslint": "^10.0.2",
-    "electron": "^5.0.7",
-    "eslint": "^6.1.0",
-    "eslint-plugin-react": "^7.14.3",
-    "parcel-bundler": "^1.12.3",
-    "rollup": "^1.17.0",
-    "rollup-plugin-babel-minify": "^9.0.0",
-    "sass": "^1.22.7",
-    "source-map-support": "^0.5.12"
-  },
-  "config": {
-    "forge": "forge.config.js"
-  },
-  "scripts": {
-    "build": "parcel build client/index.html client/about.html --no-content-hash --target electron --public-url . --out-dir .bundled/parcel && rollup -c",
-    "start": "yarn build && electron-forge start",
-    "forge": "yarn build && electron-forge make"
-  }
+	"name": "observatory",
+	"version": "0.3.0",
+	"description": "Disk usage analyzer",
+	"main": ".bundled/rollup/app.js",
+	"author": "McKayla Washburn",
+	"license": "MIT",
+	"repository": "partheseas/observatory",
+	"bugs": "https://github.com/partheseas/observatory/issues",
+	"dependencies": {
+		"drivelist": "^8.0.6",
+		"electron-squirrel-startup": "^1.0.0",
+		"gardens": "^4.2.0",
+		"react": "^16.13.0",
+		"react-dom": "^16.13.0"
+	},
+	"devDependencies": {
+		"@electron-forge/cli": "^6.0.0-beta.50",
+		"@electron-forge/maker-dmg": "^6.0.0-beta.50",
+		"@electron-forge/maker-squirrel": "^6.0.0-beta.50",
+		"babel-eslint": "^10.0.2",
+		"electron": "^8.1.1",
+		"eslint": "^6.8.0",
+		"eslint-plugin-react": "^7.14.3",
+		"parcel-bundler": "^1.12.3",
+		"prettier": "^1.19.1",
+		"rollup": "^2.0.0",
+		"rollup-plugin-babel-minify": "^9.1.1",
+		"sass": "^1.22.7",
+		"source-map-support": "^0.5.12"
+	},
+	"config": {
+		"forge": "forge.config.js"
+	},
+	"scripts": {
+		"build": "parcel build client/index.html client/about.html --no-content-hash --target electron --public-url . --out-dir .bundled/parcel && rollup -c",
+		"dev": "yarn build && electron-forge start",
+		"forge": "yarn build && electron-forge make",
+		"lint": "eslint **/*.js"
+	}
 }
