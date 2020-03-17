@@ -1,4 +1,4 @@
-import drivelist from "drivelist";
+import { list as drivelist } from "drivelist";
 import { dialog, TouchBar } from "electron";
 const { TouchBarButton, TouchBarLabel, TouchBarSpacer } = TouchBar;
 
@@ -8,7 +8,7 @@ import gardens from "../../gardens.config";
 const garden = gardens.scope("system", "touchbar");
 
 export async function init(view) {
-	const list = await drivelist.list();
+	const list = await drivelist();
 	view.setTouchBar(
 		new TouchBar({
 			items: [

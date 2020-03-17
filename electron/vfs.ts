@@ -1,4 +1,4 @@
-import drivelist from "drivelist";
+import * as drivelist from "drivelist";
 import { EventEmitter } from "events";
 import { promises as fs } from "fs";
 import path from "path";
@@ -6,49 +6,50 @@ import path from "path";
 import gardens from "../gardens.config";
 const garden = gardens.scope("VirtualFileSystem");
 
+type Entity =
+	| typeof DIRECTORY
+	| typeof FILE
+	| typeof SYMLINK
+	| typeof DEVICE
+	| typeof UNKNOWN;
 const DIRECTORY = 0;
 const FILE = 1;
-// const SYMLINK = 2;
-// const DEVICE = 3;
-// const UNKNOWN = 4;
+const SYMLINK = 2;
+const DEVICE = 3;
+const UNKNOWN = 4;
+
+type VfsNode = VfsDirectory | VfsFile;
+
+type VfsDirectory = {
+	type: typeof DIRECTORY;
+	name?: string;
+	size: number;
+	capacity?: number; // for drives
+	files: VfsNode[];
+};
+
+type VfsFile = {
+	type: typeof FILE;
+	name: string;
+	size: number;
+};
 
 class VirtualFileSystem extends EventEmitter {
-	constructor(location) {
+	name: string;
+	location: string;
+	cursor: string[];
+	root: VfsDirectory;
+
+	counts: {
+		files: number;
+		directories: number;
+		symlinks: number;
+		devices: number;
+		misc: number;
+	};
+
+	constructor(location: string) {
 		super();
-
-		fs.stat(location)
-			.then(() => {
-				// Start logging status while we wait
-				const status = setInterval(() => {
-					garden.log(this.counts);
-				}, 5000);
-
-				garden.time("vfs creation");
-
-				this._scan(location).then(async vfs => {
-					clearInterval(status);
-					garden.log(this.counts);
-					vfs.name = path.basename(location);
-					garden.timeEnd("vfs creation");
-
-					const list = await drivelist.list();
-
-					list.some(device =>
-						device.mountpoints.some(mount => {
-							if (mount.path === this.location) {
-								vfs.name =
-									mount.label ||
-									`${device.description} (${mount.path})`;
-								vfs.capacity = device.size;
-							}
-						}),
-					);
-
-					this.root = vfs;
-					this.emit("ready");
-				});
-			})
-			.catch(error => garden.catch(error));
 
 		this.location = path.normalize(location);
 		this.root = null;
@@ -61,14 +62,49 @@ class VirtualFileSystem extends EventEmitter {
 			devices: 0,
 			misc: 0,
 		};
+
+		this.factory(location);
+	}
+
+	async factory(location: string) {
+		await fs.stat(location);
+
+		// Start logging status while we wait
+		garden.time("vfs creation");
+		const status = setInterval(() => {
+			garden.log(this.counts);
+		}, 5000);
+
+		const vfs = await this._scan(location);
+		vfs.name = path.basename(location); // this has to be set manually for recursion optimization
+
+		// Clear the logging interval post scan, and log the final results
+		clearInterval(status);
+		garden.log(this.counts);
+		garden.timeEnd("vfs creation");
+
+		// Set the name and capacity if it's a drive (this could be better)
+		const list = await drivelist.list();
+		list.some(device =>
+			device.mountpoints.some(mount => {
+				if (mount.path === this.location) {
+					vfs.name =
+						mount.label || `${device.description} (${mount.path})`;
+					vfs.capacity = device.size;
+				}
+			}),
+		);
+
+		this.root = vfs;
+		this.emit("ready");
 	}
 
 	ready(...x) {
 		this.on("ready", ...x);
 	}
 
-	async _scan(location) {
-		const state = {
+	async _scan(location: string): Promise<VfsDirectory> {
+		const state: VfsDirectory = {
 			type: DIRECTORY,
 			size: 0,
 			files: [],
@@ -101,8 +137,8 @@ class VirtualFileSystem extends EventEmitter {
 				} else if (stats.isFile()) {
 					this.counts.files++;
 					state.files.push({
-						name,
 						type: FILE,
+						name,
 						size: stats.size,
 					});
 					state.size += stats.size;
@@ -137,7 +173,7 @@ class VirtualFileSystem extends EventEmitter {
 		this.cursor.pop();
 	}
 
-	navigateForward(...names) {
+	navigateForward(...names: string[]) {
 		const update = [...this.cursor, ...names];
 		const correct = this._findDirectory(update);
 
@@ -148,7 +184,7 @@ class VirtualFileSystem extends EventEmitter {
 		this.cursor = update;
 	}
 
-	navigateTo(...names) {
+	navigateTo(...names: string[]) {
 		const correct = this._findDirectory(names);
 
 		if (!correct)
@@ -158,14 +194,15 @@ class VirtualFileSystem extends EventEmitter {
 		this.cursor = names;
 	}
 
-	push(view) {
+	// Needs better type
+	push(view: any) {
 		const packet = this._prepIpcPacket();
 		view.send("vfs-render", packet);
 	}
 
 	_findDirectory(cursor = this.cursor) {
-		let position = 0;
 		const scale = this.root.size;
+		let position = 0;
 		let current = this.root;
 		const correct = cursor.every(piece =>
 			current.files.some(file => {
@@ -186,11 +223,12 @@ class VirtualFileSystem extends EventEmitter {
 		);
 	}
 
-	_prepIpcPacket(...names) {
+	_prepIpcPacket(...names: string[]) {
 		const cursor = [...this.cursor, ...names];
 		const directory = this._findDirectory(cursor);
-		const isLargeEnough = file => file.size > directory.size * 0.003;
-		const sanitize = recursive => file => ({
+		const isLargeEnough = (file: VfsNode) =>
+			file.size > directory.size * 0.003;
+		const sanitize = (recursive?: number) => (file: VfsNode) => ({
 			name: file.name,
 			type: file.type,
 			size: file.size,

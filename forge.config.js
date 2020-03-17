@@ -4,7 +4,7 @@ module.exports = {
 		appCategoryType: "public.app-category.utilities",
 		appCopyright: "© 2020 ♥ McKayla",
 		darwinDarkModeSupport: true,
-		ignore: ["client/.+.js", "electron/.+.js"],
+		ignore: [/client\/.+/, /electron\/.+/],
 		name: "Observatory",
 		out: "target",
 	},

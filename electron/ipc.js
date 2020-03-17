@@ -1,4 +1,4 @@
-import drivelist from "drivelist";
+import { list as drivelist } from "drivelist";
 import { ipcMain } from "electron";
 
 import Vfs from "./vfs";
@@ -18,7 +18,7 @@ export function push(location, view) {
 }
 
 ipcMain.on("drivelist-create", async event => {
-	const list = await drivelist.list();
+	const list = await drivelist();
 	event.reply("drivelist-render", list);
 });
 
