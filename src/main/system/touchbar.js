@@ -4,7 +4,7 @@ const { TouchBarButton, TouchBarLabel, TouchBarSpacer } = TouchBar;
 
 import ipc from "../ipc";
 
-import gardens from "../../gardens.config";
+import gardens from "../../../gardens.config";
 const garden = gardens.scope("system", "touchbar");
 
 export async function init(view) {

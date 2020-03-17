@@ -2,7 +2,7 @@ import { Menu, shell } from "electron";
 
 import showAboutWindow from "./about";
 
-import gardens from "../../gardens.config";
+import gardens from "../../../gardens.config";
 const garden = gardens.scope("system", "menu");
 
 const template = [

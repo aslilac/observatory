@@ -2,11 +2,30 @@
 	"name": "observatory",
 	"version": "0.3.0",
 	"description": "Disk usage analyzer",
-	"main": ".bundled/rollup/app.js",
+	"main": ".bundled/main/app.js",
+	"renderer": ".bundled/renderer/index.html",
 	"author": "McKayla Washburn",
 	"license": "MIT",
 	"repository": "partheseas/observatory",
 	"bugs": "https://github.com/partheseas/observatory/issues",
+	"config": {
+		"forge": "forge.config.js"
+	},
+	"targets": {
+		"main": {
+			"context": "electron-main",
+			"engines": {
+				"electron": ">=8.x.x"
+			}
+		},
+		"renderer": {
+			"context": "electron-renderer",
+			"publicUrl": ".",
+			"engines": {
+				"electron": ">=8.x.x"
+			}
+		}
+	},
 	"dependencies": {
 		"drivelist": "^8.0.6",
 		"electron-squirrel-startup": "^1.0.0",
@@ -18,27 +37,19 @@
 		"@electron-forge/cli": "^6.0.0-beta.50",
 		"@electron-forge/maker-dmg": "^6.0.0-beta.50",
 		"@electron-forge/maker-squirrel": "^6.0.0-beta.50",
-		"babel-eslint": "^10.0.2",
 		"electron": "^8.1.1",
-		"eslint": "^6.8.0",
-		"eslint-plugin-react": "^7.14.3",
-		"parcel": "^1.12.4",
+		"parcel": "^2.0.0-alpha.3.2",
 		"prettier": "^1.19.1",
-		"rollup": "^2.0.0",
-		"rollup-plugin-babel-minify": "^9.1.1",
-		"sass": "^1.22.7",
+		"sass": "^1.26.3",
 		"source-map-support": "^0.5.12",
 		"typescript": "^3.8.3"
 	},
-	"config": {
-		"forge": "forge.config.js"
-	},
 	"scripts": {
 		"build": "yarn build:main && yarn build:renderer",
-		"build:main": "parcel build electron/app.js --target node --public-url . --out-dir .bundled/rollup",
-		"build:renderer": "parcel build client/*.html --target electron --public-url . --out-dir .bundled/parcel",
-		"build:xxx": "parcel build client/index.html client/about.html --no-content-hash --target electron --public-url . --out-dir .bundled/parcel && rollup -c",
+		"build:main": "parcel build --target main src/main/app.ts",
+		"build:renderer": "parcel build --target renderer src/renderer/index.html",
 		"dev": "yarn build && electron-forge start",
+		"fmt": "prettier src/**/*.{html,js,scss,ts,tsx} *.config.js package.json *.md *.yml --write",
 		"forge": "yarn build && electron-forge make",
 		"lint": "eslint **/*.js"
 	}

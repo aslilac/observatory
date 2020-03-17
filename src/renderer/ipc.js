@@ -6,7 +6,7 @@ import Application from "./application";
 import Display from "./display";
 import Menu from "./menu";
 
-import gardens from "../gardens.config";
+import gardens from "../../gardens.config";
 const garden = gardens.scope("ipc", "renderer");
 
 const CurrentScreen = createContext("menu");

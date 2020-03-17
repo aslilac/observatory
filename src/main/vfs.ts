@@ -3,7 +3,7 @@ import { EventEmitter } from "events";
 import { promises as fs } from "fs";
 import path from "path";
 
-import gardens from "../gardens.config";
+import gardens from "../../gardens.config";
 const garden = gardens.scope("VirtualFileSystem");
 
 type Entity =

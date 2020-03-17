@@ -1,4 +1,4 @@
-import gardens from "../../gardens.config";
+import gardens from "../../../gardens.config";
 const garden = gardens.scope("system", "navigation");
 
 export function init(view) {

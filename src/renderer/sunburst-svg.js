@@ -5,7 +5,7 @@ import React, { Component, Fragment } from "react";
 
 import readableSize from "./size";
 
-import gardens from "../gardens.config";
+import gardens from "../../gardens.config";
 const garden = gardens.scope("renderer", "sunburst", "svg");
 
 const DIRECTORY = 0;

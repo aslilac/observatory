@@ -3,7 +3,7 @@ import { ipcMain } from "electron";
 
 import Vfs from "./vfs";
 
-import gardens from "../gardens.config";
+import gardens from "../../gardens.config";
 const garden = gardens.scope("ipc", "main");
 
 let vfs = null;

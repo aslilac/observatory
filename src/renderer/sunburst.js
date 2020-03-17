@@ -4,7 +4,7 @@ import ReactDOM from "react-dom";
 
 import readableSize from "./size";
 
-import gardens from "../gardens.config";
+import gardens from "../../gardens.config";
 const garden = gardens.scope("renderer", "sunburst");
 
 const DIRECTORY = 0;

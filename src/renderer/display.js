@@ -5,7 +5,7 @@ import Application from "./application";
 import List from "./list";
 import Sunburst from "./sunburst";
 
-import gardens from "../gardens.config";
+import gardens from "../../gardens.config";
 const garden = gardens.scope("renderer");
 
 document.body.className += ` ${process.platform}`;

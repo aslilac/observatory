@@ -6,7 +6,7 @@ node_modules
 
 # Builds
 .bundled
-.cache
+.parcel-cache
 out
 
 # Logs

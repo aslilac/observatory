@@ -1,5 +1,5 @@
 // Handle initial platform setup before we do any heavy lifting
-import "./system/windows";
+import "./platform/windows";
 
 // Now we get to the actual app code.
 import { app, BrowserWindow } from "electron";
@@ -12,9 +12,9 @@ import "./system/theme";
 import touchbar from "./system/touchbar";
 
 let smsr = false;
-let view = null;
+let view: BrowserWindow = null;
 
-async function createWindow() {
+const createWindow = async () => {
 	// Create the browser window.
 	view = new BrowserWindow({
 		width: 1100,
@@ -38,22 +38,22 @@ async function createWindow() {
 	// REPL!
 	// This also super-breaks launching on macOS when packaged and doesn't
 	// work on Windows literally ever.
-	// if ( process.platform === 'darwin' && !app.isPackaged ) {
-	//   const repl = require( 'repl' );
+	// if (process.platform === 'darwin' && !app.isPackaged) {
+	//   const repl = require('repl');
 	//   const x = repl.start({
 	//     prompt: '> ',
 	//     useGlobal: true
 	//   });
-	//   Object.assign( x.context, {
+	//   Object.assign(x.context, {
 	//     view
 	//   });
-	//   x.on( 'exit', () => app.quit() );
+	//   x.on('exit', () => app.quit());
 	// }
 
 	// Load the app.
 	view.loadURL(
 		url.format({
-			pathname: path.join(__dirname, "../parcel/index.html"),
+			pathname: path.join(__dirname, "../renderer/index.html"),
 			protocol: "file:",
 			slashes: true,
 		}),
@@ -73,7 +73,7 @@ async function createWindow() {
 	// Attach everything to the window.
 	navigation.init(view);
 	touchbar.init(view);
-}
+};
 
 // Launch on startup.
 app.on("ready", () => {
