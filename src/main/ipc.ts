@@ -10,7 +10,7 @@ let vfs = null;
 
 // XXX: In the future we should see if we have actually already scanned
 // this (possibly nested) and use an existing vfs.
-export function push(location, view) {
+export const push = (location: string, view) => {
 	vfs = new Vfs(location);
 	vfs.ready(() => {
 		vfs.push(view);

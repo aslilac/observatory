@@ -26,34 +26,15 @@ rules:
     react/react-in-jsx-scope: error
     # General rules
     arrow-body-style: error
-    arrow-parens:
-        - error
-        - as-needed
-    arrow-spacing: error
-    brace-style:
-        - error
-        - stroustrup
-    # camelcase: error
+    camelcase: error
     class-methods-use-this: error
-    comma-spacing: error
-    comma-style: error
     constructor-super: error
     dot-location:
         - error
         - property
     dot-notation: error
-    indent:
-        - warn
-        - 2
-        - SwitchCase: 1
-          ignoredNodes:
-              - TemplateLiteral
-    keyword-spacing: error
-    linebreak-style: error
     lines-between-class-members: error
-    max-len:
-        - warn
-        - code: 100
+    no-case-declarations: error
     no-cond-assign: error
     no-constant-condition: error
     no-debugger: error
@@ -69,7 +50,7 @@ rules:
     no-eval: error
     no-extra-boolean-cast: error
     no-extra-parens: error
-    no-extra-semi: error
+    no-fallthrough: error
     no-func-assign: error
     no-implied-eval: error
     no-inner-declarations: error
@@ -130,21 +111,11 @@ rules:
         - allowTemplateLiterals: true
     require-await: error
     require-yield: error
-    semi: error
-    semi-spacing: error
-    semi-style: error
     space-before-function-paren:
         - error
         - anonymous: always
           asyncArrow: always
           named: never
-    space-in-parens:
-        - error
-        - always
-        - exceptions:
-              - "{}"
-              - empty
-    switch-colon-spacing: error
     symbol-description: error
     template-tag-spacing: error
     valid-typeof: error

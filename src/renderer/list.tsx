@@ -1,6 +1,7 @@
 import { ipcRenderer } from "electron";
 import React, { useState } from "react";
 
+// import backArrow from "./assets/back.svg";
 import readableSize from "./size";
 
 import gardens from "../../gardens.config";
