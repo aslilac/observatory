@@ -5,7 +5,7 @@
 node_modules
 
 # Builds
-.bundled
+target
 .parcel-cache
 out
 

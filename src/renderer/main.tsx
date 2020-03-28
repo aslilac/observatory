@@ -6,7 +6,7 @@ import Application from "./application";
 import Display from "./display";
 import Menu from "./menu";
 
-import gardens from "../../gardens.config";
+import gardens from "~/gardens.config";
 const garden = gardens.scope("ipc", "renderer");
 
 const CurrentScreen = createContext("menu");
@@ -29,7 +29,7 @@ ipcRenderer.on("vfs-render", (event, packet) => {
 	else inPopState = false;
 });
 
-window.addEventListener("popstate", event => {
+window.addEventListener("popstate", (event) => {
 	garden.log("popstate event.state:", event.state);
 	inPopState = true;
 	if (event.state) ipcRenderer.send("vfs-navigateTo", ...event.state);
@@ -45,7 +45,7 @@ ipcRenderer.on("drivelist-render", (_, list) => {
 			</Application>
 			<section>
 				<CurrentScreen.Consumer>
-					{context => <p>Sandwich? {context.sandwich}</p>}
+					{(context) => <p>Sandwich? {context.sandwich}</p>}
 				</CurrentScreen.Consumer>
 			</section>
 		</CurrentScreen.Provider>,

@@ -1,5 +1,5 @@
 import { ipcRenderer } from "electron";
-import React, { Component } from "react";
+import React, { Component, RefObject, useCallback } from "react";
 import ReactDOM from "react-dom";
 
 import readableSize from "./size";
@@ -13,20 +13,25 @@ const DIRECTORY = 0;
 // const DEVICE = 3;
 // const UNKNOWN = 4;
 
-// let titlebar = document.getElementById( 'titlebar' )
+// let titlebar = document.getElementById('titlebar');
 
-function hsl(hue, layer, min = 0, range = 1) {
-	return `hsl(${((min + hue * range) * 280).toFixed(2)}, 85%, ${layer * 5 +
-		60}%)`;
-}
+const hsl = (hue: number, layer: number, min = 0, range = 1) =>
+	`hsl(${((min + hue * range) * 280).toFixed(2)}, 85%, ${layer * 5 + 60}%)`;
 
-class Sunburst extends Component {
+class Sunburst extends Component<any> {
+	canvasRef: RefObject<HTMLCanvasElement>;
+	tooltipRef: RefObject<HTMLSpanElement>;
+
+	pendingUpdate: boolean;
+	animationRequest: any;
+	hoverTarget: any;
+
 	constructor(props) {
 		super(props);
 
-		// this.state = props.directory
-		this.canvasRef = React.createRef();
-		this.hoverRef = React.createRef();
+		this.canvasRef = React.createRef<HTMLCanvasElement>();
+		this.tooltipRef = React.createRef<HTMLSpanElement>();
+
 		this.pendingUpdate = false;
 		this.animationRequest = null;
 		this.hoverTarget = null;
@@ -37,7 +42,10 @@ class Sunburst extends Component {
 		return (
 			<>
 				<canvas id="fs-display-sunburst" ref={this.canvasRef}></canvas>
-				<span id="fs-display-sunburst-float" ref={this.hoverRef}></span>
+				<span
+					id="fs-display-sunburst-float"
+					ref={this.tooltipRef}
+				></span>
 			</>
 		);
 	}
@@ -68,8 +76,9 @@ class Sunburst extends Component {
 	}
 
 	handleMouseEvents(event) {
+		const dpr = window.devicePixelRatio;
+
 		const baseAngle = 5 / 8;
-		// let baseAngle = 0
 		const cx = this.bounds.width / this.windowScale / 2;
 		const cy = this.bounds.height / this.windowScale / 2;
 		// let cy = (this.bounds.height - 100) / this.windowScale / 2
@@ -99,12 +108,12 @@ class Sunburst extends Component {
 
 		let position = 0;
 		const scale = this.props.capacity;
-		const search = (...searchPath) => file => {
+		const search = (...searchPath) => (file) => {
 			const size = file.size / scale;
 			if (position <= t) {
 				if (position + size >= t) {
 					if (layer === searchPath.length) {
-						const hover = this.hoverRef.current;
+						const hover = this.tooltipRef.current;
 						hover.style.left = `${event.clientX + 15}px`;
 						hover.style.top = `${event.clientY + 5}px`;
 
@@ -206,15 +215,15 @@ class Sunburst extends Component {
 					</ol>
 				)}
 			</>,
-			this.hoverRef.current,
+			this.tooltipRef.current,
 			() => {
-				this.hoverRef.current.style.opacity = 1;
+				this.tooltipRef.current.style.opacity = 1;
 			},
 		);
 	}
 
 	resetHover() {
-		this.hoverRef.current.style.opacity = 0;
+		this.tooltipRef.current.style.opacity = 0;
 		if (this.hoverTarget) {
 			this.hoverTarget.state.hover = false;
 			this.hoverTarget = null;
@@ -249,7 +258,7 @@ class Sunburst extends Component {
 			const cx = this.bounds.width / this.windowScale / 2;
 			const cy = this.bounds.height / this.windowScale / 2;
 
-			const draw = layer => (position, file) => {
+			const draw = (layer) => (position, file) => {
 				const size = file.size / scale;
 				this.drawShard(position, size, layer, file.state);
 

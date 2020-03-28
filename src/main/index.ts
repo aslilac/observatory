@@ -14,6 +14,8 @@ import touchbar from "./system/touchbar";
 let smsr = false;
 let view: BrowserWindow = null;
 
+let views: BrowserWindow[] = [];
+
 const createWindow = async () => {
 	// Create the browser window.
 	view = new BrowserWindow({
@@ -37,17 +39,18 @@ const createWindow = async () => {
 
 	// REPL!
 	// This also super-breaks launching on macOS when packaged and doesn't
-	// work on Windows literally ever.
-	// if (process.platform === 'darwin' && !app.isPackaged) {
-	//   const repl = require('repl');
-	//   const x = repl.start({
-	//     prompt: '> ',
-	//     useGlobal: true
-	//   });
-	//   Object.assign(x.context, {
-	//     view
-	//   });
-	//   x.on('exit', () => app.quit());
+	// work on Windows literally ever. It also breaks when running inside of
+	// forge, and basically all the time.
+	// if (process.platform === "darwin" && !app.isPackaged) {
+	// 	const repl = require("repl");
+	// 	const x = repl.start({
+	// 		prompt: "> ",
+	// 		useGlobal: true,
+	// 	});
+	// 	Object.assign(x.context, {
+	// 		view,
+	// 	});
+	// 	x.on("exit", () => app.quit());
 	// }
 
 	// Load the app.

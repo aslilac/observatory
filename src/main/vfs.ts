@@ -228,17 +228,16 @@ class VirtualFileSystem extends EventEmitter {
 		const directory = this._findDirectory(cursor);
 		const isLargeEnough = (file: VfsNode) =>
 			file.size > directory.size * 0.003;
-		const sanitize = (recursive?: number) => (file: VfsNode) => ({
+		const sanitize = (recursive?: number) => (file: VfsNode): VfsNode => ({
 			name: file.name,
 			type: file.type,
 			size: file.size,
-			...(recursive > 0 && file.type === DIRECTORY
-				? {
-						files: file.files
+			files:
+				recursive > 0 && file.type === DIRECTORY
+					? file.files
 							.filter(isLargeEnough)
-							.map(sanitize(recursive - 1)),
-				  }
-				: { files: [] }),
+							.map(sanitize(recursive - 1))
+					: [],
 		});
 
 		const packet = {

@@ -15,7 +15,7 @@ export const push = (location: string, view) => {
 	vfs.ready(() => {
 		vfs.push(view);
 	});
-}
+};
 
 ipcMain.on("drivelist-create", async event => {
 	const list = await drivelist();
@@ -25,7 +25,7 @@ ipcMain.on("drivelist-create", async event => {
 // XXX: In the future we should see if we have actually already scanned
 // this **(possibly nested)** and use an existing vfs.
 ipcMain.on("vfs-create", (event, location) => {
-	if (vfs && vfs.location === location) {
+	if (vfs?.location === location) {
 		if (vfs.root) {
 			event.reply("vfs-render", vfs._prepIpcPacket());
 		} else {
