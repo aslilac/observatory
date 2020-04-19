@@ -3,19 +3,15 @@ settings:
         version: detect
 env:
     es6: true
+parser: "@typescript-eslint/parser"
 plugins:
-    - eslint-plugin-react
-parser: babel-eslint
+    - "eslint-plugin-react"
+    - "@typescript-eslint"
 rules:
     # React rules
-    jsx-quotes:
-        - error
-        - prefer-double
     react/jsx-fragments:
         - error
         - syntax
-    react/jsx-props-no-multi-spaces: error
-    react/jsx-tag-spacing: error
     react/jsx-uses-react: error
     react/jsx-uses-vars: error
     react/no-did-mount-set-state: error
@@ -29,9 +25,6 @@ rules:
     camelcase: error
     class-methods-use-this: error
     constructor-super: error
-    dot-location:
-        - error
-        - property
     dot-notation: error
     lines-between-class-members: error
     no-case-declarations: error

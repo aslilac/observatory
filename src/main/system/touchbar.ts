@@ -27,9 +27,9 @@ export async function init(view) {
 					textColor: "#b991e6",
 				}),
 				...list
-					.map(device =>
+					.map((device) =>
 						device.mountpoints.map(
-							mount =>
+							(mount) =>
 								new TouchBarButton({
 									label:
 										mount.label ||
@@ -53,7 +53,7 @@ export async function init(view) {
 							{
 								properties: ["openDirectory"],
 							},
-							folders => {
+							(folders) => {
 								if (folders) ipc.push(folders[0], view);
 							},
 						);

@@ -1,7 +1,7 @@
 import { list as drivelist } from "drivelist";
 import { ipcMain } from "electron";
 
-import Vfs from "./vfs";
+import { VirtualFileSystem as Vfs } from "./vfs";
 
 import gardens from "../../gardens.config";
 const garden = gardens.scope("ipc", "main");
@@ -17,7 +17,7 @@ export const push = (location: string, view) => {
 	});
 };
 
-ipcMain.on("drivelist-create", async event => {
+ipcMain.on("drivelist-create", async (event) => {
 	const list = await drivelist();
 	event.reply("drivelist-render", list);
 });
@@ -41,7 +41,7 @@ ipcMain.on("vfs-create", (event, location) => {
 	}
 });
 
-ipcMain.on("vfs-navigateUp", event => {
+ipcMain.on("vfs-navigateUp", (event) => {
 	if (!vfs) throw garden.error("No Vfs loaded");
 	vfs.navigateUp();
 	event.reply("vfs-render", vfs._prepIpcPacket());

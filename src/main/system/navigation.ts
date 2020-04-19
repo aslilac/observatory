@@ -25,7 +25,7 @@ export function init(view) {
 		}
 	});
 
-	view.on("will-navigate", event => {
+	view.on("will-navigate", (event) => {
 		event.preventDefault();
 		garden.log("No navigation allowed!");
 	});

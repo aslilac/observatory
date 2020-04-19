@@ -62,7 +62,9 @@ export default function List(props) {
 			<ol>
 				{(expanded
 					? props.files
-					: props.files.filter(file => file.size >= props.size / 100)
+					: props.files.filter(
+							(file) => file.size >= props.size / 100,
+					  )
 				).map((file, key) => (
 					<li
 						draggable

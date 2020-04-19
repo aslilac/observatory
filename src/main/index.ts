@@ -11,6 +11,8 @@ import navigation from "./system/navigation";
 import "./system/theme";
 import touchbar from "./system/touchbar";
 
+import "../store/main";
+
 let smsr = false;
 let view: BrowserWindow = null;
 

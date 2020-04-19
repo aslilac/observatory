@@ -1,16 +1,15 @@
 import { ipcRenderer } from "electron";
-import React, { createContext } from "react";
+import React from "react";
 import ReactDOM from "react-dom";
 
 import Application from "./application";
 import Display from "./display";
 import Menu from "./menu";
 
-import gardens from "~/gardens.config";
+import gardens from "../../gardens.config";
 const garden = gardens.scope("ipc", "renderer");
 
-const CurrentScreen = createContext("menu");
-// Can be 'menu', 'loading' or 'fs'
+import { store } from "../store/renderer";
 
 // This is a bit janky, but it works.
 let inPopState = false;
@@ -29,28 +28,19 @@ ipcRenderer.on("vfs-render", (event, packet) => {
 	else inPopState = false;
 });
 
+store.subscribe(() => {
+	const { currentTree } = store.getState();
+
+	if (currentTree) {
+		ReactDOM.render(
+			<Display {...currentTree} />,
+			document.querySelector("#application"),
+		);
+	}
+});
+
 window.addEventListener("popstate", (event) => {
 	garden.log("popstate event.state:", event.state);
 	inPopState = true;
 	if (event.state) ipcRenderer.send("vfs-navigateTo", ...event.state);
 });
-
-ipcRenderer.on("drivelist-render", (_, list) => {
-	ReactDOM.render(
-		<CurrentScreen.Provider
-			value={{ currentScreen: "menu", sandwich: "yum" }}
-		>
-			<Application screen="menu">
-				<Menu list={list} />
-			</Application>
-			<section>
-				<CurrentScreen.Consumer>
-					{(context) => <p>Sandwich? {context.sandwich}</p>}
-				</CurrentScreen.Consumer>
-			</section>
-		</CurrentScreen.Provider>,
-		document.querySelector("#application"),
-	);
-});
-
-ipcRenderer.send("drivelist-create");

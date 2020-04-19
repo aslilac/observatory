@@ -35,7 +35,7 @@ Observatory's dependencies.
 To run in development:
 
 ```shell
-yarn start
+yarn dev
 ```
 
 Build for release:

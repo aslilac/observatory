@@ -3,20 +3,33 @@ import { EventEmitter } from "events";
 import { promises as fs } from "fs";
 import path from "path";
 
-import gardens from "../../gardens.config";
-const garden = gardens.scope("VirtualFileSystem");
+import { premountVfs, mountVfs, render, store } from "../store/main";
 
-type Entity =
-	| typeof DIRECTORY
-	| typeof FILE
-	| typeof SYMLINK
-	| typeof DEVICE
-	| typeof UNKNOWN;
-const DIRECTORY = 0;
-const FILE = 1;
-const SYMLINK = 2;
-const DEVICE = 3;
-const UNKNOWN = 4;
+import { vfs as garden } from "../../gardens.config";
+
+export type VfsState =
+	| {
+			status: "init" | "building";
+	  }
+	| {
+			status: "building" | "complete";
+			vfs: VirtualFileSystem;
+			cursor: string[];
+	  };
+
+store.subscribe(() => {
+	const { vfs } = store.getState();
+
+	// another reason that immer sucks
+	const copy = new Map(vfs);
+
+	vfs.forEach((scan, path) => {
+		if (scan.status === "init") {
+			const vfs = new VirtualFileSystem(path);
+			store.dispatch(premountVfs(path, vfs));
+		}
+	});
+});
 
 type VfsNode = VfsDirectory | VfsFile;
 
@@ -34,7 +47,20 @@ type VfsFile = {
 	size: number;
 };
 
-class VirtualFileSystem extends EventEmitter {
+export const DIRECTORY = "VFS/DIRECTORY";
+export const FILE = "VFS/FILE";
+export const SYMLINK = "VFS/SYMLINK";
+export const DEVICE = "VFS/DEVICE";
+export const UNKNOWN = "VFS/UNKNOWN";
+
+export type Entity =
+	| typeof DIRECTORY
+	| typeof FILE
+	| typeof SYMLINK
+	| typeof DEVICE
+	| typeof UNKNOWN;
+
+export class VirtualFileSystem extends EventEmitter {
 	name: string;
 	location: string;
 	cursor: string[];
@@ -53,7 +79,6 @@ class VirtualFileSystem extends EventEmitter {
 
 		this.location = path.normalize(location);
 		this.root = null;
-		this.cursor = [];
 
 		this.counts = {
 			files: 0,
@@ -62,6 +87,8 @@ class VirtualFileSystem extends EventEmitter {
 			devices: 0,
 			misc: 0,
 		};
+
+		this.cursor = [];
 
 		this.factory(location);
 	}
@@ -85,8 +112,8 @@ class VirtualFileSystem extends EventEmitter {
 
 		// Set the name and capacity if it's a drive (this could be better)
 		const list = await drivelist.list();
-		list.some(device =>
-			device.mountpoints.some(mount => {
+		list.some((device) =>
+			device.mountpoints.some((mount) => {
 				if (mount.path === this.location) {
 					vfs.name =
 						mount.label || `${device.description} (${mount.path})`;
@@ -96,11 +123,9 @@ class VirtualFileSystem extends EventEmitter {
 		);
 
 		this.root = vfs;
-		this.emit("ready");
-	}
 
-	ready(...x) {
-		this.on("ready", ...x);
+		const packet = this._prepIpcPacket();
+		store.dispatch(render(packet));
 	}
 
 	async _scan(location: string): Promise<VfsDirectory> {
@@ -110,18 +135,18 @@ class VirtualFileSystem extends EventEmitter {
 			files: [],
 		};
 
-		const files = await fs.readdir(location).catch(error => {
+		const files = await fs.readdir(location).catch((error) => {
 			garden.catch(error);
 		});
 
 		if (!files) return state;
 
 		await Promise.all(
-			files.map(async name => {
+			files.map(async (name) => {
 				const entity = path.join(location, name);
 				const stats = await fs
 					.lstat(entity)
-					.catch(error => void garden.catch(error));
+					.catch((error) => void garden.catch(error));
 
 				if (!stats) return state;
 				else if (stats.isSymbolicLink()) {
@@ -169,43 +194,12 @@ class VirtualFileSystem extends EventEmitter {
 		return state;
 	}
 
-	navigateUp() {
-		this.cursor.pop();
-	}
-
-	navigateForward(...names: string[]) {
-		const update = [...this.cursor, ...names];
-		const correct = this._findDirectory(update);
-
-		if (!correct)
-			throw garden.typeerror(
-				"Cursor does not exist or is not a directory!",
-			);
-		this.cursor = update;
-	}
-
-	navigateTo(...names: string[]) {
-		const correct = this._findDirectory(names);
-
-		if (!correct)
-			throw garden.typeerror(
-				"Cursor does not exist or is not a directory!",
-			);
-		this.cursor = names;
-	}
-
-	// Needs better type
-	push(view: any) {
-		const packet = this._prepIpcPacket();
-		view.send("vfs-render", packet);
-	}
-
 	_findDirectory(cursor = this.cursor) {
 		const scale = this.root.size;
 		let position = 0;
 		let current = this.root;
-		const correct = cursor.every(piece =>
-			current.files.some(file => {
+		const correct = cursor.every((piece) =>
+			current.files.some((file) => {
 				if (file.name === piece && file.type === DIRECTORY) {
 					current = file;
 
@@ -264,5 +258,3 @@ class VirtualFileSystem extends EventEmitter {
 		return packet;
 	}
 }
-
-export default VirtualFileSystem;

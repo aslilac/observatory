@@ -7,24 +7,42 @@ import readableSize from "./size";
 import gardens from "../../gardens.config";
 const garden = gardens.scope("renderer", "sunburst");
 
-const DIRECTORY = 0;
-// const FILE = 1;
-// const SYMLINK = 2;
-// const DEVICE = 3;
-// const UNKNOWN = 4;
+export const DIRECTORY = "VFS/DIRECTORY";
+// export const FILE = "VFS/FILE";
+// export const SYMLINK = "VFS/SYMLINK";
+// export const DEVICE = "VFS/DEVICE";
+// export const UNKNOWN = "VFS/UNKNOWN";
 
-// let titlebar = document.getElementById('titlebar');
+// export type Entity =
+// 	| typeof DIRECTORY
+// 	| typeof FILE
+// 	| typeof SYMLINK
+// 	| typeof DEVICE
+// 	| typeof UNKNOWN;
 
 const hsl = (hue: number, layer: number, min = 0, range = 1) =>
 	`hsl(${((min + hue * range) * 280).toFixed(2)}, 85%, ${layer * 5 + 60}%)`;
 
-class Sunburst extends Component<any> {
+type SunburstProps = {
+	capacity: number;
+	files: any[];
+	size: number;
+	position: number;
+	rootSize: number;
+};
+
+class Sunburst extends Component<SunburstProps> {
 	canvasRef: RefObject<HTMLCanvasElement>;
 	tooltipRef: RefObject<HTMLSpanElement>;
 
+	_2d: CanvasRenderingContext2D;
+	animating: boolean;
+	animationRequest: number;
+	bounds: any;
+	dpr: number;
+	hoverTarget: any; // file
 	pendingUpdate: boolean;
-	animationRequest: any;
-	hoverTarget: any;
+	windowScale: number;
 
 	constructor(props) {
 		super(props);
@@ -35,6 +53,7 @@ class Sunburst extends Component<any> {
 		this.pendingUpdate = false;
 		this.animationRequest = null;
 		this.hoverTarget = null;
+		this.animating = false;
 	}
 
 	render() {
@@ -217,13 +236,13 @@ class Sunburst extends Component<any> {
 			</>,
 			this.tooltipRef.current,
 			() => {
-				this.tooltipRef.current.style.opacity = 1;
+				this.tooltipRef.current.style.opacity = "1";
 			},
 		);
 	}
 
 	resetHover() {
-		this.tooltipRef.current.style.opacity = 0;
+		this.tooltipRef.current.style.opacity = "0";
 		if (this.hoverTarget) {
 			this.hoverTarget.state.hover = false;
 			this.hoverTarget = null;

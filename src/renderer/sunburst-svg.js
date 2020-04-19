@@ -14,7 +14,7 @@ const SYMLINK = 2;
 const DEVICE = 3;
 const UNKNOWN = 4;
 
-const Sunburst = props => (
+const Sunburst = (props) => (
 	// let outline = new Path2D()
 	// Outer border clockwise
 	// outline.arc( cx, cy, or, a, b )
