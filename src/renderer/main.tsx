@@ -2,6 +2,7 @@ import { ipcRenderer } from "electron";
 import React from "react";
 import ReactDOM from "react-dom";
 
+import { store } from "../store/renderer";
 import Application from "./application";
 import Display from "./display";
 import Menu from "./menu";
@@ -9,7 +10,12 @@ import Menu from "./menu";
 import gardens from "../../gardens.config";
 const garden = gardens.scope("ipc", "renderer");
 
-import { store } from "../store/renderer";
+ReactDOM.render(
+	<Application screen="menu">
+		<Menu />
+	</Application>,
+	document.querySelector("#application"),
+);
 
 // This is a bit janky, but it works.
 let inPopState = false;

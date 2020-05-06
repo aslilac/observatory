@@ -2,6 +2,7 @@
 import "./platform/windows";
 
 // Now we get to the actual app code.
+import * as drivelist from "drivelist";
 import { app, BrowserWindow } from "electron";
 import path from "path";
 import url from "url";
@@ -11,12 +12,10 @@ import navigation from "./system/navigation";
 import "./system/theme";
 import touchbar from "./system/touchbar";
 
-import "../store/main";
+import { propagateDriveList, store } from "../store/main";
 
 let smsr = false;
 let view: BrowserWindow = null;
-
-let views: BrowserWindow[] = [];
 
 const createWindow = async () => {
 	// Create the browser window.
@@ -67,6 +66,10 @@ const createWindow = async () => {
 	// Prevent seeing an unpopulated screen.
 	view.on("ready-to-show", () => {
 		view.show();
+		// Look up drives and propagate them in Redux
+		drivelist.list().then((drives) => {
+			store.dispatch(propagateDriveList(drives));
+		});
 	});
 
 	// Emitted when the window is closed.

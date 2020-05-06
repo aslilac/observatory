@@ -3,7 +3,7 @@ import React from "react";
 import ReactDOM from "react-dom";
 import { useSelector, useDispatch } from "react-redux";
 
-import { AppState, createVfs } from "../store/renderer";
+import { AppState, createVfs, mountVfs } from "../store/renderer";
 import Application from "./application";
 
 function startScan(path: string) {
@@ -24,9 +24,11 @@ declare global {
 
 export default () => {
 	const dispatch = useDispatch();
-	const list = useSelector((state: AppState) => state.drives);
+	const drives = useSelector((state: AppState) => state.drives);
+	const vfsMap = useSelector((state: AppState) => state.vfs);
 
-	const selectDrive = (path: string) => () => dispatch(createVfs(path));
+	console.log(drives, vfsMap);
+
 	const selectDirectory = async () => {
 		const result = await remote.dialog.showOpenDialog({
 			properties: ["openDirectory"],
@@ -35,19 +37,36 @@ export default () => {
 		if (!result.canceled) dispatch(createVfs(result.filePaths[0]));
 	};
 
+	const list = [];
+
+	vfsMap.forEach((vfs, path) => {
+		list.push(
+			<li key={path}>
+				{path} - {vfs.status}
+			</li>,
+		);
+	});
+
 	return (
 		<section>
 			<ul id="menu-drivelist">
-				{list.flatMap((device) =>
-					device.mountpoints.map((mount) => (
-						<li key={mount.path}>
-							{mount.label ||
-								`${mount.path} (${device.description})`}
-							<button onClick={selectDrive(mount.path)}>
-								Scan
-							</button>
-						</li>
-					)),
+				{list}
+				{drives.flatMap((device) =>
+					device.mountpoints.map((mount) =>
+						vfsMap.has(mount.path) ? null : (
+							<li key={mount.path}>
+								{mount.label ||
+									`${mount.path} (${device.description})`}
+								<button
+									onClick={() =>
+										dispatch(createVfs(mount.path))
+									}
+								>
+									Scan
+								</button>
+							</li>
+						),
+					),
 				)}
 			</ul>
 			<button onClick={selectDirectory}>Scan directory</button>

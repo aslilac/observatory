@@ -6,25 +6,24 @@ enableMapSet();
 
 import { VfsState, VirtualFileSystem as Vfs } from "../main/vfs";
 
-type AppState = {
+export type AppState = {
 	drives: Drive[];
 	vfs: Map<string, VfsState>;
-	screen: Screen;
+	inspecting?: string;
 };
-
-type Screen =
-	| {
-			route: "menu" | "loading";
-	  }
-	| { route: "display"; fragment: any };
 
 const init = (): AppState => ({
 	drives: [],
 	vfs: new Map(),
-	screen: {
-		route: "menu",
-	},
 });
+
+// This function does nothing, and is just a semi-janky (but less janky than some
+// alternatives) way to esnure our action creators return flux actions.
+const flux = <T extends string, P = undefined, M = undefined>(action: {
+	type: T;
+	payload?: P;
+	meta?: M;
+}) => action;
 
 type Action =
 	| ReturnType<typeof propagateDriveList>
@@ -32,6 +31,7 @@ type Action =
 	| ReturnType<typeof premountVfs>
 	| ReturnType<typeof mountVfs>
 	| ReturnType<typeof render>
+	| ReturnType<typeof inspectVfs>
 	| ReturnType<typeof navigateUp>
 	| ReturnType<typeof navigateForward>
 	| ReturnType<typeof navigateTo>;
@@ -88,6 +88,16 @@ export const render = (trimmed: any) => ({
 	type: "mckayla.observatory.RENDER" as const,
 	payload: {
 		trimmed,
+	},
+});
+
+/**
+ * @direction renderer -> main
+ */
+export const inspectVfs = (vfs: string) => ({
+	type: "mckayla.observatory.INSPECT_VFS" as const,
+	payload: {
+		inspecting: vfs,
 	},
 });
 

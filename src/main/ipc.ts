@@ -1,51 +1,33 @@
-import { list as drivelist } from "drivelist";
-import { ipcMain } from "electron";
-
+import { store } from "../store/main";
 import { VirtualFileSystem as Vfs } from "./vfs";
 
 import gardens from "../../gardens.config";
 const garden = gardens.scope("ipc", "main");
 
-let vfs = null;
-
-// XXX: In the future we should see if we have actually already scanned
-// this (possibly nested) and use an existing vfs.
-export const push = (location: string, view) => {
-	vfs = new Vfs(location);
-	vfs.ready(() => {
-		vfs.push(view);
-	});
-};
-
-ipcMain.on("drivelist-create", async (event) => {
-	const list = await drivelist();
-	event.reply("drivelist-render", list);
-});
-
 // XXX: In the future we should see if we have actually already scanned
 // this **(possibly nested)** and use an existing vfs.
-ipcMain.on("vfs-create", (event, location) => {
-	if (vfs?.location === location) {
-		if (vfs.root) {
-			event.reply("vfs-render", vfs._prepIpcPacket());
-		} else {
-			vfs.ready(() => {
-				event.reply("vfs-render", vfs._prepIpcPacket());
-			});
-		}
-	} else {
-		vfs = new Vfs(location);
-		vfs.ready(() => {
-			event.reply("vfs-render", vfs._prepIpcPacket());
-		});
-	}
-});
+// ipcMain.on("vfs-create", (event, location) => {
+// 	if (vfs?.location === location) {
+// 		if (vfs.root) {
+// 			event.reply("vfs-render", vfs._prepIpcPacket());
+// 		} else {
+// 			vfs.ready(() => {
+// 				event.reply("vfs-render", vfs._prepIpcPacket());
+// 			});
+// 		}
+// 	} else {
+// 		vfs = new Vfs(location);
+// 		vfs.ready(() => {
+// 			event.reply("vfs-render", vfs._prepIpcPacket());
+// 		});
+// 	}
+// });
 
-ipcMain.on("vfs-navigateUp", (event) => {
-	if (!vfs) throw garden.error("No Vfs loaded");
-	vfs.navigateUp();
-	event.reply("vfs-render", vfs._prepIpcPacket());
-});
+// ipcMain.on("vfs-navigateUp", (event) => {
+// 	if (!vfs) throw garden.error("No Vfs loaded");
+// 	vfs.navigateUp();
+// 	event.reply("vfs-render", vfs._prepIpcPacket());
+// });
 
 // ipcMain.on( 'vfs-preview', ( event, ...names ) => {
 //   if ( !vfs ) throw garden.error( 'No Vfs loaded' )
@@ -58,21 +40,23 @@ ipcMain.on("vfs-navigateUp", (event) => {
 //   event.reply( 'vfs-render', real )
 // })
 
-ipcMain.on("vfs-navigateForward", (event, ...names) => {
-	if (!vfs) throw garden.error("No Vfs loaded");
-	vfs.navigateForward(...names);
-	event.reply("vfs-render", vfs._prepIpcPacket());
-});
+// ipcMain.on("vfs-navigateForward", (event, ...names) => {
+// 	if (!vfs) throw garden.error("No Vfs loaded");
+// 	vfs.navigateForward(...names);
+// 	event.reply("vfs-render", vfs._prepIpcPacket());
+// });
 
-ipcMain.on("vfs-navigateTo", (event, ...names) => {
-	if (!vfs) throw garden.error("No Vfs loaded");
-	vfs.navigateTo(...names);
-	event.reply("vfs-render", vfs._prepIpcPacket());
-});
+// ipcMain.on("vfs-navigateTo", (event, ...names) => {
+// 	if (!vfs) throw garden.error("No Vfs loaded");
+// 	vfs.navigateTo(...names);
+// 	event.reply("vfs-render", vfs._prepIpcPacket());
+// });
 
 // TODO:
 // ipcMain.on( 'vfs-inspect', ( event, ...names ) => {
 //
 // });
 
-export default { push };
+// export default { push };
+
+export default {};
