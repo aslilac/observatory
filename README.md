@@ -2,6 +2,7 @@
 
 ![package version](https://img.shields.io/badge/observatory-v0.3.0-12142d.svg)
 ![stability](https://img.shields.io/badge/stability-beta-6680f2.svg)
+[![main](https://github.com/partheseas/observatory/workflows/main/badge.svg)](https://github.com/partheseas/observatory/actions)
 [![code style: prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg)](https://github.com/prettier/prettier)
 
 Observatory was made out of a desire for a higher quality and modern disk usage
