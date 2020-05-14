@@ -123,12 +123,16 @@ class Sunburst extends Component<SunburstProps> {
 			return;
 		}
 
+		// We only render like 7, so
+		if (layer > 8) return;
+
 		let position = 0;
 		const scale = this.props.capacity;
 		const search = (...searchPath: string[]) => (file: AnimatedNode) => {
 			const size = file.size / scale;
 			if (position <= t) {
 				if (position + size >= t) {
+					console.log(layer, searchPath.length, file.type);
 					if (layer === searchPath.length) {
 						const hover = this.tooltipRef.current;
 						hover.style.left = `${event.clientX + 15}px`;
@@ -179,7 +183,11 @@ class Sunburst extends Component<SunburstProps> {
 								"Directories have to have files!",
 								file,
 							);
-						file.files.some(search(...searchPath, file.name));
+
+						const found = file.files.some(
+							search(...searchPath, file.name),
+						);
+						if (!found) this.resetHover();
 					} else {
 						// No match
 						this.resetHover();
@@ -200,7 +208,8 @@ class Sunburst extends Component<SunburstProps> {
 			position += size;
 		};
 
-		this.props.files.some(search());
+		const found = this.props.files.some(search());
+		if (!found) this.resetHover();
 	}
 
 	setHover(file: AnimatedNode) {
