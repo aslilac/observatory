@@ -1,31 +1,28 @@
 import { ipcRenderer } from "electron";
-import React, { Component, RefObject, useCallback } from "react";
+import React, { Component, RefObject } from "react";
 import ReactDOM from "react-dom";
 
+import { DIRECTORY, VfsNode } from "../types";
 import readableSize from "./size";
 
 import gardens from "../../gardens.config";
 const garden = gardens.scope("renderer", "sunburst");
 
-export const DIRECTORY = "VFS/DIRECTORY";
-// export const FILE = "VFS/FILE";
-// export const SYMLINK = "VFS/SYMLINK";
-// export const DEVICE = "VFS/DEVICE";
-// export const UNKNOWN = "VFS/UNKNOWN";
-
-// export type Entity =
-// 	| typeof DIRECTORY
-// 	| typeof FILE
-// 	| typeof SYMLINK
-// 	| typeof DEVICE
-// 	| typeof UNKNOWN;
-
 const hsl = (hue: number, layer: number, min = 0, range = 1) =>
 	`hsl(${((min + hue * range) * 280).toFixed(2)}, 85%, ${layer * 5 + 60}%)`;
 
+type AnimationState = {
+	hover: boolean;
+	hoverAnimation: number;
+};
+
+type AnimatedNode = VfsNode & {
+	state: AnimationState;
+};
+
 type SunburstProps = {
 	capacity: number;
-	files: any[];
+	files: VfsNode[];
 	size: number;
 	position: number;
 	rootSize: number;
@@ -38,13 +35,13 @@ class Sunburst extends Component<SunburstProps> {
 	_2d: CanvasRenderingContext2D;
 	animating: boolean;
 	animationRequest: number;
-	bounds: any;
+	bounds: DOMRect;
 	dpr: number;
-	hoverTarget: any; // file
+	hoverTarget: AnimatedNode;
 	pendingUpdate: boolean;
 	windowScale: number;
 
-	constructor(props) {
+	constructor(props: SunburstProps) {
 		super(props);
 
 		this.canvasRef = React.createRef<HTMLCanvasElement>();
@@ -86,15 +83,15 @@ class Sunburst extends Component<SunburstProps> {
 		const canvas = this.canvasRef.current;
 		canvas.addEventListener("click", this.handleMouseEvents.bind(this));
 		canvas.addEventListener("mousemove", this.handleMouseEvents.bind(this));
-		// canvas.addEventListener( 'dragstart', this.handleMouseEvents.bind( this ) )
-		// canvas.addEventListener( 'dragend', this.handleMouseEvents.bind( this ) )
+		// canvas.addEventListener("dragstart", this.handleMouseEvents.bind(this));
+		// canvas.addEventListener("dragend", this.handleMouseEvents.bind(this));
 	}
 
 	componentDidUpdate() {
 		this._size();
 	}
 
-	handleMouseEvents(event) {
+	handleMouseEvents(event: MouseEvent) {
 		const dpr = window.devicePixelRatio;
 
 		const baseAngle = 5 / 8;
@@ -127,7 +124,7 @@ class Sunburst extends Component<SunburstProps> {
 
 		let position = 0;
 		const scale = this.props.capacity;
-		const search = (...searchPath) => (file) => {
+		const search = (...searchPath: string[]) => (file: AnimatedNode) => {
 			const size = file.size / scale;
 			if (position <= t) {
 				if (position + size >= t) {
@@ -202,12 +199,12 @@ class Sunburst extends Component<SunburstProps> {
 		this.props.files.some(search());
 	}
 
-	setHover(file) {
+	setHover(file: AnimatedNode) {
 		if (this.hoverTarget) this.hoverTarget.state.hover = false;
-		this.hoverTarget = file;
+		const target = (this.hoverTarget = { ...file });
 		this.animating = true;
 
-		file.state = {
+		target.state = {
 			hover: true,
 			hoverAnimation: 1,
 		};
@@ -217,13 +214,13 @@ class Sunburst extends Component<SunburstProps> {
 		// do this a much better way.
 		ReactDOM.render(
 			<>
-				{file.name}
-				<span className="size">{readableSize(file.size)}</span>
+				{target.name}
+				<span className="size">{readableSize(target.size)}</span>
 				<br />
 
-				{file.type === DIRECTORY && file.files.length > 0 && (
+				{target.type === DIRECTORY && target.files.length > 0 && (
 					<ol>
-						{file.files.slice(0, 7).map((file, index) => (
+						{target.files.slice(0, 7).map((file, index) => (
 							<li key={file.name + index}>
 								{file.name}
 								<span className="size">
@@ -277,7 +274,10 @@ class Sunburst extends Component<SunburstProps> {
 			const cx = this.bounds.width / this.windowScale / 2;
 			const cy = this.bounds.height / this.windowScale / 2;
 
-			const draw = (layer) => (position, file) => {
+			const draw = (layer: number) => (
+				position: number,
+				file: AnimatedNode,
+			) => {
 				const size = file.size / scale;
 				this.drawShard(position, size, layer, file.state);
 
@@ -309,7 +309,12 @@ class Sunburst extends Component<SunburstProps> {
 		this.animationRequest = requestAnimationFrame(() => this.animate());
 	}
 
-	drawShard(position, size, layer, state) {
+	drawShard(
+		position: number,
+		size: number,
+		layer: number,
+		state: AnimationState,
+	) {
 		const baseAngle = 5 / 8;
 		// let baseAngle = 0
 		const colorScale = this.props.capacity / this.props.size;

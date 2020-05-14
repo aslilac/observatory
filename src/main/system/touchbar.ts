@@ -1,13 +1,13 @@
 import { list as drivelist } from "drivelist";
-import { dialog, TouchBar } from "electron";
+import { BrowserWindow, dialog, TouchBar } from "electron";
 const { TouchBarButton, TouchBarLabel, TouchBarSpacer } = TouchBar;
 
-import ipc from "../ipc";
+import { createVfs, store } from "../../store/main";
 
 import gardens from "../../../gardens.config";
 const garden = gardens.scope("system", "touchbar");
 
-export async function init(view) {
+export async function init(view: BrowserWindow) {
 	const list = await drivelist();
 	view.setTouchBar(
 		new TouchBar({
@@ -26,37 +26,33 @@ export async function init(view) {
 					label: "Scan ",
 					textColor: "#b991e6",
 				}),
-				...list
-					.map((device) =>
-						device.mountpoints.map(
-							(mount) =>
-								new TouchBarButton({
-									label:
-										mount.label ||
-										`${mount.path} (${device.description})`,
-									backgroundColor: "#9680ed",
-									click() {
-										ipc.push(mount.path, view);
-									},
-								}),
-						),
-					)
-					.flat(),
+				...list.flatMap((device) =>
+					device.mountpoints.map(
+						(mount) =>
+							new TouchBarButton({
+								label:
+									mount.label ||
+									`${mount.path} (${device.description})`,
+								backgroundColor: "#9680ed",
+								async click() {
+									store.dispatch(createVfs(mount.path));
+								},
+							}),
+					),
+				),
 				new TouchBarSpacer({
 					size: "small",
 				}),
 				new TouchBarButton({
 					label: "Scan directory",
 					backgroundColor: "#b0a0ec",
-					click() {
-						dialog.showOpenDialog(
-							{
-								properties: ["openDirectory"],
-							},
-							(folders) => {
-								if (folders) ipc.push(folders[0], view);
-							},
-						);
+					async click() {
+						const result = await dialog.showOpenDialog({
+							properties: ["openDirectory"],
+						});
+
+						if (!result.canceled)
+							store.dispatch(createVfs(result.filePaths[0]));
 					},
 				}),
 				new TouchBarSpacer({

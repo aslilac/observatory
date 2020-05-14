@@ -1,66 +1,20 @@
 import * as drivelist from "drivelist";
-import { EventEmitter } from "events";
 import { promises as fs } from "fs";
 import path from "path";
 
-import { premountVfs, mountVfs, render, store } from "../store/main";
+import { render, store } from "../store/main";
+import {
+	DIRECTORY,
+	FILE,
+	RenderTree,
+	VfsDirectory,
+	VfsNode,
+	VfsState,
+} from "../types";
 
 import { vfs as garden } from "../../gardens.config";
 
-export type VfsState =
-	| {
-			status: "init" | "building";
-	  }
-	| {
-			status: "building" | "complete";
-			vfs: VirtualFileSystem;
-			cursor: string[];
-	  };
-
-store.subscribe(() => {
-	const { vfs } = store.getState();
-
-	// another reason that immer sucks
-	const copy = new Map(vfs);
-
-	vfs.forEach((scan, path) => {
-		if (scan.status === "init") {
-			const vfs = new VirtualFileSystem(path);
-			store.dispatch(premountVfs(path, vfs));
-		}
-	});
-});
-
-type VfsNode = VfsDirectory | VfsFile;
-
-type VfsDirectory = {
-	type: typeof DIRECTORY;
-	name?: string;
-	size: number;
-	capacity?: number; // for drives
-	files: VfsNode[];
-};
-
-type VfsFile = {
-	type: typeof FILE;
-	name: string;
-	size: number;
-};
-
-export const DIRECTORY = "VFS/DIRECTORY";
-export const FILE = "VFS/FILE";
-export const SYMLINK = "VFS/SYMLINK";
-export const DEVICE = "VFS/DEVICE";
-export const UNKNOWN = "VFS/UNKNOWN";
-
-export type Entity =
-	| typeof DIRECTORY
-	| typeof FILE
-	| typeof SYMLINK
-	| typeof DEVICE
-	| typeof UNKNOWN;
-
-export class VirtualFileSystem extends EventEmitter {
+export class VirtualFileSystem {
 	name: string;
 	location: string;
 	cursor: string[];
@@ -75,8 +29,6 @@ export class VirtualFileSystem extends EventEmitter {
 	};
 
 	constructor(location: string) {
-		super();
-
 		this.location = path.normalize(location);
 		this.root = null;
 
@@ -94,6 +46,8 @@ export class VirtualFileSystem extends EventEmitter {
 	}
 
 	async factory(location: string) {
+		// TODO: We should probably check that it's a directory, and handle errors
+		// if it doesn't exist
 		await fs.stat(location);
 
 		// Start logging status while we wait
@@ -124,13 +78,14 @@ export class VirtualFileSystem extends EventEmitter {
 
 		this.root = vfs;
 
-		const packet = this._prepIpcPacket();
-		store.dispatch(render(packet));
+		const tree = this.getRenderTree();
+		store.dispatch(render(tree));
 	}
 
 	async _scan(location: string): Promise<VfsDirectory> {
 		const state: VfsDirectory = {
 			type: DIRECTORY,
+			name: "MISSING_NO",
 			size: 0,
 			files: [],
 		};
@@ -148,18 +103,8 @@ export class VirtualFileSystem extends EventEmitter {
 					.lstat(entity)
 					.catch((error) => void garden.catch(error));
 
-				if (!stats) return state;
-				else if (stats.isSymbolicLink()) {
-					this.counts.symlinks++;
-					// state.files.push({
-					//   name, type: SYMLINK, size: 0
-					// })
-				} else if (stats.isCharacterDevice() || stats.isBlockDevice()) {
-					this.counts.devices++;
-					// state.files.push({
-					//   name, type: DEVICE, size: 0
-					// })
-				} else if (stats.isFile()) {
+				if (!stats) return;
+				else if (stats.isFile()) {
 					this.counts.files++;
 					state.files.push({
 						type: FILE,
@@ -171,21 +116,28 @@ export class VirtualFileSystem extends EventEmitter {
 					this.counts.directories++;
 
 					if (process.platform === "linux" && entity === "/proc")
-						return state;
+						return;
 					if (process.platform === "darwin" && entity === "/Volumes")
-						return state;
+						return;
 
 					const directory = await this._scan(entity);
 					state.files.push({
-						name,
 						...directory,
+						name,
 					});
 					state.size += directory.size;
+				} else if (stats.isSymbolicLink()) {
+					this.counts.symlinks++;
+					// state.files.push({
+					//   name, type: SYMLINK, size: 0
+					// })
+				} else if (stats.isCharacterDevice() || stats.isBlockDevice()) {
+					this.counts.devices++;
+					// state.files.push({
+					//   name, type: DEVICE, size: 0
+					// })
 				} else {
 					this.counts.misc++;
-					// state.files.push({
-					//   name, type: UNKNOWN, size: 0
-					// })
 				}
 			}),
 		);
@@ -194,7 +146,8 @@ export class VirtualFileSystem extends EventEmitter {
 		return state;
 	}
 
-	_findDirectory(cursor = this.cursor) {
+	private getDirectory() {
+		const cursor = this.cursor;
 		const scale = this.root.size;
 		let position = 0;
 		let current = this.root;
@@ -217,9 +170,8 @@ export class VirtualFileSystem extends EventEmitter {
 		);
 	}
 
-	_prepIpcPacket(...names: string[]) {
-		const cursor = [...this.cursor, ...names];
-		const directory = this._findDirectory(cursor);
+	private getRenderTree(): RenderTree {
+		const directory = this.getDirectory();
 		const isLargeEnough = (file: VfsNode) =>
 			file.size > directory.size * 0.003;
 		const sanitize = (recursive?: number) => (file: VfsNode): VfsNode => ({
@@ -234,9 +186,9 @@ export class VirtualFileSystem extends EventEmitter {
 					: [],
 		});
 
-		const packet = {
+		return {
 			name: this.root.name,
-			cursor: cursor,
+			cursor: this.cursor,
 
 			type: DIRECTORY,
 			rootCapacity: this.root.capacity || this.root.size,
@@ -244,9 +196,10 @@ export class VirtualFileSystem extends EventEmitter {
 			capacity: directory.capacity || directory.size,
 			position: directory.position,
 			size: directory.size,
+
 			// Basically, we just want to strip out any files that won't be rendered
-			// on the list or the sunburst so that we don't have to serialize the
-			// entire Vfs because that would be reaaaaally slow.
+			// on the list or the sunburst because serialization is slow, so the less
+			// we have here the better.
 			list: {
 				files: directory.files.map(sanitize()),
 			},
@@ -254,7 +207,5 @@ export class VirtualFileSystem extends EventEmitter {
 				files: directory.files.filter(isLargeEnough).map(sanitize(6)),
 			},
 		};
-
-		return packet;
 	}
 }

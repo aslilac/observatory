@@ -1,6 +1,8 @@
 import { ipcRenderer } from "electron";
 import React from "react";
+import { useSelector } from "react-redux";
 
+import { AppState } from "../store/renderer";
 import Application from "./application";
 import List from "./list";
 import Sunburst from "./sunburst";
@@ -27,26 +29,29 @@ document.body.className += ` ${process.platform}`;
 // 	}
 // });
 
-export default (props) => {
-	const { sunburst, list, ...shared } = props;
+export default () => {
+	const { sunburst, list, ...shared } = useSelector(
+		(state: AppState) => state.currentTree,
+	);
 
 	return (
-		<Application screen="fs">
+		<>
 			<section id="fs-display-navbar">
 				<button onClick={() => ipcRenderer.send("drivelist-create")}>
 					Disks and folders
 				</button>
 				<button onClick={() => ipcRenderer.send("vfs-navigateTo")}>
-					{props.name}
+					{shared.name}
 				</button>
-				{props.cursor.map((piece, key) => (
+				{shared.cursor.map((piece, key) => (
 					<button
 						key={key}
 						onClick={() => {
-							garden.log(props.cursor.slice(0, key + 1));
+							garden.log(shared.cursor.slice(0, key + 1));
+							// Way wrong, need to dispatch
 							ipcRenderer.send(
 								"vfs-navigateTo",
-								...props.cursor.slice(0, key + 1),
+								...shared.cursor.slice(0, key + 1),
 							);
 						}}
 					>
@@ -56,6 +61,6 @@ export default (props) => {
 			</section>
 			<Sunburst files={sunburst.files} {...shared} />
 			<List files={list.files} {...shared} />
-		</Application>
+		</>
 	);
 };

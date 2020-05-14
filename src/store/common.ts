@@ -4,12 +4,17 @@ import produce, { enableMapSet } from "immer";
 // immer sucks apparently
 enableMapSet();
 
-import { VfsState, VirtualFileSystem as Vfs } from "../main/vfs";
+import type { VfsState, VirtualFileSystem as Vfs, RenderTree } from "../types";
+
+// type VfsState = any;
+// type Vfs = any;
+// type RenderTree = any;
 
 export type AppState = {
 	drives: Drive[];
 	vfs: Map<string, VfsState>;
 	inspecting?: string;
+	currentTree?: RenderTree;
 };
 
 const init = (): AppState => ({
@@ -62,9 +67,6 @@ export const premountVfs = (path: string, vfs?: Vfs) => ({
 		path,
 		vfs,
 	},
-	meta: {
-		scope: "local",
-	},
 });
 
 /**
@@ -76,18 +78,15 @@ export const mountVfs = (path: string, vfs: Vfs) => ({
 		path,
 		vfs,
 	},
-	meta: {
-		scope: "local",
-	},
 });
 
 /**
  * @direction main -> renderer
  */
-export const render = (trimmed: any) => ({
+export const render = (tree: RenderTree) => ({
 	type: "mckayla.observatory.RENDER" as const,
 	payload: {
-		trimmed,
+		tree,
 	},
 });
 
@@ -140,19 +139,20 @@ export const reducer = (state = init(), action: Action): AppState => {
 			case "mckayla.observatory.PREMOUNT_VFS":
 				draft.vfs.set(action.payload.path, {
 					status: "building",
-					vfs: action.payload.vfs,
+					// vfs: action.payload.vfs,
 					cursor: [],
 				});
 				break;
 			case "mckayla.observatory.MOUNT_VFS":
 				draft.vfs.set(action.payload.path, {
 					status: "complete",
-					vfs: action.payload.vfs,
+					// vfs: action.payload.vfs,
+					vfs: { hello: "friend" },
 					cursor: [],
 				});
 				break;
 			case "mckayla.observatory.RENDER":
-				draft.currentTree = action.payload.trimmed;
+				draft.currentTree = action.payload.tree;
 				break;
 		}
 	});

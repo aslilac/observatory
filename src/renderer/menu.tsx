@@ -1,26 +1,8 @@
 import { ipcRenderer, remote } from "electron";
 import React from "react";
-import ReactDOM from "react-dom";
 import { useSelector, useDispatch } from "react-redux";
 
 import { AppState, createVfs, mountVfs } from "../store/renderer";
-import Application from "./application";
-
-function startScan(path: string) {
-	ReactDOM.render(
-		<Application screen="loading" />,
-		document.querySelector("#application"),
-	);
-
-	ipcRenderer.send("vfs-create", path);
-}
-
-// Janky hack because I don't want a tsconfig.json and I'm an asshole
-declare global {
-	interface Array<T> {
-		flatMap: (iterator: (item: T, index: number) => any[]) => any[];
-	}
-}
 
 export default () => {
 	const dispatch = useDispatch();

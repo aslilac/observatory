@@ -1,0 +1,6 @@
+{
+	"target": "esnext",
+	"compilerOptions": {
+		"lib": ["es2019", "es2019.array"]
+	}
+}

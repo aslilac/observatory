@@ -1,21 +1,47 @@
 // Handle initial platform setup before we do any heavy lifting
 import "./platform/windows";
 
-// Now we get to the actual app code.
+// import { stopForwarding } from "@mckayla/electron-redux";
 import * as drivelist from "drivelist";
 import { app, BrowserWindow } from "electron";
 import path from "path";
 import url from "url";
 
+import { premountVfs, propagateDriveList, store } from "../store/main";
 import "./system/menu";
 import navigation from "./system/navigation";
 import "./system/theme";
 import touchbar from "./system/touchbar";
-
-import { propagateDriveList, store } from "../store/main";
+import { VirtualFileSystem } from "./vfs";
 
 let smsr = false;
 let view: BrowserWindow = null;
+
+// TODO: Get rid of this for @mckayla/electron-redux 2.0.1
+export const stopForwarding = <T extends { meta?: object }>(action: T) => ({
+	...action,
+	meta: {
+		...action.meta,
+		scope: "local" as const,
+	},
+});
+
+store.subscribe(() => {
+	console.log("checking for new inits");
+	const { vfs } = store.getState();
+
+	// another reason that immer sucks
+	const copy = new Map(vfs);
+
+	copy.forEach((scan, path) => {
+		console.log("checking", scan, path);
+		if (scan.status === "init") {
+			store.dispatch(
+				stopForwarding(premountVfs(path, new VirtualFileSystem(path))),
+			);
+		}
+	});
+});
 
 const createWindow = async () => {
 	// Create the browser window.

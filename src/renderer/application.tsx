@@ -1,24 +1,21 @@
-import React, { ReactNode } from "react";
-import * as Redux from "react-redux";
+import React from "react";
+import { useSelector } from "react-redux";
 
-import { store } from "../store/renderer";
+import { AppState } from "../store/renderer";
+import Display from "./display";
+import Menu from "./menu";
 
-type Props =
-	| { screen: "loading" }
-	| {
-			children: ReactNode;
-			screen: "menu" | "fs";
-	  };
+export default () => {
+	const tree = useSelector((state: AppState) => state.currentTree);
 
-export default (props: Props) => (
-	<>
-		<div id="titlebar">
-			<h1>Observatory</h1>
-		</div>
-		<div id="application-display" className={props.screen}>
-			{props.screen !== "loading" && (
-				<Redux.Provider store={store}>{props.children}</Redux.Provider>
-			)}
-		</div>
-	</>
-);
+	return (
+		<>
+			<div id="titlebar">
+				<h1>Observatory</h1>
+			</div>
+			<div id="application-display" className={tree && "fs"}>
+				{tree ? <Display /> : <Menu />}
+			</div>
+		</>
+	);
+};
