@@ -17,7 +17,8 @@ type AnimationState = {
 };
 
 type AnimatedNode = VfsNode & {
-	state: AnimationState;
+	state?: AnimationState;
+	_original?: AnimatedNode;
 };
 
 type SunburstProps = {
@@ -133,7 +134,8 @@ class Sunburst extends Component<SunburstProps> {
 						hover.style.left = `${event.clientX + 15}px`;
 						hover.style.top = `${event.clientY + 5}px`;
 
-						if (this.hoverTarget !== file) this.setHover(file);
+						if (this.hoverTarget?._original !== file)
+							this.setHover(file);
 
 						if (event.type === "click" && file.type === DIRECTORY) {
 							ipcRenderer.send(
@@ -185,12 +187,14 @@ class Sunburst extends Component<SunburstProps> {
 					// We return true to short circuit if the range matched correctly,
 					// even if we didn't actually match.
 					return true;
-				} else {
-					// No match
-					// We return true to short circuit if the range matched correctly,
-					// even if we didn't actually match.
-					this.resetHover();
 				}
+			} else {
+				// No match
+				// The begin position of the current shard is past theta, which
+				// means there is no possible match. Stop the earch and reset
+				// any hover state.
+				this.resetHover();
+				return true;
 			}
 
 			position += size;
@@ -201,7 +205,7 @@ class Sunburst extends Component<SunburstProps> {
 
 	setHover(file: AnimatedNode) {
 		if (this.hoverTarget) this.hoverTarget.state.hover = false;
-		const target = (this.hoverTarget = { ...file });
+		const target = (this.hoverTarget = { ...file, _original: file });
 		this.animating = true;
 
 		target.state = {
@@ -268,7 +272,6 @@ class Sunburst extends Component<SunburstProps> {
 
 	animate() {
 		if (this.pendingUpdate || this.animating) {
-			// garden.log( this.props )
 			const scale = this.props.capacity;
 
 			const cx = this.bounds.width / this.windowScale / 2;
@@ -279,7 +282,11 @@ class Sunburst extends Component<SunburstProps> {
 				file: AnimatedNode,
 			) => {
 				const size = file.size / scale;
-				this.drawShard(position, size, layer, file.state);
+				const state =
+					this.hoverTarget?._original === file
+						? this.hoverTarget.state
+						: null;
+				this.drawShard(position, size, layer, state);
 
 				if (file.type === DIRECTORY && layer < 6) {
 					file.files.reduce(draw(layer + 1), position);
@@ -340,16 +347,14 @@ class Sunburst extends Component<SunburstProps> {
 		outline.closePath();
 
 		// Check state
-		if (state) {
-			if (state.hover) {
-				state.hoverAnimation += 12 / 60;
-				state.hoverAnimation %= 12;
+		if (state?.hover) {
+			state.hoverAnimation += 12 / 60;
+			state.hoverAnimation %= 12;
 
-				layer -=
-					state.hoverAnimation < 6
-						? state.hoverAnimation
-						: 12 - state.hoverAnimation;
-			}
+			layer -=
+				state.hoverAnimation < 6
+					? state.hoverAnimation
+					: 12 - state.hoverAnimation;
 		}
 
 		// Set styles
