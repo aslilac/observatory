@@ -10,9 +10,6 @@ import {
 import List from "./list";
 import Sunburst from "./sunburst";
 
-import gardens, { vfs } from "../../gardens.config";
-const garden = gardens.scope("renderer");
-
 document.body.className += ` ${process.platform}`;
 
 // const titlebar = document.getElementById("titlebar");
