@@ -1,6 +1,6 @@
 {
 	"name": "observatory",
-	"version": "0.3.0",
+	"version": "0.9.0",
 	"description": "Disk usage analyzer",
 	"main": "target/main/index.js",
 	"renderer": "target/renderer/index.html",

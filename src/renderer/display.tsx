@@ -38,7 +38,7 @@ export default () => {
 		state.vfs.get(state.inspecting),
 	);
 
-	if (vfsState.status !== "complete") {
+	if (vfsState.status !== "complete" || !vfsState.currentTree) {
 		return null;
 	}
 

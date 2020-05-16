@@ -190,6 +190,11 @@ export const reducer = (state = init(), action: Action): AppState => {
 					return;
 				}
 
+				// Only navigate up if we can
+				if (!current.cursor.length) {
+					return;
+				}
+
 				draft.vfs.set(draft.inspecting, {
 					status: "complete",
 					currentTree: null,
@@ -227,6 +232,10 @@ export const reducer = (state = init(), action: Action): AppState => {
 					);
 					return;
 				}
+				// Only navigate up if we can
+				if (!current.cursor.length) {
+					return;
+				}
 
 				draft.vfs.set(draft.inspecting, {
 					status: "complete",
@@ -245,6 +254,25 @@ export const reducer = (state = init(), action: Action): AppState => {
 						),
 					);
 					return;
+				}
+
+				// Only navigate up if we can
+				if (!current.cursor.length) {
+					return;
+				}
+
+				// A bunch of stuff to prevent navigating to the same place
+				const currentCursor = current.cursor;
+				const proposedCursor = action.payload.cursor;
+
+				if (currentCursor.length === proposedCursor.length) {
+					if (
+						currentCursor.every(
+							(item, i) => item === proposedCursor[i],
+						)
+					) {
+						return;
+					}
 				}
 
 				draft.vfs.set(draft.inspecting, {

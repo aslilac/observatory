@@ -10,7 +10,7 @@ export default () => {
 		state.vfs.get(state.inspecting),
 	);
 
-	const viewTree = vfsState?.status === "complete" && vfsState.currentTree;
+	const viewTree = vfsState?.status === "complete";
 
 	return (
 		<>
