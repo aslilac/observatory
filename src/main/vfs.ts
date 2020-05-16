@@ -2,22 +2,13 @@ import * as drivelist from "drivelist";
 import { promises as fs } from "fs";
 import path from "path";
 
-import { render, store } from "../store/main";
-import {
-	DIRECTORY,
-	FILE,
-	RenderTree,
-	VfsDirectory,
-	VfsNode,
-	VfsState,
-} from "../types";
+import { mountVfs, store } from "../store/main";
+import { DIRECTORY, FILE, RenderTree, VfsDirectory, VfsNode } from "../types";
 
 import { vfs as garden } from "../../gardens.config";
 
 export class VirtualFileSystem {
-	name: string;
 	location: string;
-	cursor: string[];
 	root: VfsDirectory;
 
 	counts: {
@@ -40,12 +31,12 @@ export class VirtualFileSystem {
 			misc: 0,
 		};
 
-		this.cursor = [];
-
-		this.factory(location);
+		this.factory();
 	}
 
-	async factory(location: string) {
+	async factory() {
+		const location = this.location;
+
 		// TODO: We should probably check that it's a directory, and handle errors
 		// if it doesn't exist
 		await fs.stat(location);
@@ -68,7 +59,7 @@ export class VirtualFileSystem {
 		const list = await drivelist.list();
 		list.some((device) =>
 			device.mountpoints.some((mount) => {
-				if (mount.path === this.location) {
+				if (mount.path === location) {
 					vfs.name =
 						mount.label || `${device.description} (${mount.path})`;
 					vfs.capacity = device.size;
@@ -79,7 +70,7 @@ export class VirtualFileSystem {
 		this.root = vfs;
 
 		const tree = this.getRenderTree();
-		store.dispatch(render(tree));
+		store.dispatch(mountVfs(location, tree));
 	}
 
 	async _scan(location: string): Promise<VfsDirectory> {
@@ -146,8 +137,7 @@ export class VirtualFileSystem {
 		return state;
 	}
 
-	private getDirectory() {
-		const cursor = this.cursor;
+	private getDirectory(cursor: string[]) {
 		const scale = this.root.size;
 		let position = 0;
 		let current = this.root;
@@ -170,8 +160,8 @@ export class VirtualFileSystem {
 		);
 	}
 
-	private getRenderTree(): RenderTree {
-		const directory = this.getDirectory();
+	getRenderTree(cursor: string[] = []): RenderTree {
+		const directory = this.getDirectory(cursor);
 		const isLargeEnough = (file: VfsNode) =>
 			file.size > directory.size * 0.003;
 		const sanitize = (recursive?: number) => (file: VfsNode): VfsNode => ({
@@ -188,7 +178,7 @@ export class VirtualFileSystem {
 
 		return {
 			name: this.root.name,
-			cursor: this.cursor,
+			cursor,
 
 			type: DIRECTORY,
 			rootCapacity: this.root.capacity || this.root.size,

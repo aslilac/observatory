@@ -1,12 +1,14 @@
-import { ipcRenderer } from "electron";
 import React, { Component, RefObject } from "react";
 import ReactDOM from "react-dom";
+import { connect } from "react-redux";
 
+import { navigateUp, store, navigateForward } from "../store/renderer";
 import { DIRECTORY, VfsNode } from "../types";
 import readableSize from "./size";
 
 import gardens from "../../gardens.config";
 const garden = gardens.scope("renderer", "sunburst");
+const { dispatch } = store;
 
 const hsl = (hue: number, layer: number, min = 0, range = 1) =>
 	`hsl(${((min + hue * range) * 280).toFixed(2)}, 85%, ${layer * 5 + 60}%)`;
@@ -119,7 +121,7 @@ class Sunburst extends Component<SunburstProps> {
 		);
 
 		if (layer === -1 && event.type === "click") {
-			ipcRenderer.send("vfs-navigateUp");
+			dispatch(navigateUp());
 			return;
 		}
 
@@ -142,11 +144,7 @@ class Sunburst extends Component<SunburstProps> {
 							this.setHover(file);
 
 						if (event.type === "click" && file.type === DIRECTORY) {
-							ipcRenderer.send(
-								"vfs-navigateForward",
-								...searchPath,
-								file.name,
-							);
+							dispatch(navigateForward(...searchPath, file.name));
 						}
 
 						// else if ( event.type === 'dragstart' ) {

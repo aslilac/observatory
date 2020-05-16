@@ -6,20 +6,16 @@ enableMapSet();
 
 import type { VfsState, VirtualFileSystem as Vfs, RenderTree } from "../types";
 
-// type VfsState = any;
-// type Vfs = any;
-// type RenderTree = any;
-
 export type AppState = {
 	drives: Drive[];
 	vfs: Map<string, VfsState>;
-	inspecting?: string;
-	currentTree?: RenderTree;
+	inspecting: string | null;
 };
 
 const init = (): AppState => ({
 	drives: [],
 	vfs: new Map(),
+	inspecting: null,
 });
 
 // This function does nothing, and is just a semi-janky (but less janky than some
@@ -32,6 +28,7 @@ const flux = <T extends string, P = undefined, M = undefined>(action: {
 
 type Action =
 	| ReturnType<typeof propagateDriveList>
+	| ReturnType<typeof showDriveList>
 	| ReturnType<typeof createVfs>
 	| ReturnType<typeof premountVfs>
 	| ReturnType<typeof mountVfs>
@@ -39,6 +36,7 @@ type Action =
 	| ReturnType<typeof inspectVfs>
 	| ReturnType<typeof navigateUp>
 	| ReturnType<typeof navigateForward>
+	| ReturnType<typeof navigateToRoot>
 	| ReturnType<typeof navigateTo>;
 
 /**
@@ -54,6 +52,13 @@ export const propagateDriveList = (drives: Drive[]) => ({
 /**
  * @direction renderer -> main
  */
+export const showDriveList = () => ({
+	type: "mckayla.observatory.SHOW_DRIVE_LIST" as const,
+});
+
+/**
+ * @direction renderer -> main
+ */
 export const createVfs = (path: string) => ({
 	type: "mckayla.observatory.CREATE_VFS" as const,
 	payload: {
@@ -61,31 +66,23 @@ export const createVfs = (path: string) => ({
 	},
 });
 
-export const premountVfs = (path: string, vfs?: Vfs) => ({
+/**
+ * @direction main -> renderer
+ */
+export const premountVfs = (path: string) => ({
 	type: "mckayla.observatory.PREMOUNT_VFS" as const,
 	payload: {
 		path,
-		vfs,
-	},
-});
-
-/**
- * @direction main -> x
- */
-export const mountVfs = (path: string, vfs: Vfs) => ({
-	type: "mckayla.observatory.MOUNT_VFS" as const,
-	payload: {
-		path,
-		vfs,
 	},
 });
 
 /**
  * @direction main -> renderer
  */
-export const render = (tree: RenderTree) => ({
-	type: "mckayla.observatory.RENDER" as const,
+export const mountVfs = (path: string, tree: RenderTree) => ({
+	type: "mckayla.observatory.MOUNT_VFS" as const,
 	payload: {
+		path,
 		tree,
 	},
 });
@@ -93,10 +90,22 @@ export const render = (tree: RenderTree) => ({
 /**
  * @direction renderer -> main
  */
-export const inspectVfs = (vfs: string) => ({
+export const inspectVfs = (path: string) => ({
 	type: "mckayla.observatory.INSPECT_VFS" as const,
 	payload: {
-		inspecting: vfs,
+		path,
+	},
+});
+
+/**
+ * @direction main -> renderer
+ */
+export const render = (path: string, cursor: string[], tree: RenderTree) => ({
+	type: "mckayla.observatory.RENDER" as const,
+	payload: {
+		cursor,
+		path,
+		tree,
 	},
 });
 
@@ -110,11 +119,18 @@ export const navigateUp = () => ({
 /**
  * @direction renderer -> main
  */
-export const navigateForward = (into: string) => ({
+export const navigateForward = (...into: string[]) => ({
 	type: "mckayla.observatory.NAVIGATE_FORWARD" as const,
 	payload: {
 		into,
 	},
+});
+
+/**
+ * @direction renderer -> main
+ */
+export const navigateToRoot = () => ({
+	type: "mckayla.observatory.NAVIGATE_TO_ROOT" as const,
 });
 
 /**
@@ -133,27 +149,111 @@ export const reducer = (state = init(), action: Action): AppState => {
 			case "mckayla.observatory.PROPAGATE_DRIVE_LIST":
 				draft.drives = action.payload.drives;
 				break;
+			case "mckayla.observatory.SHOW_DRIVE_LIST":
+				draft.inspecting = null;
+				break;
 			case "mckayla.observatory.CREATE_VFS":
 				draft.vfs.set(action.payload.path, { status: "init" });
 				break;
 			case "mckayla.observatory.PREMOUNT_VFS":
 				draft.vfs.set(action.payload.path, {
 					status: "building",
-					// vfs: action.payload.vfs,
-					cursor: [],
 				});
 				break;
 			case "mckayla.observatory.MOUNT_VFS":
 				draft.vfs.set(action.payload.path, {
 					status: "complete",
-					// vfs: action.payload.vfs,
-					vfs: { hello: "friend" },
+					currentTree: action.payload.tree,
 					cursor: [],
 				});
 				break;
-			case "mckayla.observatory.RENDER":
-				draft.currentTree = action.payload.tree;
+			case "mckayla.observatory.INSPECT_VFS":
+				draft.inspecting = action.payload.path;
 				break;
+			case "mckayla.observatory.RENDER":
+				draft.inspecting = action.payload.path;
+				draft.vfs.set(action.payload.path, {
+					status: "complete",
+					currentTree: action.payload.tree,
+					cursor: action.payload.cursor,
+				});
+				break;
+			case "mckayla.observatory.NAVIGATE_UP": {
+				const current = draft.vfs.get(draft.inspecting);
+
+				if (current?.status !== "complete") {
+					console.error(
+						new Error(
+							"Attemted to NAVIGATE_UP on a nonexistent cursor",
+						),
+					);
+					return;
+				}
+
+				draft.vfs.set(draft.inspecting, {
+					status: "complete",
+					currentTree: null,
+					cursor: current.cursor.slice(0, -1),
+				});
+				break;
+			}
+			case "mckayla.observatory.NAVIGATE_FORWARD": {
+				const current = draft.vfs.get(draft.inspecting);
+
+				if (current?.status !== "complete") {
+					console.error(
+						new Error(
+							"Attemted to NAVIGATE_FORWARD on a nonexistent cursor",
+						),
+					);
+					return;
+				}
+
+				draft.vfs.set(draft.inspecting, {
+					status: "complete",
+					currentTree: null,
+					cursor: [...current.cursor, ...action.payload.into],
+				});
+				break;
+			}
+			case "mckayla.observatory.NAVIGATE_TO_ROOT": {
+				const current = draft.vfs.get(draft.inspecting);
+
+				if (current?.status !== "complete") {
+					console.error(
+						new Error(
+							"Attemted to NAVIGATE_TO_ROOT on a nonexistent cursor",
+						),
+					);
+					return;
+				}
+
+				draft.vfs.set(draft.inspecting, {
+					status: "complete",
+					currentTree: null,
+					cursor: [],
+				});
+				break;
+			}
+			case "mckayla.observatory.NAVIGATE_TO": {
+				const current = draft.vfs.get(draft.inspecting);
+
+				if (current?.status !== "complete") {
+					console.error(
+						new Error(
+							"Attemted to NAVIGATE_TO on a nonexistent cursor",
+						),
+					);
+					return;
+				}
+
+				draft.vfs.set(draft.inspecting, {
+					status: "complete",
+					currentTree: null,
+					cursor: action.payload.cursor,
+				});
+				break;
+			}
 		}
 	});
 };

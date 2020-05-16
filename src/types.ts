@@ -7,8 +7,8 @@ export type VfsState =
 			status: "init" | "building";
 	  }
 	| {
-			status: "building" | "complete";
-			vfs: VirtualFileSystem | { hello: "friend" };
+			status: "complete";
+			currentTree: RenderTree | null;
 			cursor: string[];
 	  };
 

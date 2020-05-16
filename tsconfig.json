@@ -1,6 +1,8 @@
 {
 	"target": "esnext",
 	"compilerOptions": {
+		"esModuleInterop": true,
+		"jsx": "react",
 		"lib": ["es2019", "es2019.array"]
 	}
 }

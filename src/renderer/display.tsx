@@ -1,13 +1,16 @@
-import { ipcRenderer } from "electron";
 import React from "react";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 
-import { AppState } from "../store/renderer";
-import Application from "./application";
+import {
+	AppState,
+	showDriveList,
+	navigateTo,
+	navigateToRoot,
+} from "../store/renderer";
 import List from "./list";
 import Sunburst from "./sunburst";
 
-import gardens from "../../gardens.config";
+import gardens, { vfs } from "../../gardens.config";
 const garden = gardens.scope("renderer");
 
 document.body.className += ` ${process.platform}`;
@@ -30,30 +33,34 @@ document.body.className += ` ${process.platform}`;
 // });
 
 export default () => {
-	const { sunburst, list, ...shared } = useSelector(
-		(state: AppState) => state.currentTree,
+	const dispatch = useDispatch();
+	const vfsState = useSelector((state: AppState) =>
+		state.vfs.get(state.inspecting),
 	);
+
+	if (vfsState.status !== "complete") {
+		return null;
+	}
+
+	const { sunburst, list, ...shared } = vfsState.currentTree;
 
 	return (
 		<>
 			<section id="fs-display-navbar">
-				<button onClick={() => ipcRenderer.send("drivelist-create")}>
+				<button onClick={() => dispatch(showDriveList())}>
 					Disks and folders
 				</button>
-				<button onClick={() => ipcRenderer.send("vfs-navigateTo")}>
+				<button onClick={() => dispatch(navigateToRoot())}>
 					{shared.name}
 				</button>
 				{shared.cursor.map((piece, key) => (
 					<button
 						key={key}
-						onClick={() => {
-							garden.log(shared.cursor.slice(0, key + 1));
-							// Way wrong, need to dispatch
-							ipcRenderer.send(
-								"vfs-navigateTo",
-								...shared.cursor.slice(0, key + 1),
-							);
-						}}
+						onClick={() =>
+							dispatch(
+								navigateTo(shared.cursor.slice(0, key + 1)),
+							)
+						}
 					>
 						{piece}
 					</button>

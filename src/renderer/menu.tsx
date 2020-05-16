@@ -1,8 +1,8 @@
-import { ipcRenderer, remote } from "electron";
+import { remote } from "electron";
 import React from "react";
 import { useSelector, useDispatch } from "react-redux";
 
-import { AppState, createVfs, mountVfs } from "../store/renderer";
+import { AppState, createVfs, inspectVfs } from "../store/renderer";
 
 export default () => {
 	const dispatch = useDispatch();
@@ -25,6 +25,7 @@ export default () => {
 		list.push(
 			<li key={path}>
 				{path} - {vfs.status}
+				<button onClick={() => dispatch(inspectVfs(path))}>View</button>
 			</li>,
 		);
 	});

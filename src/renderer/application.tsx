@@ -6,15 +6,19 @@ import Display from "./display";
 import Menu from "./menu";
 
 export default () => {
-	const tree = useSelector((state: AppState) => state.currentTree);
+	const vfsState = useSelector((state: AppState) =>
+		state.vfs.get(state.inspecting),
+	);
+
+	const viewTree = vfsState?.status === "complete" && vfsState.currentTree;
 
 	return (
 		<>
 			<div id="titlebar">
 				<h1>Observatory</h1>
 			</div>
-			<div id="application-display" className={tree && "fs"}>
-				{tree ? <Display /> : <Menu />}
+			<div id="application-display" className={viewTree && "fs"}>
+				{viewTree ? <Display /> : <Menu />}
 			</div>
 		</>
 	);

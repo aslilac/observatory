@@ -7,7 +7,7 @@ import { app, BrowserWindow } from "electron";
 import path from "path";
 import url from "url";
 
-import { premountVfs, propagateDriveList, store } from "../store/main";
+import { premountVfs, propagateDriveList, render, store } from "../store/main";
 import "./system/menu";
 import navigation from "./system/navigation";
 import "./system/theme";
@@ -17,27 +17,29 @@ import { VirtualFileSystem } from "./vfs";
 let smsr = false;
 let view: BrowserWindow = null;
 
-// TODO: Get rid of this for @mckayla/electron-redux 2.0.1
-export const stopForwarding = <T extends { meta?: object }>(action: T) => ({
-	...action,
-	meta: {
-		...action.meta,
-		scope: "local" as const,
-	},
-});
+const scans = new Map<string, VirtualFileSystem>();
 
 store.subscribe(() => {
 	console.log("checking for new inits");
 	const { vfs } = store.getState();
 
 	// another reason that immer sucks
+	// we have to copy to make it iterable
 	const copy = new Map(vfs);
+
+	// TypeScript is yelling about something dumb
+	// for (const [path, scan] of vfs) {
+	// }
 
 	copy.forEach((scan, path) => {
 		console.log("checking", scan, path);
 		if (scan.status === "init") {
+			scans.set(path, new VirtualFileSystem(path));
+			store.dispatch(premountVfs(path));
+		} else if (scan.status === "complete" && !scan.currentTree) {
+			const vfs = scans.get(path);
 			store.dispatch(
-				stopForwarding(premountVfs(path, new VirtualFileSystem(path))),
+				render(path, scan.cursor, vfs.getRenderTree(scan.cursor)),
 			);
 		}
 	});

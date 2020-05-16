@@ -1,17 +1,13 @@
-import { ipcRenderer } from "electron";
 import React, { useState } from "react";
+import { useDispatch } from "react-redux";
 
 // import backArrow from "./assets/back.svg";
+import { navigateForward } from "../store/renderer";
+import { DIRECTORY } from "../types";
 import readableSize from "./size";
 
 import gardens from "../../gardens.config";
 const garden = gardens.scope("renderer", "list");
-
-const DIRECTORY = 0;
-// const FILE = 1;
-// const SYMLINK = 2;
-// const DEVICE = 3;
-// const UNKNOWN = 4;
 
 const Back = () => (
 	<div className="back" onClick={() => history.back()}>
@@ -30,6 +26,7 @@ const Back = () => (
 );
 
 export default function List(props) {
+	const dispatch = useDispatch();
 	const [expanded, setExpanded] = useState(false);
 
 	garden.log(props);
@@ -71,10 +68,7 @@ export default function List(props) {
 						key={key}
 						onClick={() => {
 							if (file.type === DIRECTORY)
-								ipcRenderer.send(
-									"vfs-navigateForward",
-									file.name,
-								);
+								dispatch(navigateForward(file.name));
 						}}
 					>
 						{file.name}
