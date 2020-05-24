@@ -58,7 +58,8 @@ export class VirtualFileSystem {
 		list.some((device) =>
 			device.mountpoints.some((mount) => {
 				if (mount.path === location) {
-					vfs.name = mount.label || `${device.description} (${mount.path})`;
+					vfs.name =
+						mount.label || `${device.description} (${mount.path})`;
 					vfs.capacity = device.size;
 				}
 			}),
@@ -103,8 +104,10 @@ export class VirtualFileSystem {
 				} else if (stats.isDirectory()) {
 					this.counts.directories++;
 
-					if (process.platform === "linux" && entity === "/proc") return;
-					if (process.platform === "darwin" && entity === "/Volumes") return;
+					if (process.platform === "linux" && entity === "/proc")
+						return;
+					if (process.platform === "darwin" && entity === "/Volumes")
+						return;
 
 					const directory = await this._scan(entity);
 					state.files.push({
@@ -157,14 +160,17 @@ export class VirtualFileSystem {
 
 	getRenderTree(cursor: string[] = []): RenderTree {
 		const directory = this.getDirectory(cursor);
-		const isLargeEnough = (file: VfsNode) => file.size > directory.size * 0.003;
+		const isLargeEnough = (file: VfsNode) =>
+			file.size > directory.size * 0.003;
 		const sanitize = (recursive?: number) => (file: VfsNode): VfsNode => ({
 			name: file.name,
 			type: file.type,
 			size: file.size,
 			files:
 				recursive > 0 && file.type === DIRECTORY
-					? file.files.filter(isLargeEnough).map(sanitize(recursive - 1))
+					? file.files
+							.filter(isLargeEnough)
+							.map(sanitize(recursive - 1))
 					: [],
 		});
 

@@ -175,7 +175,9 @@ export const reducer = (state = init(), action: Action): AppState => {
 
 				if (current?.status !== "complete") {
 					console.error(
-						new Error("Attemted to NAVIGATE_UP on a nonexistent cursor"),
+						new Error(
+							"Attemted to NAVIGATE_UP on a nonexistent cursor",
+						),
 					);
 					return;
 				}
@@ -197,7 +199,9 @@ export const reducer = (state = init(), action: Action): AppState => {
 
 				if (current?.status !== "complete") {
 					console.error(
-						new Error("Attemted to NAVIGATE_FORWARD on a nonexistent cursor"),
+						new Error(
+							"Attemted to NAVIGATE_FORWARD on a nonexistent cursor",
+						),
 					);
 					return;
 				}
@@ -214,7 +218,9 @@ export const reducer = (state = init(), action: Action): AppState => {
 
 				if (current?.status !== "complete") {
 					console.error(
-						new Error("Attemted to NAVIGATE_TO_ROOT on a nonexistent cursor"),
+						new Error(
+							"Attemted to NAVIGATE_TO_ROOT on a nonexistent cursor",
+						),
 					);
 					return;
 				}
@@ -235,7 +241,9 @@ export const reducer = (state = init(), action: Action): AppState => {
 
 				if (current?.status !== "complete") {
 					console.error(
-						new Error("Attemted to NAVIGATE_TO on a nonexistent cursor"),
+						new Error(
+							"Attemted to NAVIGATE_TO on a nonexistent cursor",
+						),
 					);
 					return;
 				}
@@ -250,7 +258,11 @@ export const reducer = (state = init(), action: Action): AppState => {
 				const proposedCursor = action.payload.cursor;
 
 				if (currentCursor.length === proposedCursor.length) {
-					if (currentCursor.every((item, i) => item === proposedCursor[i])) {
+					if (
+						currentCursor.every(
+							(item, i) => item === proposedCursor[i],
+						)
+					) {
 						return;
 					}
 				}

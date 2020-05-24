@@ -59,7 +59,10 @@ export class Sunburst extends Component<SunburstProps> {
 		return (
 			<>
 				<canvas id="fs-display-sunburst" ref={this.canvasRef}></canvas>
-				<span id="fs-display-sunburst-float" ref={this.tooltipRef}></span>
+				<span
+					id="fs-display-sunburst-float"
+					ref={this.tooltipRef}
+				></span>
 			</>
 		);
 	}
@@ -133,13 +136,19 @@ export class Sunburst extends Component<SunburstProps> {
 						hover.style.left = `${event.clientX + 15}px`;
 						hover.style.top = `${event.clientY + 5}px`;
 
-						if (this.hoverTarget?._original !== file) this.setHover(file);
+						if (this.hoverTarget?._original !== file)
+							this.setHover(file);
 
 						if (event.type === "click" && file.type === DIRECTORY) {
 							dispatch(navigateForward(...searchPath, file.name));
 						}
-					} else if (searchPath.length < layer && file.type === DIRECTORY) {
-						const found = file.files.some(search(...searchPath, file.name));
+					} else if (
+						searchPath.length < layer &&
+						file.type === DIRECTORY
+					) {
+						const found = file.files.some(
+							search(...searchPath, file.name),
+						);
 						if (!found) this.resetHover();
 					} else {
 						// No match
@@ -189,7 +198,9 @@ export class Sunburst extends Component<SunburstProps> {
 						{target.files.slice(0, 7).map((file, index) => (
 							<li key={file.name + index}>
 								{file.name}
-								<span className="size">{readableSize(file.size)}</span>
+								<span className="size">
+									{readableSize(file.size)}
+								</span>
 							</li>
 						))}
 					</ol>
@@ -223,7 +234,8 @@ export class Sunburst extends Component<SunburstProps> {
 		canvas.height = bounds.height * dpr;
 		canvas.width = bounds.width * dpr;
 
-		const scale = (this.windowScale = Math.min(bounds.height, bounds.width) / 575);
+		const scale = (this.windowScale =
+			Math.min(bounds.height, bounds.width) / 575);
 		this._2d.scale(scale * dpr, scale * dpr);
 
 		this.pendingUpdate = true;
@@ -236,10 +248,15 @@ export class Sunburst extends Component<SunburstProps> {
 			const cx = this.bounds.width / this.windowScale / 2;
 			const cy = this.bounds.height / this.windowScale / 2;
 
-			const draw = (layer: number) => (position: number, file: AnimatedNode) => {
+			const draw = (layer: number) => (
+				position: number,
+				file: AnimatedNode,
+			) => {
 				const size = file.size / scale;
 				const state =
-					this.hoverTarget?._original === file ? this.hoverTarget.state : null;
+					this.hoverTarget?._original === file
+						? this.hoverTarget.state
+						: null;
 				this.drawShard(position, size, layer, state, file.type);
 
 				if (file.type === DIRECTORY && layer < 6) {

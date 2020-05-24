@@ -5,7 +5,10 @@ export const init = (view: BrowserWindow) => {
 		// Navigate the window back when the user hits their mouse back button
 		if (command === "browser-backward" && view.webContents.canGoBack()) {
 			view.webContents.goBack();
-		} else if (command === "browser-forward" && view.webContents.canGoForward()) {
+		} else if (
+			command === "browser-forward" &&
+			view.webContents.canGoForward()
+		) {
 			view.webContents.goForward();
 		}
 	});

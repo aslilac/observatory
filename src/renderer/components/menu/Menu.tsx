@@ -38,8 +38,13 @@ export const Menu = () => {
 					device.mountpoints.map((mount) =>
 						vfsMap.has(mount.path) ? null : (
 							<li key={mount.path}>
-								{mount.label || `${mount.path} (${device.description})`}
-								<button onClick={() => dispatch(createVfs(mount.path))}>
+								{mount.label ||
+									`${mount.path} (${device.description})`}
+								<button
+									onClick={() =>
+										dispatch(createVfs(mount.path))
+									}
+								>
 									Scan
 								</button>
 							</li>

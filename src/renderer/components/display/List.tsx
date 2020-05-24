@@ -42,13 +42,17 @@ export const List = (props: ListProps) => {
 			/> */}
 			<Back onClick={() => dispatch(navigateUp())} />
 			<h1>
-				{props.cursor.length ? props.cursor[props.cursor.length - 1] : props.name}
+				{props.cursor.length
+					? props.cursor[props.cursor.length - 1]
+					: props.name}
 				<span className="size">{readableSize(props.size)}</span>
 			</h1>
 			<ol>
 				{(expanded
 					? props.files
-					: props.files.filter((file) => file.size >= props.size / 100)
+					: props.files.filter(
+							(file) => file.size >= props.size / 100,
+					  )
 				).map((file, key) => (
 					<li
 						draggable

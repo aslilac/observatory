@@ -6,7 +6,9 @@ import { Display } from "./display/Display";
 import { Menu } from "./menu/Menu";
 
 export const Application = () => {
-	const vfsState = useSelector((state: AppState) => state.vfs.get(state.inspecting));
+	const vfsState = useSelector((state: AppState) =>
+		state.vfs.get(state.inspecting),
+	);
 
 	const viewTree = vfsState?.status === "complete";
 

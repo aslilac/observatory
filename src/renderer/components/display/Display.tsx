@@ -14,7 +14,9 @@ document.body.className += ` ${process.platform}`;
 
 export const Display = () => {
 	const dispatch = useDispatch();
-	const vfsState = useSelector((state: AppState) => state.vfs.get(state.inspecting));
+	const vfsState = useSelector((state: AppState) =>
+		state.vfs.get(state.inspecting),
+	);
 
 	if (vfsState.status !== "complete" || !vfsState.currentTree) {
 		return null;
@@ -28,12 +30,16 @@ export const Display = () => {
 				<button onClick={() => dispatch(showDriveList())}>
 					Disks and folders
 				</button>
-				<button onClick={() => dispatch(navigateToRoot())}>{shared.name}</button>
+				<button onClick={() => dispatch(navigateToRoot())}>
+					{shared.name}
+				</button>
 				{shared.cursor.map((piece, key) => (
 					<button
 						key={key}
 						onClick={() =>
-							dispatch(navigateTo(shared.cursor.slice(0, key + 1)))
+							dispatch(
+								navigateTo(shared.cursor.slice(0, key + 1)),
+							)
 						}
 					>
 						{piece}
