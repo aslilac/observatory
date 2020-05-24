@@ -1,6 +1,7 @@
 {
 	"compilerOptions": {
 		"esModuleInterop": true,
+		"moduleResolution": "node",
 		"jsx": "react",
 		"lib": ["dom", "es2019", "es2019.array"],
 		"target": "esnext"
