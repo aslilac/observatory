@@ -5,8 +5,6 @@ import path from "path";
 import { mountVfs, store } from "../store/main";
 import { DIRECTORY, FILE, RenderTree, VfsDirectory, VfsNode } from "../types";
 
-import { vfs as garden } from "../../gardens.config";
-
 export class VirtualFileSystem {
 	location: string;
 	root: VfsDirectory;
@@ -42,9 +40,9 @@ export class VirtualFileSystem {
 		await fs.stat(location);
 
 		// Start logging status while we wait
-		garden.time("vfs creation");
+		console.time("vfs creation");
 		const status = setInterval(() => {
-			garden.log(this.counts);
+			console.log(this.counts);
 		}, 5000);
 
 		const vfs = await this._scan(location);
@@ -52,16 +50,15 @@ export class VirtualFileSystem {
 
 		// Clear the logging interval post scan, and log the final results
 		clearInterval(status);
-		garden.log(this.counts);
-		garden.timeEnd("vfs creation");
+		console.log(this.counts);
+		console.timeEnd("vfs creation");
 
 		// Set the name and capacity if it's a drive (this could be better)
 		const list = await drivelist.list();
 		list.some((device) =>
 			device.mountpoints.some((mount) => {
 				if (mount.path === location) {
-					vfs.name =
-						mount.label || `${device.description} (${mount.path})`;
+					vfs.name = mount.label || `${device.description} (${mount.path})`;
 					vfs.capacity = device.size;
 				}
 			}),
@@ -82,7 +79,7 @@ export class VirtualFileSystem {
 		};
 
 		const files = await fs.readdir(location).catch((error) => {
-			garden.catch(error);
+			console.error(error);
 		});
 
 		if (!files) return state;
@@ -92,7 +89,7 @@ export class VirtualFileSystem {
 				const entity = path.join(location, name);
 				const stats = await fs
 					.lstat(entity)
-					.catch((error) => void garden.catch(error));
+					.catch((error) => console.error(error));
 
 				if (!stats) return;
 				else if (stats.isFile()) {
@@ -106,10 +103,8 @@ export class VirtualFileSystem {
 				} else if (stats.isDirectory()) {
 					this.counts.directories++;
 
-					if (process.platform === "linux" && entity === "/proc")
-						return;
-					if (process.platform === "darwin" && entity === "/Volumes")
-						return;
+					if (process.platform === "linux" && entity === "/proc") return;
+					if (process.platform === "darwin" && entity === "/Volumes") return;
 
 					const directory = await this._scan(entity);
 					state.files.push({
@@ -162,17 +157,14 @@ export class VirtualFileSystem {
 
 	getRenderTree(cursor: string[] = []): RenderTree {
 		const directory = this.getDirectory(cursor);
-		const isLargeEnough = (file: VfsNode) =>
-			file.size > directory.size * 0.003;
+		const isLargeEnough = (file: VfsNode) => file.size > directory.size * 0.003;
 		const sanitize = (recursive?: number) => (file: VfsNode): VfsNode => ({
 			name: file.name,
 			type: file.type,
 			size: file.size,
 			files:
 				recursive > 0 && file.type === DIRECTORY
-					? file.files
-							.filter(isLargeEnough)
-							.map(sanitize(recursive - 1))
+					? file.files.filter(isLargeEnough).map(sanitize(recursive - 1))
 					: [],
 		});
 

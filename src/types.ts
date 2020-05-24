@@ -18,7 +18,7 @@ export const SYMLINK = "VFS/SYMLINK";
 export const DEVICE = "VFS/DEVICE";
 export const UNKNOWN = "VFS/UNKNOWN";
 
-export type Entity =
+export type NodeType =
 	| typeof DIRECTORY
 	| typeof FILE
 	| typeof SYMLINK
@@ -48,7 +48,7 @@ export type DisplayInfo = {
 export type RenderTree = {
 	name: string;
 	cursor: string[];
-	type: Entity;
+	type: NodeType;
 	rootCapacity: number;
 	rootSize: number;
 	capacity: number;

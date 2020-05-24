@@ -4,10 +4,7 @@ const { TouchBarButton, TouchBarLabel, TouchBarSpacer } = TouchBar;
 
 import { createVfs, store } from "../../store/main";
 
-import gardens from "../../../gardens.config";
-const garden = gardens.scope("system", "touchbar");
-
-export async function init(view: BrowserWindow) {
+export const init = async (view: BrowserWindow) => {
 	const list = await drivelist();
 	view.setTouchBar(
 		new TouchBar({
@@ -16,7 +13,7 @@ export async function init(view: BrowserWindow) {
 					label: "Disks and folders",
 					backgroundColor: "#232358",
 					click() {
-						garden.log("Hello");
+						console.log("[touchbar]", "Hello");
 					},
 				}),
 				new TouchBarSpacer({
@@ -61,6 +58,6 @@ export async function init(view: BrowserWindow) {
 			],
 		}),
 	);
-}
+};
 
 export default { init };

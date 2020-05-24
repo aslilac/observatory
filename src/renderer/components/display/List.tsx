@@ -2,15 +2,12 @@ import React, { useState } from "react";
 import { useDispatch } from "react-redux";
 
 // import backArrow from "./assets/back.svg";
-import { navigateForward } from "../store/renderer";
-import { DIRECTORY } from "../types";
-import readableSize from "./size";
+import { navigateForward, navigateUp } from "../../../store/renderer";
+import { DIRECTORY, VfsNode } from "../../../types";
+import readableSize from "../../size";
 
-import gardens from "../../gardens.config";
-const garden = gardens.scope("renderer", "list");
-
-const Back = () => (
-	<div className="back" onClick={() => history.back()}>
+const Back = (props: React.HTMLAttributes<HTMLDivElement>) => (
+	<div className="back" {...props}>
 		<svg viewBox="0 0 412 412">
 			<g>
 				<g>
@@ -25,22 +22,16 @@ const Back = () => (
 	</div>
 );
 
-export default function List(props) {
+type ListProps = {
+	cursor: string[];
+	files: VfsNode[];
+	name: string;
+	size: number;
+};
+
+export const List = (props: ListProps) => {
 	const dispatch = useDispatch();
 	const [expanded, setExpanded] = useState(false);
-
-	garden.log(props);
-
-	// function onDragStart() {
-	//   titlebar.className = 'trash'
-	//   let id = event.target.id = Math.floor( Math.random() * 899999 + 100000 )
-	//   event.dataTransfer.setData( 'filePointer', id )
-	//   event.dataTransfer.effectAllowed = 'move'
-	// }
-
-	// function onDragEnd() {
-	//   titlebar.className = ''
-	// }
 
 	return (
 		<section id="fs-display-list">
@@ -49,19 +40,15 @@ export default function List(props) {
 				className="back"
 				onClick={() => history.back()}
 			/> */}
-			<Back />
+			<Back onClick={() => dispatch(navigateUp())} />
 			<h1>
-				{props.cursor.length
-					? props.cursor[props.cursor.length - 1]
-					: props.name}
+				{props.cursor.length ? props.cursor[props.cursor.length - 1] : props.name}
 				<span className="size">{readableSize(props.size)}</span>
 			</h1>
 			<ol>
 				{(expanded
 					? props.files
-					: props.files.filter(
-							(file) => file.size >= props.size / 100,
-					  )
+					: props.files.filter((file) => file.size >= props.size / 100)
 				).map((file, key) => (
 					<li
 						draggable
@@ -83,4 +70,4 @@ export default function List(props) {
 			</ol>
 		</section>
 	);
-}
+};

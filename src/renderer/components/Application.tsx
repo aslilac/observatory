@@ -1,14 +1,12 @@
 import React from "react";
 import { useSelector } from "react-redux";
 
-import { AppState } from "../store/renderer";
-import Display from "./display";
-import Menu from "./menu";
+import { AppState } from "../../store/renderer";
+import { Display } from "./display/Display";
+import { Menu } from "./menu/Menu";
 
-export default () => {
-	const vfsState = useSelector((state: AppState) =>
-		state.vfs.get(state.inspecting),
-	);
+export const Application = () => {
+	const vfsState = useSelector((state: AppState) => state.vfs.get(state.inspecting));
 
 	const viewTree = vfsState?.status === "complete";
 

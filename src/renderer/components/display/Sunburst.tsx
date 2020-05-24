@@ -1,17 +1,16 @@
 import React, { Component, RefObject } from "react";
 import ReactDOM from "react-dom";
-import { connect } from "react-redux";
 
-import { navigateUp, store, navigateForward } from "../store/renderer";
-import { DIRECTORY, VfsNode } from "../types";
-import readableSize from "./size";
+import { navigateUp, store, navigateForward } from "../../../store/renderer";
+import { DIRECTORY, NodeType, VfsNode } from "../../../types";
+import readableSize from "../../size";
 
-import gardens from "../../gardens.config";
-const garden = gardens.scope("renderer", "sunburst");
 const { dispatch } = store;
 
-const hsl = (hue: number, layer: number, min = 0, range = 1) =>
-	`hsl(${((min + hue * range) * 280).toFixed(2)}, 85%, ${layer * 5 + 60}%)`;
+const hsl = (hue: number, layer: number, min = 0, range = 1, type: NodeType) =>
+	`hsl(${((min + hue * range) * 280).toFixed(2)}, ${
+		type === DIRECTORY ? "85%" : "0%"
+	}, ${layer * 5 + 60}%)`;
 
 type AnimationState = {
 	hover: boolean;
@@ -31,7 +30,7 @@ type SunburstProps = {
 	rootSize: number;
 };
 
-class Sunburst extends Component<SunburstProps> {
+export class Sunburst extends Component<SunburstProps> {
 	canvasRef: RefObject<HTMLCanvasElement>;
 	tooltipRef: RefObject<HTMLSpanElement>;
 
@@ -57,14 +56,10 @@ class Sunburst extends Component<SunburstProps> {
 	}
 
 	render() {
-		garden.log(this.props);
 		return (
 			<>
 				<canvas id="fs-display-sunburst" ref={this.canvasRef}></canvas>
-				<span
-					id="fs-display-sunburst-float"
-					ref={this.tooltipRef}
-				></span>
+				<span id="fs-display-sunburst-float" ref={this.tooltipRef}></span>
 			</>
 		);
 	}
@@ -86,8 +81,6 @@ class Sunburst extends Component<SunburstProps> {
 		const canvas = this.canvasRef.current;
 		canvas.addEventListener("click", this.handleMouseEvents.bind(this));
 		canvas.addEventListener("mousemove", this.handleMouseEvents.bind(this));
-		// canvas.addEventListener("dragstart", this.handleMouseEvents.bind(this));
-		// canvas.addEventListener("dragend", this.handleMouseEvents.bind(this));
 	}
 
 	componentDidUpdate() {
@@ -140,51 +133,13 @@ class Sunburst extends Component<SunburstProps> {
 						hover.style.left = `${event.clientX + 15}px`;
 						hover.style.top = `${event.clientY + 5}px`;
 
-						if (this.hoverTarget?._original !== file)
-							this.setHover(file);
+						if (this.hoverTarget?._original !== file) this.setHover(file);
 
 						if (event.type === "click" && file.type === DIRECTORY) {
 							dispatch(navigateForward(...searchPath, file.name));
 						}
-
-						// else if ( event.type === 'dragstart' ) {
-						//   garden.log( 'dragging', file )
-						//   titlebar.className = 'trash'
-						//   event.dataTransfer.setData(
-						//     'text/plain', Math.floor( Math.random() * 899999 + 100000 )
-						//   )
-						//   event.dataTransfer.effectAllowed = 'move'
-						//
-						//   let canvas = document.createElement( 'canvas' )
-						//   canvas.width = canvas.height = 50
-						//
-						//   let _2d = canvas.getContext( '2d' )
-						//   _2d.lineWidth = 20
-						//   _2d.strokeStyle = '#c5e6cf'
-						//   // Outer border clockwise
-						//   _2d.beginPath()
-						//   _2d.arc( 25, 25, 10, 0, 2*Math.PI )
-						//   _2d.stroke()
-						//
-						//   event.dataTransfer.setDragImage( canvas, 25, 25 )
-						// }
-						//
-						// else if ( event.type === 'dragend' ) {
-						//   titlebar.className = ''
-						// }
-					} else if (
-						searchPath.length < layer &&
-						file.type === DIRECTORY
-					) {
-						if (!file.files)
-							throw garden.error(
-								"Directories have to have files!",
-								file,
-							);
-
-						const found = file.files.some(
-							search(...searchPath, file.name),
-						);
+					} else if (searchPath.length < layer && file.type === DIRECTORY) {
+						const found = file.files.some(search(...searchPath, file.name));
 						if (!found) this.resetHover();
 					} else {
 						// No match
@@ -234,9 +189,7 @@ class Sunburst extends Component<SunburstProps> {
 						{target.files.slice(0, 7).map((file, index) => (
 							<li key={file.name + index}>
 								{file.name}
-								<span className="size">
-									{readableSize(file.size)}
-								</span>
+								<span className="size">{readableSize(file.size)}</span>
 							</li>
 						))}
 					</ol>
@@ -270,8 +223,7 @@ class Sunburst extends Component<SunburstProps> {
 		canvas.height = bounds.height * dpr;
 		canvas.width = bounds.width * dpr;
 
-		const scale = (this.windowScale =
-			Math.min(bounds.height, bounds.width) / 575);
+		const scale = (this.windowScale = Math.min(bounds.height, bounds.width) / 575);
 		this._2d.scale(scale * dpr, scale * dpr);
 
 		this.pendingUpdate = true;
@@ -284,16 +236,11 @@ class Sunburst extends Component<SunburstProps> {
 			const cx = this.bounds.width / this.windowScale / 2;
 			const cy = this.bounds.height / this.windowScale / 2;
 
-			const draw = (layer: number) => (
-				position: number,
-				file: AnimatedNode,
-			) => {
+			const draw = (layer: number) => (position: number, file: AnimatedNode) => {
 				const size = file.size / scale;
 				const state =
-					this.hoverTarget?._original === file
-						? this.hoverTarget.state
-						: null;
-				this.drawShard(position, size, layer, state);
+					this.hoverTarget?._original === file ? this.hoverTarget.state : null;
+				this.drawShard(position, size, layer, state, file.type);
 
 				if (file.type === DIRECTORY && layer < 6) {
 					file.files.reduce(draw(layer + 1), position);
@@ -328,6 +275,7 @@ class Sunburst extends Component<SunburstProps> {
 		size: number,
 		layer: number,
 		state: AnimationState,
+		type: NodeType,
 	) {
 		const baseAngle = 5 / 8;
 		// let baseAngle = 0
@@ -370,6 +318,7 @@ class Sunburst extends Component<SunburstProps> {
 			layer,
 			this.props.position,
 			this.props.size / this.props.rootSize,
+			type,
 		);
 		this._2d.strokeStyle = "#3d3350";
 
@@ -378,5 +327,3 @@ class Sunburst extends Component<SunburstProps> {
 		this._2d.stroke(outline);
 	}
 }
-
-export default Sunburst;

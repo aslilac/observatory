@@ -1,10 +1,10 @@
-import { Drive } from "drivelist";
+import type { Drive } from "drivelist";
 import produce, { enableMapSet } from "immer";
 
 // immer sucks apparently
 enableMapSet();
 
-import type { VfsState, VirtualFileSystem as Vfs, RenderTree } from "../types";
+import type { VfsState, RenderTree } from "../types";
 
 export type AppState = {
 	drives: Drive[];
@@ -18,15 +18,7 @@ const init = (): AppState => ({
 	inspecting: null,
 });
 
-// This function does nothing, and is just a semi-janky (but less janky than some
-// alternatives) way to esnure our action creators return flux actions.
-const flux = <T extends string, P = undefined, M = undefined>(action: {
-	type: T;
-	payload?: P;
-	meta?: M;
-}) => action;
-
-type Action =
+export type Action =
 	| ReturnType<typeof propagateDriveList>
 	| ReturnType<typeof showDriveList>
 	| ReturnType<typeof createVfs>
@@ -183,9 +175,7 @@ export const reducer = (state = init(), action: Action): AppState => {
 
 				if (current?.status !== "complete") {
 					console.error(
-						new Error(
-							"Attemted to NAVIGATE_UP on a nonexistent cursor",
-						),
+						new Error("Attemted to NAVIGATE_UP on a nonexistent cursor"),
 					);
 					return;
 				}
@@ -207,9 +197,7 @@ export const reducer = (state = init(), action: Action): AppState => {
 
 				if (current?.status !== "complete") {
 					console.error(
-						new Error(
-							"Attemted to NAVIGATE_FORWARD on a nonexistent cursor",
-						),
+						new Error("Attemted to NAVIGATE_FORWARD on a nonexistent cursor"),
 					);
 					return;
 				}
@@ -226,9 +214,7 @@ export const reducer = (state = init(), action: Action): AppState => {
 
 				if (current?.status !== "complete") {
 					console.error(
-						new Error(
-							"Attemted to NAVIGATE_TO_ROOT on a nonexistent cursor",
-						),
+						new Error("Attemted to NAVIGATE_TO_ROOT on a nonexistent cursor"),
 					);
 					return;
 				}
@@ -249,9 +235,7 @@ export const reducer = (state = init(), action: Action): AppState => {
 
 				if (current?.status !== "complete") {
 					console.error(
-						new Error(
-							"Attemted to NAVIGATE_TO on a nonexistent cursor",
-						),
+						new Error("Attemted to NAVIGATE_TO on a nonexistent cursor"),
 					);
 					return;
 				}
@@ -266,11 +250,7 @@ export const reducer = (state = init(), action: Action): AppState => {
 				const proposedCursor = action.payload.cursor;
 
 				if (currentCursor.length === proposedCursor.length) {
-					if (
-						currentCursor.every(
-							(item, i) => item === proposedCursor[i],
-						)
-					) {
+					if (currentCursor.every((item, i) => item === proposedCursor[i])) {
 						return;
 					}
 				}

@@ -27,10 +27,9 @@
 		}
 	},
 	"dependencies": {
-		"@mckayla/electron-redux": "^2.0.0",
+		"@mckayla/electron-redux": "^2.0.1",
 		"drivelist": "^8.0.6",
 		"electron-squirrel-startup": "^1.0.0",
-		"gardens": "^4.2.0",
 		"immer": "^6.0.3",
 		"react": "^16.13.0",
 		"react-dom": "^16.13.0",
@@ -57,10 +56,9 @@
 	},
 	"scripts": {
 		"build": "yarn build:main && yarn build:renderer",
-		"build:dead": "yarn build:main --no-cache && yarn build:renderer --no-cache",
-		"build:main": "parcel build --target main src/main.ts",
+		"build:main": "parcel build --target main src/main/index.ts",
 		"build:renderer": "parcel build --target renderer src/renderer/index.html",
-		"dev": "yarn build:dead && electron-forge start",
+		"dev": "yarn build && electron-forge start",
 		"fmt": "prettier --ignore-path .gitignore --write .",
 		"forge": "yarn build && electron-forge make",
 		"lint": "eslint --ext .ts,.tsx ."

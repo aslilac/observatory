@@ -2,9 +2,6 @@ import { Menu, shell } from "electron";
 
 import showAboutWindow from "./about";
 
-import gardens from "../../../gardens.config";
-const garden = gardens.scope("system", "menu");
-
 const template = [
 	// { role: 'appMenu' }
 	...(process.platform === "darwin"
@@ -72,9 +69,7 @@ const template = [
 			{
 				label: "Visit GitHub",
 				click() {
-					shell.openExternal(
-						"https://github.com/partheseas/observatory",
-					);
+					shell.openExternal("https://github.com/partheseas/observatory");
 				},
 			},
 			{

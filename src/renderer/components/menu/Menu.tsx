@@ -2,9 +2,9 @@ import { remote } from "electron";
 import React from "react";
 import { useSelector, useDispatch } from "react-redux";
 
-import { AppState, createVfs, inspectVfs } from "../store/renderer";
+import { AppState, createVfs, inspectVfs } from "../../../store/renderer";
 
-export default () => {
+export const Menu = () => {
 	const dispatch = useDispatch();
 	const drives = useSelector((state: AppState) => state.drives);
 	const vfsMap = useSelector((state: AppState) => state.vfs);
@@ -38,13 +38,8 @@ export default () => {
 					device.mountpoints.map((mount) =>
 						vfsMap.has(mount.path) ? null : (
 							<li key={mount.path}>
-								{mount.label ||
-									`${mount.path} (${device.description})`}
-								<button
-									onClick={() =>
-										dispatch(createVfs(mount.path))
-									}
-								>
+								{mount.label || `${mount.path} (${device.description})`}
+								<button onClick={() => dispatch(createVfs(mount.path))}>
 									Scan
 								</button>
 							</li>
