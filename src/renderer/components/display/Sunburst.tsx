@@ -7,10 +7,18 @@ import readableSize from "../../size";
 
 const { dispatch } = store;
 
-const hsl = (hue: number, layer: number, min = 0, range = 1, type: NodeType) =>
-	`hsl(${((min + hue * range) * 280).toFixed(2)}, ${
-		type === DIRECTORY ? "85%" : "0%"
-	}, ${layer * 5 + 60}%)`;
+const hsl = (
+	hue: number,
+	layer: number,
+	min = 0,
+	range = 1,
+	type: NodeType,
+) => {
+	const h = ((min + hue * range) * 280).toFixed(2);
+	const s = type === DIRECTORY ? "85%" : "0%";
+	const l = type === DIRECTORY ? layer * 5 + 60 : 35;
+	return `hsl(${h}, ${s}, ${l}%)`;
+};
 
 type AnimationState = {
 	hover: boolean;

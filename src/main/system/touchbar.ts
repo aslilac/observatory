@@ -2,7 +2,8 @@ import { list as drivelist } from "drivelist";
 import { BrowserWindow, dialog, TouchBar } from "electron";
 const { TouchBarButton, TouchBarLabel, TouchBarSpacer } = TouchBar;
 
-import { createVfs, store } from "../../store/main";
+import { createVfs, showDriveList, store } from "../../store/main";
+const { dispatch } = store;
 
 export const init = async (view: BrowserWindow) => {
 	const list = await drivelist();
@@ -12,9 +13,7 @@ export const init = async (view: BrowserWindow) => {
 				new TouchBarButton({
 					label: "Disks and folders",
 					backgroundColor: "#232358",
-					click() {
-						console.log("[touchbar]", "Hello");
-					},
+					click: () => dispatch(showDriveList()),
 				}),
 				new TouchBarSpacer({
 					size: "large",
@@ -31,9 +30,7 @@ export const init = async (view: BrowserWindow) => {
 									mount.label ||
 									`${mount.path} (${device.description})`,
 								backgroundColor: "#9680ed",
-								async click() {
-									store.dispatch(createVfs(mount.path));
-								},
+								click: () => dispatch(createVfs(mount.path)),
 							}),
 					),
 				),
@@ -43,13 +40,16 @@ export const init = async (view: BrowserWindow) => {
 				new TouchBarButton({
 					label: "Scan directory",
 					backgroundColor: "#b0a0ec",
-					async click() {
+					click: async () => {
 						const result = await dialog.showOpenDialog({
 							properties: ["openDirectory"],
 						});
 
-						if (!result.canceled)
-							store.dispatch(createVfs(result.filePaths[0]));
+						if (!result.canceled) {
+							result.filePaths.forEach((path) =>
+								dispatch(createVfs(path)),
+							);
+						}
 					},
 				}),
 				new TouchBarSpacer({

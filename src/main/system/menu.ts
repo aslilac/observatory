@@ -88,9 +88,7 @@ const template = [
 						{ type: "separator" },
 						{
 							label: "About Observatory",
-							click() {
-								showAboutWindow();
-							},
+							click: () => showAboutWindow(),
 						},
 				  ]),
 		],

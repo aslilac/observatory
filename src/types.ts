@@ -8,8 +8,9 @@ export type VfsState =
 	  }
 	| {
 			status: "complete";
-			currentTree: RenderTree | null;
 			cursor: string[];
+			currentTree: RenderTree | null;
+			outOfDate: boolean;
 	  };
 
 export const DIRECTORY = "VFS/DIRECTORY";

@@ -155,8 +155,9 @@ export const reducer = (state = init(), action: Action): AppState => {
 			case "mckayla.observatory.MOUNT_VFS":
 				draft.vfs.set(action.payload.path, {
 					status: "complete",
-					currentTree: action.payload.tree,
 					cursor: [],
+					currentTree: action.payload.tree,
+					outOfDate: false,
 				});
 				break;
 			case "mckayla.observatory.INSPECT_VFS":
@@ -166,8 +167,9 @@ export const reducer = (state = init(), action: Action): AppState => {
 				draft.inspecting = action.payload.path;
 				draft.vfs.set(action.payload.path, {
 					status: "complete",
-					currentTree: action.payload.tree,
 					cursor: action.payload.cursor,
+					currentTree: action.payload.tree,
+					outOfDate: false,
 				});
 				break;
 			case "mckayla.observatory.NAVIGATE_UP": {
@@ -189,8 +191,9 @@ export const reducer = (state = init(), action: Action): AppState => {
 
 				draft.vfs.set(draft.inspecting, {
 					status: "complete",
-					currentTree: null,
 					cursor: current.cursor.slice(0, -1),
+					currentTree: current.currentTree,
+					outOfDate: true,
 				});
 				break;
 			}
@@ -208,8 +211,9 @@ export const reducer = (state = init(), action: Action): AppState => {
 
 				draft.vfs.set(draft.inspecting, {
 					status: "complete",
-					currentTree: null,
 					cursor: [...current.cursor, ...action.payload.into],
+					currentTree: current.currentTree,
+					outOfDate: true,
 				});
 				break;
 			}
@@ -231,8 +235,9 @@ export const reducer = (state = init(), action: Action): AppState => {
 
 				draft.vfs.set(draft.inspecting, {
 					status: "complete",
-					currentTree: null,
 					cursor: [],
+					currentTree: current.currentTree,
+					outOfDate: true,
 				});
 				break;
 			}
@@ -269,8 +274,9 @@ export const reducer = (state = init(), action: Action): AppState => {
 
 				draft.vfs.set(draft.inspecting, {
 					status: "complete",
-					currentTree: null,
 					cursor: action.payload.cursor,
+					currentTree: current.currentTree,
+					outOfDate: true,
 				});
 				break;
 			}

@@ -13,6 +13,7 @@ import navigation from "./system/navigation";
 import "./system/theme";
 import touchbar from "./system/touchbar";
 import { VirtualFileSystem } from "./vfs";
+const { dispatch } = store;
 
 let smsr = false;
 let view: BrowserWindow = null;
@@ -35,12 +36,10 @@ store.subscribe(() => {
 		console.log("checking", scan, path);
 		if (scan.status === "init") {
 			scans.set(path, new VirtualFileSystem(path));
-			store.dispatch(premountVfs(path));
-		} else if (scan.status === "complete" && !scan.currentTree) {
+			dispatch(premountVfs(path));
+		} else if (scan.status === "complete" && scan.outOfDate) {
 			const vfs = scans.get(path);
-			store.dispatch(
-				render(path, scan.cursor, vfs.getRenderTree(scan.cursor)),
-			);
+			dispatch(render(path, scan.cursor, vfs.getRenderTree(scan.cursor)));
 		}
 	});
 });
@@ -92,12 +91,11 @@ const createWindow = async () => {
 	);
 
 	// Prevent seeing an unpopulated screen.
-	view.on("ready-to-show", () => {
+	view.on("ready-to-show", async () => {
 		view.show();
 		// Look up drives and propagate them in Redux
-		drivelist.list().then((drives) => {
-			store.dispatch(propagateDriveList(drives));
-		});
+		const drives = await drivelist.list();
+		dispatch(propagateDriveList(drives));
 	});
 
 	// Emitted when the window is closed.
