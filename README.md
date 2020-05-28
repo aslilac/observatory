@@ -65,6 +65,7 @@ regression in v2.
 
 ### Goals
 
-Full scan should take less than 30 seconds on a recent/decent MacBook Pro.
+Full scan _should_ take less than 30 seconds on a recent/decent MacBook Pro. It
+currently takes much longer.
 
 -   Currently takes about 60 seconds on my MacBook Pro and 25.5 seconds on my Windows desktop

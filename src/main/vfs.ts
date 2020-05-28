@@ -106,8 +106,13 @@ export class VirtualFileSystem {
 
 					if (process.platform === "linux" && entity === "/proc")
 						return;
-					if (process.platform === "darwin" && entity === "/Volumes")
-						return;
+					if (process.platform === "darwin")
+						if (
+							entity === "/Volumes" ||
+							entity === "/System/Volumes" ||
+							entity.includes("/Templates/Data/")
+						)
+							return;
 
 					const directory = await this._scan(entity);
 					state.files.push({
