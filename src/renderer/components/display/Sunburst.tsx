@@ -138,7 +138,6 @@ export class Sunburst extends Component<SunburstProps> {
 			const size = file.size / scale;
 			if (position <= t) {
 				if (position + size >= t) {
-					console.log(layer, searchPath.length, file.type);
 					if (layer === searchPath.length) {
 						const hover = this.tooltipRef.current;
 						hover.style.left = `${event.clientX + 15}px`;

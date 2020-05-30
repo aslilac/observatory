@@ -1,7 +1,6 @@
 // Handle initial platform setup before we do any heavy lifting
 import "./platform/windows";
 
-// import { stopForwarding } from "@mckayla/electron-redux";
 import * as drivelist from "drivelist";
 import { app, BrowserWindow } from "electron";
 import path from "path";
@@ -33,7 +32,15 @@ store.subscribe(() => {
 	// }
 
 	copy.forEach((scan, path) => {
-		console.log("checking", scan, path);
+		console.log(
+			"checking",
+			path,
+			// May or may not add a function like this to the next release of
+			// electron-redux
+			Object.fromEntries(
+				Object.entries(scan).filter(([key]) => key !== "currentTree"),
+			),
+		);
 		if (scan.status === "init") {
 			scans.set(path, new VirtualFileSystem(path));
 			dispatch(premountVfs(path));

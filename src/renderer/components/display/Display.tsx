@@ -1,11 +1,12 @@
 import React from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 
 import {
 	AppState,
-	showDriveList,
+	dispatch,
 	navigateTo,
 	navigateToRoot,
+	showDriveList,
 } from "../../../store/renderer";
 import { List } from "./List";
 import { Sunburst } from "./Sunburst";
@@ -13,7 +14,6 @@ import { Sunburst } from "./Sunburst";
 document.body.className += ` ${process.platform}`;
 
 export const Display = () => {
-	const dispatch = useDispatch();
 	const vfsState = useSelector((state: AppState) =>
 		state.vfs.get(state.inspecting),
 	);

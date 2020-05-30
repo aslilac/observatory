@@ -1,23 +1,27 @@
 import { remote } from "electron";
-import React from "react";
-import { useSelector, useDispatch } from "react-redux";
+import React, { useCallback } from "react";
+import { useSelector } from "react-redux";
 
-import { AppState, createVfs, inspectVfs } from "../../../store/renderer";
+import {
+	AppState,
+	createVfs,
+	dispatch,
+	inspectVfs,
+} from "../../../store/renderer";
 
 export const Menu = () => {
-	const dispatch = useDispatch();
 	const drives = useSelector((state: AppState) => state.drives);
 	const vfsMap = useSelector((state: AppState) => state.vfs);
 
-	console.log(drives, vfsMap);
-
-	const selectDirectory = async () => {
+	const selectDirectory = useCallback(async () => {
 		const result = await remote.dialog.showOpenDialog({
 			properties: ["openDirectory"],
 		});
 
-		if (!result.canceled) dispatch(createVfs(result.filePaths[0]));
-	};
+		if (!result.canceled) {
+			result.filePaths.forEach((path) => dispatch(createVfs(path)));
+		}
+	}, [dispatch]);
 
 	const list = [];
 
@@ -25,7 +29,12 @@ export const Menu = () => {
 		list.push(
 			<li key={path}>
 				{path} - {vfs.status}
-				<button onClick={() => dispatch(inspectVfs(path))}>View</button>
+				<button
+					onClick={() => dispatch(inspectVfs(path))}
+					disabled={vfs.status !== "complete"}
+				>
+					View
+				</button>
 			</li>,
 		);
 	});

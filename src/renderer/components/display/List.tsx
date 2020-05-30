@@ -1,8 +1,7 @@
 import React, { useState } from "react";
-import { useDispatch } from "react-redux";
 
 // import backArrow from "./assets/back.svg";
-import { navigateForward, navigateUp } from "../../../store/renderer";
+import { dispatch, navigateForward, navigateUp } from "../../../store/renderer";
 import { DIRECTORY, VfsNode } from "../../../types";
 import readableSize from "../../size";
 
@@ -30,7 +29,6 @@ type ListProps = {
 };
 
 export const List = (props: ListProps) => {
-	const dispatch = useDispatch();
 	const [expanded, setExpanded] = useState(false);
 
 	return (
