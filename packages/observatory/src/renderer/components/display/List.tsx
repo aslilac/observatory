@@ -2,8 +2,7 @@ import React, { useState } from "react";
 
 // import backArrow from "./assets/back.svg";
 import { dispatch, navigateForward, navigateUp } from "../../../store/renderer";
-import { DIRECTORY, VfsNode } from "../../../types";
-import readableSize from "../../size";
+import { readableSize } from "../../util";
 
 const Back = (props: React.HTMLAttributes<HTMLDivElement>) => (
 	<div className="back" {...props}>
@@ -23,7 +22,7 @@ const Back = (props: React.HTMLAttributes<HTMLDivElement>) => (
 
 type ListProps = {
 	cursor: string[];
-	files: VfsNode[];
+	files: Ob.VfsNode[];
 	name: string;
 	size: number;
 };
@@ -56,7 +55,7 @@ export const List = (props: ListProps) => {
 						draggable
 						key={key}
 						onClick={() => {
-							if (file.type === DIRECTORY)
+							if (file.type === "directory")
 								dispatch(navigateForward(file.name));
 						}}
 					>

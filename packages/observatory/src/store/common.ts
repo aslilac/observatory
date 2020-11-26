@@ -4,11 +4,9 @@ import produce, { enableMapSet } from "immer";
 // immer sucks apparently
 enableMapSet();
 
-import type { VfsState, RenderTree } from "../types";
-
 export type AppState = {
 	drives: Drive[];
-	vfs: Map<string, VfsState>;
+	vfs: Map<string, Ob.VfsState>;
 	inspecting: string | null;
 };
 
@@ -71,7 +69,7 @@ export const premountVfs = (path: string) => ({
 /**
  * @direction main -> renderer
  */
-export const mountVfs = (path: string, tree: RenderTree) => ({
+export const mountVfs = (path: string, tree: Ob.RenderTree) => ({
 	type: "mckayla.observatory.MOUNT_VFS" as const,
 	payload: {
 		path,
@@ -92,7 +90,11 @@ export const inspectVfs = (path: string) => ({
 /**
  * @direction main -> renderer
  */
-export const render = (path: string, cursor: string[], tree: RenderTree) => ({
+export const render = (
+	path: string,
+	cursor: string[],
+	tree: Ob.RenderTree,
+) => ({
 	type: "mckayla.observatory.RENDER" as const,
 	payload: {
 		cursor,

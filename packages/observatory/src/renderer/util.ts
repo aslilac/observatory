@@ -1,6 +1,6 @@
 const suffixes = ["bytes", "KB", "MB", "GB", "TB", "PB"];
 
-export default (size: number) => {
+export const readableSize = (size: number) => {
 	// Initialized separately instead of with the for loop because
 	// we need to use the value after, and I don't want to use var.
 	let exp = 0;

@@ -5,9 +5,7 @@
 		"lib": ["dom", "es2020"],
 		"esModuleInterop": true,
 		"moduleResolution": "node",
-		"jsx": "react-jsxdev",
-		// "strict": true,
-		// "noUncheckedIndexedAccess": true
+		"jsx": "preserve"
 	},
-	"include": ["src/**/*"]
+	"include": ["src/@types/**/*.d.ts", "src/**/*"]
 }

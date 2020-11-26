@@ -1,0 +1,61 @@
+{
+	"name": "observatory",
+	"version": "0.9.0",
+	"description": "Disk usage analyzer",
+	"main": "target/main/index.js",
+	"renderer": "target/renderer/index.html",
+	"author": "McKayla Washburn",
+	"license": "MIT",
+	"repository": "https://github.com/partheseas/observatory",
+	"bugs": "https://github.com/partheseas/observatory/issues",
+	"config": {
+		"forge": "forge.config.js"
+	},
+	"targets": {
+		"main": {
+			"context": "electron-main",
+			"engines": {
+				"electron": ">= 12.x.x"
+			}
+		},
+		"renderer": {
+			"context": "electron-renderer",
+			"publicUrl": ".",
+			"engines": {
+				"electron": ">= 12.x.x"
+			}
+		}
+	},
+	"dependencies": {
+		"@mckayla/electron-redux": "^2.0.1",
+		"drivelist": "^8.0.6",
+		"electron-squirrel-startup": "^1.0.0",
+		"immer": "^8.0.0",
+		"react": "^17.0.1",
+		"react-dom": "^17.0.1",
+		"react-redux": "^7.2.0",
+		"redux": "^4.0.5"
+	},
+	"devDependencies": {
+		"@electron-forge/cli": "^6.0.0-beta.54",
+		"@electron-forge/maker-dmg": "^6.0.0-beta.54",
+		"@electron-forge/maker-squirrel": "^6.0.0-beta.54",
+		"@types/react": "^17.0.0",
+		"@types/react-dom": "^17.0.0",
+		"@types/react-redux": "^7.1.7",
+		"electron": "^12.0.0-beta.3",
+		"parcel": "^2.0.0-nightly.400",
+		"prettier": "^2.2.0",
+		"sass": "^1.29.0"
+	},
+	"scripts": {
+		"build": "yarn build:main && yarn build:renderer",
+		"build:main": "parcel build --target main src/main/index.ts",
+		"build:renderer": "parcel build --target renderer src/renderer/index.html",
+		"dev": "yarn build && electron-forge start",
+		"fmt": "prettier --ignore-path .gitignore --write .",
+		"forge": "yarn build && electron-forge make",
+		"lint": "tsc -p . --noEmit && eslint --ext .ts,.tsx .",
+		"test": "tsc -p . --noEmit && jest"
+	}
+}

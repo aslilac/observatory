@@ -3,11 +3,10 @@ import { promises as fs } from "fs";
 import path from "path";
 
 import { mountVfs, store } from "../store/main";
-import { DIRECTORY, FILE, RenderTree, VfsDirectory, VfsNode } from "../types";
 
 export class VirtualFileSystem {
 	location: string;
-	root: VfsDirectory;
+	root: Ob.VfsDirectory;
 
 	counts: {
 		files: number;
@@ -71,9 +70,9 @@ export class VirtualFileSystem {
 		store.dispatch(mountVfs(location, tree));
 	}
 
-	async _scan(location: string): Promise<VfsDirectory> {
-		const state: VfsDirectory = {
-			type: DIRECTORY,
+	async _scan(location: string): Promise<Ob.VfsDirectory> {
+		const state: Ob.VfsDirectory = {
+			type: "directory",
 			name: "MISSING_NO",
 			size: 0,
 			files: [],
@@ -96,7 +95,7 @@ export class VirtualFileSystem {
 				else if (stats.isFile()) {
 					this.counts.files++;
 					state.files.push({
-						type: FILE,
+						type: "file",
 						name,
 						size: stats.size,
 					});
@@ -146,7 +145,7 @@ export class VirtualFileSystem {
 		let current = this.root;
 		const correct = cursor.every((piece) =>
 			current.files.some((file) => {
-				if (file.name === piece && file.type === DIRECTORY) {
+				if (file.name === piece && file.type === "directory") {
 					current = file;
 
 					return true;
@@ -163,16 +162,18 @@ export class VirtualFileSystem {
 		);
 	}
 
-	getRenderTree(cursor: string[] = []): RenderTree {
+	getRenderTree(cursor: string[] = []): Ob.RenderTree {
 		const directory = this.getDirectory(cursor);
-		const isLargeEnough = (file: VfsNode) =>
+		const isLargeEnough = (file: Ob.VfsNode) =>
 			file.size > directory.size * 0.003;
-		const sanitize = (recursive?: number) => (file: VfsNode): VfsNode => ({
+		const sanitize = (recursive?: number) => (
+			file: Ob.VfsNode,
+		): Ob.VfsNode => ({
 			name: file.name,
 			type: file.type,
 			size: file.size,
 			files:
-				recursive > 0 && file.type === DIRECTORY
+				recursive > 0 && file.type === "directory"
 					? file.files
 							.filter(isLargeEnough)
 							.map(sanitize(recursive - 1))
@@ -183,7 +184,7 @@ export class VirtualFileSystem {
 			name: this.root.name,
 			cursor,
 
-			type: DIRECTORY,
+			type: "directory",
 			rootCapacity: this.root.capacity || this.root.size,
 			rootSize: this.root.size,
 			capacity: directory.capacity || directory.size,

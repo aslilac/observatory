@@ -22,10 +22,11 @@ export const init = (view: BrowserWindow) => {
 		}
 	});
 
-	// TODO: This seems deprecated?
-	view.on("will-navigate", (event) => {
-		event.preventDefault();
-	});
+	// TODO This seems deprecated?
+	// XXX: wth is going on here, clean this up plz
+	// view.on("will-navigate", (event) => {
+	// 	event.preventDefault();
+	// });
 
 	view.on("enter-full-screen", () => {});
 

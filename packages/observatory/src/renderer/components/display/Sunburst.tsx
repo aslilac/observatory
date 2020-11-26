@@ -1,22 +1,19 @@
 import React, { Component, RefObject } from "react";
 import ReactDOM from "react-dom";
 
-import { navigateUp, store, navigateForward } from "../../../store/renderer";
-import { DIRECTORY, NodeType, VfsNode } from "../../../types";
-import readableSize from "../../size";
-
-const { dispatch } = store;
+import { dispatch, navigateUp, navigateForward } from "../../../store/renderer";
+import { readableSize } from "../../util";
 
 const hsl = (
 	hue: number,
 	layer: number,
 	min = 0,
 	range = 1,
-	type: NodeType,
+	type: Ob.NodeType,
 ) => {
 	const h = ((min + hue * range) * 280).toFixed(2);
-	const s = type === DIRECTORY ? "85%" : "0%";
-	const l = type === DIRECTORY ? layer * 5 + 60 : 35;
+	const s = type === "directory" ? "85%" : "0%";
+	const l = type === "directory" ? layer * 5 + 60 : 35;
 	return `hsl(${h}, ${s}, ${l}%)`;
 };
 
@@ -25,14 +22,14 @@ type AnimationState = {
 	hoverAnimation: number;
 };
 
-type AnimatedNode = VfsNode & {
+type AnimatedNode = Ob.VfsNode & {
 	state?: AnimationState;
 	_original?: AnimatedNode;
 };
 
 type SunburstProps = {
 	capacity: number;
-	files: VfsNode[];
+	files: Ob.VfsNode[];
 	size: number;
 	position: number;
 	rootSize: number;
@@ -146,12 +143,15 @@ export class Sunburst extends Component<SunburstProps> {
 						if (this.hoverTarget?._original !== file)
 							this.setHover(file);
 
-						if (event.type === "click" && file.type === DIRECTORY) {
+						if (
+							event.type === "click" &&
+							file.type === "directory"
+						) {
 							dispatch(navigateForward(...searchPath, file.name));
 						}
 					} else if (
 						searchPath.length < layer &&
-						file.type === DIRECTORY
+						file.type === "directory"
 					) {
 						const found = file.files.some(
 							search(...searchPath, file.name),
@@ -200,7 +200,7 @@ export class Sunburst extends Component<SunburstProps> {
 				<span className="size">{readableSize(target.size)}</span>
 				<br />
 
-				{target.type === DIRECTORY && target.files.length > 0 && (
+				{target.type === "directory" && target.files.length > 0 && (
 					<ol>
 						{target.files.slice(0, 7).map((file, index) => (
 							<li key={file.name + index}>
@@ -266,7 +266,7 @@ export class Sunburst extends Component<SunburstProps> {
 						: null;
 				this.drawShard(position, size, layer, state, file.type);
 
-				if (file.type === DIRECTORY && layer < 6) {
+				if (file.type === "directory" && layer < 6) {
 					file.files.reduce(draw(layer + 1), position);
 				}
 
@@ -299,7 +299,7 @@ export class Sunburst extends Component<SunburstProps> {
 		size: number,
 		layer: number,
 		state: AnimationState,
-		type: NodeType,
+		type: Ob.NodeType,
 	) {
 		const baseAngle = 5 / 8;
 		// let baseAngle = 0
