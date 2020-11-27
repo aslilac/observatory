@@ -6,13 +6,22 @@ import { app, BrowserWindow } from "electron";
 import path from "path";
 import url from "url";
 
-import { premountVfs, propagateDriveList, render, store } from "../store/main";
+import {
+	dispatch,
+	premountVfs,
+	propagateDriveList,
+	render,
+	store,
+} from "../store/main";
 import "./system/menu";
 import navigation from "./system/navigation";
 import "./system/theme";
 import touchbar from "./system/touchbar";
 import { VirtualFileSystem } from "./vfs";
-const { dispatch } = store;
+
+import * as telescope from "telescope";
+
+console.log("neon: ", telescope.hello());
 
 let smsr = false;
 let view: BrowserWindow = null;

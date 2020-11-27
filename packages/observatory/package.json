@@ -43,9 +43,8 @@
 		"@types/react": "^17.0.0",
 		"@types/react-dom": "^17.0.0",
 		"@types/react-redux": "^7.1.7",
-		"electron": "^12.0.0-beta.3",
+		"electron-nightly": "^13.0.0-nightly.20201127",
 		"parcel": "^2.0.0-nightly.400",
-		"prettier": "^2.2.0",
 		"sass": "^1.29.0"
 	},
 	"scripts": {
@@ -53,7 +52,6 @@
 		"build:main": "parcel build --target main src/main/index.ts",
 		"build:renderer": "parcel build --target renderer src/renderer/index.html",
 		"dev": "yarn build && electron-forge start",
-		"fmt": "prettier --ignore-path .gitignore --write .",
 		"forge": "yarn build && electron-forge make",
 		"lint": "tsc -p . --noEmit && eslint --ext .ts,.tsx .",
 		"test": "tsc -p . --noEmit && jest"

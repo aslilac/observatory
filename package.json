@@ -1,6 +1,6 @@
 {
 	"private": true,
-	"packages": [
+	"workspaces": [
 		"packages/*"
 	],
 	"repository": "https://github.com/partheseas/observatory",
@@ -10,17 +10,12 @@
 		"@typescript-eslint/parser": "^4.8.0",
 		"eslint": "^7.14.0",
 		"eslint-plugin-react": "^7.21.5",
+		"prettier": "^2.2.0",
 		"source-map-support": "^0.5.19",
 		"typescript": "^4.1.2"
 	},
 	"scripts": {
-		"build": "yarn build:main && yarn build:renderer",
-		"build:main": "parcel build --target main src/main/index.ts",
-		"build:renderer": "parcel build --target renderer src/renderer/index.html",
-		"dev": "yarn build && electron-forge start",
-		"fmt": "prettier --ignore-path .gitignore --write .",
-		"forge": "yarn build && electron-forge make",
-		"lint": "tsc -p . --noEmit && eslint --ext .ts,.tsx .",
-		"test": "tsc -p . --noEmit && jest"
+		"dev": "yarn workspace observatory dev",
+		"fmt": "prettier --ignore-path .gitignore --write ."
 	}
 }
