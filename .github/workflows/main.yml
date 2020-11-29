@@ -22,5 +22,6 @@ jobs:
             - run: yarn prettier --ignore-path .gitignore --check .
 
             - run: yarn build
+            - run: yarn workspace observatory type-check
             # - run: yarn lint
             # - run: yarn test
