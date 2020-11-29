@@ -21,7 +21,13 @@ jobs:
             - run: yarn
             - run: yarn prettier --ignore-path .gitignore --check .
 
+            - run: which cargo
             - run: cargo -V
+            - run: echo $PATH
+            - run: node -v
+            - run: yarn -v
+            - run: yarn neon version
+            - run: yarn electron-build-env -V
 
             - run: yarn workspace observatory build
             - run: yarn workspace observatory type-check
