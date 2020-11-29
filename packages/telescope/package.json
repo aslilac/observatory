@@ -7,10 +7,7 @@
 	"repository": "https://github.com/partheseas/observatory",
 	"author": "McKayla Washburn <mckayla@hey.com>",
 	"license": "MIT",
-	"devDependencies": {
-		"neon-cli": "^0.5.3"
-	},
 	"scripts": {
-		"install": "neon build"
+		"build": "neon build"
 	}
 }

@@ -15,20 +15,20 @@
 		"main": {
 			"context": "electron-main",
 			"engines": {
-				"electron": ">= 12.x.x"
+				"electron": ">= 11.x.x"
 			}
 		},
 		"renderer": {
 			"context": "electron-renderer",
 			"publicUrl": ".",
 			"engines": {
-				"electron": ">= 12.x.x"
+				"electron": ">= 11.x.x"
 			}
 		}
 	},
 	"dependencies": {
 		"@mckayla/electron-redux": "^2.0.1",
-		"drivelist": "^8.0.6",
+		"drivelist": "^9.0.0",
 		"electron-squirrel-startup": "^1.0.0",
 		"immer": "^8.0.0",
 		"react": "^17.0.1",
@@ -43,17 +43,20 @@
 		"@types/react": "^17.0.0",
 		"@types/react-dom": "^17.0.0",
 		"@types/react-redux": "^7.1.7",
-		"electron-nightly": "^13.0.0-nightly.20201127",
+		"electron": "11.0.3",
 		"parcel": "^2.0.0-nightly.400",
 		"sass": "^1.29.0"
 	},
 	"scripts": {
-		"build": "yarn build:main && yarn build:renderer",
+		"configure": "./scripts/hotwire.sh",
+		"build": "yarn build:telescope && yarn build:main && yarn build:renderer",
 		"build:main": "parcel build --target main src/main/index.ts",
+		"build:telescope": "electron-build-env neon build telescope --release",
 		"build:renderer": "parcel build --target renderer src/renderer/index.html",
 		"dev": "yarn build && electron-forge start",
 		"forge": "yarn build && electron-forge make",
-		"lint": "tsc -p . --noEmit && eslint --ext .ts,.tsx .",
-		"test": "tsc -p . --noEmit && jest"
+		"lint": "eslint --ext .ts,.tsx .",
+		"test": "jest",
+		"type-check": "tsc -p . --noEmit"
 	}
 }

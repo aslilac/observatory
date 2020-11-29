@@ -19,9 +19,13 @@ import "./system/theme";
 import touchbar from "./system/touchbar";
 import { VirtualFileSystem } from "./vfs";
 
+export { VirtualFileSystem };
+
 import * as telescope from "telescope";
 
 console.log("neon: ", telescope.hello());
+
+console.log(process.versions);
 
 let smsr = false;
 let view: BrowserWindow = null;

@@ -1,4 +1,4 @@
-import type { VirtualFileSystem } from "../main/vfs";
+import type { VirtualFileSystem } from "observatory";
 
 declare global {
 	namespace Ob {

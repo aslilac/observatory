@@ -7,5 +7,5 @@
 		"moduleResolution": "node",
 		"jsx": "preserve"
 	},
-	"include": ["src/@types/**/*.d.ts", "src/**/*"]
+	"include": ["../@types/**/*.d.ts", "src/**/*"]
 }
