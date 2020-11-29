@@ -5,7 +5,8 @@
 		"lib": ["dom", "es2020"],
 		"esModuleInterop": true,
 		"moduleResolution": "node",
-		"jsx": "preserve"
+		"jsx": "preserve",
+		"strict": true
 	},
 	"include": ["../@types/**/*.d.ts", "src/**/*"]
 }

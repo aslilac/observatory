@@ -14,9 +14,10 @@ import { Sunburst } from "./Sunburst";
 document.body.className += ` ${process.platform}`;
 
 export const Display = () => {
+	// TODO: Handle undefined vfsState
 	const vfsState = useSelector((state: AppState) =>
-		state.vfs.get(state.inspecting),
-	);
+		state.vfs.get(state.inspecting!),
+	)!;
 
 	if (vfsState.status !== "complete" || !vfsState.currentTree) {
 		return null;

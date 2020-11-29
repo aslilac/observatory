@@ -1,8 +1,11 @@
-import type { VirtualFileSystem } from "observatory";
-
 declare global {
 	namespace Ob {
-		export type { VirtualFileSystem };
+		export interface VirtualFileSystem {
+			location: string;
+			root: VfsDirectory | null;
+
+			getRenderTree(cursor: string[]): RenderTree;
+		}
 
 		export type VfsState =
 			| {
@@ -26,7 +29,7 @@ declare global {
 
 		export type VfsDirectory = {
 			type: "directory";
-			name?: string;
+			name: string;
 			size: number;
 			capacity?: number; // for drives
 			files: VfsNode[];
@@ -56,3 +59,5 @@ declare global {
 		};
 	}
 }
+
+export {};

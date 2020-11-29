@@ -28,7 +28,7 @@ console.log("neon: ", telescope.hello());
 console.log(process.versions);
 
 let smsr = false;
-let view: BrowserWindow = null;
+let view: BrowserWindow | null = null;
 
 const scans = new Map<string, VirtualFileSystem>();
 
@@ -40,11 +40,7 @@ store.subscribe(() => {
 	// we have to copy to make it iterable
 	const copy = new Map(vfs);
 
-	// TypeScript is yelling about something dumb
-	// for (const [path, scan] of vfs) {
-	// }
-
-	copy.forEach((scan, path) => {
+	for (const [path, scan] of copy) {
 		console.log(
 			"checking",
 			path,
@@ -58,10 +54,10 @@ store.subscribe(() => {
 			scans.set(path, new VirtualFileSystem(path));
 			dispatch(premountVfs(path));
 		} else if (scan.status === "complete" && scan.outOfDate) {
-			const vfs = scans.get(path);
+			const vfs = scans.get(path)!;
 			dispatch(render(path, scan.cursor, vfs.getRenderTree(scan.cursor)));
 		}
-	});
+	}
 });
 
 const createWindow = async () => {
@@ -73,6 +69,7 @@ const createWindow = async () => {
 		titleBarStyle: "hiddenInset",
 		autoHideMenuBar: true,
 		webPreferences: {
+			enableRemoteModule: true,
 			nodeIntegration: true,
 		},
 	});
@@ -112,7 +109,7 @@ const createWindow = async () => {
 
 	// Prevent seeing an unpopulated screen.
 	view.on("ready-to-show", async () => {
-		view.show();
+		view!.show();
 		// Look up drives and propagate them in Redux
 		const drives = await drivelist.list();
 		dispatch(propagateDriveList(drives));

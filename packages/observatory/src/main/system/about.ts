@@ -3,7 +3,7 @@ const { TouchBarButton } = TouchBar;
 import path from "path";
 import url from "url";
 
-let aboutWindow = null;
+let aboutWindow: BrowserWindow | null = null;
 
 function showAboutWindow() {
 	if (!aboutWindow) {
@@ -32,7 +32,7 @@ function showAboutWindow() {
 
 		aboutWindow.webContents.on("new-window", (event, url) => {
 			event.preventDefault();
-			aboutWindow.close();
+			aboutWindow?.close();
 			shell.openExternal(url);
 		});
 
@@ -53,17 +53,17 @@ function showAboutWindow() {
 					}),
 				],
 				escapeItem: new TouchBarButton({
-					label: `v${"0.3.0"}`,
+					label: `v${"0.9.0"}`,
 					backgroundColor: "#fa4873",
 					click() {
-						aboutWindow.close();
+						aboutWindow?.close();
 					},
 				}),
 			}),
 		);
 
 		aboutWindow.on("ready-to-show", () => {
-			aboutWindow.show();
+			aboutWindow?.show();
 		});
 	} else aboutWindow.show();
 }

@@ -4,9 +4,9 @@ import path from "path";
 
 import { mountVfs, store } from "../store/main";
 
-export class VirtualFileSystem {
+export class VirtualFileSystem implements Ob.VirtualFileSystem {
 	location: string;
-	root: Ob.VfsDirectory;
+	root: Ob.VfsDirectory | null;
 
 	counts: {
 		files: number;
@@ -59,7 +59,7 @@ export class VirtualFileSystem {
 				if (mount.path === location) {
 					vfs.name =
 						mount.label || `${device.description} (${mount.path})`;
-					vfs.capacity = device.size;
+					vfs.capacity = device.size ?? undefined;
 				}
 			}),
 		);
@@ -140,6 +140,14 @@ export class VirtualFileSystem {
 	}
 
 	private getDirectory(cursor: string[]) {
+		if (!this.root) {
+			throw new TypeError(
+				`Trying to read directory "./${cursor.join(
+					"/",
+				)}" from uninitialized root`,
+			);
+		}
+
 		const scale = this.root.size;
 		let position = 0;
 		let current = this.root;
@@ -164,29 +172,46 @@ export class VirtualFileSystem {
 
 	getRenderTree(cursor: string[] = []): Ob.RenderTree {
 		const directory = this.getDirectory(cursor);
+
+		if (!directory) {
+			throw new ReferenceError(
+				`Received invalid cursor position "./${cursor.join("/")}"`,
+			);
+		}
+
 		const isLargeEnough = (file: Ob.VfsNode) =>
 			file.size > directory.size * 0.003;
-		const sanitize = (recursive?: number) => (
+		const sanitize = (recursive: number = 0) => (
 			file: Ob.VfsNode,
-		): Ob.VfsNode => ({
-			name: file.name,
-			type: file.type,
-			size: file.size,
-			files:
-				recursive > 0 && file.type === "directory"
-					? file.files
-							.filter(isLargeEnough)
-							.map(sanitize(recursive - 1))
-					: [],
-		});
+		): Ob.VfsNode =>
+			file.type === "directory"
+				? {
+						name: file.name,
+						type: file.type,
+						size: file.size,
+						files:
+							recursive > 0 && file.type === "directory"
+								? file.files
+										.filter(isLargeEnough)
+										.map(sanitize(recursive - 1))
+								: [],
+				  }
+				: {
+						name: file.name,
+						type: file.type,
+						size: file.size,
+				  };
+
+		// We know root is initialized, because we assert that it isn't null
+		// in `getDirectory`
+		const root = this.root!;
 
 		return {
-			name: this.root.name,
+			name: root.name,
 			cursor,
-
 			type: "directory",
-			rootCapacity: this.root.capacity || this.root.size,
-			rootSize: this.root.size,
+			rootCapacity: root.capacity || root.size,
+			rootSize: root.size,
 			capacity: directory.capacity || directory.size,
 			position: directory.position,
 			size: directory.size,

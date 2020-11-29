@@ -175,7 +175,7 @@ export const reducer = (state = init(), action: Action): AppState => {
 				});
 				break;
 			case "mckayla.observatory.NAVIGATE_UP": {
-				const current = draft.vfs.get(draft.inspecting);
+				const current = draft.vfs.get(draft.inspecting!);
 
 				if (current?.status !== "complete") {
 					console.error(
@@ -191,7 +191,7 @@ export const reducer = (state = init(), action: Action): AppState => {
 					return;
 				}
 
-				draft.vfs.set(draft.inspecting, {
+				draft.vfs.set(draft.inspecting!, {
 					status: "complete",
 					cursor: current.cursor.slice(0, -1),
 					currentTree: current.currentTree,
@@ -200,7 +200,7 @@ export const reducer = (state = init(), action: Action): AppState => {
 				break;
 			}
 			case "mckayla.observatory.NAVIGATE_FORWARD": {
-				const current = draft.vfs.get(draft.inspecting);
+				const current = draft.vfs.get(draft.inspecting!);
 
 				if (current?.status !== "complete") {
 					console.error(
@@ -211,7 +211,7 @@ export const reducer = (state = init(), action: Action): AppState => {
 					return;
 				}
 
-				draft.vfs.set(draft.inspecting, {
+				draft.vfs.set(draft.inspecting!, {
 					status: "complete",
 					cursor: [...current.cursor, ...action.payload.into],
 					currentTree: current.currentTree,
@@ -220,7 +220,7 @@ export const reducer = (state = init(), action: Action): AppState => {
 				break;
 			}
 			case "mckayla.observatory.NAVIGATE_TO_ROOT": {
-				const current = draft.vfs.get(draft.inspecting);
+				const current = draft.vfs.get(draft.inspecting!);
 
 				if (current?.status !== "complete") {
 					console.error(
@@ -235,7 +235,7 @@ export const reducer = (state = init(), action: Action): AppState => {
 					return;
 				}
 
-				draft.vfs.set(draft.inspecting, {
+				draft.vfs.set(draft.inspecting!, {
 					status: "complete",
 					cursor: [],
 					currentTree: current.currentTree,
@@ -244,7 +244,7 @@ export const reducer = (state = init(), action: Action): AppState => {
 				break;
 			}
 			case "mckayla.observatory.NAVIGATE_TO": {
-				const current = draft.vfs.get(draft.inspecting);
+				const current = draft.vfs.get(draft.inspecting!);
 
 				if (current?.status !== "complete") {
 					console.error(
@@ -274,7 +274,7 @@ export const reducer = (state = init(), action: Action): AppState => {
 					}
 				}
 
-				draft.vfs.set(draft.inspecting, {
+				draft.vfs.set(draft.inspecting!, {
 					status: "complete",
 					cursor: action.payload.cursor,
 					currentTree: current.currentTree,

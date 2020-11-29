@@ -23,7 +23,7 @@ export const Menu = () => {
 		}
 	}, [dispatch]);
 
-	const list = [];
+	const list: JSX.Element[] = [];
 
 	vfsMap.forEach((vfs, path) => {
 		list.push(
