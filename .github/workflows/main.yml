@@ -29,6 +29,10 @@ jobs:
             - run: yarn neon version
             - run: yarn electron-build-env -V
 
+            - run: yarn global add neon
+
+            - run: neon version
+
             - run: cd packages/telescope && yarn neon build
 
             - run: yarn workspace observatory build
