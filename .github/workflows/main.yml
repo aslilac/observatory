@@ -29,7 +29,7 @@ jobs:
             - run: yarn neon version
             - run: yarn electron-build-env -V
 
-            - run: yarn global add neon
+            - run: yarn global add neon-cli
 
             - run: neon version
 
