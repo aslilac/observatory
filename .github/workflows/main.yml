@@ -31,7 +31,8 @@ jobs:
 
             - run: yarn global add neon-cli
 
-            - run: neon version
+            - run: yarn electron-build-env \"yarn neon version\"
+            - run: yarn electron-build-env \"echo $PATH\"
 
             - run: cd packages/telescope && yarn neon build
 
