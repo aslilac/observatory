@@ -21,22 +21,9 @@ jobs:
             - run: yarn
             - run: yarn prettier --ignore-path .gitignore --check .
 
-            - run: which cargo
-            - run: cargo -V
-            - run: echo $PATH
-            - run: node -v
-            - run: yarn -v
-            - run: yarn neon version
-            - run: yarn electron-build-env -V
-
-            - run: yarn global add neon-cli
-
-            - run: yarn electron-build-env "which cargo"
-            - run: yarn electron-build-env "echo \$PATH"
-            - run: yarn electron-build-env \"/usr/bin/env bash yarn neon version\"
-
             - run: cd packages/telescope && yarn neon build
 
+            - run: yarn workspace telescope build
             - run: yarn workspace observatory build
             - run: yarn workspace observatory type-check
             # - run: yarn workspace observatory lint
