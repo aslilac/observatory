@@ -49,10 +49,9 @@
 	},
 	"scripts": {
 		"configure": "./scripts/hotwire.sh",
-		"build": "yarn build:telescope && yarn build:main && yarn build:renderer",
+		"build": "yarn build:main && yarn build:renderer",
 		"build:main": "parcel build --target main src/main/index.ts",
 		"build:renderer": "parcel build --target renderer src/renderer/index.html",
-		"build:telescope": "electron-build-env \"yarn neon build telescope --release\"",
 		"dev": "yarn build && electron-forge start",
 		"forge": "yarn build && electron-forge make",
 		"lint": "eslint --ext .ts,.tsx .",

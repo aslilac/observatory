@@ -21,10 +21,8 @@ jobs:
             - run: yarn
             - run: yarn prettier --ignore-path .gitignore --check .
 
-            - run: cd packages/telescope && yarn neon build
-
-            - run: yarn workspace telescope build
-            - run: yarn workspace observatory build
+            - run: yarn build:telescope
+            - run: yarn build:observatory
             - run: yarn workspace observatory type-check
             # - run: yarn workspace observatory lint
             # - run: yarn workspace observatory test

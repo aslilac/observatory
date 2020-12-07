@@ -17,7 +17,9 @@
 		"typescript": "^4.1.2"
 	},
 	"scripts": {
-		"dev": "yarn workspace observatory dev",
+		"build:observatory": "yarn workspace observatory build",
+		"build:telescope": "electron-build-env \"yarn neon build telescope --release\"",
+		"dev": "yarn build:telescope && yarn workspace observatory dev",
 		"fmt": "prettier --ignore-path .gitignore --write ."
 	}
 }
