@@ -9,7 +9,7 @@ ReactDOM.render(
 	<Redux.Provider store={store}>
 		<Application />
 	</Redux.Provider>,
-	document.querySelector("#application"),
+	document.querySelector("#root"),
 );
 
 // This is a bit janky, but it works.

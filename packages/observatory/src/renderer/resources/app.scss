@@ -8,6 +8,10 @@ body {
 	color: $text-color;
 }
 
+#root {
+	min-height: 100%;
+}
+
 #application {
 	display: grid;
 	height: 100vh;

@@ -8,26 +8,20 @@
 	"license": "MIT",
 	"repository": "https://github.com/partheseas/observatory",
 	"bugs": "https://github.com/partheseas/observatory/issues",
-	"config": {
-		"forge": "forge.config.js"
-	},
 	"targets": {
-		"main": {
-			"context": "electron-main",
-			"engines": {
-				"electron": ">= 11.x.x"
-			}
-		},
 		"renderer": {
-			"context": "electron-renderer",
+			"context": "browser",
 			"publicUrl": ".",
 			"engines": {
 				"electron": ">= 11.x.x"
 			}
 		}
 	},
+	"config": {
+		"forge": "forge.config.js"
+	},
 	"dependencies": {
-		"@mckayla/electron-redux": "^2.0.1",
+		"@mckayla/electron-redux": "^3.0.1",
 		"drivelist": "^9.0.0",
 		"electron-squirrel-startup": "^1.0.0",
 		"immer": "^8.0.0",
@@ -50,11 +44,11 @@
 	"scripts": {
 		"configure": "./scripts/hotwire.sh",
 		"build": "yarn build:main && yarn build:renderer",
-		"build:main": "parcel build --target main src/main/index.ts",
+		"build:main": "tsc -p tsconfig.build.json",
 		"build:renderer": "parcel build --target renderer src/renderer/index.html",
 		"dev": "yarn build && electron-forge start",
 		"forge": "yarn build && electron-forge make",
-		"lint": "eslint --ext .ts,.tsx .",
+		"lint": "eslint .",
 		"test": "jest",
 		"type-check": "tsc -p . --noEmit"
 	}

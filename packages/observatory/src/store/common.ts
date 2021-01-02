@@ -12,7 +12,7 @@ export type AppState = {
 
 const init = (): AppState => ({
 	drives: [],
-	vfs: new Map(),
+	vfs: new Map<string, Ob.VfsState>(),
 	inspecting: null,
 });
 
@@ -90,11 +90,7 @@ export const inspectVfs = (path: string) => ({
 /**
  * @direction main -> renderer
  */
-export const render = (
-	path: string,
-	cursor: string[],
-	tree: Ob.RenderTree,
-) => ({
+export const render = (path: string, cursor: string[], tree: Ob.RenderTree) => ({
 	type: "mckayla.observatory.RENDER" as const,
 	payload: {
 		cursor,
@@ -179,9 +175,7 @@ export const reducer = (state = init(), action: Action): AppState => {
 
 				if (current?.status !== "complete") {
 					console.error(
-						new Error(
-							"Attemted to NAVIGATE_UP on a nonexistent cursor",
-						),
+						new Error("Attemted to NAVIGATE_UP on a nonexistent cursor"),
 					);
 					return;
 				}
@@ -204,9 +198,7 @@ export const reducer = (state = init(), action: Action): AppState => {
 
 				if (current?.status !== "complete") {
 					console.error(
-						new Error(
-							"Attemted to NAVIGATE_FORWARD on a nonexistent cursor",
-						),
+						new Error("Attemted to NAVIGATE_FORWARD on a nonexistent cursor"),
 					);
 					return;
 				}
@@ -224,9 +216,7 @@ export const reducer = (state = init(), action: Action): AppState => {
 
 				if (current?.status !== "complete") {
 					console.error(
-						new Error(
-							"Attemted to NAVIGATE_TO_ROOT on a nonexistent cursor",
-						),
+						new Error("Attemted to NAVIGATE_TO_ROOT on a nonexistent cursor"),
 					);
 					return;
 				}
@@ -248,9 +238,7 @@ export const reducer = (state = init(), action: Action): AppState => {
 
 				if (current?.status !== "complete") {
 					console.error(
-						new Error(
-							"Attemted to NAVIGATE_TO on a nonexistent cursor",
-						),
+						new Error("Attemted to NAVIGATE_TO on a nonexistent cursor"),
 					);
 					return;
 				}
@@ -265,11 +253,7 @@ export const reducer = (state = init(), action: Action): AppState => {
 				const proposedCursor = action.payload.cursor;
 
 				if (currentCursor.length === proposedCursor.length) {
-					if (
-						currentCursor.every(
-							(item, i) => item === proposedCursor[i],
-						)
-					) {
+					if (currentCursor.every((item, i) => item === proposedCursor[i])) {
 						return;
 					}
 				}

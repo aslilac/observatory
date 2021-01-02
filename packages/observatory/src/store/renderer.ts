@@ -1,4 +1,4 @@
-import { syncRenderer } from "@mckayla/electron-redux";
+import { syncRenderer } from "@mckayla/electron-redux/renderer";
 import * as redux from "redux";
 
 import { reducer } from "./common";

@@ -1,12 +1,14 @@
 // Handle initial platform setup before we do any heavy lifting
 import "./platform/windows";
 
+import { trimProperty } from "@mckayla/electron-redux";
 import * as drivelist from "drivelist";
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, dialog, ipcMain } from "electron";
 import path from "path";
 import url from "url";
 
 import {
+	createVfs,
 	dispatch,
 	premountVfs,
 	propagateDriveList,
@@ -19,13 +21,19 @@ import "./system/theme";
 import touchbar from "./system/touchbar";
 import { VirtualFileSystem } from "./vfs";
 
-export { VirtualFileSystem };
-
 import * as telescope from "telescope";
 
 console.log("neon: ", telescope.hello());
 
-console.log(process.versions);
+ipcMain.handle("mckayla.observatory.SELECT_DIRECTORY", async () => {
+	const result = await dialog.showOpenDialog({
+		properties: ["openDirectory"],
+	});
+
+	if (!result.canceled) {
+		result.filePaths.forEach((selectedPath) => dispatch(createVfs(selectedPath)));
+	}
+});
 
 let smsr = false;
 let view: BrowserWindow | null = null;
@@ -34,28 +42,19 @@ const scans = new Map<string, VirtualFileSystem>();
 
 store.subscribe(() => {
 	console.log("checking for new inits");
-	const { vfs } = store.getState();
-
 	// another reason that immer sucks
 	// we have to copy to make it iterable
-	const copy = new Map(vfs);
+	const vfsState = new Map(store.getState().vfs);
 
-	for (const [path, scan] of copy) {
-		console.log(
-			"checking",
-			path,
-			// May or may not add a function like this to the next release of
-			// electron-redux
-			Object.fromEntries(
-				Object.entries(scan).filter(([key]) => key !== "currentTree"),
-			),
-		);
+	for (const [rootPath, scan] of vfsState) {
+		console.log("checking", rootPath, trimProperty("currentTree", scan));
+
 		if (scan.status === "init") {
-			scans.set(path, new VirtualFileSystem(path));
-			dispatch(premountVfs(path));
+			scans.set(rootPath, new VirtualFileSystem(rootPath));
+			dispatch(premountVfs(rootPath));
 		} else if (scan.status === "complete" && scan.outOfDate) {
-			const vfs = scans.get(path)!;
-			dispatch(render(path, scan.cursor, vfs.getRenderTree(scan.cursor)));
+			const vfs = scans.get(rootPath)!;
+			dispatch(render(rootPath, scan.cursor, vfs.getRenderTree(scan.cursor)));
 		}
 	}
 });
@@ -69,8 +68,11 @@ const createWindow = async () => {
 		titleBarStyle: "hiddenInset",
 		autoHideMenuBar: true,
 		webPreferences: {
-			enableRemoteModule: true,
-			nodeIntegration: true,
+			// enableRemoteModule: true,
+			// nodeIntegration: true,
+			contextIsolation: true,
+			// preload: require.resolve("@mckayla/electron-redux/preload"),
+			preload: require.resolve("../preload"),
 		},
 	});
 

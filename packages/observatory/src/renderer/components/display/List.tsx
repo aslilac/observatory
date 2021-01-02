@@ -1,24 +1,10 @@
 import React, { useState } from "react";
+import { useSelector } from "react-redux";
 
-// import backArrow from "./assets/back.svg";
-import { dispatch, navigateForward, navigateUp } from "../../../store/renderer";
+import { AppState, dispatch, navigateForward, navigateUp } from "../../../store/renderer";
 import { readableSize } from "../../util";
 
-const Back = (props: React.HTMLAttributes<HTMLDivElement>) => (
-	<div className="back" {...props}>
-		<svg viewBox="0 0 412 412">
-			<g>
-				<g>
-					<path
-						style={{ fill: "#090509" }}
-						d="M387,181.25c14,0,25,11,25,25s-11,24-25,24H84l91,92c10,10,10,24,0,34c-5,5-11,7-17,7s-13-2-18-7
-					l-133-133c-5-5-7-11-7-17c0-7,2-12,7-17l133-133c10-10,25-10,35,0s10,24,0,34l-91,91H387z"
-					/>
-				</g>
-			</g>
-		</svg>
-	</div>
-);
+import backArrow from "url:../../assets/back.svg";
 
 type ListProps = {
 	cursor: string[];
@@ -30,26 +16,30 @@ type ListProps = {
 export const List = (props: ListProps) => {
 	const [expanded, setExpanded] = useState(false);
 
+	const canNavigateBack = useSelector(
+		(state: AppState) => state.vfs.get(state.inspecting!)!.cursor!.length > 0,
+	);
+
 	return (
 		<section id="fs-display-list">
-			{/* <img
-				src={backArrow}
-				className="back"
-				onClick={() => history.back()}
-			/> */}
-			<Back onClick={() => dispatch(navigateUp())} />
+			{canNavigateBack && (
+				<img
+					// This is a patch for a bug in Parcel. It doesn't respect publicUrl settings
+					// when using the url loader, so we remove any leading slashes if present.
+					src={backArrow.replace(/^\//, "")}
+					className="back"
+					// onClick={() => history.back()}
+					onClick={() => dispatch(navigateUp())}
+				/>
+			)}
 			<h1>
-				{props.cursor.length
-					? props.cursor[props.cursor.length - 1]
-					: props.name}
+				{props.cursor.length ? props.cursor[props.cursor.length - 1] : props.name}
 				<span className="size">{readableSize(props.size)}</span>
 			</h1>
 			<ol>
 				{(expanded
 					? props.files
-					: props.files.filter(
-							(file) => file.size >= props.size / 100,
-					  )
+					: props.files.filter((file) => file.size >= props.size / 100)
 				).map((file, key) => (
 					<li
 						draggable

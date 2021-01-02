@@ -1,12 +1,11 @@
 {
+	"extends": "@mckayla/tsconfig",
 	"compilerOptions": {
-		"module": "esnext",
+		"lib": ["dom", "esnext"],
+		"module": "commonjs",
+		"outDir": "target",
 		"target": "esnext",
-		"lib": ["dom", "es2020"],
-		"esModuleInterop": true,
-		"moduleResolution": "node",
-		"jsx": "preserve",
-		"strict": true
+		"noUnusedLocals": false
 	},
 	"include": ["../@types/**/*.d.ts", "src/**/*"]
 }

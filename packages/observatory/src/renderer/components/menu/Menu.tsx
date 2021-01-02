@@ -1,27 +1,11 @@
-import { remote } from "electron";
-import React, { useCallback } from "react";
+import React from "react";
 import { useSelector } from "react-redux";
 
-import {
-	AppState,
-	createVfs,
-	dispatch,
-	inspectVfs,
-} from "../../../store/renderer";
+import { AppState, createVfs, dispatch, inspectVfs } from "../../../store/renderer";
 
 export const Menu = () => {
 	const drives = useSelector((state: AppState) => state.drives);
 	const vfsMap = useSelector((state: AppState) => state.vfs);
-
-	const selectDirectory = useCallback(async () => {
-		const result = await remote.dialog.showOpenDialog({
-			properties: ["openDirectory"],
-		});
-
-		if (!result.canceled) {
-			result.filePaths.forEach((path) => dispatch(createVfs(path)));
-		}
-	}, [dispatch]);
 
 	const list: JSX.Element[] = [];
 
@@ -47,13 +31,8 @@ export const Menu = () => {
 					device.mountpoints.map((mount) =>
 						vfsMap.has(mount.path) ? null : (
 							<li key={mount.path}>
-								{mount.label ||
-									`${mount.path} (${device.description})`}
-								<button
-									onClick={() =>
-										dispatch(createVfs(mount.path))
-									}
-								>
+								{mount.label || `${mount.path} (${device.description})`}
+								<button onClick={() => dispatch(createVfs(mount.path))}>
 									Scan
 								</button>
 							</li>
@@ -61,7 +40,7 @@ export const Menu = () => {
 					),
 				)}
 			</ul>
-			<button onClick={selectDirectory}>Scan directory</button>
+			<button onClick={Ob.selectDirectory}>Scan directory</button>
 		</section>
 	);
 };

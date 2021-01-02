@@ -30,10 +30,10 @@ function showAboutWindow() {
 			}),
 		);
 
-		aboutWindow.webContents.on("new-window", (event, url) => {
+		aboutWindow.webContents.on("new-window", (event, externalUrl) => {
 			event.preventDefault();
 			aboutWindow?.close();
-			shell.openExternal(url);
+			shell.openExternal(externalUrl);
 		});
 
 		// Emitted when the window is closed.

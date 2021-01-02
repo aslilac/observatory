@@ -1,5 +1,8 @@
 declare global {
 	namespace Ob {
+		const platform: "darwin" | "linux" | "win32";
+		function selectDirectory(): Promise<string[]>;
+
 		export interface VirtualFileSystem {
 			location: string;
 			root: VfsDirectory | null;
@@ -10,6 +13,9 @@ declare global {
 		export type VfsState =
 			| {
 					status: "init" | "building";
+					cursor?: undefined;
+					currentTree?: undefined;
+					outOfDate?: undefined;
 			  }
 			| {
 					status: "complete";
@@ -18,12 +24,7 @@ declare global {
 					outOfDate: boolean;
 			  };
 
-		export type NodeType =
-			| "directory"
-			| "file"
-			| "symlink"
-			| "device"
-			| "unknown";
+		export type NodeType = "directory" | "file" | "symlink" | "device" | "unknown";
 
 		export type VfsNode = VfsDirectory | VfsFile;
 

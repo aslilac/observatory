@@ -57,8 +57,7 @@ export class VirtualFileSystem implements Ob.VirtualFileSystem {
 		list.some((device) =>
 			device.mountpoints.some((mount) => {
 				if (mount.path === location) {
-					vfs.name =
-						mount.label || `${device.description} (${mount.path})`;
+					vfs.name = mount.label || `${device.description} (${mount.path})`;
 					vfs.capacity = device.size ?? undefined;
 				}
 			}),
@@ -103,8 +102,7 @@ export class VirtualFileSystem implements Ob.VirtualFileSystem {
 				} else if (stats.isDirectory()) {
 					this.counts.directories++;
 
-					if (process.platform === "linux" && entity === "/proc")
-						return;
+					if (process.platform === "linux" && entity === "/proc") return;
 					if (process.platform === "darwin")
 						if (
 							entity === "/Volumes" ||
@@ -155,10 +153,11 @@ export class VirtualFileSystem implements Ob.VirtualFileSystem {
 			current.files.some((file) => {
 				if (file.name === piece && file.type === "directory") {
 					current = file;
-
 					return true;
 				}
+
 				position += file.size / scale;
+				return false;
 			}),
 		);
 
@@ -179,11 +178,8 @@ export class VirtualFileSystem implements Ob.VirtualFileSystem {
 			);
 		}
 
-		const isLargeEnough = (file: Ob.VfsNode) =>
-			file.size > directory.size * 0.003;
-		const sanitize = (recursive: number = 0) => (
-			file: Ob.VfsNode,
-		): Ob.VfsNode =>
+		const isLargeEnough = (file: Ob.VfsNode) => file.size > directory.size * 0.003;
+		const sanitize = (recursive = 0) => (file: Ob.VfsNode): Ob.VfsNode =>
 			file.type === "directory"
 				? {
 						name: file.name,

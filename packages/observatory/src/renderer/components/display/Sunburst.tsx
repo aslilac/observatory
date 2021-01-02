@@ -3,17 +3,11 @@ import React, { Component, RefObject } from "react";
 import { dispatch, navigateUp, navigateForward } from "../../../store/renderer";
 import { readableSize } from "../../util";
 
-const hsl = (
-	hue: number,
-	layer: number,
-	min = 0,
-	range = 1,
-	type: Ob.NodeType,
-) => {
-	const h = ((min + hue * range) * 280).toFixed(2);
-	const s = type === "directory" ? "85%" : "0%";
-	const l = type === "directory" ? layer * 5 + 60 : 35;
-	return `hsl(${h}, ${s}, ${l}%)`;
+const hsl = (hue: number, layer: number, min = 0, range = 1, type: Ob.NodeType) => {
+	const h = ((min + hue * range) * 360 - 5).toFixed(2);
+	const s = type === "directory" ? 95 : 0;
+	const l = type === "directory" ? layer * 5 + 65 : layer * 5 + 35;
+	return `hsl(${h}, ${s}%, ${l}%)`;
 };
 
 type AnimationState = {
@@ -81,26 +75,21 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 						}}
 					>
 						{target.name}
-						<span className="size">
-							{readableSize(target.size)}
-						</span>
+						<span className="size">{readableSize(target.size)}</span>
 						<br />
 
-						{target.type === "directory" &&
-							target.files.length > 0 && (
-								<ol>
-									{target.files
-										.slice(0, 7)
-										.map((file, index) => (
-											<li key={file.name + index}>
-												{file.name}
-												<span className="size">
-													{readableSize(file.size)}
-												</span>
-											</li>
-										))}
-								</ol>
-							)}
+						{target.type === "directory" && target.files.length > 0 && (
+							<ol>
+								{target.files.slice(0, 7).map((file, index) => (
+									<li key={`${file.name}-${index}`}>
+										{file.name}
+										<span className="size">
+											{readableSize(file.size)}
+										</span>
+									</li>
+								))}
+							</ol>
+						)}
 					</span>
 				)}
 			</>
@@ -196,19 +185,11 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 							this.setHover(file);
 						}
 
-						if (
-							event.type === "click" &&
-							file.type === "directory"
-						) {
+						if (event.type === "click" && file.type === "directory") {
 							dispatch(navigateForward(...searchPath, file.name));
 						}
-					} else if (
-						searchPath.length < layer &&
-						file.type === "directory"
-					) {
-						const found = file.files.some(
-							search(...searchPath, file.name),
-						);
+					} else if (searchPath.length < layer && file.type === "directory") {
+						const found = file.files.some(search(...searchPath, file.name));
 						if (!found) this.resetHover();
 					} else {
 						// No match
@@ -228,6 +209,7 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 			}
 
 			position += size;
+			return false;
 		};
 
 		const found = this.props.files.some(search());
@@ -307,13 +289,9 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 			const cx = bounds.width / windowScale / 2;
 			const cy = bounds.height / windowScale / 2;
 
-			const draw = (layer: number) => (
-				position: number,
-				file: Ob.VfsNode,
-			) => {
+			const draw = (layer: number) => (position: number, file: Ob.VfsNode) => {
 				const size = file.size / scale;
-				const state =
-					hoverTarget?._original === file ? hoverTarget.state : null;
+				const state = hoverTarget?._original === file ? hoverTarget.state : null;
 				this.drawShard(position, size, layer, state, file.type);
 
 				if (file.type === "directory" && layer < 6) {
@@ -381,13 +359,13 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 
 		// Check state
 		if (state?.hover) {
-			state.hoverAnimation += 12 / 60;
-			state.hoverAnimation %= 12;
+			state.hoverAnimation += 8 / 45;
+			state.hoverAnimation %= 8;
 
-			layer -=
-				state.hoverAnimation < 6
+			layer =
+				state.hoverAnimation < 4
 					? state.hoverAnimation
-					: 12 - state.hoverAnimation;
+					: 8 - state.hoverAnimation;
 		}
 
 		// Set styles

@@ -24,5 +24,5 @@ jobs:
             - run: yarn build:telescope
             - run: yarn build:observatory
             - run: yarn workspace observatory type-check
-            # - run: yarn workspace observatory lint
+            - run: yarn workspace observatory lint
             # - run: yarn workspace observatory test

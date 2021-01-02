@@ -5,10 +5,7 @@ export const init = (view: BrowserWindow) => {
 		// Navigate the window back when the user hits their mouse back button
 		if (command === "browser-backward" && view.webContents.canGoBack()) {
 			view.webContents.goBack();
-		} else if (
-			command === "browser-forward" &&
-			view.webContents.canGoForward()
-		) {
+		} else if (command === "browser-forward" && view.webContents.canGoForward()) {
 			view.webContents.goForward();
 		}
 	});
@@ -28,9 +25,11 @@ export const init = (view: BrowserWindow) => {
 	// 	event.preventDefault();
 	// });
 
+	/* eslint-disable @typescript-eslint/no-empty-function */
 	view.on("enter-full-screen", () => {});
 
 	view.on("leave-full-screen", () => {});
+	/* eslint-enable @typescript-eslint/no-empty-function */
 };
 
 export default { init };
