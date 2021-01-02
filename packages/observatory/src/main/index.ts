@@ -3,7 +3,7 @@ import "./platform/windows";
 
 import { trimProperty } from "@mckayla/electron-redux";
 import * as drivelist from "drivelist";
-import { app, BrowserWindow, dialog, ipcMain } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, screen } from "electron";
 import path from "path";
 import url from "url";
 
@@ -19,6 +19,7 @@ import "./system/menu";
 import navigation from "./system/navigation";
 import "./system/theme";
 import touchbar from "./system/touchbar";
+import { areMapsSimilar } from "./util";
 import { VirtualFileSystem } from "./vfs";
 
 import * as telescope from "telescope";
@@ -33,6 +34,25 @@ ipcMain.handle("mckayla.observatory.SELECT_DIRECTORY", async () => {
 	if (!result.canceled) {
 		result.filePaths.forEach((selectedPath) => dispatch(createVfs(selectedPath)));
 	}
+});
+
+ipcMain.handle("mckayla.observatory.CONFIGURE_WINDOW_HEIGHT", (event) => {
+	// This shouldn't be able to happen, but handle it just in case
+	if (!view) {
+		return;
+	}
+
+	view.setMinimumSize(800, 600);
+	const bounds = view.getBounds();
+	view.setSize(
+		bounds.width,
+		Math.max(
+			bounds.height,
+			600,
+			screen.getPrimaryDisplay().workArea.height - bounds.y * 2,
+		),
+		true,
+	);
 });
 
 let smsr = false;
@@ -63,18 +83,19 @@ const createWindow = async () => {
 	// Create the browser window.
 	view = new BrowserWindow({
 		width: 1100,
-		height: 800,
+		minWidth: 800,
+		height: 300,
+		minHeight: 300,
 		show: false,
 		titleBarStyle: "hiddenInset",
 		autoHideMenuBar: true,
 		webPreferences: {
-			// enableRemoteModule: true,
-			// nodeIntegration: true,
 			contextIsolation: true,
-			// preload: require.resolve("@mckayla/electron-redux/preload"),
 			preload: require.resolve("../preload"),
 		},
 	});
+
+	view.id;
 
 	// Source map support
 	// We put it here because we need to await it, and can't at top level.
@@ -110,11 +131,10 @@ const createWindow = async () => {
 	);
 
 	// Prevent seeing an unpopulated screen.
-	view.on("ready-to-show", async () => {
+	view.on("ready-to-show", () => {
 		view!.show();
-		// Look up drives and propagate them in Redux
-		const drives = await drivelist.list();
-		dispatch(propagateDriveList(drives));
+		const [x, y] = view!.getPosition();
+		view!.setPosition(x!, Math.floor(screen.getPrimaryDisplay().workArea.height / 8));
 	});
 
 	// Emitted when the window is closed.
@@ -128,8 +148,44 @@ const createWindow = async () => {
 	touchbar.init(view);
 };
 
+async function scanForDrives() {
+	console.log("updating drive list");
+
+	// Look up drives and propagate them in Redux
+	const driveList = await drivelist.list();
+	const drives = new Map<string, Ob.PhysicalDrive>();
+
+	driveList.forEach((device) =>
+		device.mountpoints.forEach((mount) => {
+			// Ignore system volumes on macOS
+			if (
+				process.platform == "darwin" &&
+				mount.path.startsWith("/System/Volumes")
+			) {
+				return;
+			}
+
+			if (!drives.has(mount.path)) {
+				drives.set(mount.path, {
+					mountPath: mount.path,
+					description: mount.label || `${mount.path} (${device.description})`,
+				});
+			}
+		}),
+	);
+
+	// Don't dispatch if we don't need an update
+	const currentDrives = store.getState().drives;
+	if (!areMapsSimilar(currentDrives, drives)) {
+		dispatch(propagateDriveList(drives));
+	}
+}
+
 // Launch on startup.
 app.on("ready", () => {
+	setImmediate(scanForDrives);
+	setInterval(scanForDrives, 5000);
+
 	createWindow();
 });
 

@@ -195,8 +195,8 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 						// No match
 						this.resetHover();
 					}
-					// We return true to short circuit if the range matched correctly,
-					// even if we didn't actually match.
+					// We return true to short circuit even if we didn't actually match,
+					// because we know there won't be a valid match past this point.
 					return true;
 				}
 			} else {
@@ -376,6 +376,65 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 			this.props.size / this.props.rootSize,
 			type,
 		);
+		_2d.strokeStyle = "#3d3350";
+
+		// Draw frame
+		_2d.fill(outline);
+		_2d.stroke(outline);
+	}
+
+	private drawSmallerFilesRing(
+		position: number,
+		size: number,
+		layer: number,
+		state: AnimationState | null,
+		type: Ob.NodeType,
+	) {
+		const _2d = this._2d!;
+		const bounds = this.bounds!;
+		const windowScale = this.windowScale!;
+
+		const colorScale = 0;
+		const cx = bounds.width / windowScale / 2;
+		const cy = bounds.height / windowScale / 2;
+
+		const a = 0;
+		const b = Math.PI * 2;
+
+		const ir = 70;
+		const or = 101;
+
+		const outline = new Path2D();
+		// Outer border clockwise
+		outline.arc(cx, cy, or, a, b);
+		// From outer border to inner border on far side
+		outline.lineTo(cx + ir * Math.cos(b), cy + ir * Math.sin(b));
+		// Inner border counter clockwise
+		outline.arc(cx, cy, ir, b, a, true);
+		// From inner border to outer border on starting side
+		outline.lineTo(cx + or * Math.cos(a), cy + or * Math.sin(a));
+		outline.closePath();
+
+		// Check state
+		if (state?.hover) {
+			state.hoverAnimation += 8 / 45;
+			state.hoverAnimation %= 8;
+
+			layer =
+				state.hoverAnimation < 4
+					? state.hoverAnimation
+					: 8 - state.hoverAnimation;
+		}
+
+		// Set styles
+		_2d.fillStyle = hsl(
+			(position + size / 2) * colorScale,
+			layer,
+			this.props.position,
+			this.props.size / this.props.rootSize,
+			type,
+		);
+		_2d.lineWidth = 1;
 		_2d.strokeStyle = "#3d3350";
 
 		// Draw frame

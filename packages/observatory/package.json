@@ -47,6 +47,7 @@
 		"build:main": "tsc -p tsconfig.build.json",
 		"build:renderer": "parcel build --target renderer src/renderer/index.html",
 		"dev": "yarn build && electron-forge start",
+		"dev:renderer": "parcel watch --target renderer src/renderer/index.html",
 		"forge": "yarn build && electron-forge make",
 		"lint": "eslint .",
 		"test": "jest",

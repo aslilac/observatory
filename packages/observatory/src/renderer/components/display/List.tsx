@@ -14,7 +14,9 @@ type ListProps = {
 };
 
 export const List = (props: ListProps) => {
-	const [expanded, setExpanded] = useState(false);
+	const [expanded, setExpanded] = useState(
+		props.files.length > 0 && props.files[0]!.size < props.size / 100,
+	);
 
 	const canNavigateBack = useSelector(
 		(state: AppState) => state.vfs.get(state.inspecting!)!.cursor!.length > 0,

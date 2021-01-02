@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useSelector } from "react-redux";
 
 import {
@@ -12,6 +12,10 @@ import { List } from "./List";
 import { Sunburst } from "./Sunburst";
 
 export const Display = () => {
+	useEffect(() => {
+		Ob.configureWindowHeight();
+	}, []);
+
 	// TODO: Handle undefined vfsState
 	const vfsState = useSelector((state: AppState) => state.vfs.get(state.inspecting!))!;
 

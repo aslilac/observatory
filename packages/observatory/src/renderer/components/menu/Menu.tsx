@@ -12,7 +12,7 @@ export const Menu = () => {
 	vfsMap.forEach((vfs, path) => {
 		list.push(
 			<li key={path}>
-				{path} - {vfs.status}
+				{drives.get(path)?.description || path} - {vfs.status}
 				<button
 					onClick={() => dispatch(inspectVfs(path))}
 					disabled={vfs.status !== "complete"}
@@ -27,16 +27,15 @@ export const Menu = () => {
 		<section>
 			<ul id="menu-drivelist">
 				{list}
-				{drives.flatMap((device) =>
-					device.mountpoints.map((mount) =>
-						vfsMap.has(mount.path) ? null : (
-							<li key={mount.path}>
-								{mount.label || `${mount.path} (${device.description})`}
-								<button onClick={() => dispatch(createVfs(mount.path))}>
-									Scan
-								</button>
-							</li>
-						),
+				{Array.from(drives.values()).map((drive) =>
+					// Don't show the drive in this list if it's shown in the list of scans
+					vfsMap.has(drive.mountPath) ? null : (
+						<li key={drive.mountPath}>
+							{drive.description}
+							<button onClick={() => dispatch(createVfs(drive.mountPath))}>
+								Scan
+							</button>
+						</li>
 					),
 				)}
 			</ul>

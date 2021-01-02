@@ -1,17 +1,16 @@
-import type { Drive } from "drivelist";
 import produce, { enableMapSet } from "immer";
 
 // immer sucks apparently
 enableMapSet();
 
 export type AppState = {
-	drives: Drive[];
+	drives: Map<string, Ob.PhysicalDrive>;
 	vfs: Map<string, Ob.VfsState>;
 	inspecting: string | null;
 };
 
 const init = (): AppState => ({
-	drives: [],
+	drives: new Map<string, Ob.PhysicalDrive>(),
 	vfs: new Map<string, Ob.VfsState>(),
 	inspecting: null,
 });
@@ -32,7 +31,7 @@ export type Action =
 /**
  * @direction main -> renderer
  */
-export const propagateDriveList = (drives: Drive[]) => ({
+export const propagateDriveList = (drives: Map<string, Ob.PhysicalDrive>) => ({
 	type: "mckayla.observatory.PROPAGATE_DRIVE_LIST" as const,
 	payload: {
 		drives,
