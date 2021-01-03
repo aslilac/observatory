@@ -36,23 +36,39 @@ ipcMain.handle("mckayla.observatory.SELECT_DIRECTORY", async () => {
 	}
 });
 
-ipcMain.handle("mckayla.observatory.CONFIGURE_WINDOW_HEIGHT", (event) => {
+ipcMain.handle("mckayla.observatory.SIZE_TO_DISPLAY", () => {
 	// This shouldn't be able to happen, but handle it just in case
 	if (!view) {
 		return;
 	}
 
 	view.setMinimumSize(800, 600);
+
 	const bounds = view.getBounds();
+	const workArea = screen.getPrimaryDisplay().workArea;
+
 	view.setSize(
 		bounds.width,
-		Math.max(
-			bounds.height,
-			600,
-			screen.getPrimaryDisplay().workArea.height - bounds.y * 2,
-		),
+		Math.max(bounds.height, 600, workArea.height - (bounds.y - workArea.y) * 2),
 		true,
 	);
+});
+
+ipcMain.handle("mckayla.observatory.SIZE_TO_MENU", () => {
+	// This shouldn't be able to happen, but handle it just in case
+	if (!view) {
+		return;
+	}
+
+	view.setMinimumSize(800, 220);
+
+	const bounds = view.getBounds();
+	const state = store.getState();
+
+	let menuItems = state.vfs.size;
+	state.drives.forEach((drive) => !state.vfs.has(drive.mountPath) && menuItems++);
+
+	view.setSize(bounds.width, Math.max(220, 150 + 72 * menuItems), true);
 });
 
 let smsr = false;
@@ -82,10 +98,12 @@ store.subscribe(() => {
 const createWindow = async () => {
 	// Create the browser window.
 	view = new BrowserWindow({
+		x: 100,
+		y: Math.floor(screen.getPrimaryDisplay().workArea.height / 8),
 		width: 1100,
 		minWidth: 800,
-		height: 300,
-		minHeight: 300,
+		height: 220,
+		minHeight: 220,
 		show: false,
 		titleBarStyle: "hiddenInset",
 		autoHideMenuBar: true,
@@ -105,22 +123,6 @@ const createWindow = async () => {
 		smsr = true;
 	}
 
-	// REPL!
-	// This also super-breaks launching on macOS when packaged and doesn't
-	// work on Windows literally ever. It also breaks when running inside of
-	// forge, and basically all the time.
-	// if (process.platform === "darwin" && !app.isPackaged) {
-	// 	const repl = require("repl");
-	// 	const x = repl.start({
-	// 		prompt: "> ",
-	// 		useGlobal: true,
-	// 	});
-	// 	Object.assign(x.context, {
-	// 		view,
-	// 	});
-	// 	x.on("exit", () => app.quit());
-	// }
-
 	// Load the app.
 	view.loadURL(
 		url.format({
@@ -133,8 +135,6 @@ const createWindow = async () => {
 	// Prevent seeing an unpopulated screen.
 	view.on("ready-to-show", () => {
 		view!.show();
-		const [x, y] = view!.getPosition();
-		view!.setPosition(x!, Math.floor(screen.getPrimaryDisplay().workArea.height / 8));
 	});
 
 	// Emitted when the window is closed.
@@ -149,7 +149,7 @@ const createWindow = async () => {
 };
 
 async function scanForDrives() {
-	console.log("updating drive list");
+	// console.log("updating drive list");
 
 	// Look up drives and propagate them in Redux
 	const driveList = await drivelist.list();

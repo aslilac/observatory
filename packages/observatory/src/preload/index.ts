@@ -3,14 +3,19 @@ import { contextBridge, ipcRenderer } from "electron";
 
 contextBridge.exposeInMainWorld("Ob", {
 	platform: process.platform,
-	configureWindowHeight,
 	selectDirectory,
+	sizeToDisplay,
+	sizeToMenu,
 });
 
 function selectDirectory() {
 	ipcRenderer.invoke("mckayla.observatory.SELECT_DIRECTORY");
 }
 
-function configureWindowHeight() {
-	ipcRenderer.invoke("mckayla.observatory.CONFIGURE_WINDOW_HEIGHT");
+function sizeToDisplay() {
+	ipcRenderer.invoke("mckayla.observatory.SIZE_TO_DISPLAY");
+}
+
+function sizeToMenu() {
+	ipcRenderer.invoke("mckayla.observatory.SIZE_TO_MENU");
 }

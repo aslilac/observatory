@@ -13,17 +13,22 @@ import { Sunburst } from "./Sunburst";
 
 export const Display = () => {
 	useEffect(() => {
-		Ob.configureWindowHeight();
+		Ob.sizeToDisplay();
 	}, []);
 
-	// TODO: Handle undefined vfsState
-	const vfsState = useSelector((state: AppState) => state.vfs.get(state.inspecting!))!;
+	const vfsRoot = useSelector((state: AppState) => state.inspecting)!;
+	const vfsState = useSelector((state: AppState) => state.vfs.get(vfsRoot));
 
-	if (vfsState.status !== "complete" || !vfsState.currentTree) {
+	if (vfsState?.status !== "complete" || !vfsState.currentTree) {
 		return null;
 	}
 
 	const { sunburst, list, ...shared } = vfsState.currentTree;
+
+	// This makes sure that the state kept by List is maintained relative to the
+	// directory that the state is for. We don't use this for Sunburst, because that
+	// would cause React to destroy/create our canvas element on every navigation.
+	const stateKey = shared.cursor.join("/");
 
 	return (
 		<>
@@ -32,11 +37,11 @@ export const Display = () => {
 					Disks and folders
 				</button>
 				<button onClick={() => dispatch(navigateToRoot())}>{shared.name}</button>
-				{shared.cursor.map((piece, key) => (
+				{shared.cursor.map((piece, i) => (
 					<button
-						key={key}
+						key={i}
 						onClick={() =>
-							dispatch(navigateTo(shared.cursor.slice(0, key + 1)))
+							dispatch(navigateTo(shared.cursor.slice(0, i + 1)))
 						}
 					>
 						{piece}
@@ -44,7 +49,7 @@ export const Display = () => {
 				))}
 			</section>
 			<Sunburst files={sunburst.files} {...shared} />
-			<List files={list.files} {...shared} />
+			<List key={stateKey} files={list.files} {...shared} />
 		</>
 	);
 };

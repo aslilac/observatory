@@ -1,8 +1,9 @@
 declare global {
 	namespace Ob {
 		const platform: "darwin" | "linux" | "win32";
-		function configureWindowHeight(): Promise<void>;
 		function selectDirectory(): Promise<string[]>;
+		function sizeToDisplay(): Promise<void>;
+		function sizeToMenu(): Promise<void>;
 
 		export interface PhysicalDrive {
 			mountPath: string;
@@ -31,6 +32,7 @@ declare global {
 			  };
 
 		export type NodeType = "directory" | "file" | "symlink" | "device" | "unknown";
+		export type NodeType$ = NodeType | "imaginary";
 
 		export type VfsNode = VfsDirectory | VfsFile;
 

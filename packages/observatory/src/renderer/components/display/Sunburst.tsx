@@ -3,21 +3,45 @@ import React, { Component, RefObject } from "react";
 import { dispatch, navigateUp, navigateForward } from "../../../store/renderer";
 import { readableSize } from "../../util";
 
-const hsl = (hue: number, layer: number, min = 0, range = 1, type: Ob.NodeType) => {
-	const h = ((min + hue * range) * 360 - 5).toFixed(2);
-	const s = type === "directory" ? 95 : 0;
-	const l = type === "directory" ? layer * 5 + 65 : layer * 5 + 35;
+const hsl = (h: number | string, s: number | string, l: number | string) => {
 	return `hsl(${h}, ${s}%, ${l}%)`;
 };
 
+const getShardHsl = (
+	hue: number,
+	layer: number,
+	min = 0,
+	range = 1,
+	type: Ob.NodeType$,
+) => {
+	const h = ((min + hue * range) * 360 - 5).toFixed(2);
+
+	// TODO: Use in dark mode in the future
+	// if (type === "directory") return hsl(h, 95, layer * 5 + 65);
+	// if (type === "imaginary") return hsl(h, 0, 10);
+
+	// return hsl(h, 0, layer * 5 + 35);
+
+	if (type === "directory") return hsl(h, 95, layer * 5 + 65);
+	if (type === "imaginary") return hsl(h, 0, 85);
+
+	return hsl(h, 0, layer * 5 + 45);
+};
+
 type AnimationState = {
-	hover: boolean;
+	hover: boolean | "smallerItems";
 	hoverAnimation: number;
 };
 
 type AnimatedNode = Ob.VfsNode & {
 	state: AnimationState;
+	_imaginary?: ImaginaryNode;
 	_original: Ob.VfsNode;
+};
+
+type ImaginaryNode = {
+	state: AnimationState;
+	_parent: Ob.VfsNode;
 };
 
 type SunburstProps = {
@@ -97,10 +121,14 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 	}
 
 	componentDidMount() {
-		window.addEventListener("resize", () => this.updateSizing());
+		window.addEventListener("resize", () => {
+			this.updateSizing();
+		});
+
 		window.addEventListener("focus", () => {
 			this.animationRequest = requestAnimationFrame(() => this.animate());
 		});
+
 		window.addEventListener("blur", () => {
 			this.resetHover();
 			// Calling cancelAnimationFrame with null is fine actually
@@ -117,8 +145,17 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 		// SyntheticEvents suck, so we use a ref the get real Events.
 		// Ref should be valid, since the component has mounted.
 		const canvas = this.canvasRef.current!;
-		canvas.addEventListener("click", this.handleMouseEvents.bind(this));
-		canvas.addEventListener("mousemove", this.handleMouseEvents.bind(this));
+		canvas.addEventListener("click", this.handleMouseEvents);
+		canvas.addEventListener("mousemove", this.handleMouseEvents);
+		canvas.addEventListener("mouseleave", this.resetHover);
+
+		window.addEventListener("keydown", (event) => {
+			if (event.code === "KeyR") {
+				console.log(":)");
+				// this.pendingUpdateFrame = true;
+				this.updateSizing();
+			}
+		});
 	}
 
 	componentDidUpdate() {
@@ -126,7 +163,7 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 		this.pendingUpdateFrame = true;
 	}
 
-	handleMouseEvents(event: MouseEvent) {
+	handleMouseEvents = (event: MouseEvent) => {
 		// These values are configured once the component has mounted.
 		// If we're getting mouse events while the component isn't mounted,
 		// we are in trouble.
@@ -189,6 +226,17 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 							dispatch(navigateForward(...searchPath, file.name));
 						}
 					} else if (searchPath.length < layer && file.type === "directory") {
+						// smaller items...
+						if (layer <= 4 && layer === searchPath.length + 1) {
+							const sizeOfContents = file.files.reduce(
+								(sum, each) => sum + each.size,
+								0,
+							);
+							if (position + sizeOfContents / scale <= t) {
+								console.log("smaller items...");
+							}
+						}
+
 						const found = file.files.some(search(...searchPath, file.name));
 						if (!found) this.resetHover();
 					} else {
@@ -199,6 +247,10 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 					// because we know there won't be a valid match past this point.
 					return true;
 				}
+
+				// The end of the current shard is less than theta, so check the next
+				position += size;
+				return false;
 			} else {
 				// No match
 				// The begin position of the current shard is past theta, which
@@ -207,16 +259,13 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 				this.resetHover();
 				return true;
 			}
-
-			position += size;
-			return false;
 		};
 
 		const found = this.props.files.some(search());
 		if (!found) this.resetHover();
-	}
+	};
 
-	private setHover(file: Ob.VfsNode) {
+	private setHover = (file: Ob.VfsNode, smallerItems = false) => {
 		// Reset previous hoverTarget
 		if (this.state.hoverTarget) {
 			this.state.hoverTarget.state.hover = false;
@@ -228,14 +277,14 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 				...file,
 				_original: file,
 				state: {
-					hover: true,
+					hover: !smallerItems,
 					hoverAnimation: 1,
 				},
 			},
 		});
-	}
+	};
 
-	private resetHover() {
+	private resetHover = () => {
 		if (this.state.hoverTarget) {
 			this.state.hoverTarget.state.hover = false;
 
@@ -244,19 +293,24 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 				hoverTarget: null,
 			});
 		}
-	}
+	};
 
 	private updateSizing() {
-		// Should only be called while component is mounted
-		const canvas = this.canvasRef.current!;
+		const canvas = this.canvasRef.current;
+
+		// This can get called after unmount...for reasons. So if this ref isn't current
+		// then we can just exit early here.
+		if (!canvas) {
+			return;
+		}
+
 		let needsUpdate = false;
-
-		this.bounds = canvas.getBoundingClientRect();
-
-		const bounds = this.bounds;
+		const bounds = canvas.getBoundingClientRect();
 		const dpr = window.devicePixelRatio;
 		const canvasHeight = Math.round(bounds.height * dpr);
 		const canvasWidth = Math.round(bounds.width * dpr);
+
+		this.bounds = bounds;
 
 		if (canvasHeight !== canvas.height || canvasWidth !== canvas.width) {
 			canvas.height = canvasHeight;
@@ -295,7 +349,25 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 				this.drawShard(position, size, layer, state, file.type);
 
 				if (file.type === "directory" && layer < 6) {
-					file.files.reduce(draw(layer + 1), position);
+					if (file.files.length > 0) {
+						const drawnEnd = file.files.reduce(draw(layer + 1), position);
+						const remainderSize = file.size / scale - (drawnEnd - position);
+
+						if (
+							layer < 4 &&
+							remainderSize > (this.props.rootSize / scale) * 0.003
+						) {
+							// smaller items...
+							this.drawShard(
+								drawnEnd,
+								// Size of the directory minus the size of things drawn already
+								remainderSize,
+								layer + 1,
+								null,
+								"imaginary",
+							);
+						}
+					}
 				}
 
 				return position + size;
@@ -308,16 +380,25 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 				bounds.height * window.devicePixelRatio * windowScale,
 			);
 
+			// Draw the inner circle
 			_2d.strokeStyle = "#e4e4e4";
 			_2d.beginPath();
 			_2d.lineWidth = 3;
 			_2d.arc(cx, cy, 67, 0, 2 * Math.PI);
 			_2d.stroke();
-			_2d.lineWidth = 1;
 
-			this.props.files.reduce(draw(0), 0);
+			const drawnEnd = this.props.files.reduce(draw(0), 0);
 
-			// We just set  every frame rather than doing comparisions
+			// smaller items...
+			this.drawShard(
+				drawnEnd,
+				this.props.size / scale - drawnEnd,
+				0,
+				null,
+				"imaginary",
+			);
+
+			// We just redrew everything, so it should be up to date
 			this.pendingUpdateFrame = false;
 		}
 
@@ -329,7 +410,7 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 		size: number,
 		layer: number,
 		state: AnimationState | null,
-		type: Ob.NodeType,
+		type: Ob.NodeType$,
 	) {
 		const _2d = this._2d!;
 		const bounds = this.bounds!;
@@ -343,6 +424,10 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 		const a = (baseAngle + position) * Math.PI * 2;
 		const b = (baseAngle + position + size) * Math.PI * 2;
 
+		// TODO: Might be nice to do some full circle special casing to look a bit tidier
+		// if ((b - a) > Math.PI * 2) {
+		// }
+
 		const ir = layer > 4 ? 228 + 8 * (layer - 5) : 70 + 31 * layer;
 		const or = layer > 4 ? 233 + 8 * (layer - 5) : 101 + 31 * layer;
 
@@ -354,7 +439,7 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 		// Inner border counter clockwise
 		outline.arc(cx, cy, ir, b, a, true);
 		// From inner border to outer border on starting side
-		outline.lineTo(cx + or * Math.cos(a), cy + or * Math.sin(a));
+		// outline.lineTo(cx + or * Math.cos(a), cy + or * Math.sin(a));
 		outline.closePath();
 
 		// Check state
@@ -369,73 +454,17 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 		}
 
 		// Set styles
-		_2d.fillStyle = hsl(
+		_2d.fillStyle = getShardHsl(
 			(position + size / 2) * colorScale,
 			layer,
 			this.props.position,
 			this.props.size / this.props.rootSize,
 			type,
 		);
-		_2d.strokeStyle = "#3d3350";
-
-		// Draw frame
-		_2d.fill(outline);
-		_2d.stroke(outline);
-	}
-
-	private drawSmallerFilesRing(
-		position: number,
-		size: number,
-		layer: number,
-		state: AnimationState | null,
-		type: Ob.NodeType,
-	) {
-		const _2d = this._2d!;
-		const bounds = this.bounds!;
-		const windowScale = this.windowScale!;
-
-		const colorScale = 0;
-		const cx = bounds.width / windowScale / 2;
-		const cy = bounds.height / windowScale / 2;
-
-		const a = 0;
-		const b = Math.PI * 2;
-
-		const ir = 70;
-		const or = 101;
-
-		const outline = new Path2D();
-		// Outer border clockwise
-		outline.arc(cx, cy, or, a, b);
-		// From outer border to inner border on far side
-		outline.lineTo(cx + ir * Math.cos(b), cy + ir * Math.sin(b));
-		// Inner border counter clockwise
-		outline.arc(cx, cy, ir, b, a, true);
-		// From inner border to outer border on starting side
-		outline.lineTo(cx + or * Math.cos(a), cy + or * Math.sin(a));
-		outline.closePath();
-
-		// Check state
-		if (state?.hover) {
-			state.hoverAnimation += 8 / 45;
-			state.hoverAnimation %= 8;
-
-			layer =
-				state.hoverAnimation < 4
-					? state.hoverAnimation
-					: 8 - state.hoverAnimation;
-		}
-
-		// Set styles
-		_2d.fillStyle = hsl(
-			(position + size / 2) * colorScale,
-			layer,
-			this.props.position,
-			this.props.size / this.props.rootSize,
-			type,
-		);
-		_2d.lineWidth = 1;
-		_2d.strokeStyle = "#3d3350";
+		// TODO: Use in dark mode
+		// _2d.strokeStyle = "#3d3350";
+		_2d.strokeStyle = type === "imaginary" ? "#727D8F" : "#4B5566";
+		_2d.lineWidth = 1 / window.devicePixelRatio;
 
 		// Draw frame
 		_2d.fill(outline);

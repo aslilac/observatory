@@ -131,7 +131,8 @@ body {
 	padding: 0.2in;
 	border-radius: 4px;
 
-	background-color: $accent-color;
+	background-color: black;
+	box-shadow: 0 0 5px #0004;
 	color: #ffffff;
 
 	pointer-events: none;
