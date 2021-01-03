@@ -1,12 +1,14 @@
-import { list as drivelist } from "drivelist";
-import { BrowserWindow, dialog, TouchBar } from "electron";
+import { BrowserWindow, TouchBar } from "electron";
 const { TouchBarButton, TouchBarLabel, TouchBarSpacer } = TouchBar;
 
-import { createVfs, showDriveList, store } from "../../store/main";
-const { dispatch } = store;
+import { dispatch, inspectVfs, showDriveList, store, subscribe } from "../../store/main";
+import * as Ob from "../bridge";
 
-export const init = async (view: BrowserWindow) => {
-	const list = await drivelist();
+subscribe(() => BrowserWindow.getAllWindows().forEach(initTouchBar));
+
+export const initTouchBar = async (view: BrowserWindow) => {
+	const state = store.getState();
+
 	view.setTouchBar(
 		new TouchBar({
 			items: [
@@ -19,20 +21,22 @@ export const init = async (view: BrowserWindow) => {
 					size: "large",
 				}),
 				new TouchBarLabel({
-					label: "Scan ",
+					label: "View ",
 					textColor: "#b991e6",
 				}),
-				...list.flatMap((device) =>
-					device.mountpoints.map(
-						(mount) =>
-							new TouchBarButton({
-								label:
-									mount.label ||
-									`${mount.path} (${device.description})`,
-								backgroundColor: "#9680ed",
-								click: () => dispatch(createVfs(mount.path)),
-							}),
-					),
+				...Array.from(state.vfs.keys()).map(
+					(vfsPath) =>
+						new TouchBarButton({
+							label: state.drives.has(vfsPath)
+								? state.drives.get(vfsPath)!.description
+								: vfsPath,
+							backgroundColor:
+								state.vfs.get(vfsPath)!.status === "complete"
+									? "#9680ed"
+									: "#aaa",
+							enabled: state.vfs.get(vfsPath)!.status === "complete",
+							click: () => dispatch(inspectVfs(vfsPath)),
+						}),
 				),
 				new TouchBarSpacer({
 					size: "small",
@@ -40,17 +44,7 @@ export const init = async (view: BrowserWindow) => {
 				new TouchBarButton({
 					label: "Scan directory",
 					backgroundColor: "#b0a0ec",
-					click: async () => {
-						const result = await dialog.showOpenDialog({
-							properties: ["openDirectory"],
-						});
-
-						if (!result.canceled) {
-							result.filePaths.forEach((path) =>
-								dispatch(createVfs(path)),
-							);
-						}
-					},
+					click: Ob.selectDirectory,
 				}),
 				new TouchBarSpacer({
 					size: "large",
@@ -59,5 +53,3 @@ export const init = async (view: BrowserWindow) => {
 		}),
 	);
 };
-
-export default { init };

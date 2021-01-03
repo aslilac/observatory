@@ -2,6 +2,8 @@ import { BrowserWindow, BrowserWindowConstructorOptions, screen } from "electron
 import path from "path";
 import url from "url";
 
+import { initTouchBar } from "./system/touchbar";
+
 export const windowSettings = (preload?: string): BrowserWindowConstructorOptions => ({
 	x: 100,
 	y: Math.floor(screen.getPrimaryDisplay().workArea.height / 8),
@@ -61,6 +63,9 @@ export async function createWindow() {
 		}),
 	);
 
+	// Make the touch bar manager aware of this window
+	initTouchBar(view);
+
 	// Prevent seeing an unpopulated screen.
 	view.on("ready-to-show", () => {
 		view!.show();
@@ -90,8 +95,4 @@ export async function createWindow() {
 			view!.webContents.goForward();
 		}
 	});
-
-	// Attach everything to the window.
-	// navigation.init(view);
-	// touchbar.init(view);
 }

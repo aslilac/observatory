@@ -6,7 +6,7 @@ import { app } from "electron";
 import "./platform/macOS";
 import "./system/menu";
 import "./system/theme";
-import "./ipcBindings";
+import "./bridge";
 import "./vfsManager";
 import { createWindow } from "./viewManager";
 

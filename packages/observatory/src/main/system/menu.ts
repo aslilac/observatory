@@ -69,9 +69,7 @@ const template = [
 			{
 				label: "Visit GitHub",
 				click() {
-					shell.openExternal(
-						"https://github.com/partheseas/observatory",
-					);
+					shell.openExternal("https://github.com/partheseas/observatory");
 				},
 			},
 			{
