@@ -34,6 +34,7 @@
 		"@electron-forge/cli": "^6.0.0-beta.54",
 		"@electron-forge/maker-dmg": "^6.0.0-beta.54",
 		"@electron-forge/maker-squirrel": "^6.0.0-beta.54",
+		"@electron-forge/maker-zip": "^6.0.0-beta.54",
 		"@types/react": "^17.0.0",
 		"@types/react-dom": "^17.0.0",
 		"@types/react-redux": "^7.1.7",

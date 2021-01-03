@@ -18,7 +18,7 @@ module.exports = {
 			platforms: ["windows"],
 		},
 		{
-			name: "@electron-forge/maker-squirrel",
+			name: "@electron-forge/maker-zip",
 			platforms: ["darwin", "linux", "windows"],
 		},
 	],
