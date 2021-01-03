@@ -6,7 +6,7 @@ import * as Ob from "../bridge";
 
 subscribe(() => BrowserWindow.getAllWindows().forEach(initTouchBar));
 
-export const initTouchBar = async (view: BrowserWindow) => {
+export const initTouchBar = (view: BrowserWindow) => {
 	const state = store.getState();
 
 	view.setTouchBar(

@@ -46,7 +46,7 @@ export function getCurrentView() {
 	return view;
 }
 
-export async function createWindow() {
+export function createWindow() {
 	if (view) {
 		throw new Error("Attempting to open a new window when one already exists!");
 	}

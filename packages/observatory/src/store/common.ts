@@ -178,7 +178,7 @@ export const reducer = (state = init(), action: Action): AppState => {
 					draft.inspecting = action.payload.path;
 				}
 
-				const current = draft.vfs.get(draft.inspecting!);
+				const current = draft.vfs.get(draft.inspecting);
 
 				if (current?.status !== "complete") {
 					console.error(
@@ -199,7 +199,7 @@ export const reducer = (state = init(), action: Action): AppState => {
 					}
 				}
 
-				draft.vfs.set(draft.inspecting!, {
+				draft.vfs.set(draft.inspecting, {
 					status: "complete",
 					cursor: action.payload.cursor,
 					currentTree: current.currentTree,

@@ -14,7 +14,7 @@ type HistoryState = {
 let inPopState = false;
 
 window.addEventListener("popstate", (event) => {
-	const nextState: HistoryState = event.state;
+	const nextState = event.state as HistoryState;
 
 	console.log(nextState.inspecting, nextState.cursor?.join("/"), "(popping)");
 

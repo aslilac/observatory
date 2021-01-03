@@ -45,7 +45,7 @@ async function scanForDrives() {
 		device.mountpoints.forEach((mount) => {
 			// Ignore system volumes on macOS
 			if (
-				process.platform == "darwin" &&
+				process.platform === "darwin" &&
 				mount.path.startsWith("/System/Volumes")
 			) {
 				return;

@@ -11,9 +11,15 @@ module.exports = {
 	makers: [
 		{
 			name: "@electron-forge/maker-dmg",
+			platforms: ["darwin"],
 		},
 		{
 			name: "@electron-forge/maker-squirrel",
+			platforms: ["windows"],
+		},
+		{
+			name: "@electron-forge/maker-squirrel",
+			platforms: ["darwin", "linux", "windows"],
 		},
 	],
 };

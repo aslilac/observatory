@@ -6,7 +6,7 @@ import { mountVfs, store } from "../store/main";
 
 export class VirtualFileSystem implements Ob.VirtualFileSystem {
 	location: string;
-	root: Ob.VfsDirectory | null;
+	root: Ob.VfsDirectory | null = null;
 
 	counts: {
 		files: number;
@@ -18,7 +18,6 @@ export class VirtualFileSystem implements Ob.VirtualFileSystem {
 
 	constructor(location: string) {
 		this.location = path.normalize(location);
-		this.root = null;
 
 		this.counts = {
 			files: 0,

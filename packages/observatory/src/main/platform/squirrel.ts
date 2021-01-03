@@ -1,4 +1,4 @@
 // Compatibility with the Squirrel updater for Windows
-import squirrel from "electron-squirrel-startup";
+import squirrel = require("electron-squirrel-startup");
 
 if (squirrel) process.exit(0);

@@ -265,7 +265,7 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 		if (!found) this.resetHover();
 	};
 
-	private setHover = (file: Ob.VfsNode, smallerItems = false) => {
+	private readonly setHover = (file: Ob.VfsNode, smallerItems = false) => {
 		// Reset previous hoverTarget
 		if (this.state.hoverTarget) {
 			this.state.hoverTarget.state.hover = false;
@@ -284,7 +284,7 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 		});
 	};
 
-	private resetHover = () => {
+	private readonly resetHover = () => {
 		if (this.state.hoverTarget) {
 			this.state.hoverTarget.state.hover = false;
 

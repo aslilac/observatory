@@ -27,7 +27,7 @@ jobs:
             - run: yarn workspace observatory lint
             # - run: yarn workspace observatory test
 
-    package-macOS:
+    package:
         strategy:
             matrix:
                 platform: [macos-latest, ubuntu-latest, windows-latest]
