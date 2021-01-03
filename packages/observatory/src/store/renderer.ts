@@ -4,7 +4,7 @@ import * as redux from "redux";
 import { reducer } from "./common";
 
 const store = redux.createStore(reducer, syncRenderer);
-const { dispatch } = store;
+const { dispatch, subscribe } = store;
 
 export * from "./common";
-export { dispatch, store };
+export { dispatch, store, subscribe };

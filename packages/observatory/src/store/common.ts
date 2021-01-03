@@ -23,6 +23,7 @@ export type Action =
 	| ReturnType<typeof mountVfs>
 	| ReturnType<typeof render>
 	| ReturnType<typeof inspectVfs>
+	| ReturnType<typeof inspectVfsAtCursor>
 	| ReturnType<typeof navigateUp>
 	| ReturnType<typeof navigateForward>
 	| ReturnType<typeof navigateToRoot>
@@ -82,6 +83,17 @@ export const mountVfs = (path: string, tree: Ob.RenderTree) => ({
 export const inspectVfs = (path: string) => ({
 	type: "mckayla.observatory.INSPECT_VFS" as const,
 	payload: {
+		path,
+	},
+});
+
+/**
+ * @direction renderer -> main
+ */
+export const inspectVfsAtCursor = (path: string, cursor: string[]) => ({
+	type: "mckayla.observatory.INSPECT_VFS_AT_CURSOR" as const,
+	payload: {
+		cursor,
 		path,
 	},
 });
@@ -160,6 +172,41 @@ export const reducer = (state = init(), action: Action): AppState => {
 			case "mckayla.observatory.INSPECT_VFS":
 				draft.inspecting = action.payload.path;
 				break;
+
+			case "mckayla.observatory.INSPECT_VFS_AT_CURSOR": {
+				if (draft.inspecting !== action.payload.path) {
+					draft.inspecting = action.payload.path;
+				}
+
+				const current = draft.vfs.get(draft.inspecting!);
+
+				if (current?.status !== "complete") {
+					console.error(
+						new Error(
+							"Attemted to INSPECT_VFS_AT_CURSOR on a nonexistent cursor",
+						),
+					);
+					return;
+				}
+
+				// A bunch of stuff to prevent navigating to the same place
+				const currentCursor = current.cursor;
+				const proposedCursor = action.payload.cursor;
+
+				if (currentCursor.length === proposedCursor.length) {
+					if (currentCursor.every((item, i) => item === proposedCursor[i])) {
+						return;
+					}
+				}
+
+				draft.vfs.set(draft.inspecting!, {
+					status: "complete",
+					cursor: action.payload.cursor,
+					currentTree: current.currentTree,
+					outOfDate: true,
+				});
+				break;
+			}
 			case "mckayla.observatory.RENDER":
 				draft.inspecting = action.payload.path;
 				draft.vfs.set(action.payload.path, {
@@ -239,11 +286,6 @@ export const reducer = (state = init(), action: Action): AppState => {
 					console.error(
 						new Error("Attemted to NAVIGATE_TO on a nonexistent cursor"),
 					);
-					return;
-				}
-
-				// Only navigate up if we can
-				if (!current.cursor.length) {
 					return;
 				}
 
