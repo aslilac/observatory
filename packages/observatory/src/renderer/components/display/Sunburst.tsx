@@ -232,7 +232,12 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 								(sum, each) => sum + each.size,
 								0,
 							);
-							if (position + sizeOfContents / scale <= t) {
+							const remainderSize = sizeOfContents / scale;
+
+							if (
+								remainderSize > (this.props.capacity / scale) * 0.003 &&
+								position + remainderSize <= t
+							) {
 								console.log("smaller items...");
 							}
 						}
@@ -355,7 +360,7 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 
 						if (
 							layer < 4 &&
-							remainderSize > (this.props.rootSize / scale) * 0.003
+							remainderSize > (this.props.capacity / scale) * 0.003
 						) {
 							// smaller items...
 							this.drawShard(

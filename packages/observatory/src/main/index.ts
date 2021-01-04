@@ -5,7 +5,6 @@ import { app } from "electron";
 
 import "./platform/macOS";
 import "./system/menu";
-import "./system/theme";
 import "./bridge";
 import "./vfsManager";
 import { createWindow } from "./viewManager";
@@ -13,11 +12,6 @@ import { createWindow } from "./viewManager";
 // For testing telescope development
 import "./telescope";
 
-// Launch on startup.
-app.on("ready", () => {
-	createWindow();
-});
-
-app.on("window-all-closed", () => {
-	app.quit();
-});
+// Launch on startup, quit when all windows are closed
+app.on("ready", createWindow);
+app.on("window-all-closed", app.quit);
