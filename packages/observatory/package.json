@@ -1,6 +1,6 @@
 {
 	"name": "observatory",
-	"version": "0.9.0",
+	"version": "0.10.0",
 	"description": "Disk usage analyzer",
 	"main": "target/main/index.js",
 	"renderer": "target/renderer/index.html",
@@ -38,7 +38,7 @@
 		"@types/react": "^17.0.0",
 		"@types/react-dom": "^17.0.0",
 		"@types/react-redux": "^7.1.7",
-		"electron": "11.0.3",
+		"electron": "11.1.1",
 		"parcel": "^2.0.0-nightly.400",
 		"sass": "^1.29.0"
 	},
