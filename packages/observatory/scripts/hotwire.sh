@@ -6,14 +6,16 @@ hotwire() {
 
 	# Clean up any existing entries.
 	# Try to delete it as a symlink first...
-	rm -f node_modules > /dev/null
+	# rm -f node_modules > /dev/null
 	# Then delete it as a directory. If we delete it as a directory first
 	# but it is a symlink, we'll delete all of our installed node_modules
 	# which is bad. But if we only try to delete it as a symlink, this script
 	# might fail, which is also bad.
-	rm -rf node_modules > /dev/null
+	# rm -rf node_modules > /dev/null
 
-    ln -s ../../node_modules node_modules
+    # ln -s ../../node_modules node_modules
+    ln -s ../../../node_modules/drivelist node_modules/drivelist
+    ln -s ../../../node_modules/electron node_modules/electron
 	echo "Success!"
 }
 

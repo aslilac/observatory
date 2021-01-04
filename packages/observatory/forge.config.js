@@ -1,12 +1,13 @@
 module.exports = {
 	packagerConfig: {
-		appBundleId: "la.mckay.observatory",
+		appBundleId: "dev.mckayla.observatory",
 		appCategoryType: "public.app-category.utilities",
 		appCopyright: "© 2020 ♥ McKayla",
+		asar: false,
 		darwinDarkModeSupport: true,
-		ignore: [/src\/.+/],
+		derefSymlinks: true,
+		ignore: [/scripts\/.+/, /src\/.+/],
 		name: "Observatory",
-		out: "target",
 	},
 	makers: [
 		{
