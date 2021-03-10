@@ -13,7 +13,9 @@ hotwire() {
 	# might fail, which is also bad.
 	rm -rf node_modules > /dev/null
 
-    ln -s ../../node_modules node_modules
+	local repo_root=$(git rev-parse --show-toplevel)
+
+    ln -s ${repo_root}/node_modules node_modules
     # ln -s ../../../node_modules/drivelist node_modules/drivelist
     # ln -s ../../../node_modules/electron node_modules/electron
 	echo "Success!"
