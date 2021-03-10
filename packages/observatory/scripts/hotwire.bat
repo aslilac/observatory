@@ -4,7 +4,7 @@
 echo "Linking..."
 
 : mklink /d ..\..\node_modules node_modules
-mklink /d ..\..\..\node_modules\drivelist node_modules\drivelist
-mklink /d ..\..\..\node_modules\electron node_modules\electron
+mklink /d node_modules\drivelist  ..\..\..\node_modules\drivelist
+mklink /d node_modules\electron ..\..\..\node_modules\electron
 
 echo "Success!"

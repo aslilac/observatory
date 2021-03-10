@@ -44,6 +44,7 @@
 	},
 	"scripts": {
 		"configure": "./scripts/hotwire.sh",
+		"configure-win": "./scripts/hotwire.bat",
 		"build": "yarn build:main && yarn build:renderer",
 		"build:main": "tsc -p tsconfig.build.json",
 		"build:renderer": "parcel build --target renderer src/renderer/index.html",

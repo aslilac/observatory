@@ -43,7 +43,12 @@ jobs:
                   node-version: 14.x
 
             - run: yarn
+
+            # Platform specific shenanigans
             - run: yarn workspace observatory configure -y
+              if: ${{ matrix.platform != 'windows-latest' }}
+            - run: yarn workspace observatory configure-win -y
+              if: ${{ matrix.platform == 'windows-latest' }}
 
             - run: yarn build:telescope
             - run: yarn workspace observatory forge
