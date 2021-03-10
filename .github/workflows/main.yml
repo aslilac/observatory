@@ -56,6 +56,7 @@ jobs:
 
             - run: ls packages/observatory/out
             - run: ls packages/observatory/out/make
+            - run: tree packages/observatory/out
 
             # - name: Upload produced installer
             #   uses: actions/upload-artifact@v2
