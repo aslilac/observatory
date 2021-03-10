@@ -3,7 +3,7 @@
 : Define a function we can call to actually hotwire things
 echo "Linking..."
 
-rm -r node_modules
+rd /s /q node_modules
 mklink /d node_modules ..\..\node_modules
 : mklink /d node_modules\drivelist  ..\..\..\node_modules\drivelist
 : mklink /d node_modules\electron ..\..\..\node_modules\electron
