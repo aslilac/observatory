@@ -1,3 +1,4 @@
+: @echo off
 : This patches over how badly electron-forge handles workspaces...
 
 : Define a function we can call to actually hotwire things
