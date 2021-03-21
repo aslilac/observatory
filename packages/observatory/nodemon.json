@@ -1,0 +1,6 @@
+{
+	"watch": ["target/**/*"],
+	"ignore": ["target/renderer/**/*"],
+	"ext": "html,js,json,ts,tsx",
+	"exec": "electron-forge start"
+}
