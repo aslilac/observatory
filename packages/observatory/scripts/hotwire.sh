@@ -1,5 +1,11 @@
 # This patches over how badly electron-forge handles workspaces...
 
+# Utility for linking individual packages
+lip() {
+	mkdir -p $(dirname node_modules/${2})
+	ln -s ${1}/node_modules/${2} node_modules/${2}
+}
+
 # Define a function we can call to actually hotwire things
 hotwire() {
 	echo "Linking..."
@@ -15,9 +21,18 @@ hotwire() {
 
 	local repo_root=$(git rev-parse --show-toplevel)
 
+	# Ideally we'd be able to just link the whole thing, but unfortunately that
+	# doesn't work
     # ln -s ${repo_root}/node_modules node_modules
-    ln -s ${repo_root}/node_modules/drivelist node_modules/drivelist
-    ln -s ${repo_root}/node_modules/electron node_modules/electron
+
+	# Needed for `electron-forge start`
+    lip $repo_root "drivelist"
+    lip $repo_root "electron"
+
+	# Needed for `electron-forge make`
+	lip $repo_root "@mckayla/electron-redux"
+	lip $repo_root "bindings"
+	lip $repo_root "redux"
 	echo "Success!"
 }
 

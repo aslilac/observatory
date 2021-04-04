@@ -18,13 +18,13 @@ jobs:
               with:
                   node-version: 14.x
 
-            - run: yarn
-            - run: yarn prettier --ignore-path .gitignore --check .
+            - run: npm install
+            - run: npx prettier --ignore-path .gitignore --check .
 
-            - run: yarn build:telescope
-            - run: yarn build:observatory
-            - run: yarn workspace observatory type-check
-            - run: yarn workspace observatory lint
+            - run: npm run build:telescope
+            - run: npm run build:observatory
+            - run: npm run type-check -w observatory
+            - run: npm run lint -w observatory
             # - run: yarn workspace observatory test
 
     package:
@@ -43,16 +43,13 @@ jobs:
               with:
                   node-version: 14.x
 
-            - run: yarn
+            - run: npm install
 
             # Platform specific shenanigans
-            - run: yarn workspace observatory configure -y
-              if: ${{ matrix.platform != 'windows-latest' }}
-            - run: yarn workspace observatory configure-win -y
-              if: ${{ matrix.platform == 'windows-latest' }}
+            - run: npm run configure -w observatory
 
-            - run: yarn build:telescope
-            - run: yarn workspace observatory forge
+            - run: npm run build:telescope
+            - run: npm run forge -w observatory
 
             - run: ls packages/observatory/out
             - run: ls packages/observatory/out/make
