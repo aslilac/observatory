@@ -63,19 +63,19 @@ jobs:
               uses: actions/upload-artifact@v2
               with:
                   name: ${{ matrix.platform }}
-                  path: out/make/zip/win32/x64
+                  path: packages/observatory/out/make/zip/win32/x64
               if: ${{ matrix.platform == 'windows-latest' }}
 
             - name: Upload produced installer
               uses: actions/upload-artifact@v2
               with:
                   name: ${{ matrix.platform }}
-                  path: out/make/zip/linux/x64
+                  path: packages/observatory/out/make/zip/linux/x64
               if: ${{ matrix.platform == 'ubuntu-latest' }}
 
             - name: Upload produced installer
               uses: actions/upload-artifact@v2
               with:
                   name: ${{ matrix.platform }}
-                  path: out/make/zip/darwin/x64
+                  path: packages/observatory/out/make/zip/darwin/x64
               if: ${{ matrix.platform == 'macos-latest' }}
