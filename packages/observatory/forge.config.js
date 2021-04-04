@@ -16,11 +16,11 @@ module.exports = {
 		},
 		{
 			name: "@electron-forge/maker-squirrel",
-			platforms: ["windows"],
+			platforms: ["win32"],
 		},
 		{
 			name: "@electron-forge/maker-zip",
-			platforms: ["darwin", "linux", "windows"],
+			platforms: ["darwin", "linux", "win32"],
 		},
 	],
 };
