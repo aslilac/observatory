@@ -18,6 +18,8 @@ jobs:
               with:
                   node-version: 14.x
 
+            - run: npm i -g npm@latest
+
             - run: npm install
             - run: npx prettier --ignore-path .gitignore --check .
 
@@ -42,6 +44,8 @@ jobs:
               uses: actions/setup-node@v1
               with:
                   node-version: 14.x
+
+            - run: npm i -g npm@latest
 
             - run: npm install
 
