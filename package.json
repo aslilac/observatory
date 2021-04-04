@@ -20,7 +20,8 @@
 	"scripts": {
 		"build:observatory": "npm run build -w observatory",
 		"build:telescope": "electron-build-env \"npx neon build telescope --release\"",
-		"dev": "npm run build:telescope && npm run dev -w observatory",
+		"configure": "npm run configure -w observatory && npm run build:telescope",
+		"dev": "npm run dev -w observatory",
 		"fmt": "prettier --ignore-path .gitignore --write ."
 	}
 }
