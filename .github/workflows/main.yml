@@ -55,27 +55,23 @@ jobs:
             - run: npm run build:telescope
             - run: npm run forge -w observatory
 
-            - run: ls packages/observatory/out
-            - run: ls packages/observatory/out/make
-            - run: tree packages/observatory/out
-
-            - name: Upload produced installer
+            - name: Upload Windows x64 installer
               uses: actions/upload-artifact@v2
               with:
                   name: ${{ matrix.platform }}
-                  path: packages/observatory/out/make/zip/win32/x64
+                  path: packages/observatory/out/make/squirrel.windows/x64
               if: ${{ matrix.platform == 'windows-latest' }}
 
-            - name: Upload produced installer
+            - name: Upload Linux x64 zip
               uses: actions/upload-artifact@v2
               with:
                   name: ${{ matrix.platform }}
                   path: packages/observatory/out/make/zip/linux/x64
               if: ${{ matrix.platform == 'ubuntu-latest' }}
 
-            - name: Upload produced installer
+            - name: Upload macOS x64 dmg
               uses: actions/upload-artifact@v2
               with:
                   name: ${{ matrix.platform }}
-                  path: packages/observatory/out/make/zip/darwin/x64
+                  path: packages/observatory/out/make/*.dmg
               if: ${{ matrix.platform == 'macos-latest' }}
