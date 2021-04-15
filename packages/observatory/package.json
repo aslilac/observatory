@@ -8,15 +8,6 @@
 	"license": "MIT",
 	"repository": "https://github.com/partheseas/observatory",
 	"bugs": "https://github.com/partheseas/observatory/issues",
-	"targets": {
-		"renderer": {
-			"context": "browser",
-			"publicUrl": ".",
-			"engines": {
-				"electron": ">= 11.x.x"
-			}
-		}
-	},
 	"config": {
 		"forge": "forge.config.js"
 	},
@@ -35,23 +26,20 @@
 		"@electron-forge/maker-dmg": "^6.0.0-beta.54",
 		"@electron-forge/maker-squirrel": "^6.0.0-beta.54",
 		"@electron-forge/maker-zip": "^6.0.0-beta.54",
-		"@parcel/transformer-sass": "2.0.0-beta.2",
 		"@types/react": "^17.0.3",
 		"@types/react-dom": "^17.0.2",
 		"@types/react-redux": "^7.1.16",
-		"electron": "11.1.1",
-		"electron-rebuild": "^2.3.5",
-		"parcel": "^2.0.0-beta.2",
-		"sass": "^1.32.8"
+		"electron": "12.0.4",
+		"electron-rebuild": "^2.3.5"
 	},
 	"scripts": {
 		"configure": "electron-rebuild -f -w drivelist",
 		"build": "npm run build:main && npm run build:renderer",
 		"build:main": "tsc -p tsconfig.build.json",
-		"build:renderer": "parcel build --target renderer src/renderer/index.html",
+		"build:renderer": "vite build",
 		"dev": "concurrently 'npm run dev:main' 'npm run dev:renderer' 'nodemon'",
 		"dev:main": "tsc -p tsconfig.build.json -w -preserveWatchOutput",
-		"dev:renderer": "parcel watch --target renderer src/renderer/index.html",
+		"dev:renderer": "vite watch",
 		"forge": "npm run build && electron-forge make",
 		"lint": "eslint .",
 		"test": "jest",
