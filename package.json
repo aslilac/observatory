@@ -15,10 +15,11 @@
 		"neon-cli": "^0.7.1",
 		"nodemon": "^2.0.7",
 		"prettier": "^2.2.1",
-		"typescript": "^4.2.3"
+		"typescript": "^4.2.3",
+		"vite": "^2.1.5"
 	},
 	"scripts": {
-		"build:observatory": "npm run build -w observatory",
+		"build": "npm run build -w observatory",
 		"build:telescope": "electron-build-env \"npx neon build telescope --release\"",
 		"configure": "npm run configure -w observatory && npm run build:telescope",
 		"dev": "npm run dev -w observatory",

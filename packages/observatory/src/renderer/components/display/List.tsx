@@ -4,7 +4,7 @@ import { useSelector } from "react-redux";
 import { AppState, dispatch, navigateForward, navigateUp } from "../../../store/renderer";
 import { readableSize } from "../../util";
 
-import backArrow from "url:../../assets/back.svg";
+import backArrow from "../../assets/back.svg";
 
 type ListProps = {
 	cursor: string[];
