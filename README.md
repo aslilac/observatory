@@ -31,19 +31,19 @@ To build Observatory, you'll first need to install the latest versions of
 Install dependencies:
 
 ```shell
-npm install
+yarn
 ```
 
 To run in development:
 
 ```shell
-npm run dev
+yarn dev
 ```
 
 Build an installer:
 
 ```shell
-npm run forge
+yarn forge
 ```
 
 ## Performance

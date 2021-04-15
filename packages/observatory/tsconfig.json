@@ -5,8 +5,7 @@
 		"module": "commonjs",
 		"outDir": "target",
 		"target": "esnext",
-		"noUnusedLocals": false,
-		"jsx": "react"
+		"noUnusedLocals": false
 	},
 	"include": ["../@types/**/*.d.ts", "src/**/*"]
 }
