@@ -9,9 +9,6 @@ import "./bridge";
 import "./vfsManager";
 import { createWindow } from "./viewManager";
 
-// For testing telescope development
-// import "./telescope";
-
 // Launch on startup, quit when all windows are closed
 app.on("ready", createWindow);
 app.on("window-all-closed", app.quit);

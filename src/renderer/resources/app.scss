@@ -197,8 +197,9 @@ body {
 		transition: background-color 300ms;
 
 		&:hover {
-			background-color: $accent-color;
-			color: white;
+			// background-color: $accent-color;
+			// color: white;
+			background-color: #0001;
 		}
 
 		&.expand {
@@ -208,6 +209,7 @@ body {
 
 	& .size {
 		float: right;
+		font-family: monospace;
 	}
 }
 

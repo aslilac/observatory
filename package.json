@@ -1,27 +1,68 @@
 {
-	"private": true,
-	"workspaces": [
-		"packages/*"
-	],
-	"repository": "https://github.com/partheseas/observatory",
-	"bugs": "https://github.com/partheseas/observatory/issues",
+	"name": "observatory",
+	"version": "2.0.0",
+	"description": "Disk usage analyzer",
+	"main": "./target/main/index.js",
+	"renderer": "./target/renderer/index.html",
+	"author": "McKayla Washburn <mckayla@hey.com>",
+	"license": "MIT",
+	"repository": "https://github.com/aslilac/observatory",
+	"bugs": "https://github.com/aslilac/observatory/issues",
+	"targets": {
+		"renderer": {
+			"context": "browser",
+			"publicUrl": ".",
+			"engines": {
+				"electron": ">= 16.x.x"
+			}
+		}
+	},
+	"config": {
+		"forge": "./forge.config.js"
+	},
+	"dependencies": {
+		"@mckayla/electron-redux": "^3.0.1",
+		"drivelist": "^9.0.0",
+		"electron-squirrel-startup": "^1.0.0",
+		"immer": "^8.0.0",
+		"react": "^17.0.1",
+		"react-dom": "^17.0.1",
+		"react-redux": "^7.2.0",
+		"redux": "^4.1.2"
+	},
 	"devDependencies": {
-		"@mckayla/eslint-plugin": "^0.1.10",
-		"@mckayla/prettier": "^0.8.90",
-		"@mckayla/tsconfig": "^0.41.0",
-		"concurrently": "^6.0.0",
-		"electron-build-env": "^0.2.0",
-		"eslint": "^7.22.0",
-		"neon-cli": "^0.7.1",
-		"nodemon": "^2.0.7",
-		"prettier": "^2.2.1",
-		"typescript": "^4.2.3"
+		"@electron-forge/cli": "^6.0.0-beta.63",
+		"@electron-forge/maker-dmg": "^6.0.0-beta.63",
+		"@electron-forge/maker-squirrel": "^6.0.0-beta.63",
+		"@electron-forge/maker-zip": "^6.0.0-beta.63",
+		"@mckayla/eslint-plugin": "^0.1.15",
+		"@mckayla/prettier": "^1.0.1",
+		"@mckayla/tsconfig": "^1.0.2",
+		"@parcel/transformer-sass": "^2.2.1",
+		"@types/react": "^17.0.38",
+		"@types/react-dom": "^17.0.11",
+		"@types/react-redux": "^7.1.22",
+		"concurrently": "^7.0.0",
+		"electron": "17.0.0",
+		"electron-rebuild": "^3.2.7",
+		"eslint": "^8.8.0",
+		"nodemon": "^2.0.15",
+		"parcel": "^2.2.1",
+		"prettier": "^2.5.1",
+		"sass": "^1.49.4",
+		"typescript": "^4.5.5"
 	},
 	"scripts": {
-		"build:observatory": "npm run build -w observatory",
-		"build:telescope": "electron-build-env \"npx neon build telescope --release\"",
-		"configure": "npm run configure -w observatory && npm run build:telescope",
-		"dev": "npm run dev -w observatory",
-		"fmt": "prettier --ignore-path .gitignore --write ."
+		"build": "npm run build:main && npm run build:renderer",
+		"build:main": "tsc -p tsconfig.build.json",
+		"build:renderer": "parcel build --target renderer ./src/renderer/index.html",
+		"dev": "concurrently 'npm run dev:main' 'npm run dev:renderer' 'nodemon'",
+		"dev:main": "tsc -p tsconfig.build.json -w",
+		"dev:renderer": "parcel watch --target renderer ./src/renderer/index.html",
+		"fmt": "prettier --write .",
+		"forge": "npm run build && electron-forge make",
+		"lint": "eslint .",
+		"test": "jest",
+		"type-check": "tsc -p . --noEmit"
 	}
 }
