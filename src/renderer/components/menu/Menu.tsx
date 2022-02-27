@@ -1,7 +1,11 @@
 import React, { useEffect } from "react";
+import { chic, Stylist } from "react-chic";
 import { useSelector } from "react-redux";
 
-import { AppState, createVfs, dispatch, inspectVfs } from "../../../store/renderer";
+import { AppState } from "../../../store/renderer";
+import { MenuEntry } from "./MenuEntry";
+
+import styles from "./Menu.module.scss";
 
 export const Menu = () => {
 	const drives = useSelector((state: AppState) => state.drives);
@@ -11,52 +15,25 @@ export const Menu = () => {
 		Ob.sizeToMenu();
 	}, [drives, vfsMap]);
 
-	const directoryList: JSX.Element[] = [];
-
-	vfsMap.forEach((vfs, path) => {
-		if (!drives.has(path)) {
-			directoryList.push(
-				<li key={path}>
-					{drives.get(path)?.description || path} - {vfs.status}
-					<button
-						onClick={() => dispatch(inspectVfs(path))}
-						disabled={vfs.status !== "complete"}
-					>
-						View
-					</button>
-				</li>,
-			);
-		}
-	});
-
 	return (
-		<section>
-			<ul id="menu-drivelist">
-				{Array.from(drives.values()).map((drive) => (
-					// Don't show the drive in this list if it's shown in the list of scans
-
-					<li key={drive.mountPath}>
-						{drive.description} -{" "}
-						{vfsMap.get(drive.mountPath)?.status ?? "not scanned"}
-						{vfsMap.has(drive.mountPath) ? (
-							<button
-								onClick={() => dispatch(inspectVfs(drive.mountPath))}
-								disabled={
-									vfsMap.get(drive.mountPath)!.status !== "complete"
-								}
-							>
-								View
-							</button>
-						) : (
-							<button onClick={() => dispatch(createVfs(drive.mountPath))}>
-								Scan
-							</button>
-						)}
-					</li>
-				))}
-				{directoryList}
-			</ul>
-			<button onClick={Ob.selectDirectory}>Scan directory</button>
-		</section>
+		<Stylist styles={styles}>
+			<section>
+				<chic.ul cx="menu-drivelist">
+					{Array.from(drives.values()).map((drive) => (
+						<MenuEntry
+							key={drive.mountPath}
+							name={drive.description}
+							path={drive.mountPath}
+						/>
+					))}
+					{Array.from(vfsMap.keys())
+						.filter((path) => !drives.has(path))
+						.map((path) => (
+							<MenuEntry key={path} name={path} path={path} />
+						))}
+				</chic.ul>
+				<button onClick={Ob.selectDirectory}>Scan directory</button>
+			</section>
+		</Stylist>
 	);
 };

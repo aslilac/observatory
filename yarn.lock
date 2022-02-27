@@ -6766,6 +6766,11 @@
   dependencies:
     "cross-spawn-windows-exe" "^1.1.0"
 
+"react-chic@^0.4.0":
+  "integrity" "sha512-zccHGbfK0NfuyxM5J11CXH4iKdEGAMd03gyCXhu0FEqmkKWyM4ss1qHgb/hASxg3zdmHlSvM33HdVxpiFUpV7Q=="
+  "resolved" "https://registry.npmjs.org/react-chic/-/react-chic-0.4.0.tgz"
+  "version" "0.4.0"
+
 "react-dom@^17.0.1":
   "integrity" "sha512-s4h96KtLDUQlsENhMn1ar8t2bEa+q/YAtj8pPPdIjPDGBDIVNsrD9aXNWqspUe6AzKCIG0C1HZZLqLV7qpOBGA=="
   "resolved" "https://registry.npmjs.org/react-dom/-/react-dom-17.0.2.tgz"
@@ -6802,7 +6807,7 @@
   "resolved" "https://registry.npmjs.org/react-refresh/-/react-refresh-0.9.0.tgz"
   "version" "0.9.0"
 
-"react@^16.8.3 || ^17", "react@^17.0.1", "react@17.0.2":
+"react@^16.8.3 || ^17", "react@^17.0.1", "react@>=16.14.0", "react@17.0.2":
   "integrity" "sha512-gnhPt75i/dq/z3/6q/0asP78D0u592D5L1pd7M8P+dck6Fu/jJeL6iVVK23fptSUZj8Vjf++7wXA8UNclGQcbA=="
   "resolved" "https://registry.npmjs.org/react/-/react-17.0.2.tgz"
   "version" "17.0.2"

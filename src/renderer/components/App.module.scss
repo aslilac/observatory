@@ -1,0 +1,61 @@
+.application {
+	display: grid;
+	height: 100vh;
+
+	grid-template-rows: auto 1fr;
+	grid-template-areas: "titlebar" "display";
+}
+
+.titlebar {
+	display: none;
+	grid-area: titlebar;
+
+	height: 0;
+
+	transition: background-color, color, height 300ms;
+}
+
+.darwin .titlebar {
+	-webkit-app-region: drag;
+
+	display: block;
+	background-color: black;
+	// background-color: #202245;
+	// background-image: linear-gradient(#202245, #12142d);
+	box-shadow: 0 0 15px #252525;
+	height: 37px;
+
+	// color: #4f55a7;
+	color: white;
+	text-align: center;
+
+	z-index: 100;
+
+	& h1 {
+		font-size: 17px;
+		font-weight: 200;
+
+		padding: 0.4em;
+	}
+}
+
+.application-display {
+	grid-area: display;
+	display: grid;
+
+	// &.loading {
+	// 	background: {
+	// 		image: url(../assets/ellipsis.svg);
+	// 		position: center;
+	// 		repeat: no-repeat;
+	// 	}
+	// }
+
+	&.fs {
+		grid-template-columns: 1fr minmax(3.8in, 1fr);
+		grid-template-rows: 1px 1fr;
+		grid-template-areas: "navbar list" "sunburst list";
+
+		overflow: hidden;
+	}
+}

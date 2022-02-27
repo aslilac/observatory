@@ -1,15 +1,13 @@
 import React, { useEffect } from "react";
+import { Stylist } from "react-chic";
 import { useSelector } from "react-redux";
 
-import {
-	AppState,
-	dispatch,
-	navigateTo,
-	navigateToRoot,
-	showDriveList,
-} from "../../../store/renderer";
+import { AppState } from "../../../store/renderer";
 import { List } from "./List";
+import { Navbar } from "./Navbar";
 import { Sunburst } from "./Sunburst";
+
+import styles from "./Display.module.scss";
 
 export const Display = () => {
 	useEffect(() => {
@@ -24,32 +22,18 @@ export const Display = () => {
 	}
 
 	const { sunburst, list, ...shared } = vfsState.currentTree;
+	const { cursor, name } = shared;
 
 	// This makes sure that the state kept by List is maintained relative to the
 	// directory that the state is for. We don't use this for Sunburst, because that
 	// would cause React to destroy/create our canvas element on every navigation.
-	const stateKey = shared.cursor.join("/");
+	const stateKey = cursor.join("/");
 
 	return (
-		<>
-			<section id="fs-display-navbar">
-				<button onClick={() => dispatch(showDriveList())}>
-					Disks and folders
-				</button>
-				<button onClick={() => dispatch(navigateToRoot())}>{shared.name}</button>
-				{shared.cursor.map((piece, i) => (
-					<button
-						key={i}
-						onClick={() =>
-							dispatch(navigateTo(shared.cursor.slice(0, i + 1)))
-						}
-					>
-						{piece}
-					</button>
-				))}
-			</section>
+		<Stylist styles={styles}>
+			<Navbar cursor={cursor} name={name} />
 			<Sunburst files={sunburst.files} {...shared} />
 			<List key={stateKey} files={list.files} {...shared} />
-		</>
+		</Stylist>
 	);
 };

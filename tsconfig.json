@@ -2,10 +2,7 @@
 	"extends": "@mckayla/tsconfig",
 	"compilerOptions": {
 		"lib": ["dom", "esnext"],
-		"module": "commonjs",
-		"outDir": "target",
-		"target": "esnext",
-		"noUnusedLocals": false
+		"module": "commonjs"
 	},
 	"include": ["../@types/**/*.d.ts", "./src/**/*"]
 }

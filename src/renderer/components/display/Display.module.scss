@@ -1,0 +1,105 @@
+$accent-color: #423e5d;
+
+.fs-display-navbar {
+	position: relative;
+	// overflow-x: scroll
+
+	grid-area: navbar;
+	padding: 0.1in 0.2in;
+}
+
+.fs-display-sunburst {
+	grid-area: sunburst;
+
+	height: 100%;
+	width: 100%;
+}
+
+.fs-display-sunburst-float {
+	-webkit-user-select: none;
+	transition: opacity 300ms;
+	position: fixed;
+	padding: 0.2in;
+	border-radius: 4px;
+
+	background-color: black;
+	box-shadow: 0 0 5px #0004;
+	color: #ffffff;
+
+	pointer-events: none;
+
+	& ol,
+	& ol li {
+		padding-right: 0;
+		padding-bottom: 0;
+	}
+
+	& .size {
+		padding-left: 0.2in;
+	}
+}
+
+.fs-display-list {
+	grid-area: list;
+
+	padding-left: 0;
+
+	& h1 {
+		margin-left: 0.35in;
+		font-size: 1.5rem;
+	}
+
+	& ol {
+		padding-left: 0.35in;
+	}
+
+	overflow-y: scroll;
+	word-wrap: break-word;
+
+	& .back {
+		display: inline-block;
+		margin: 0.12in 0.1in -0.05in -0.15in;
+		padding: 0.04in 0.05in;
+		background-color: $accent-color;
+		border-radius: 50%;
+
+		position: absolute;
+
+		height: 0.3in;
+		width: 0.3in;
+
+		transition: opacity, margin 300ms;
+
+		&:hover {
+			margin-left: -0.175in;
+		}
+
+		&.hidden {
+			opacity: 0;
+		}
+	}
+
+	& li {
+		border-radius: 4px;
+		cursor: default;
+
+		margin-bottom: -0.04in;
+
+		transition: background-color 300ms;
+
+		&:hover {
+			// background-color: $accent-color;
+			// color: white;
+			background-color: #0001;
+		}
+
+		&.expand {
+			size: 0.9em;
+		}
+	}
+
+	& .size {
+		float: right;
+		font-family: monospace;
+	}
+}

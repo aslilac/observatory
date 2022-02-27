@@ -26,6 +26,7 @@
 		"electron-squirrel-startup": "^1.0.0",
 		"immer": "^8.0.0",
 		"react": "^17.0.1",
+		"react-chic": "^0.4.0",
 		"react-dom": "^17.0.1",
 		"react-redux": "^7.2.0",
 		"redux": "^4.1.2"

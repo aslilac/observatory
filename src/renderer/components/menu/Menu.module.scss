@@ -1,0 +1,18 @@
+.menu-drivelist {
+	border-radius: 4px;
+	box-shadow: 0 0 5px #0004, 0 1px 2px #0006;
+	overflow: hidden;
+	padding: 0;
+
+	li {
+		display: grid;
+		grid-template-columns: 1fr auto;
+		align-items: center;
+		background-color: #eeeef5;
+		padding: 1rem;
+	}
+
+	li:not(:last-child) {
+		border-bottom: 1px #c2c3ca solid;
+	}
+}

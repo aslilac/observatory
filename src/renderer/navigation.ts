@@ -6,10 +6,10 @@ import {
 	subscribe,
 } from "../store/renderer";
 
-type HistoryState = {
+interface HistoryState {
 	cursor?: string[];
 	inspecting: string | null;
-};
+}
 
 let inPopState = false;
 

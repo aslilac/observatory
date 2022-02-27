@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { chic } from "react-chic";
 import { useSelector } from "react-redux";
 
 import { AppState, dispatch, navigateForward, navigateUp } from "../../../store/renderer";
@@ -23,20 +24,20 @@ export const List = (props: ListProps) => {
 	);
 
 	return (
-		<section id="fs-display-list">
+		<chic.section cx="fs-display-list">
 			{canNavigateBack && (
-				<img
+				<chic.img
 					// This is a patch for a bug in Parcel. It doesn't respect publicUrl settings
 					// when using the url loader, so we remove any leading slashes if present.
 					src={backArrow.replace(/^\//, "")}
-					className="back"
+					cx="back"
 					// onClick={() => history.back()}
 					onClick={() => dispatch(navigateUp())}
 				/>
 			)}
 			<h1>
 				{props.cursor.length ? props.cursor[props.cursor.length - 1] : props.name}
-				<span className="size">{readableSize(props.size)}</span>
+				<chic.span cx="size">{readableSize(props.size)}</chic.span>
 			</h1>
 			<ol>
 				{(expanded
@@ -52,7 +53,7 @@ export const List = (props: ListProps) => {
 						}}
 					>
 						{file.name}
-						<span className="size">{readableSize(file.size)}</span>
+						<chic.span cx="size">{readableSize(file.size)}</chic.span>
 					</li>
 				))}
 				{expanded || (
@@ -61,6 +62,6 @@ export const List = (props: ListProps) => {
 					</li>
 				)}
 			</ol>
-		</section>
+		</chic.section>
 	);
 };
