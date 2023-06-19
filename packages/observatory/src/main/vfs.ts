@@ -1,12 +1,13 @@
 import * as drivelist from "drivelist";
-import { promises as fs } from "fs";
-import path from "path";
+import * as fs from "fs/promises";
+import * as path from "path";
 
-import { mountVfs, store } from "../store/main";
+// import { mountVfs, store } from "../store/main";
 
 export class VirtualFileSystem implements Ob.VirtualFileSystem {
 	location: string;
 	root: Ob.VfsDirectory | null = null;
+	scan: Promise<void> | null = null;
 
 	counts: {
 		files: number;
@@ -27,10 +28,18 @@ export class VirtualFileSystem implements Ob.VirtualFileSystem {
 			misc: 0,
 		};
 
-		this.factory();
+		this.startScan();
 	}
 
-	async factory() {
+	startScan() {
+		if (!this.scan) {
+			this.scan = this.performScan();
+		}
+
+		return this.scan;
+	}
+
+	private async performScan() {
 		const location = this.location;
 
 		// TODO: We should probably check that it's a directory, and handle errors
@@ -64,8 +73,8 @@ export class VirtualFileSystem implements Ob.VirtualFileSystem {
 
 		this.root = vfs;
 
-		const tree = this.getRenderTree();
-		store.dispatch(mountVfs(location, tree));
+		// const tree = this.getRenderTree();
+		// store.dispatch(mountVfs(location, tree));
 	}
 
 	async _scan(location: string): Promise<Ob.VfsDirectory> {

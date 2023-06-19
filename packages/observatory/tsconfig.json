@@ -3,7 +3,7 @@
 	"compilerOptions": {
 		"lib": ["dom", "esnext"],
 		"module": "commonjs",
-		"outDir": "target",
+		"outDir": "build/",
 		"target": "esnext",
 		"noUnusedLocals": false
 	},

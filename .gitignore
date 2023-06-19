@@ -1,13 +1,14 @@
-# macOS
 .DS_Store
-
-# Dependencies
-node_modules
-
-# Builds
-target
-.parcel-cache
-out
-
-# Logs
+.env*
+.idea/
+.nova/
+.parcel-cache/
+.vscode/
+build/
+coverage/
+dist/
+node_modules/
+out/
+target/
 *.log
+*.tsbuildinfo

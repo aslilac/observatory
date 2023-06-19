@@ -1,0 +1,19 @@
+[package]
+name = "observatory"
+version = "0.0.0"
+authors = ["McKayla Washburn <mckayla@hey.com>"]
+description = ""
+keywords = []
+license = "MIT"
+homepage = "https://github.com/aslilac/observatory"
+repository = "https://github.com/aslilac/observatory"
+documentation = "https://docs.rs/observatory"
+edition = "2021"
+
+[lib]
+path = "./lib.rs"
+
+[dependencies]
+async-recursion = "1.0.4"
+tokio = { version = "1.28.2", features = ["full"] }
+tokio-stream = { version = "0.1.14", features = ["full"] }
