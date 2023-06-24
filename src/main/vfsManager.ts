@@ -1,4 +1,3 @@
-import { trimProperty } from "@mckayla/electron-redux";
 import * as drivelist from "drivelist";
 import { app } from "electron";
 
@@ -14,6 +13,10 @@ import { VirtualFileSystem } from "./vfs";
 import { areMapsSimilar } from "./util";
 
 export const scans = new Map<string, VirtualFileSystem>();
+
+function trimProperty(property: string, from: object) {
+	return Object.fromEntries(Object.entries(from).filter(([key]) => key !== property));
+}
 
 subscribe(() => {
 	console.log("checking for new inits");

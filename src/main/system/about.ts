@@ -30,11 +30,11 @@ function showAboutWindow() {
 			}),
 		);
 
-		aboutWindow.webContents.on("new-window", (event, externalUrl) => {
-			event.preventDefault();
-			aboutWindow?.close();
-			shell.openExternal(externalUrl);
-		});
+		// aboutWindow.webContents.on("new-window", (event, externalUrl) => {
+		// 	event.preventDefault();
+		// 	aboutWindow?.close();
+		// 	shell.openExternal(externalUrl);
+		// });
 
 		// Emitted when the window is closed.
 		aboutWindow.on("closed", () => {

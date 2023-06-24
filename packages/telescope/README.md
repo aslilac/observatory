@@ -1,3 +1,0 @@
-# telescope
-
-Necessary for observation

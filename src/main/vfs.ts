@@ -2,7 +2,7 @@ import * as drivelist from "drivelist";
 import * as fs from "fs/promises";
 import * as path from "path";
 
-// import { mountVfs, store } from "../store/main";
+import { mountVfs, store } from "../store/main";
 
 export class VirtualFileSystem implements Ob.VirtualFileSystem {
 	location: string;
@@ -73,8 +73,8 @@ export class VirtualFileSystem implements Ob.VirtualFileSystem {
 
 		this.root = vfs;
 
-		// const tree = this.getRenderTree();
-		// store.dispatch(mountVfs(location, tree));
+		const tree = this.getRenderTree();
+		store.dispatch(mountVfs(location, tree));
 	}
 
 	async _scan(location: string): Promise<Ob.VfsDirectory> {

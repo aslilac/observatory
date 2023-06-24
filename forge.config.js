@@ -2,7 +2,7 @@ module.exports = {
 	packagerConfig: {
 		appBundleId: "dev.mckayla.observatory",
 		appCategoryType: "public.app-category.utilities",
-		appCopyright: "© 2020 ♥ McKayla",
+		appCopyright: "© 2023 ♥ McKayla",
 		asar: false,
 		darwinDarkModeSupport: true,
 		derefSymlinks: true,

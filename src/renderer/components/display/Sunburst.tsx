@@ -449,7 +449,7 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 
 		// Check state
 		if (state?.hover) {
-			state.hoverAnimation += 8 / 45;
+			state.hoverAnimation += 0.08;
 			state.hoverAnimation %= 8;
 
 			layer =

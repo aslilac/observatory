@@ -7,5 +7,5 @@
 		"target": "esnext",
 		"noUnusedLocals": false
 	},
-	"include": ["../@types/**/*.d.ts", "src/**/*"]
+	"include": ["./src/**/*"]
 }
