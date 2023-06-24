@@ -15,5 +15,6 @@ path = "./lib.rs"
 
 [dependencies]
 async-recursion = "1.0.4"
+futures = "0.3.28"
 tokio = { version = "1.28.2", features = ["full"] }
 tokio-stream = { version = "0.1.14", features = ["full"] }
