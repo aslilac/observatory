@@ -6,9 +6,8 @@ import { store } from "../store/renderer";
 import { Application } from "./components/Application";
 import "./navigation";
 
-ReactDOM.render(
+ReactDOM.createRoot(document.querySelector("#root")).render(
 	<Redux.Provider store={store}>
 		<Application />
 	</Redux.Provider>,
-	document.querySelector("#root"),
 );
