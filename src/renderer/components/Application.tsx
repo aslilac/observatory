@@ -1,18 +1,19 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
-import { Display } from "./display/Display";
-import { Menu } from "./menu/Menu";
-import { useDrives, useRenderTree, useScans } from "../state";
+import { useDrives, useRecentScans, useRenderTree, useScans } from "../state";
+import { Inspect } from "./Inspect";
+import { Scanning } from "./Scanning";
+import { Welcome } from "./Welcome";
 
 export const Application = () => {
 	const drives = useDrives();
 	const scans = useScans();
+	const { recent, push: pushRecent } = useRecentScans();
 	const [inspecting, setInspecting] = useState<string | null>(null);
 	const [cursor, setCursor] = useState<string[]>([]);
 
 	useEffect(() => Ob.onSetInspecting(setInspecting), []);
 
-	// Reset cursor whenever the inspected scan changes.
 	useEffect(() => {
 		setCursor([]);
 	}, [inspecting]);
@@ -29,47 +30,85 @@ export const Application = () => {
 		inspectingScan?.status ?? null,
 	);
 
-	const showDriveList = useCallback(() => setInspecting(null), []);
+	// Push to recent the moment a scan flips to complete while inspected.
+	useEffect(() => {
+		if (inspecting && inspectingScan?.status === "complete") {
+			pushRecent(inspecting);
+		}
+	}, [inspecting, inspectingScan?.status, pushRecent]);
 
-	const viewTree = inspectingScan?.status === "complete" && tree;
+	const showMenu = useCallback(() => setInspecting(null), []);
+
+	const onScan = useCallback((path: string) => {
+		void Ob.scanPath(path);
+		setInspecting(path);
+	}, []);
+
+	const onInspect = useCallback((path: string) => {
+		setInspecting(path);
+	}, []);
+
+	let body: React.ReactNode;
+	if (inspecting && inspectingScan?.status === "complete" && tree) {
+		body = (
+			<Inspect
+				tree={tree}
+				cursor={cursor}
+				setCursor={setCursor}
+				onShowMenu={showMenu}
+			/>
+		);
+	} else if (inspecting) {
+		body = (
+			<Scanning
+				root={inspectingScan?.path ?? inspecting}
+				onShowMenu={showMenu}
+			/>
+		);
+	} else {
+		body = (
+			<Welcome
+				drives={drives}
+				scans={scans}
+				recent={recent}
+				onScan={onScan}
+				onInspect={onInspect}
+			/>
+		);
+	}
+
+	const titleSuffix = inspecting
+		? inspectingScan?.status === "complete"
+			? cursor.length > 0
+				? `inspect · ${cursor[cursor.length - 1]}`
+				: "inspect"
+			: "scanning"
+		: "welcome";
 
 	return (
 		<div
 			id="application"
-			className={`grid h-screen [grid-template-rows:auto_1fr] [grid-template-areas:'titlebar'_'display'] ${Ob.platform}`}
+			className={`grid h-screen grid-rows-[36px_1fr] bg-paper ${Ob.platform}`}
 		>
-			<div
-				id="titlebar"
-				className="hidden h-0 [grid-area:titlebar] transition-[background-color,color,height] duration-300 darwin:block darwin:h-[37px] darwin:bg-titlebar darwin:text-center darwin:text-white darwin:z-100 darwin:[-webkit-app-region:drag] darwin:[box-shadow:0_0_15px_#252525]"
-			>
-				<h1 className="m-0 p-[0.4em] text-[17px] font-extralight">
-					Observatory
-				</h1>
-			</div>
-			<div
-				id="application-display"
-				className={
-					viewTree
-						? "grid overflow-hidden [grid-area:display] [grid-template-areas:'navbar_list'_'sunburst_list'] [grid-template-columns:1fr_minmax(3.8in,1fr)] [grid-template-rows:1px_1fr]"
-						: "grid [grid-area:display]"
-				}
-			>
-				{viewTree ? (
-					<Display
-						tree={tree}
-						cursor={cursor}
-						setCursor={setCursor}
-						onShowMenu={showDriveList}
-					/>
-				) : (
-					<Menu
-						drives={drives}
-						scans={scans}
-						onInspect={setInspecting}
-						onScan={(path) => void Ob.scanPath(path)}
-					/>
-				)}
-			</div>
+			<TitleBar title={titleSuffix} />
+			<div className="flex min-h-0 flex-col overflow-hidden">{body}</div>
 		</div>
 	);
 };
+
+const TitleBar = ({ title }: { title: string }) => (
+	<div className="relative flex h-[36px] items-center border-b border-line-soft bg-paper px-[12px] darwin:[-webkit-app-region:drag]">
+		<div className="flex gap-[6px] darwin:[-webkit-app-region:no-drag]">
+			<TrafficLight />
+			<TrafficLight />
+			<TrafficLight />
+		</div>
+		<div className="absolute inset-x-0 text-center text-[12px] font-medium text-muted">
+			Observatory — {title}
+		</div>
+	</div>
+);
+
+const TrafficLight = () => (
+	<span className="block h-[11px] w-[11px] rounded-full border border-line bg-fill darwin:bg-faint darwin:border-faint" />
+);

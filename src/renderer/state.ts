@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 export function useDrives(): Ob.PhysicalDrive[] {
 	const [drives, setDrives] = useState<Ob.PhysicalDrive[]>([]);
@@ -35,4 +35,54 @@ export function useRenderTree(
 	}, [path, cursorKey, status]);
 
 	return tree;
+}
+
+export type RecentScan = {
+	path: string;
+	scannedAt: number;
+};
+
+const RECENT_SCANS_KEY = "observatory:recent-scans";
+const RECENT_SCANS_MAX = 10;
+
+function readRecentScans(): RecentScan[] {
+	try {
+		const raw = localStorage.getItem(RECENT_SCANS_KEY);
+		if (!raw) return [];
+		const parsed: unknown = JSON.parse(raw);
+		if (!Array.isArray(parsed)) return [];
+		return parsed.filter(
+			(item): item is RecentScan =>
+				typeof item === "object" &&
+				item !== null &&
+				typeof (item as { path?: unknown }).path === "string" &&
+				typeof (item as { scannedAt?: unknown }).scannedAt === "number",
+		);
+	} catch {
+		return [];
+	}
+}
+
+export function useRecentScans(): {
+	recent: RecentScan[];
+	push: (path: string) => void;
+} {
+	const [recent, setRecent] = useState<RecentScan[]>(() => readRecentScans());
+
+	const push = useCallback((path: string) => {
+		setRecent((prev) => {
+			const next = [
+				{ path, scannedAt: Date.now() },
+				...prev.filter((entry) => entry.path !== path),
+			].slice(0, RECENT_SCANS_MAX);
+			try {
+				localStorage.setItem(RECENT_SCANS_KEY, JSON.stringify(next));
+			} catch {
+				// localStorage full / unavailable — silently ignore
+			}
+			return next;
+		});
+	}, []);
+
+	return { recent, push };
 }

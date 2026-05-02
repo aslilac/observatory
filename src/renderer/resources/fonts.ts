@@ -1,24 +1,8 @@
-import "@fontsource/montserrat/300.css";
-import "@fontsource/montserrat/300-italic.css";
-import "@fontsource/montserrat/400.css";
-import "@fontsource/montserrat/400-italic.css";
-import "@fontsource/montserrat/500.css";
-import "@fontsource/montserrat/500-italic.css";
-import "@fontsource/montserrat/600.css";
-import "@fontsource/montserrat/600-italic.css";
-import "@fontsource/montserrat/700.css";
-import "@fontsource/montserrat/700-italic.css";
+// Inter variable covers all weights in a single file.
+import "@fontsource-variable/inter";
 
-import "@fontsource/roboto-mono/300.css";
-import "@fontsource/roboto-mono/300-italic.css";
-import "@fontsource/roboto-mono/400.css";
-import "@fontsource/roboto-mono/400-italic.css";
-import "@fontsource/roboto-mono/500.css";
-import "@fontsource/roboto-mono/500-italic.css";
-import "@fontsource/roboto-mono/700.css";
-import "@fontsource/roboto-mono/700-italic.css";
-
-import "@fontsource/roboto-slab/100.css";
-import "@fontsource/roboto-slab/300.css";
-import "@fontsource/roboto-slab/400.css";
-import "@fontsource/roboto-slab/700.css";
+// IBM Plex Mono doesn't have a variable build upstream; pull the weights
+// the design uses (400, 500, 600).
+import "@fontsource/ibm-plex-mono/400.css";
+import "@fontsource/ibm-plex-mono/500.css";
+import "@fontsource/ibm-plex-mono/600.css";

@@ -1,6 +1,6 @@
 import React, { Component, RefObject } from "react";
 
-import { readableSize } from "../../util";
+import { readableSize } from "../util";
 
 const hsl = (h: number | string, s: number | string, l: number | string) => {
 	return `hsl(${h}, ${s}%, ${l}%)`;
@@ -93,32 +93,32 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 				<canvas
 					id="fs-display-sunburst"
 					ref={this.canvasRef}
-					className="h-full w-full [grid-area:sunburst]"
+					className="h-full w-full"
 				></canvas>
 				{target && (
 					<span
 						id="fs-display-sunburst-float"
-						className="pointer-events-none fixed select-none rounded bg-black p-[0.2in] text-white transition-opacity duration-300 [box-shadow:0_0_5px_#0004]"
+						className="pointer-events-none fixed z-10 select-none rounded-card bg-ink px-[14px] py-[10px] text-paper text-[12px] transition-opacity duration-200 [box-shadow:var(--shadow-menu)]"
 						style={{
 							left: `${this.state.tooltipOffsetX + 15}px`,
 							top: `${this.state.tooltipOffsetY + 5}px`,
 						}}
 					>
-						{target.name}
-						<span className="float-right pl-[0.2in]">
+						<span className="font-semibold">{target.name}</span>
+						<span className="ml-[14px] font-mono opacity-80">
 							{readableSize(target.size)}
 						</span>
 						<br />
 
 						{target.type === "directory" && target.files.length > 0 && (
-							<ol className="m-0 list-none p-[0.1in] pb-0 pr-0">
+							<ol className="m-0 mt-[6px] list-none p-0">
 								{target.files.slice(0, 7).map((file, index) => (
 									<li
 										key={`${file.name}-${index}`}
-										className="m-0 p-[0.1in] pb-0 pr-0"
+										className="m-0 flex justify-between gap-[14px] py-[2px] text-[11px]"
 									>
-										{file.name}
-										<span className="float-right pl-[0.2in]">
+										<span className="truncate">{file.name}</span>
+										<span className="font-mono opacity-80">
 											{readableSize(file.size)}
 										</span>
 									</li>
@@ -399,13 +399,6 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 				bounds.height * window.devicePixelRatio * windowScale,
 			);
 
-			// Draw the inner circle
-			_2d.strokeStyle = "#e4e4e4";
-			_2d.beginPath();
-			_2d.lineWidth = 3;
-			_2d.arc(cx, cy, 67, 0, 2 * Math.PI);
-			_2d.stroke();
-
 			const drawnEnd = this.props.files.reduce(draw(0), 0);
 
 			// smaller items...
@@ -416,6 +409,19 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 				null,
 				"imaginary",
 			);
+
+			// Ink center disc with total size — the design's defining moment.
+			_2d.fillStyle = "#1a1a1a";
+			_2d.beginPath();
+			_2d.arc(cx, cy, 64, 0, 2 * Math.PI);
+			_2d.fill();
+
+			const total = readableSize(this.props.size);
+			_2d.fillStyle = "#fafaf8";
+			_2d.font = "600 17px 'IBM Plex Mono', ui-monospace, monospace";
+			_2d.textAlign = "center";
+			_2d.textBaseline = "middle";
+			_2d.fillText(total, cx, cy - 1);
 
 			// We just redrew everything, so it should be up to date
 			this.pendingUpdateFrame = false;
@@ -482,8 +488,8 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 		);
 		// TODO: Use in dark mode
 		// _2d.strokeStyle = "#3d3350";
-		_2d.strokeStyle = type === "imaginary" ? "#727D8F" : "#4B5566";
-		_2d.lineWidth = 1 / window.devicePixelRatio;
+		_2d.strokeStyle = "#fafaf8";
+		_2d.lineWidth = 1.2;
 
 		// Draw frame
 		_2d.fill(outline);

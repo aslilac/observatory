@@ -1,16 +1,36 @@
 @import "tailwindcss";
 
 @theme {
-	--font-sans: Montserrat, "Avenir Next", sans-serif;
-	--font-serif: "Roboto Slab", serif;
-	--font-mono: "Roboto Mono", monospace;
+	--font-sans: "Inter Variable", -apple-system, system-ui, sans-serif;
+	--font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
-	--color-background: #eeeef0;
-	--color-accent: #423e5d;
-	--color-text: #423e5d;
-	--color-titlebar: #000000;
-	--color-menu-row: #eeeef5;
-	--color-menu-divider: #c2c3ca;
+	/* Classic palette — paper-and-ink with no accent. */
+	--color-paper: #fafaf8;
+	--color-ink: #1a1a1a;
+	--color-muted: #6e6e68;
+	--color-faint: #9c9a92;
+	--color-line: #d8d6cf;
+	--color-line-soft: #e7e5dd;
+	--color-fill: #f0eee8;
+	--color-fill-strong: #e6e3dc;
+	/* The page-level canvas behind window surfaces; slightly warmer than paper. */
+	--color-canvas: #ebe8e0;
+
+	/* Inline-only danger; never used for hover/focus. */
+	--color-danger-bg: #fff5f4;
+	--color-danger-fg: #7a1f1c;
+	--color-danger-border: #3a1a1a;
+
+	--radius-button: 6px;
+	--radius-card: 8px;
+	--radius-window: 10px;
+	--radius-modal: 12px;
+
+	--shadow-window:
+		0 1px 0 rgba(0, 0, 0, 0.04), 0 18px 40px -22px rgba(0, 0, 0, 0.15);
+	--shadow-menu:
+		0 12px 30px -8px rgba(0, 0, 0, 0.18), 0 2px 6px rgba(0, 0, 0, 0.06);
+	--shadow-modal: 0 24px 60px -10px rgba(0, 0, 0, 0.4);
 }
 
 /* Treat the .darwin / .win32 / .linux class on #application as a top-level
@@ -22,11 +42,11 @@
 
 html,
 body {
-	@apply m-0 min-h-screen p-0 font-sans text-base font-light leading-normal text-text;
+	@apply m-0 min-h-screen p-0 font-sans text-[13px] font-normal leading-normal text-ink;
 }
 
 body {
-	@apply select-none bg-background;
+	@apply select-none bg-canvas;
 }
 
 #root {
@@ -34,7 +54,33 @@ body {
 }
 
 @layer components {
+	/* Section eyebrow — `MOUNTED VOLUMES`, `RECENT`, `CHILDREN`. */
+	.eyebrow {
+		@apply text-[10px] font-semibold uppercase tracking-[0.08em] text-muted;
+	}
+
+	/* Default text button. Variants: btn-primary, btn-danger, btn-small. */
 	.btn {
-		@apply mr-[0.6rem] my-[0.6rem] inline-block cursor-pointer rounded border border-[rgba(89,88,112,0.71)] px-[0.6rem] py-[0.6rem] text-[0.15in] transition-shadow [background-image:linear-gradient(0deg,rgba(222,226,238,0.5),rgba(255,255,255,0.5))] active:translate-y-px active:bg-[rgba(228,228,228,0.5)] active:bg-none disabled:cursor-default disabled:bg-[rgba(93,93,93,0.29)] disabled:text-[rgba(52,71,66,0.71)];
+		@apply inline-flex cursor-pointer items-center gap-[6px] rounded-button border border-ink bg-paper px-[14px] py-[6px] font-sans text-[12px] font-medium text-ink transition-shadow active:translate-y-px;
+	}
+	.btn[disabled] {
+		@apply cursor-default border-line bg-fill text-muted;
+	}
+	.btn-primary {
+		@apply bg-ink text-paper;
+	}
+	.btn-danger {
+		@apply border-danger-border bg-danger-bg text-danger-fg;
+	}
+	.btn-small {
+		@apply px-[10px] py-[4px] text-[11px];
+	}
+
+	/* Toolbar icon button. */
+	.icon-btn {
+		@apply inline-flex h-[26px] w-[26px] cursor-pointer items-center justify-center rounded-button border border-line bg-transparent p-0 text-[14px] text-ink hover:bg-fill;
+	}
+	.icon-btn-active {
+		@apply border-ink bg-fill;
 	}
 }
