@@ -2,9 +2,7 @@ import * as drivelist from "drivelist";
 import * as fs from "fs/promises";
 import * as path from "path";
 
-import { mountVfs, store } from "../store/main";
-
-export class VirtualFileSystem implements Ob.VirtualFileSystem {
+export class VirtualFileSystem {
 	location: string;
 	root: Ob.VfsDirectory | null = null;
 	scan: Promise<void> | null = null;
@@ -16,6 +14,8 @@ export class VirtualFileSystem implements Ob.VirtualFileSystem {
 		devices: number;
 		misc: number;
 	};
+
+	private onCompleteCallbacks: Array<() => void> = [];
 
 	constructor(location: string) {
 		this.location = path.normalize(location);
@@ -31,11 +31,18 @@ export class VirtualFileSystem implements Ob.VirtualFileSystem {
 		this.startScan();
 	}
 
+	onComplete(cb: () => void) {
+		if (this.root) {
+			cb();
+			return;
+		}
+		this.onCompleteCallbacks.push(cb);
+	}
+
 	startScan() {
 		if (!this.scan) {
 			this.scan = this.performScan();
 		}
-
 		return this.scan;
 	}
 
@@ -46,21 +53,19 @@ export class VirtualFileSystem implements Ob.VirtualFileSystem {
 		// if it doesn't exist
 		await fs.stat(location);
 
-		// Start logging status while we wait
 		console.time("vfs creation");
 		const status = setInterval(() => {
 			console.log(this.counts);
 		}, 5000);
 
 		const vfs = await this._scan(location);
-		vfs.name = path.basename(location); // this has to be set manually for recursion optimization
+		vfs.name = path.basename(location);
 
-		// Clear the logging interval post scan, and log the final results
 		clearInterval(status);
 		console.log(this.counts);
 		console.timeEnd("vfs creation");
 
-		// Set the name and capacity if it's a drive (this could be better)
+		// Set the name and capacity if it's a drive
 		const list = await drivelist.list();
 		list.some((device) =>
 			device.mountpoints.some((mount) => {
@@ -72,12 +77,12 @@ export class VirtualFileSystem implements Ob.VirtualFileSystem {
 		);
 
 		this.root = vfs;
-
-		const tree = this.getRenderTree();
-		store.dispatch(mountVfs(location, tree));
+		const callbacks = this.onCompleteCallbacks;
+		this.onCompleteCallbacks = [];
+		callbacks.forEach((cb) => cb());
 	}
 
-	async _scan(location: string): Promise<Ob.VfsDirectory> {
+	private async _scan(location: string): Promise<Ob.VfsDirectory> {
 		const state: Ob.VfsDirectory = {
 			type: "directory",
 			name: "MISSING_NO",
@@ -127,14 +132,8 @@ export class VirtualFileSystem implements Ob.VirtualFileSystem {
 					state.size += directory.size;
 				} else if (stats.isSymbolicLink()) {
 					this.counts.symlinks++;
-					// state.files.push({
-					//   name, type: SYMLINK, size: 0
-					// })
 				} else if (stats.isCharacterDevice() || stats.isBlockDevice()) {
 					this.counts.devices++;
-					// state.files.push({
-					//   name, type: DEVICE, size: 0
-					// })
 				} else {
 					this.counts.misc++;
 				}
@@ -177,14 +176,11 @@ export class VirtualFileSystem implements Ob.VirtualFileSystem {
 		);
 	}
 
-	getRenderTree(cursor: string[] = []): Ob.RenderTree {
-		const directory = this.getDirectory(cursor);
+	getRenderTree(cursor: string[] = []): Ob.RenderTree | null {
+		if (!this.root) return null;
 
-		if (!directory) {
-			throw new ReferenceError(
-				`Received invalid cursor position "./${cursor.join("/")}"`,
-			);
-		}
+		const directory = this.getDirectory(cursor);
+		if (!directory) return null;
 
 		const isLargeEnough = (file: Ob.VfsNode) =>
 			file.size > directory.size * 0.003;
@@ -209,9 +205,7 @@ export class VirtualFileSystem implements Ob.VirtualFileSystem {
 							size: file.size,
 						};
 
-		// We know root is initialized, because we assert that it isn't null
-		// in `getDirectory`
-		const root = this.root!;
+		const root = this.root;
 
 		return {
 			name: root.name,
@@ -222,10 +216,6 @@ export class VirtualFileSystem implements Ob.VirtualFileSystem {
 			capacity: directory.capacity || directory.size,
 			position: directory.position,
 			size: directory.size,
-
-			// Basically, we just want to strip out any files that won't be rendered
-			// on the list or the sunburst because serialization is slow, so the less
-			// we have here the better.
 			list: {
 				files: directory.files.map(sanitize()),
 			},

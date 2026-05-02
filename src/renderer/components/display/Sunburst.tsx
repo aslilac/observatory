@@ -1,6 +1,5 @@
 import React, { Component, RefObject } from "react";
 
-import { dispatch, navigateUp, navigateForward } from "../../../store/renderer";
 import { readableSize } from "../../util";
 
 const hsl = (h: number | string, s: number | string, l: number | string) => {
@@ -50,6 +49,8 @@ type SunburstProps = {
 	size: number;
 	position: number;
 	rootSize: number;
+	onNavigateUp: () => void;
+	onNavigateForward: (...into: string[]) => void;
 };
 
 type SunburstState = {
@@ -197,7 +198,7 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 		);
 
 		if (layer === -1 && event.type === "click") {
-			dispatch(navigateUp());
+			this.props.onNavigateUp();
 			return;
 		}
 
@@ -223,7 +224,7 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 							}
 
 							if (event.type === "click" && file.type === "directory") {
-								dispatch(navigateForward(...searchPath, file.name));
+								this.props.onNavigateForward(...searchPath, file.name);
 							}
 						} else if (searchPath.length < layer && file.type === "directory") {
 							// smaller items...

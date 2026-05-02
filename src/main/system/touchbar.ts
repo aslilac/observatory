@@ -1,19 +1,23 @@
 import { BrowserWindow, TouchBar } from "electron";
 const { TouchBarButton, TouchBarLabel, TouchBarSpacer } = TouchBar;
 
+import { selectDirectory, setInspecting } from "../bridge";
 import {
-	dispatch,
-	inspectVfs,
-	showDriveList,
-	store,
-	subscribe,
-} from "../../store/main";
-import * as Ob from "../bridge";
+	getDrives,
+	getScans,
+	onDrivesChange,
+	onScansChange,
+} from "../vfsManager";
 
-subscribe(() => BrowserWindow.getAllWindows().forEach(initTouchBar));
+const refreshAll = () => BrowserWindow.getAllWindows().forEach(initTouchBar);
+
+onDrivesChange(refreshAll);
+onScansChange(refreshAll);
 
 export const initTouchBar = (view: BrowserWindow) => {
-	const state = store.getState();
+	const drives = getDrives();
+	const scans = getScans();
+	const driveByPath = new Map(drives.map((d) => [d.mountPath, d]));
 
 	view.setTouchBar(
 		new TouchBar({
@@ -21,7 +25,7 @@ export const initTouchBar = (view: BrowserWindow) => {
 				new TouchBarButton({
 					label: "Disks and folders",
 					backgroundColor: "#232358",
-					click: () => dispatch(showDriveList()),
+					click: () => setInspecting(null),
 				}),
 				new TouchBarSpacer({
 					size: "large",
@@ -30,18 +34,13 @@ export const initTouchBar = (view: BrowserWindow) => {
 					label: "View ",
 					textColor: "#b991e6",
 				}),
-				...Array.from(state.vfs.keys()).map(
-					(vfsPath) =>
+				...scans.map(
+					(scan) =>
 						new TouchBarButton({
-							label: state.drives.has(vfsPath)
-								? state.drives.get(vfsPath)!.description
-								: vfsPath,
-							backgroundColor:
-								state.vfs.get(vfsPath)!.status === "complete"
-									? "#9680ed"
-									: "#aaa",
-							enabled: state.vfs.get(vfsPath)!.status === "complete",
-							click: () => dispatch(inspectVfs(vfsPath)),
+							label: driveByPath.get(scan.path)?.description ?? scan.path,
+							backgroundColor: scan.status === "complete" ? "#9680ed" : "#aaa",
+							enabled: scan.status === "complete",
+							click: () => setInspecting(scan.path),
 						}),
 				),
 				new TouchBarSpacer({
@@ -50,7 +49,7 @@ export const initTouchBar = (view: BrowserWindow) => {
 				new TouchBarButton({
 					label: "Scan directory",
 					backgroundColor: "#b0a0ec",
-					click: Ob.selectDirectory,
+					click: () => void selectDirectory(),
 				}),
 				new TouchBarSpacer({
 					size: "large",

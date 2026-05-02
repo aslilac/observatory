@@ -1,35 +1,35 @@
 declare global {
 	namespace Ob {
 		const platform: "darwin" | "linux" | "win32";
-		function selectDirectory(): Promise<string[]>;
+
+		// RPC (renderer -> main)
+		function selectDirectory(): Promise<void>;
+		function scanPath(path: string): Promise<void>;
+		function getDrives(): Promise<PhysicalDrive[]>;
+		function getScans(): Promise<ScanInfo[]>;
+		function getRenderTree(
+			path: string,
+			cursor: string[],
+		): Promise<RenderTree | null>;
 		function sizeToDisplay(): Promise<void>;
 		function sizeToMenu(): Promise<void>;
+
+		// Push events (main -> renderer); each returns an unsubscribe.
+		function onDrives(cb: (drives: PhysicalDrive[]) => void): () => void;
+		function onScans(cb: (scans: ScanInfo[]) => void): () => void;
+		function onSetInspecting(cb: (path: string | null) => void): () => void;
 
 		export interface PhysicalDrive {
 			mountPath: string;
 			description: string;
 		}
 
-		export interface VirtualFileSystem {
-			location: string;
-			root: VfsDirectory | null;
+		export type ScanStatus = "init" | "building" | "complete";
 
-			getRenderTree(cursor: string[]): RenderTree;
+		export interface ScanInfo {
+			path: string;
+			status: ScanStatus;
 		}
-
-		export type VfsState =
-			| {
-					status: "init" | "building";
-					cursor?: undefined;
-					currentTree?: undefined;
-					outOfDate?: undefined;
-			  }
-			| {
-					status: "complete";
-					cursor: string[];
-					currentTree: RenderTree | null;
-					outOfDate: boolean;
-			  };
 
 		export type NodeType =
 			| "directory"

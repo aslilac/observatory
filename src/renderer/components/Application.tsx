@@ -1,16 +1,37 @@
-import React from "react";
-import { useSelector } from "react-redux";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
-import { AppState } from "../../store/renderer";
 import { Display } from "./display/Display";
 import { Menu } from "./menu/Menu";
+import { useDrives, useRenderTree, useScans } from "../state";
 
 export const Application = () => {
-	const vfsState = useSelector((state: AppState) =>
-		state.vfs.get(state.inspecting!),
+	const drives = useDrives();
+	const scans = useScans();
+	const [inspecting, setInspecting] = useState<string | null>(null);
+	const [cursor, setCursor] = useState<string[]>([]);
+
+	useEffect(() => Ob.onSetInspecting(setInspecting), []);
+
+	// Reset cursor whenever the inspected scan changes.
+	useEffect(() => {
+		setCursor([]);
+	}, [inspecting]);
+
+	const inspectingScan = useMemo(
+		() =>
+			inspecting ? (scans.find((s) => s.path === inspecting) ?? null) : null,
+		[inspecting, scans],
 	);
 
-	const viewTree = vfsState?.status === "complete";
+	const tree = useRenderTree(
+		inspecting,
+		cursor,
+		inspectingScan?.status ?? null,
+	);
+
+	const showDriveList = useCallback(() => setInspecting(null), []);
+
+	const viewTree = inspectingScan?.status === "complete" && tree;
 
 	return (
 		<div id="application" className={Ob.platform}>
@@ -18,7 +39,21 @@ export const Application = () => {
 				<h1>Observatory</h1>
 			</div>
 			<div id="application-display" className={viewTree ? "fs" : ""}>
-				{viewTree ? <Display /> : <Menu />}
+				{viewTree ? (
+					<Display
+						tree={tree}
+						cursor={cursor}
+						setCursor={setCursor}
+						onShowMenu={showDriveList}
+					/>
+				) : (
+					<Menu
+						drives={drives}
+						scans={scans}
+						onInspect={setInspecting}
+						onScan={(path) => void Ob.scanPath(path)}
+					/>
+				)}
 			</div>
 		</div>
 	);

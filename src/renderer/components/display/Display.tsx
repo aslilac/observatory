@@ -1,55 +1,75 @@
-import React, { useEffect } from "react";
-import { useSelector } from "react-redux";
+import React, { useCallback, useEffect } from "react";
 
-import {
-	AppState,
-	dispatch,
-	navigateTo,
-	navigateToRoot,
-	showDriveList,
-} from "../../../store/renderer";
 import { List } from "./List";
 import { Sunburst } from "./Sunburst";
 
-export const Display = () => {
+type DisplayProps = {
+	tree: Ob.RenderTree;
+	cursor: string[];
+	setCursor: (cursor: string[]) => void;
+	onShowMenu: () => void;
+};
+
+export const Display = ({
+	tree,
+	cursor,
+	setCursor,
+	onShowMenu,
+}: DisplayProps) => {
 	useEffect(() => {
-		Ob.sizeToDisplay();
+		void Ob.sizeToDisplay();
 	}, []);
 
-	const vfsRoot = useSelector((state: AppState) => state.inspecting)!;
-	const vfsState = useSelector((state: AppState) => state.vfs.get(vfsRoot));
+	const navigateUp = useCallback(
+		() => setCursor(cursor.slice(0, -1)),
+		[cursor, setCursor],
+	);
+	const navigateForward = useCallback(
+		(...into: string[]) => setCursor([...cursor, ...into]),
+		[cursor, setCursor],
+	);
+	const navigateToRoot = useCallback(() => setCursor([]), [setCursor]);
+	const navigateTo = useCallback(
+		(next: string[]) => setCursor(next),
+		[setCursor],
+	);
 
-	if (vfsState?.status !== "complete" || !vfsState.currentTree) {
-		return null;
-	}
-
-	const { sunburst, list, ...shared } = vfsState.currentTree;
+	const { sunburst, list, ...shared } = tree;
 
 	// This makes sure that the state kept by List is maintained relative to the
-	// directory that the state is for. We don't use this for Sunburst, because that
-	// would cause React to destroy/create our canvas element on every navigation.
+	// directory that the state is for. We don't use this for Sunburst, because
+	// that would cause React to destroy/create our canvas element on every
+	// navigation.
 	const stateKey = shared.cursor.join("/");
 
 	return (
 		<>
 			<section id="fs-display-navbar">
-				<button onClick={() => dispatch(showDriveList())}>
-					Disks and folders
-				</button>
-				<button onClick={() => dispatch(navigateToRoot())}>
-					{shared.name}
-				</button>
+				<button onClick={onShowMenu}>Disks and folders</button>
+				<button onClick={navigateToRoot}>{shared.name}</button>
 				{shared.cursor.map((piece, i) => (
 					<button
 						key={i}
-						onClick={() => dispatch(navigateTo(shared.cursor.slice(0, i + 1)))}
+						onClick={() => navigateTo(shared.cursor.slice(0, i + 1))}
 					>
 						{piece}
 					</button>
 				))}
 			</section>
-			<Sunburst files={sunburst.files} {...shared} />
-			<List key={stateKey} files={list.files} {...shared} />
+			<Sunburst
+				files={sunburst.files}
+				onNavigateUp={navigateUp}
+				onNavigateForward={navigateForward}
+				{...shared}
+			/>
+			<List
+				key={stateKey}
+				files={list.files}
+				canNavigateBack={cursor.length > 0}
+				onNavigateUp={navigateUp}
+				onNavigateForward={navigateForward}
+				{...shared}
+			/>
 		</>
 	);
 };

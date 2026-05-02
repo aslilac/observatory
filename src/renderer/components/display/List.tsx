@@ -1,12 +1,5 @@
 import React, { useState } from "react";
-import { useSelector } from "react-redux";
 
-import {
-	AppState,
-	dispatch,
-	navigateForward,
-	navigateUp,
-} from "../../../store/renderer";
 import { readableSize } from "../../util";
 
 import backArrow from "url:../../assets/back.svg";
@@ -16,6 +9,9 @@ type ListProps = {
 	files: Ob.VfsNode[];
 	name: string;
 	size: number;
+	canNavigateBack: boolean;
+	onNavigateUp: () => void;
+	onNavigateForward: (...into: string[]) => void;
 };
 
 export const List = (props: ListProps) => {
@@ -23,20 +19,16 @@ export const List = (props: ListProps) => {
 		props.files.length > 0 && props.files[0]!.size < props.size / 100,
 	);
 
-	const canNavigateBack = useSelector(
-		(state: AppState) => state.vfs.get(state.inspecting!)!.cursor!.length > 0,
-	);
-
 	return (
 		<section id="fs-display-list">
-			{canNavigateBack && (
+			{props.canNavigateBack && (
 				<img
-					// This is a patch for a bug in Parcel. It doesn't respect publicUrl settings
-					// when using the url loader, so we remove any leading slashes if present.
+					// This is a patch for a bug in Parcel. It doesn't respect publicUrl
+					// settings when using the url loader, so we remove any leading
+					// slashes if present.
 					src={backArrow.replace(/^\//, "")}
 					className="back"
-					// onClick={() => history.back()}
-					onClick={() => dispatch(navigateUp())}
+					onClick={props.onNavigateUp}
 				/>
 			)}
 			<h1>
@@ -54,8 +46,7 @@ export const List = (props: ListProps) => {
 						draggable
 						key={key}
 						onClick={() => {
-							if (file.type === "directory")
-								dispatch(navigateForward(file.name));
+							if (file.type === "directory") props.onNavigateForward(file.name);
 						}}
 					>
 						{file.name}

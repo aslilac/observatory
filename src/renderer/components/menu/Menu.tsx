@@ -1,65 +1,56 @@
 import React, { useEffect } from "react";
-import { useSelector } from "react-redux";
 
-import {
-	AppState,
-	createVfs,
-	dispatch,
-	inspectVfs,
-} from "../../../store/renderer";
+type MenuProps = {
+	drives: Ob.PhysicalDrive[];
+	scans: Ob.ScanInfo[];
+	onInspect: (path: string) => void;
+	onScan: (path: string) => void;
+};
 
-export const Menu = () => {
-	const drives = useSelector((state: AppState) => state.drives);
-	const vfsMap = useSelector((state: AppState) => state.vfs);
-
+export const Menu = ({ drives, scans, onInspect, onScan }: MenuProps) => {
 	useEffect(() => {
-		Ob.sizeToMenu();
-	}, [drives, vfsMap]);
+		void Ob.sizeToMenu();
+	}, [drives, scans]);
 
-	const directoryList: JSX.Element[] = [];
+	const driveByPath = new Map(drives.map((d) => [d.mountPath, d]));
+	const scanByPath = new Map(scans.map((s) => [s.path, s]));
 
-	vfsMap.forEach((vfs, path) => {
-		if (!drives.has(path)) {
-			directoryList.push(
-				<li key={path}>
-					{drives.get(path)?.description || path} - {vfs.status}
-					<button
-						onClick={() => dispatch(inspectVfs(path))}
-						disabled={vfs.status !== "complete"}
-					>
-						View
-					</button>
-				</li>,
-			);
-		}
-	});
+	const nonDriveScans = scans.filter((s) => !driveByPath.has(s.path));
 
 	return (
 		<section>
 			<ul id="menu-drivelist">
-				{Array.from(drives.values()).map((drive) => (
-					// Don't show the drive in this list if it's shown in the list of scans
-
-					<li key={drive.mountPath}>
-						{drive.description} -{" "}
-						{vfsMap.get(drive.mountPath)?.status ?? "not scanned"}
-						{vfsMap.has(drive.mountPath) ? (
-							<button
-								onClick={() => dispatch(inspectVfs(drive.mountPath))}
-								disabled={vfsMap.get(drive.mountPath)!.status !== "complete"}
-							>
-								View
-							</button>
-						) : (
-							<button onClick={() => dispatch(createVfs(drive.mountPath))}>
-								Scan
-							</button>
-						)}
+				{drives.map((drive) => {
+					const scan = scanByPath.get(drive.mountPath);
+					return (
+						<li key={drive.mountPath}>
+							{drive.description} - {scan?.status ?? "not scanned"}
+							{scan ? (
+								<button
+									onClick={() => onInspect(drive.mountPath)}
+									disabled={scan.status !== "complete"}
+								>
+									View
+								</button>
+							) : (
+								<button onClick={() => onScan(drive.mountPath)}>Scan</button>
+							)}
+						</li>
+					);
+				})}
+				{nonDriveScans.map((scan) => (
+					<li key={scan.path}>
+						{scan.path} - {scan.status}
+						<button
+							onClick={() => onInspect(scan.path)}
+							disabled={scan.status !== "complete"}
+						>
+							View
+						</button>
 					</li>
 				))}
-				{directoryList}
 			</ul>
-			<button onClick={() => Ob.selectDirectory()}>Scan directory</button>
+			<button onClick={() => void Ob.selectDirectory()}>Scan directory</button>
 		</section>
 	);
 };

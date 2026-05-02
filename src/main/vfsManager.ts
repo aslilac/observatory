@@ -1,54 +1,71 @@
 import * as drivelist from "drivelist";
 import { app } from "electron";
+import { EventEmitter } from "events";
 
-import {
-	dispatch,
-	premountVfs,
-	propagateDriveList,
-	render,
-	store,
-	subscribe,
-} from "../store/main";
-import { VirtualFileSystem } from "./vfs";
 import { areMapsSimilar } from "./util";
+import { VirtualFileSystem } from "./vfs";
 
-export const scans = new Map<string, VirtualFileSystem>();
+type ScanEntry = {
+	status: Ob.ScanStatus;
+	vfs: VirtualFileSystem;
+};
 
-function trimProperty(property: string, from: object) {
-	return Object.fromEntries(
-		Object.entries(from).filter(([key]) => key !== property),
-	);
+const drives = new Map<string, Ob.PhysicalDrive>();
+const scans = new Map<string, ScanEntry>();
+
+const emitter = new EventEmitter();
+
+export function onDrivesChange(cb: (drives: Ob.PhysicalDrive[]) => void) {
+	emitter.on("drives", cb);
+	return () => emitter.off("drives", cb);
 }
 
-subscribe(() => {
-	console.log("checking for new inits");
-	// another reason that immer sucks
-	// we have to copy to make it iterable
-	const vfsState = new Map(store.getState().vfs);
+export function onScansChange(cb: (scans: Ob.ScanInfo[]) => void) {
+	emitter.on("scans", cb);
+	return () => emitter.off("scans", cb);
+}
 
-	for (const [rootPath, scan] of vfsState) {
-		console.log("checking", rootPath, trimProperty("currentTree", scan));
+export function getDrives(): Ob.PhysicalDrive[] {
+	return Array.from(drives.values());
+}
 
-		if (scan.status === "init") {
-			scans.set(rootPath, new VirtualFileSystem(rootPath));
-			dispatch(premountVfs(rootPath));
-		} else if (scan.status === "complete" && scan.outOfDate) {
-			const vfs = scans.get(rootPath)!;
-			dispatch(render(rootPath, scan.cursor, vfs.getRenderTree(scan.cursor)));
-		}
-	}
-});
+export function getScans(): Ob.ScanInfo[] {
+	return Array.from(scans.entries()).map(([path, entry]) => ({
+		path,
+		status: entry.status,
+	}));
+}
 
-async function scanForDrives() {
-	// console.log("updating drive list");
+export function getRenderTree(
+	path: string,
+	cursor: string[],
+): Ob.RenderTree | null {
+	const entry = scans.get(path);
+	if (!entry || entry.status !== "complete") return null;
+	return entry.vfs.getRenderTree(cursor);
+}
 
-	// Look up drives and propagate them in Redux
+export function startScan(path: string) {
+	if (scans.has(path)) return;
+
+	const vfs = new VirtualFileSystem(path);
+	scans.set(path, { status: "building", vfs });
+	emitter.emit("scans", getScans());
+
+	vfs.onComplete(() => {
+		const entry = scans.get(path);
+		if (!entry) return;
+		entry.status = "complete";
+		emitter.emit("scans", getScans());
+	});
+}
+
+async function pollDrives() {
 	const driveList = await drivelist.list();
-	const drives = new Map<string, Ob.PhysicalDrive>();
+	const next = new Map<string, Ob.PhysicalDrive>();
 
 	driveList.forEach((device) =>
 		device.mountpoints.forEach((mount) => {
-			// Ignore system volumes on macOS
 			if (
 				process.platform === "darwin" &&
 				mount.path.startsWith("/System/Volumes")
@@ -56,8 +73,8 @@ async function scanForDrives() {
 				return;
 			}
 
-			if (!drives.has(mount.path)) {
-				drives.set(mount.path, {
+			if (!next.has(mount.path)) {
+				next.set(mount.path, {
 					mountPath: mount.path,
 					description: mount.label || `${mount.path} (${device.description})`,
 				});
@@ -65,15 +82,14 @@ async function scanForDrives() {
 		}),
 	);
 
-	// Don't dispatch if we don't need an update
-	const currentDrives = store.getState().drives;
-	if (!areMapsSimilar(currentDrives, drives)) {
-		dispatch(propagateDriveList(drives));
+	if (!areMapsSimilar(drives, next)) {
+		drives.clear();
+		next.forEach((value, key) => drives.set(key, value));
+		emitter.emit("drives", getDrives());
 	}
 }
 
-// Launch on startup.
 app.on("ready", () => {
-	setImmediate(scanForDrives);
-	setInterval(scanForDrives, 5000);
+	void pollDrives();
+	setInterval(pollDrives, 5000);
 });
