@@ -6,6 +6,10 @@ module.exports = {
 		asar: false,
 		darwinDarkModeSupport: true,
 		derefSymlinks: true,
+		// Forge appends the right extension per platform — .icns on darwin,
+		// .ico on win32, .png on linux. Drop a hand-built icon.icns into
+		// build-resources/ to enable proper macOS packaging.
+		icon: "./build-resources/icon",
 		ignore: [/scripts\/.+/, /src\/.+/],
 		name: "Observatory",
 	},
@@ -13,10 +17,18 @@ module.exports = {
 		{
 			name: "@electron-forge/maker-dmg",
 			platforms: ["darwin"],
+			config: {
+				icon: "./build-resources/icon.icns",
+			},
 		},
 		{
 			name: "@electron-forge/maker-squirrel",
 			platforms: ["win32"],
+			config: {
+				iconUrl:
+					"https://raw.githubusercontent.com/aslilac/observatory/main/build-resources/icon.ico",
+				setupIcon: "./build-resources/icon.ico",
+			},
 		},
 		{
 			name: "@electron-forge/maker-zip",
