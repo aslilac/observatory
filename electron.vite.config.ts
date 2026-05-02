@@ -1,6 +1,6 @@
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
-import { defineConfig, externalizeDepsPlugin } from "electron-vite";
+import { externalizeDepsPlugin } from "electron-vite";
 import { resolve } from "node:path";
 
 // One config to drive all three Electron processes. Outputs land under
@@ -10,11 +10,11 @@ import { resolve } from "node:path";
 //                           viewManager finds it without extension)
 //   build/renderer/       — renderer entries (index.html + about.html) plus
 //                           hashed assets
-export default defineConfig({
+export default {
 	main: {
 		plugins: [externalizeDepsPlugin()],
 		build: {
-			outDir: "build/main",
+			outDir: "build/main/",
 			rollupOptions: {
 				input: { index: resolve(__dirname, "src/main/index.ts") },
 			},
@@ -23,7 +23,7 @@ export default defineConfig({
 	preload: {
 		plugins: [externalizeDepsPlugin()],
 		build: {
-			outDir: "build/preload",
+			outDir: "build/preload/",
 			rollupOptions: {
 				input: { index: resolve(__dirname, "src/preload/index.ts") },
 				output: {
@@ -34,10 +34,10 @@ export default defineConfig({
 		},
 	},
 	renderer: {
-		root: resolve(__dirname, "src/renderer"),
+		root: resolve(__dirname, "src/renderer/"),
 		plugins: [react(), tailwindcss()],
 		build: {
-			outDir: resolve(__dirname, "build/renderer"),
+			outDir: resolve(__dirname, "build/renderer/"),
 			emptyOutDir: true,
 			rollupOptions: {
 				input: {
@@ -47,4 +47,4 @@ export default defineConfig({
 			},
 		},
 	},
-});
+} satisfies import("electron-vite").UserConfig;

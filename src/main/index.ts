@@ -3,7 +3,6 @@ import "./platform/squirrel";
 
 import { app } from "electron";
 
-import "./platform/macOS";
 import "./system/menu";
 import "./bridge";
 import "./vfsManager";
