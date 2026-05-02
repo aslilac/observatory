@@ -17,7 +17,8 @@ Node: see `.nvmrc` (currently 22 LTS). Electron bundles its own Node, so this on
 - `yarn build` — three sequential builds: `build:main` (tsc → `build/main`), `build:preload` (esbuild bundle → `build/preload.js`), `build:renderer` (parcel → `build/renderer`).
 - `yarn forge` — `build` + Electron Forge packager/maker. DMG (macOS), Squirrel (win32), and zip artifacts.
 - `yarn type-check` — `tsc --noEmit` over the whole project (includes renderer).
-- `yarn fmt` — Prettier write. (No lint step; `tsc --strict` covers what ESLint would have.) Tests have been removed pending a vitest rewrite.
+- `yarn test` — Vitest, single run. `yarn test:watch` for the watcher. Single file: `yarn test path/to/file.test.ts`; single test: `yarn test -t "name"`.
+- `yarn fmt` — Prettier write. (No lint step; `tsc --strict` covers what ESLint would have.)
 - Rust backend: `cd rust-backend && cargo test` — only `v4_big_scan` is uncommented and it hardcodes `/Library/Source` (macOS path), so it will fail on other machines unless edited.
 
 Note: the README mentions Parcel; commit `c5f7af5` is `Revert "Use Vite instead of Parcel"`, so Parcel is the current/intended bundler — don't reintroduce Vite without checking why it was reverted.
