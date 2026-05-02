@@ -11,8 +11,6 @@ declare global {
 			path: string,
 			cursor: string[],
 		): Promise<RenderTree | null>;
-		function sizeToDisplay(): Promise<void>;
-		function sizeToMenu(): Promise<void>;
 
 		// Push events (main -> renderer); each returns an unsubscribe.
 		function onDrives(cb: (drives: PhysicalDrive[]) => void): () => void;

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 
 import { readableSize } from "../util";
 import { FolderTree } from "./FolderTree";
@@ -22,9 +22,6 @@ export const Inspect = ({
 	onShowMenu,
 }: InspectProps) => {
 	const [mode, setMode] = useState<ViewMode>("list");
-	useEffect(() => {
-		void Ob.sizeToDisplay();
-	}, []);
 
 	const navigateForward = (...into: string[]) =>
 		setCursor([...cursor, ...into]);
