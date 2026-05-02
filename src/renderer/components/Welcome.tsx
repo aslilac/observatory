@@ -1,6 +1,7 @@
 import React from "react";
 
 import type { RecentScan } from "../state";
+import { Button } from "./Button";
 import { Toolbar } from "./Toolbar";
 
 type WelcomeProps = {
@@ -72,13 +73,9 @@ export const Welcome = ({
 							or paste a path
 						</div>
 					</div>
-					<button
-						type="button"
-						className="btn"
-						onClick={() => void Ob.selectDirectory()}
-					>
+					<Button onClick={() => void Ob.selectDirectory()}>
 						Choose folder…
-					</button>
+					</Button>
 				</div>
 
 				{recent.length > 0 && (

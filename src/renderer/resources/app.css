@@ -59,23 +59,6 @@ body {
 		@apply text-[10px] font-semibold uppercase tracking-[0.08em] text-muted;
 	}
 
-	/* Default text button. Variants: btn-primary, btn-danger, btn-small. */
-	.btn {
-		@apply inline-flex cursor-pointer items-center gap-[6px] rounded-button border border-ink bg-paper px-[14px] py-[6px] font-sans text-[12px] font-medium text-ink transition-shadow active:translate-y-px;
-	}
-	.btn[disabled] {
-		@apply cursor-default border-line bg-fill text-muted;
-	}
-	.btn-primary {
-		@apply bg-ink text-paper;
-	}
-	.btn-danger {
-		@apply border-danger-border bg-danger-bg text-danger-fg;
-	}
-	.btn-small {
-		@apply px-[10px] py-[4px] text-[11px];
-	}
-
 	/* Toolbar icon button. */
 	.icon-btn {
 		@apply inline-flex h-[26px] w-[26px] cursor-pointer items-center justify-center rounded-button border border-line bg-transparent p-0 text-[14px] text-ink hover:bg-fill;
