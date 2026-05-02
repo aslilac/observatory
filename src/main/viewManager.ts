@@ -79,20 +79,22 @@ export function createWindow() {
 	});
 
 	view.on("app-command", (event, command) => {
+		const history = view!.webContents.navigationHistory;
 		// Navigate the window back when the user hits their mouse back button
-		if (command === "browser-backward" && view!.webContents.canGoBack()) {
-			view!.webContents.goBack();
-		} else if (command === "browser-forward" && view!.webContents.canGoForward()) {
-			view!.webContents.goForward();
+		if (command === "browser-backward" && history.canGoBack()) {
+			history.goBack();
+		} else if (command === "browser-forward" && history.canGoForward()) {
+			history.goForward();
 		}
 	});
 
 	view.on("swipe", (event, direction) => {
+		const history = view!.webContents.navigationHistory;
 		// Navigate the window back when the users swipe
-		if (direction === "left" && view!.webContents.canGoBack()) {
-			view!.webContents.goBack();
-		} else if (direction === "right" && view!.webContents.canGoForward()) {
-			view!.webContents.goForward();
+		if (direction === "left" && history.canGoBack()) {
+			history.goBack();
+		} else if (direction === "right" && history.canGoForward()) {
+			history.goForward();
 		}
 	});
 }

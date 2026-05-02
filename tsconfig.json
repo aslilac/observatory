@@ -3,9 +3,12 @@
 	"compilerOptions": {
 		"lib": ["dom", "esnext"],
 		"module": "commonjs",
+		"moduleResolution": "node10",
 		"outDir": "build/",
 		"target": "esnext",
-		"noUnusedLocals": false
+		"noUnusedLocals": false,
+		"skipLibCheck": true,
+		"verbatimModuleSyntax": false
 	},
 	"include": ["./src/**/*"]
 }

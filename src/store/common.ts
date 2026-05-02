@@ -1,4 +1,4 @@
-import produce, { enableMapSet } from "immer";
+import { enableMapSet, produce } from "immer";
 
 // immer sucks apparently
 enableMapSet();
