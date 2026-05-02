@@ -3,8 +3,8 @@ import {
 	BrowserWindowConstructorOptions,
 	screen,
 } from "electron";
-import path from "path";
-import url from "url";
+import * as path from "node:path";
+import * as url from "node:url";
 
 import { initTouchBar } from "./system/touchbar";
 

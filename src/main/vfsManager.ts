@@ -1,6 +1,6 @@
 import * as drivelist from "drivelist";
 import { app } from "electron";
-import { EventEmitter } from "events";
+import { EventEmitter } from "node:events";
 
 import { areMapsSimilar } from "./util";
 import { VirtualFileSystem } from "./vfs";

@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-
 import { useDrives, useRecentScans, useRenderTree, useScans } from "../state";
 import { Inspect } from "./Inspect";
 import { Scanning } from "./Scanning";
