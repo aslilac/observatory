@@ -40,8 +40,6 @@
 		"@electron-forge/maker-squirrel": "^7.5.0",
 		"@electron-forge/maker-zip": "^7.5.0",
 		"@electron/rebuild": "^3.7.1",
-		"@mckayla/prettier": "^1.0.3",
-		"@mckayla/tsconfig": "^1.0.3",
 		"@parcel/transformer-sass": "^2.13.3",
 		"@types/jest": "^29.5.14",
 		"@types/react": "^18.3.12",
@@ -51,8 +49,6 @@
 		"electron": "^33.2.1",
 		"electron-build-env": "^0.2.0",
 		"esbuild": "^0.24.0",
-		"eslint": "^8.57.1",
-		"eslint-config-mckayla": "^1.0.6",
 		"jest": "^29.7.0",
 		"nodemon": "^3.1.7",
 		"parcel": "^2.13.3",
@@ -73,7 +69,6 @@
 		"dev:renderer": "parcel watch --target renderer ./src/renderer/index.html",
 		"fmt": "prettier --ignore-path .gitignore --write .",
 		"forge": "npm run build && electron-forge make",
-		"lint": "eslint .",
 		"test": "jest",
 		"type-check": "tsc -p . --noEmit"
 	}

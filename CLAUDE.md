@@ -18,14 +18,14 @@ Node: see `.nvmrc` (currently 22 LTS). Electron bundles its own Node, so this on
 - `yarn forge` — `build` + Electron Forge packager/maker. DMG (macOS), Squirrel (win32), and zip artifacts.
 - `yarn test` — Jest via ts-jest. Single test: `yarn test path/to/file.test.ts` or `yarn test -t "test name"`. Currently only `src/main/vfs.test.ts` exists.
 - `yarn type-check` — `tsc --noEmit` over the whole project (includes renderer).
-- `yarn lint` — ESLint. `yarn fmt` — Prettier write.
+- `yarn fmt` — Prettier write. (No lint step; `tsc --strict` covers what ESLint would have.)
 - Rust backend: `cd rust-backend && cargo test` — only `v4_big_scan` is uncommented and it hardcodes `/Library/Source` (macOS path), so it will fail on other machines unless edited.
 
 Note: the README mentions Parcel; commit `c5f7af5` is `Revert "Use Vite instead of Parcel"`, so Parcel is the current/intended bundler — don't reintroduce Vite without checking why it was reverted.
 
 ## Architecture
 
-Three Electron processes share a single Redux store via `@mckayla/electron-redux`, which transparently syncs state across IPC. The store is the *primary* communication channel — most "send a message to the other process" patterns are implemented as dispatched actions, not direct IPC calls.
+Three Electron processes share a single Redux store via `@mckayla/electron-redux`, which transparently syncs state across IPC. The store is the _primary_ communication channel — most "send a message to the other process" patterns are implemented as dispatched actions, not direct IPC calls.
 
 ### Process layout
 
@@ -35,11 +35,12 @@ Three Electron processes share a single Redux store via `@mckayla/electron-redux
 
 ### Store
 
-`src/store/common.ts` is the shared reducer. `main.ts` and `renderer.ts` each create a store with the `syncMain`/`syncRenderer` enhancers — *do not* create a store any other way; the enhancers are what keep main and renderer in sync. State shape: `drives`, `vfs` (Map of `path → VfsState`), `inspecting`. Action creators are annotated `@direction main -> renderer` / `renderer -> main` to document expected origin; the store sync handles propagation either way. The reducer uses Immer with `enableMapSet()` because state contains `Map`s.
+`src/store/common.ts` is the shared reducer. `main.ts` and `renderer.ts` each create a store with the `syncMain`/`syncRenderer` enhancers — _do not_ create a store any other way; the enhancers are what keep main and renderer in sync. State shape: `drives`, `vfs` (Map of `path → VfsState`), `inspecting`. Action creators are annotated `@direction main -> renderer` / `renderer -> main` to document expected origin; the store sync handles propagation either way. The reducer uses Immer with `enableMapSet()` because state contains `Map`s.
 
 ### Scanning flow
 
 `vfsManager.ts` subscribes to the store and acts as a state-machine driver:
+
 1. Renderer dispatches `createVfs(path)` → state goes to `init`.
 2. The subscriber sees `init`, constructs a `VirtualFileSystem` (which begins scanning in its constructor), dispatches `premountVfs` → `building`.
 3. When `vfs.ts`'s recursive `_scan` finishes, it dispatches `mountVfs(path, tree)` → `complete`.
