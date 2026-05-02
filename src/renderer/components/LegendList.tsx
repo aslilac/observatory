@@ -82,33 +82,31 @@ export const LegendList = ({
 				return (
 					<div
 						key={file.name}
-						className={`group flex items-center justify-between rounded-[5px] px-[8px] py-[7px] ${
+						className={`group flex items-center gap-[8px] rounded-[5px] px-[8px] py-[7px] ${
 							isSelected ? "bg-fill" : "hover:bg-fill"
 						} ${isDir ? "cursor-pointer" : ""}`}
 						onClick={() =>
 							isDir ? onForward(file.name) : onToggleSelect(item)
 						}
 					>
-						<span className="flex min-w-0 items-center gap-[8px]">
-							<Checkbox
-								checked={isSelected}
-								onChange={() => onToggleSelect(item)}
-							/>
-							<span
-								className="block h-[8px] w-[8px] flex-shrink-0 rounded-full"
-								style={{ background: oklchSwatch(hue) }}
-							/>
-							<span className="truncate">{file.name}</span>
-						</span>
+						<Checkbox
+							checked={isSelected}
+							onChange={() => onToggleSelect(item)}
+						/>
+						<span
+							className="block h-[8px] w-[8px] flex-shrink-0 rounded-full"
+							style={{ background: oklchSwatch(hue) }}
+						/>
+						<span className="min-w-0 flex-1 truncate">{file.name}</span>
 						{showDate && (
 							<span
-								className="ml-[12px] w-[88px] flex-shrink-0 text-right font-mono text-[11px] text-faint"
+								className="w-[88px] flex-shrink-0 text-right font-mono text-[11px] text-faint tabular-nums"
 								title={new Date(file.mtime).toLocaleString()}
 							>
 								{readableDate(file.mtime)}
 							</span>
 						)}
-						<span className="ml-[12px] flex-shrink-0 font-mono text-[12px] text-muted">
+						<span className="w-[68px] flex-shrink-0 text-right font-mono text-[12px] text-muted tabular-nums">
 							{readableSize(file.size)}
 						</span>
 					</div>
