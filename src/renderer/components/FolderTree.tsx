@@ -1,10 +1,12 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 
 import { hueFor, oklchSwatch } from "../colors";
 import { joinPath } from "../state";
 import { readableSize } from "../util";
 
 type SelectableItem = { path: string; name: string; size: number };
+
+type CacheValue = Ob.VfsNode[] | "loading" | "error";
 
 type FolderTreeProps = {
 	inspecting: string;
@@ -24,13 +26,48 @@ export const FolderTree = ({
 	onToggleSelect,
 }: FolderTreeProps) => {
 	const [expanded, setExpanded] = useState<Set<string>>(() => new Set([""]));
-	const toggle = (key: string) =>
+	const [cache, setCache] = useState<Map<string, CacheValue>>(new Map());
+
+	const cursorKey = cursor.join("/");
+	useEffect(() => {
+		setExpanded(new Set([""]));
+		setCache(new Map());
+	}, [inspecting, cursorKey]);
+
+	const toggleExpand = useCallback((key: string) => {
 		setExpanded((prev) => {
 			const next = new Set(prev);
 			if (next.has(key)) next.delete(key);
 			else next.add(key);
 			return next;
 		});
+	}, []);
+
+	// Pull in deeper children on demand. The render-tree payload caps
+	// recursion at depth 6, and stale dev sessions can sometimes hand us a
+	// sparser shape, so anything past what was inlined gets fetched here
+	// and cached by row key.
+	const requestChildren = useCallback(
+		(key: string, subCursor: string[]) => {
+			setCache((prev) => {
+				if (prev.has(key)) return prev;
+				const next = new Map(prev);
+				next.set(key, "loading");
+				return next;
+			});
+			void Ob.getRenderTree(inspecting, subCursor).then(
+				(result) => {
+					const children =
+						result?.tree?.files ?? result?.list.files ?? [];
+					setCache((prev) => new Map(prev).set(key, children));
+				},
+				() => {
+					setCache((prev) => new Map(prev).set(key, "error"));
+				},
+			);
+		},
+		[inspecting],
+	);
 
 	return (
 		<div className="text-[13px]">
@@ -43,7 +80,7 @@ export const FolderTree = ({
 				expanded={expanded.has("")}
 				selected={false}
 				selectable={false}
-				onToggleExpand={() => toggle("")}
+				onToggleExpand={() => toggleExpand("")}
 				onToggleSelect={undefined}
 				onClick={undefined}
 			/>
@@ -55,7 +92,9 @@ export const FolderTree = ({
 					depth={1}
 					path={[]}
 					expanded={expanded}
-					toggleExpand={toggle}
+					toggleExpand={toggleExpand}
+					cache={cache}
+					requestChildren={requestChildren}
 					selection={selection}
 					onForward={onForward}
 					onToggleSelect={onToggleSelect}
@@ -73,6 +112,8 @@ type ChildrenProps = {
 	path: string[];
 	expanded: Set<string>;
 	toggleExpand: (key: string) => void;
+	cache: Map<string, CacheValue>;
+	requestChildren: (key: string, subCursor: string[]) => void;
 	selection: Map<string, SelectableItem>;
 	onForward: (...names: string[]) => void;
 	onToggleSelect: (item: SelectableItem) => void;
@@ -86,6 +127,8 @@ const TreeChildren = ({
 	path,
 	expanded,
 	toggleExpand,
+	cache,
+	requestChildren,
 	selection,
 	onForward,
 	onToggleSelect,
@@ -101,7 +144,27 @@ const TreeChildren = ({
 			};
 			const isOpen = expanded.has(key);
 			const isDir = file.type === "directory";
-			const hasChildren = isDir && file.files.length > 0;
+			const cached = cache.get(key);
+			const cachedChildren = Array.isArray(cached) ? cached : null;
+			const childList = cachedChildren ?? (isDir ? file.files : []);
+			const isLoading = cached === "loading";
+			const isError = cached === "error";
+			// Always offer a toggle on directories — we may need to fetch
+			// children we don't have inline yet.
+			const expandable = isDir;
+
+			const handleToggle = () => {
+				toggleExpand(key);
+				if (
+					isDir &&
+					!isOpen &&
+					childList.length === 0 &&
+					cached === undefined
+				) {
+					requestChildren(key, [...cursor, ...path, file.name]);
+				}
+			};
+
 			return (
 				<React.Fragment key={key}>
 					<Row
@@ -109,11 +172,11 @@ const TreeChildren = ({
 						size={file.size}
 						depth={depth}
 						hue={depth === 1 && isDir ? hueFor(i) : null}
-						expandable={hasChildren}
+						expandable={expandable}
 						expanded={isOpen}
 						selected={selection.has(fullPath)}
 						selectable
-						onToggleExpand={() => toggleExpand(key)}
+						onToggleExpand={handleToggle}
 						onToggleSelect={() => onToggleSelect(item)}
 						onClick={
 							isDir
@@ -121,24 +184,55 @@ const TreeChildren = ({
 								: () => onToggleSelect(item)
 						}
 					/>
-					{isOpen && hasChildren && (
-						<TreeChildren
-							inspecting={inspecting}
-							cursor={cursor}
-							files={file.files}
-							depth={depth + 1}
-							path={[...path, file.name]}
-							expanded={expanded}
-							toggleExpand={toggleExpand}
-							selection={selection}
-							onForward={onForward}
-							onToggleSelect={onToggleSelect}
-						/>
+					{isOpen && isDir && (
+						<>
+							{isLoading && (
+								<Placeholder depth={depth + 1}>loading…</Placeholder>
+							)}
+							{isError && (
+								<Placeholder depth={depth + 1}>
+									couldn't load
+								</Placeholder>
+							)}
+							{!isLoading && !isError && childList.length === 0 && (
+								<Placeholder depth={depth + 1}>empty</Placeholder>
+							)}
+							{childList.length > 0 && (
+								<TreeChildren
+									inspecting={inspecting}
+									cursor={cursor}
+									files={childList}
+									depth={depth + 1}
+									path={[...path, file.name]}
+									expanded={expanded}
+									toggleExpand={toggleExpand}
+									cache={cache}
+									requestChildren={requestChildren}
+									selection={selection}
+									onForward={onForward}
+									onToggleSelect={onToggleSelect}
+								/>
+							)}
+						</>
 					)}
 				</React.Fragment>
 			);
 		})}
 	</>
+);
+
+const Placeholder = ({
+	depth,
+	children,
+}: {
+	depth: number;
+	children: React.ReactNode;
+}) => (
+	<div className="flex items-center gap-[6px] px-[8px] py-[4px] font-mono text-[11px] text-faint">
+		<span style={{ width: depth * 14 }} className="flex-shrink-0" />
+		<span className="w-[22px] flex-shrink-0" />
+		<span>{children}</span>
+	</div>
 );
 
 type RowProps = {
