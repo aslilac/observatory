@@ -79,6 +79,38 @@ export function joinPath(base: string, ...rest: string[]): string {
 	return `${trimmedBase}/${tail}`;
 }
 
+export function useSearch(
+	path: string | null,
+	query: string,
+): { results: Ob.SearchResults | null; loading: boolean } {
+	const [results, setResults] = useState<Ob.SearchResults | null>(null);
+	const [loading, setLoading] = useState(false);
+
+	useEffect(() => {
+		const trimmed = query.trim();
+		if (!path || !trimmed) {
+			setResults(null);
+			setLoading(false);
+			return;
+		}
+		let cancelled = false;
+		setLoading(true);
+		const id = setTimeout(() => {
+			void Ob.searchScan(path, trimmed).then((next) => {
+				if (cancelled) return;
+				setResults(next);
+				setLoading(false);
+			});
+		}, 180);
+		return () => {
+			cancelled = true;
+			clearTimeout(id);
+		};
+	}, [path, query]);
+
+	return { results, loading };
+}
+
 export type RecentScan = {
 	path: string;
 	scannedAt: number;

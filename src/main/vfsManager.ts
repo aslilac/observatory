@@ -2,6 +2,7 @@ import * as drivelist from "drivelist";
 import { app } from "electron";
 import { EventEmitter } from "node:events";
 
+import { searchVfs, type SearchResults } from "./search";
 import { areMapsSimilar } from "./util";
 import { VirtualFileSystem } from "./vfs";
 
@@ -43,6 +44,15 @@ export function getRenderTree(
 	const entry = scans.get(path);
 	if (!entry || entry.status !== "complete") return null;
 	return entry.vfs.getRenderTree(cursor);
+}
+
+export function searchScan(
+	path: string,
+	query: string,
+): SearchResults | null {
+	const entry = scans.get(path);
+	if (!entry || entry.status !== "complete" || !entry.vfs.root) return null;
+	return searchVfs(entry.vfs.root, path, query);
 }
 
 export function getScanProgress(path: string): Ob.ScanProgress | null {

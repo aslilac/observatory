@@ -8,6 +8,7 @@ import {
 	getScanProgress,
 	onDrivesChange,
 	onScansChange,
+	searchScan,
 	startScan,
 } from "./vfsManager";
 
@@ -23,6 +24,9 @@ ipcMain.handle("ob:getScanProgress", (_event, path: string) =>
 );
 ipcMain.handle("ob:deleteFiles", (_event, paths: string[]) =>
 	deleteFiles(paths),
+);
+ipcMain.handle("ob:searchScan", (_event, path: string, query: string) =>
+	searchScan(path, query),
 );
 
 function broadcast(channel: string, payload: unknown) {

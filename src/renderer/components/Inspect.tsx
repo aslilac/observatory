@@ -1,10 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
-import type { CleanupItem } from "../state";
+import { type CleanupItem, useSearch } from "../state";
 import { readableSize } from "../util";
 import { FolderTree } from "./FolderTree";
 import { LegendList } from "./LegendList";
 import { MultiSelectBar } from "./MultiSelectBar";
+import { SearchBar } from "./SearchBar";
+import { SearchResults } from "./SearchResults";
 import { Sunburst } from "./Sunburst";
 import { Segmented, Toolbar } from "./Toolbar";
 
@@ -43,12 +45,19 @@ export const Inspect = ({
 	const [selection, setSelection] = useState<Map<string, SelectableItem>>(
 		() => new Map(),
 	);
+	const [query, setQuery] = useState("");
+	const { results: searchResults, loading: searching } = useSearch(
+		inspecting,
+		query,
+	);
+	const searchActive = query.trim().length > 0;
 
 	const cursorKey = cursor.join("/");
 
-	// Reset selection on any navigation.
+	// Reset selection and clear search on any navigation.
 	useEffect(() => {
 		setSelection(new Map());
+		setQuery("");
 	}, [inspecting, cursorKey]);
 
 	const toggleSelect = useCallback((item: SelectableItem) => {
@@ -106,6 +115,12 @@ export const Inspect = ({
 				}
 				cleanupChip={cleanupChip}
 			/>
+			<SearchBar
+				query={query}
+				onQueryChange={setQuery}
+				matchCount={searchResults?.totalCount ?? null}
+				loading={searching}
+			/>
 			<div className="grid min-h-0 flex-1 grid-cols-[1fr_minmax(360px,1fr)] overflow-hidden">
 				<Sunburst
 					files={sunburst.files}
@@ -118,7 +133,15 @@ export const Inspect = ({
 				/>
 				<div className="flex min-h-0 flex-col py-[16px] pr-[18px] pl-[12px]">
 					<div className="min-h-0 flex-1 overflow-auto">
-						{mode === "list" ? (
+						{searchActive ? (
+							<SearchResults
+								results={searchResults}
+								loading={searching}
+								query={query}
+								selection={selection}
+								onToggleSelect={toggleSelect}
+							/>
+						) : mode === "list" ? (
 							<LegendList
 								inspecting={inspecting}
 								cursor={cursor}

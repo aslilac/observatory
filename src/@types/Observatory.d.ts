@@ -13,6 +13,10 @@ declare global {
 		): Promise<RenderTree | null>;
 		function getScanProgress(path: string): Promise<ScanProgress | null>;
 		function deleteFiles(paths: string[]): Promise<DeleteResult>;
+		function searchScan(
+			path: string,
+			query: string,
+		): Promise<SearchResults | null>;
 
 		// Push events (main -> renderer); each returns an unsubscribe.
 		function onDrives(cb: (drives: PhysicalDrive[]) => void): () => void;
@@ -35,6 +39,19 @@ declare global {
 		export interface DeleteResult {
 			deleted: string[];
 			failed: Array<{ path: string; error: string }>;
+		}
+
+		export interface SearchMatch {
+			path: string;
+			size: number;
+			type: "file" | "directory";
+		}
+
+		export interface SearchResults {
+			matches: SearchMatch[];
+			totalCount: number;
+			totalSize: number;
+			truncated: boolean;
 		}
 
 		export interface ScanProgress {
