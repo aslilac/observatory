@@ -52,13 +52,13 @@ export const Inspect = ({
 	);
 	const searchActive = query.trim().length > 0;
 
-	const cursorKey = cursor.join("/");
-
-	// Reset selection and clear search on any navigation.
+	// Reset on scan switch only — navigating around inside a scan keeps
+	// whatever the user has already checked so they can browse for more
+	// things to cleanup without losing prior selections.
 	useEffect(() => {
 		setSelection(new Map());
 		setQuery("");
-	}, [inspecting, cursorKey]);
+	}, [inspecting]);
 
 	const toggleSelect = useCallback((item: SelectableItem) => {
 		setSelection((prev) => {
