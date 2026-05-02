@@ -22,7 +22,7 @@ type InspectProps = {
 	canForward: boolean;
 	onBack: () => void;
 	onForward: () => void;
-	cleanupChip: React.ReactNode;
+	chips: React.ReactNode;
 	onAddToCleanup: (items: Array<Omit<CleanupItem, "addedAt">>) => void;
 };
 
@@ -38,7 +38,7 @@ export const Inspect = ({
 	canForward,
 	onBack,
 	onForward,
-	cleanupChip,
+	chips,
 	onAddToCleanup,
 }: InspectProps) => {
 	const [mode, setMode] = useState<ViewMode>("list");
@@ -113,7 +113,7 @@ export const Inspect = ({
 						onChange={setMode}
 					/>
 				}
-				cleanupChip={cleanupChip}
+				chips={chips}
 			/>
 			<SearchBar
 				query={query}

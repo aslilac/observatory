@@ -5,12 +5,15 @@ import {
 	useDrives,
 	useRecentScans,
 	useRenderTree,
+	useScanErrors,
 	useScanProgress,
 	useScans,
 } from "../state";
 import { CleanupChip } from "./CleanupChip";
 import { CleanupModal } from "./CleanupModal";
 import { Inspect } from "./Inspect";
+import { IssuesChip } from "./IssuesChip";
+import { IssuesModal } from "./IssuesModal";
 import { Scanning } from "./Scanning";
 import { Welcome } from "./Welcome";
 
@@ -29,6 +32,7 @@ export const Application = () => {
 	const { recent, push: pushRecent } = useRecentScans();
 	const cleanup = useCleanupQueue();
 	const [cleanupOpen, setCleanupOpen] = useState(false);
+	const [issuesOpen, setIssuesOpen] = useState(false);
 
 	const [nav, setNav] = useState<NavState>({
 		history: [{ inspecting: null, cursor: [] }],
@@ -104,6 +108,8 @@ export const Application = () => {
 		inspectingScan?.status === "building",
 	);
 
+	const scanErrors = useScanErrors(inspecting, inspectingScan?.status ?? null);
+
 	useEffect(() => {
 		if (inspecting && inspectingScan?.status === "complete") {
 			pushRecent(inspecting);
@@ -141,12 +147,18 @@ export const Application = () => {
 		};
 	}, [cleanup]);
 
-	const cleanupChip = (
-		<CleanupChip
-			count={cleanup.items.length}
-			totalSize={cleanup.totalSize}
-			onClick={() => setCleanupOpen(true)}
-		/>
+	const chips = (
+		<>
+			<IssuesChip
+				count={scanErrors.length}
+				onClick={() => setIssuesOpen(true)}
+			/>
+			<CleanupChip
+				count={cleanup.items.length}
+				totalSize={cleanup.totalSize}
+				onClick={() => setCleanupOpen(true)}
+			/>
+		</>
 	);
 
 	const navProps = {
@@ -167,7 +179,7 @@ export const Application = () => {
 				cursor={cursor}
 				setCursor={setCursor}
 				onShowMenu={showMenu}
-				cleanupChip={cleanupChip}
+				chips={chips}
 				onAddToCleanup={cleanup.add}
 				{...navProps}
 			/>
@@ -178,7 +190,7 @@ export const Application = () => {
 				root={inspectingName}
 				progress={scanProgress}
 				onShowMenu={showMenu}
-				cleanupChip={cleanupChip}
+				chips={chips}
 				{...navProps}
 			/>
 		);
@@ -190,7 +202,7 @@ export const Application = () => {
 				recent={recent}
 				onScan={onScan}
 				onInspect={onInspect}
-				cleanupChip={cleanupChip}
+				chips={chips}
 				{...navProps}
 			/>
 		);
@@ -218,6 +230,12 @@ export const Application = () => {
 					onClose={() => setCleanupOpen(false)}
 					onRemove={cleanup.remove}
 					onTrash={onTrashCleanup}
+				/>
+			)}
+			{issuesOpen && (
+				<IssuesModal
+					errors={scanErrors}
+					onClose={() => setIssuesOpen(false)}
 				/>
 			)}
 		</div>

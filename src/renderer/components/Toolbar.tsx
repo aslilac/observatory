@@ -11,7 +11,7 @@ type ToolbarProps = {
 	canForward?: boolean;
 	onBack?: () => void;
 	onForward?: () => void;
-	cleanupChip?: React.ReactNode;
+	chips?: React.ReactNode;
 };
 
 export const Toolbar = ({
@@ -25,7 +25,7 @@ export const Toolbar = ({
 	canForward,
 	onBack,
 	onForward,
-	cleanupChip,
+	chips,
 }: ToolbarProps) => {
 	const inAScan = !!root;
 	return (
@@ -72,7 +72,7 @@ export const Toolbar = ({
 			{scanning && <ScanningBadge />}
 			<div className="flex-1" />
 			{right}
-			{cleanupChip}
+			{chips}
 		</div>
 	);
 };

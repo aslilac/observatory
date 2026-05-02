@@ -46,6 +46,12 @@ export function getRenderTree(
 	return entry.vfs.getRenderTree(cursor);
 }
 
+export function getScanErrors(path: string): Ob.ScanError[] {
+	const entry = scans.get(path);
+	if (!entry) return [];
+	return entry.vfs.errors;
+}
+
 export function searchScan(
 	path: string,
 	query: string,

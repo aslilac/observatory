@@ -23,6 +23,8 @@ contextBridge.exposeInMainWorld("Ob", {
 		ipcRenderer.invoke("ob:deleteFiles", paths),
 	searchScan: (path: string, query: string) =>
 		ipcRenderer.invoke("ob:searchScan", path, query),
+	getScanErrors: (path: string) =>
+		ipcRenderer.invoke("ob:getScanErrors", path),
 
 	onDrives: (cb: (drives: Ob.PhysicalDrive[]) => void) => {
 		const unsub = subscribe<Ob.PhysicalDrive[]>("ob:drives", cb);

@@ -4,6 +4,7 @@ import { deleteFiles } from "./cleanup";
 import {
 	getDrives,
 	getRenderTree,
+	getScanErrors,
 	getScans,
 	getScanProgress,
 	onDrivesChange,
@@ -27,6 +28,9 @@ ipcMain.handle("ob:deleteFiles", (_event, paths: string[]) =>
 );
 ipcMain.handle("ob:searchScan", (_event, path: string, query: string) =>
 	searchScan(path, query),
+);
+ipcMain.handle("ob:getScanErrors", (_event, path: string) =>
+	getScanErrors(path),
 );
 
 function broadcast(channel: string, payload: unknown) {

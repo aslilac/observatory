@@ -20,6 +20,8 @@ export class VirtualFileSystem {
 	// rather than a precise breadth-first tip — good enough for a status line.
 	currentPath: string | null = null;
 
+	errors: Ob.ScanError[] = [];
+
 	private onCompleteCallbacks: Array<() => void> = [];
 
 	constructor(location: string) {
@@ -92,8 +94,9 @@ export class VirtualFileSystem {
 			files: [],
 		};
 
-		const files = await fs.readdir(location).catch((error) => {
-			console.error(error);
+		const files = await fs.readdir(location).catch((error: unknown) => {
+			this.recordError(location, error);
+			return undefined;
 		});
 
 		if (!files) return state;
@@ -101,9 +104,10 @@ export class VirtualFileSystem {
 		await Promise.all(
 			files.map(async (name) => {
 				const entity = path.join(location, name);
-				const stats = await fs
-					.lstat(entity)
-					.catch((error) => console.error(error));
+				const stats = await fs.lstat(entity).catch((error: unknown) => {
+					this.recordError(entity, error);
+					return undefined;
+				});
 
 				if (!stats) return;
 				else if (stats.isFile()) {
@@ -144,6 +148,23 @@ export class VirtualFileSystem {
 
 		state.files.sort((a, b) => b.size - a.size);
 		return state;
+	}
+
+	private recordError(targetPath: string, error: unknown) {
+		const code =
+			typeof error === "object" && error !== null && "code" in error
+				? String((error as { code: unknown }).code)
+				: null;
+		const message = error instanceof Error ? error.message : String(error);
+		const kind: Ob.ScanError["kind"] =
+			code === "EACCES" || code === "EPERM"
+				? "permission"
+				: code === "ENOENT"
+					? "missing"
+					: code === "ELOOP"
+						? "loop"
+						: "other";
+		this.errors.push({ path: targetPath, kind, code, message });
 	}
 
 	private getDirectory(cursor: string[]) {

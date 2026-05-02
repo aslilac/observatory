@@ -17,6 +17,7 @@ declare global {
 			path: string,
 			query: string,
 		): Promise<SearchResults | null>;
+		function getScanErrors(path: string): Promise<ScanError[]>;
 
 		// Push events (main -> renderer); each returns an unsubscribe.
 		function onDrives(cb: (drives: PhysicalDrive[]) => void): () => void;
@@ -52,6 +53,13 @@ declare global {
 			totalCount: number;
 			totalSize: number;
 			truncated: boolean;
+		}
+
+		export interface ScanError {
+			path: string;
+			kind: "permission" | "missing" | "loop" | "other";
+			code: string | null;
+			message: string;
 		}
 
 		export interface ScanProgress {

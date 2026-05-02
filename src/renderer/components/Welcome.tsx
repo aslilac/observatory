@@ -14,7 +14,7 @@ type WelcomeProps = {
 	canForward: boolean;
 	onBack: () => void;
 	onForward: () => void;
-	cleanupChip: React.ReactNode;
+	chips: React.ReactNode;
 };
 
 export const Welcome = ({
@@ -27,7 +27,7 @@ export const Welcome = ({
 	canForward,
 	onBack,
 	onForward,
-	cleanupChip,
+	chips,
 }: WelcomeProps) => {
 	const scanByPath = new Map(scans.map((s) => [s.path, s]));
 	return (
@@ -37,7 +37,7 @@ export const Welcome = ({
 				canForward={canForward}
 				onBack={onBack}
 				onForward={onForward}
-				cleanupChip={cleanupChip}
+				chips={chips}
 			/>
 			<div className="flex flex-1 flex-col gap-[22px] overflow-auto px-[28px] py-[24px]">
 				<div>

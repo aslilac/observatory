@@ -79,6 +79,29 @@ export function joinPath(base: string, ...rest: string[]): string {
 	return `${trimmedBase}/${tail}`;
 }
 
+export function useScanErrors(
+	path: string | null,
+	status: Ob.ScanStatus | null,
+): Ob.ScanError[] {
+	const [errors, setErrors] = useState<Ob.ScanError[]>([]);
+
+	useEffect(() => {
+		if (!path || status !== "complete") {
+			setErrors([]);
+			return;
+		}
+		let active = true;
+		void Ob.getScanErrors(path).then((next) => {
+			if (active) setErrors(next);
+		});
+		return () => {
+			active = false;
+		};
+	}, [path, status]);
+
+	return errors;
+}
+
 export function useSearch(
 	path: string | null,
 	query: string,
