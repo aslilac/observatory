@@ -31,7 +31,12 @@ declare global {
 					outOfDate: boolean;
 			  };
 
-		export type NodeType = "directory" | "file" | "symlink" | "device" | "unknown";
+		export type NodeType =
+			| "directory"
+			| "file"
+			| "symlink"
+			| "device"
+			| "unknown";
 		export type NodeType$ = NodeType | "imaginary";
 
 		export type VfsNode = VfsDirectory | VfsFile;

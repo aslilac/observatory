@@ -15,7 +15,9 @@ import { areMapsSimilar } from "./util";
 export const scans = new Map<string, VirtualFileSystem>();
 
 function trimProperty(property: string, from: object) {
-	return Object.fromEntries(Object.entries(from).filter(([key]) => key !== property));
+	return Object.fromEntries(
+		Object.entries(from).filter(([key]) => key !== property),
+	);
 }
 
 subscribe(() => {

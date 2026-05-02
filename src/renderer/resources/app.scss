@@ -28,7 +28,10 @@ body {
 
 	height: 0;
 
-	transition: background-color, color, height 300ms;
+	transition:
+		background-color,
+		color,
+		height 300ms;
 }
 
 .darwin #titlebar,
@@ -92,7 +95,9 @@ body {
 
 #menu-drivelist {
 	border-radius: 4px;
-	box-shadow: 0 0 5px #0004, 0 1px 2px #0006;
+	box-shadow:
+		0 0 5px #0004,
+		0 1px 2px #0006;
 	overflow: hidden;
 	padding: 0;
 
@@ -177,7 +182,9 @@ body {
 		height: 0.3in;
 		width: 0.3in;
 
-		transition: opacity, margin 300ms;
+		transition:
+			opacity,
+			margin 300ms;
 
 		&:hover {
 			margin-left: -0.175in;

@@ -10,7 +10,8 @@ export const readableSize = (size: number) => {
 		size /= Ob.platform === "darwin" ? 1000 : 1024;
 	}
 
-	const sizeString = Math.trunc(size) === size ? size.toString() : size.toPrecision(3);
+	const sizeString =
+		Math.trunc(size) === size ? size.toString() : size.toPrecision(3);
 
 	return `${sizeString} ${suffixes[exp]!}`;
 };

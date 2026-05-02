@@ -1,7 +1,13 @@
 import { BrowserWindow, TouchBar } from "electron";
 const { TouchBarButton, TouchBarLabel, TouchBarSpacer } = TouchBar;
 
-import { dispatch, inspectVfs, showDriveList, store, subscribe } from "../../store/main";
+import {
+	dispatch,
+	inspectVfs,
+	showDriveList,
+	store,
+	subscribe,
+} from "../../store/main";
 import * as Ob from "../bridge";
 
 subscribe(() => BrowserWindow.getAllWindows().forEach(initTouchBar));

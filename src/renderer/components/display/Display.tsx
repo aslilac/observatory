@@ -36,13 +36,13 @@ export const Display = () => {
 				<button onClick={() => dispatch(showDriveList())}>
 					Disks and folders
 				</button>
-				<button onClick={() => dispatch(navigateToRoot())}>{shared.name}</button>
+				<button onClick={() => dispatch(navigateToRoot())}>
+					{shared.name}
+				</button>
 				{shared.cursor.map((piece, i) => (
 					<button
 						key={i}
-						onClick={() =>
-							dispatch(navigateTo(shared.cursor.slice(0, i + 1)))
-						}
+						onClick={() => dispatch(navigateTo(shared.cursor.slice(0, i + 1)))}
 					>
 						{piece}
 					</button>

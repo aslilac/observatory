@@ -107,9 +107,7 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 								{target.files.slice(0, 7).map((file, index) => (
 									<li key={`${file.name}-${index}`}>
 										{file.name}
-										<span className="size">
-											{readableSize(file.size)}
-										</span>
+										<span className="size">{readableSize(file.size)}</span>
 									</li>
 								))}
 							</ol>
@@ -208,63 +206,65 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 
 		let position = 0;
 		const scale = this.props.capacity;
-		const search = (...searchPath: string[]) => (file: Ob.VfsNode) => {
-			const size = file.size / scale;
-			if (position <= t) {
-				if (position + size >= t) {
-					if (layer === searchPath.length) {
-						this.setState({
-							tooltipOffsetX: event.clientX,
-							tooltipOffsetY: event.clientY,
-						});
+		const search =
+			(...searchPath: string[]) =>
+			(file: Ob.VfsNode) => {
+				const size = file.size / scale;
+				if (position <= t) {
+					if (position + size >= t) {
+						if (layer === searchPath.length) {
+							this.setState({
+								tooltipOffsetX: event.clientX,
+								tooltipOffsetY: event.clientY,
+							});
 
-						if (this.state.hoverTarget?._original !== file) {
-							this.setHover(file);
-						}
-
-						if (event.type === "click" && file.type === "directory") {
-							dispatch(navigateForward(...searchPath, file.name));
-						}
-					} else if (searchPath.length < layer && file.type === "directory") {
-						// smaller items...
-						if (layer <= 4 && layer === searchPath.length + 1) {
-							const sizeOfContents = file.files.reduce(
-								(sum, each) => sum + each.size,
-								0,
-							);
-							const remainderSize = sizeOfContents / scale;
-
-							if (
-								remainderSize > (this.props.capacity / scale) * 0.003 &&
-								position + remainderSize <= t
-							) {
-								console.log("smaller items...");
+							if (this.state.hoverTarget?._original !== file) {
+								this.setHover(file);
 							}
-						}
 
-						const found = file.files.some(search(...searchPath, file.name));
-						if (!found) this.resetHover();
-					} else {
-						// No match
-						this.resetHover();
+							if (event.type === "click" && file.type === "directory") {
+								dispatch(navigateForward(...searchPath, file.name));
+							}
+						} else if (searchPath.length < layer && file.type === "directory") {
+							// smaller items...
+							if (layer <= 4 && layer === searchPath.length + 1) {
+								const sizeOfContents = file.files.reduce(
+									(sum, each) => sum + each.size,
+									0,
+								);
+								const remainderSize = sizeOfContents / scale;
+
+								if (
+									remainderSize > (this.props.capacity / scale) * 0.003 &&
+									position + remainderSize <= t
+								) {
+									console.log("smaller items...");
+								}
+							}
+
+							const found = file.files.some(search(...searchPath, file.name));
+							if (!found) this.resetHover();
+						} else {
+							// No match
+							this.resetHover();
+						}
+						// We return true to short circuit even if we didn't actually match,
+						// because we know there won't be a valid match past this point.
+						return true;
 					}
-					// We return true to short circuit even if we didn't actually match,
-					// because we know there won't be a valid match past this point.
+
+					// The end of the current shard is less than theta, so check the next
+					position += size;
+					return false;
+				} else {
+					// No match
+					// The begin position of the current shard is past theta, which
+					// means there is no possible match. Stop the earch and reset
+					// any hover state.
+					this.resetHover();
 					return true;
 				}
-
-				// The end of the current shard is less than theta, so check the next
-				position += size;
-				return false;
-			} else {
-				// No match
-				// The begin position of the current shard is past theta, which
-				// means there is no possible match. Stop the earch and reset
-				// any hover state.
-				this.resetHover();
-				return true;
-			}
-		};
+			};
 
 		const found = this.props.files.some(search());
 		if (!found) this.resetHover();
@@ -350,7 +350,8 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 
 			const draw = (layer: number) => (position: number, file: Ob.VfsNode) => {
 				const size = file.size / scale;
-				const state = hoverTarget?._original === file ? hoverTarget.state : null;
+				const state =
+					hoverTarget?._original === file ? hoverTarget.state : null;
 				this.drawShard(position, size, layer, state, file.type);
 
 				if (file.type === "directory" && layer < 6) {

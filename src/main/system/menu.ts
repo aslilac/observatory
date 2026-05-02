@@ -25,7 +25,7 @@ const template = [
 						{ role: "quit" },
 					],
 				},
-		  ]
+			]
 		: []),
 	{
 		label: "Edit",
@@ -59,7 +59,7 @@ const template = [
 						{ role: "front" },
 						{ type: "separator" },
 						{ role: "window" },
-				  ]
+					]
 				: []),
 		],
 	},
@@ -88,7 +88,7 @@ const template = [
 							label: "About Observatory",
 							click: () => showAboutWindow(),
 						},
-				  ]),
+					]),
 		],
 	},
 ];

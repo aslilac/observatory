@@ -186,25 +186,28 @@ export class VirtualFileSystem implements Ob.VirtualFileSystem {
 			);
 		}
 
-		const isLargeEnough = (file: Ob.VfsNode) => file.size > directory.size * 0.003;
-		const sanitize = (recursive = 0) => (file: Ob.VfsNode): Ob.VfsNode =>
-			file.type === "directory"
-				? {
-						name: file.name,
-						type: file.type,
-						size: file.size,
-						files:
-							recursive > 0 && file.type === "directory"
-								? file.files
-										.filter(isLargeEnough)
-										.map(sanitize(recursive - 1))
-								: [],
-				  }
-				: {
-						name: file.name,
-						type: file.type,
-						size: file.size,
-				  };
+		const isLargeEnough = (file: Ob.VfsNode) =>
+			file.size > directory.size * 0.003;
+		const sanitize =
+			(recursive = 0) =>
+			(file: Ob.VfsNode): Ob.VfsNode =>
+				file.type === "directory"
+					? {
+							name: file.name,
+							type: file.type,
+							size: file.size,
+							files:
+								recursive > 0 && file.type === "directory"
+									? file.files
+											.filter(isLargeEnough)
+											.map(sanitize(recursive - 1))
+									: [],
+						}
+					: {
+							name: file.name,
+							type: file.type,
+							size: file.size,
+						};
 
 		// We know root is initialized, because we assert that it isn't null
 		// in `getDirectory`

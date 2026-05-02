@@ -101,7 +101,11 @@ export const inspectVfsAtCursor = (path: string, cursor: string[]) => ({
 /**
  * @direction main -> renderer
  */
-export const render = (path: string, cursor: string[], tree: Ob.RenderTree) => ({
+export const render = (
+	path: string,
+	cursor: string[],
+	tree: Ob.RenderTree,
+) => ({
 	type: "mckayla.observatory.RENDER" as const,
 	payload: {
 		cursor,

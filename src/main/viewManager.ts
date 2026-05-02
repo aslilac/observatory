@@ -1,10 +1,16 @@
-import { BrowserWindow, BrowserWindowConstructorOptions, screen } from "electron";
+import {
+	BrowserWindow,
+	BrowserWindowConstructorOptions,
+	screen,
+} from "electron";
 import path from "path";
 import url from "url";
 
 import { initTouchBar } from "./system/touchbar";
 
-export const windowSettings = (preload?: string): BrowserWindowConstructorOptions => ({
+export const windowSettings = (
+	preload?: string,
+): BrowserWindowConstructorOptions => ({
 	x: 100,
 	y: Math.floor(screen.getPrimaryDisplay().workArea.height / 8),
 	width: 1100,
@@ -20,7 +26,9 @@ export const windowSettings = (preload?: string): BrowserWindowConstructorOption
 	},
 });
 
-export const devWindowSettings = (preload?: string): BrowserWindowConstructorOptions => ({
+export const devWindowSettings = (
+	preload?: string,
+): BrowserWindowConstructorOptions => ({
 	x: 0,
 	y: screen.getPrimaryDisplay().workArea.y,
 	width: screen.getPrimaryDisplay().workArea.width,

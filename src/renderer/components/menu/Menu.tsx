@@ -1,7 +1,12 @@
 import React, { useEffect } from "react";
 import { useSelector } from "react-redux";
 
-import { AppState, createVfs, dispatch, inspectVfs } from "../../../store/renderer";
+import {
+	AppState,
+	createVfs,
+	dispatch,
+	inspectVfs,
+} from "../../../store/renderer";
 
 export const Menu = () => {
 	const drives = useSelector((state: AppState) => state.drives);
@@ -41,9 +46,7 @@ export const Menu = () => {
 						{vfsMap.has(drive.mountPath) ? (
 							<button
 								onClick={() => dispatch(inspectVfs(drive.mountPath))}
-								disabled={
-									vfsMap.get(drive.mountPath)!.status !== "complete"
-								}
+								disabled={vfsMap.get(drive.mountPath)!.status !== "complete"}
 							>
 								View
 							</button>

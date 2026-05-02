@@ -1,7 +1,12 @@
 import React, { useState } from "react";
 import { useSelector } from "react-redux";
 
-import { AppState, dispatch, navigateForward, navigateUp } from "../../../store/renderer";
+import {
+	AppState,
+	dispatch,
+	navigateForward,
+	navigateUp,
+} from "../../../store/renderer";
 import { readableSize } from "../../util";
 
 import backArrow from "url:../../assets/back.svg";
@@ -35,7 +40,9 @@ export const List = (props: ListProps) => {
 				/>
 			)}
 			<h1>
-				{props.cursor.length ? props.cursor[props.cursor.length - 1] : props.name}
+				{props.cursor.length
+					? props.cursor[props.cursor.length - 1]
+					: props.name}
 				<span className="size">{readableSize(props.size)}</span>
 			</h1>
 			<ol>

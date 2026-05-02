@@ -13,7 +13,9 @@ export async function selectDirectory() {
 	});
 
 	if (!result.canceled) {
-		result.filePaths.forEach((selectedPath) => dispatch(createVfs(selectedPath)));
+		result.filePaths.forEach((selectedPath) =>
+			dispatch(createVfs(selectedPath)),
+		);
 	}
 }
 
@@ -41,7 +43,9 @@ export function sizeToMenu() {
 	const state = store.getState();
 
 	let menuItems = state.vfs.size;
-	state.drives.forEach((drive) => !state.vfs.has(drive.mountPath) && menuItems++);
+	state.drives.forEach(
+		(drive) => !state.vfs.has(drive.mountPath) && menuItems++,
+	);
 
 	view.setSize(bounds.width, Math.max(220, 150 + 72 * menuItems), true);
 }
