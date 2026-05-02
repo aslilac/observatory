@@ -1,5 +1,35 @@
 import { contextBridge, ipcRenderer, webUtils } from "electron";
 
+// Same flag the renderer uses; preload runs in the same origin so
+// localStorage is shared. Read lazily so toggling at runtime takes effect.
+function perfEnabled(): boolean {
+	try {
+		return globalThis.localStorage?.getItem("observatory:perf") === "1";
+	} catch {
+		return false;
+	}
+}
+
+function approxBytes(value: unknown): number {
+	try {
+		return JSON.stringify(value ?? null).length;
+	} catch {
+		return 0;
+	}
+}
+
+async function timedInvoke(channel: string, ...args: unknown[]): Promise<unknown> {
+	if (!perfEnabled()) return ipcRenderer.invoke(channel, ...args);
+	const start = performance.now();
+	const result = await ipcRenderer.invoke(channel, ...args);
+	const elapsed = performance.now() - start;
+	const bytes = approxBytes(result);
+	console.log(
+		`[perf:ipc] ${channel} ${elapsed.toFixed(1)}ms / ${bytes.toLocaleString()}B`,
+	);
+	return result;
+}
+
 const subscribe = <T>(channel: string, cb: (payload: T) => void) => {
 	const handler = (_event: unknown, payload: T) => cb(payload);
 	ipcRenderer.on(channel, handler);
@@ -11,31 +41,33 @@ const subscribe = <T>(channel: string, cb: (payload: T) => void) => {
 contextBridge.exposeInMainWorld("Ob", {
 	platform: process.platform,
 
-	selectDirectory: () => ipcRenderer.invoke("ob:selectDirectory"),
-	scanPath: (path: string) => ipcRenderer.invoke("ob:scanPath", path),
-	getDrives: () => ipcRenderer.invoke("ob:getDrives"),
-	getScans: () => ipcRenderer.invoke("ob:getScans"),
+	selectDirectory: () => timedInvoke("ob:selectDirectory"),
+	scanPath: (path: string) => timedInvoke("ob:scanPath", path),
+	getDrives: () => timedInvoke("ob:getDrives"),
+	getScans: () => timedInvoke("ob:getScans"),
 	getRenderTree: (path: string, cursor: string[]) =>
-		ipcRenderer.invoke("ob:getRenderTree", path, cursor),
+		timedInvoke("ob:getRenderTree", path, cursor),
 	getScanProgress: (path: string) =>
-		ipcRenderer.invoke("ob:getScanProgress", path),
-	deleteFiles: (paths: string[]) =>
-		ipcRenderer.invoke("ob:deleteFiles", paths),
+		timedInvoke("ob:getScanProgress", path),
+	deleteFiles: (paths: string[]) => timedInvoke("ob:deleteFiles", paths),
 	searchScan: (path: string, query: string) =>
-		ipcRenderer.invoke("ob:searchScan", path, query),
-	getScanErrors: (path: string) =>
-		ipcRenderer.invoke("ob:getScanErrors", path),
-	statPath: (path: string) => ipcRenderer.invoke("ob:statPath", path),
+		timedInvoke("ob:searchScan", path, query),
+	getScanErrors: (path: string) => timedInvoke("ob:getScanErrors", path),
+	statPath: (path: string) => timedInvoke("ob:statPath", path),
 	pathForFile: (file: File) => webUtils.getPathForFile(file),
 
 	onDrives: (cb: (drives: Ob.PhysicalDrive[]) => void) => {
 		const unsub = subscribe<Ob.PhysicalDrive[]>("ob:drives", cb);
-		void ipcRenderer.invoke("ob:getDrives").then(cb);
+		void timedInvoke("ob:getDrives").then(
+			(drives) => cb(drives as Ob.PhysicalDrive[]),
+		);
 		return unsub;
 	},
 	onScans: (cb: (scans: Ob.ScanInfo[]) => void) => {
 		const unsub = subscribe<Ob.ScanInfo[]>("ob:scans", cb);
-		void ipcRenderer.invoke("ob:getScans").then(cb);
+		void timedInvoke("ob:getScans").then(
+			(scans) => cb(scans as Ob.ScanInfo[]),
+		);
 		return unsub;
 	},
 	onSetInspecting: (cb: (path: string | null) => void) =>

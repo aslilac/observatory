@@ -1,11 +1,14 @@
 import React, {
+	Profiler,
 	useCallback,
 	useEffect,
+	useLayoutEffect,
 	useMemo,
 	useRef,
 	useState,
 } from "react";
 
+import { perfEnabled, perfLog, perfMark, perfMeasure } from "../perf";
 import {
 	useCleanupQueue,
 	useDrives,
@@ -62,6 +65,7 @@ export const Application = () => {
 	const { view, inspecting, cursor } = current;
 
 	const navigate = useCallback((entry: NavEntry) => {
+		perfMark("nav:start");
 		setNav((prev) => {
 			const truncated = prev.history.slice(0, prev.index + 1);
 			const last = truncated[truncated.length - 1]!;
@@ -133,6 +137,30 @@ export const Application = () => {
 		inspecting,
 		cursor,
 		inspectingScan?.status ?? null,
+	);
+
+	// Measure click → painted: nav:start is set inside `navigate`, and we
+	// resolve once React has actually committed the new view. rAF runs after
+	// layout so the user-perceived navigation includes paint.
+	const cursorKey = cursor.join("/");
+	useLayoutEffect(() => {
+		if (!perfEnabled()) return;
+		const id = requestAnimationFrame(() => perfMeasure("nav", "nav:start"));
+		return () => cancelAnimationFrame(id);
+	}, [tree, view, inspecting, cursorKey]);
+
+	const handleProfilerRender = useCallback(
+		(
+			id: string,
+			phase: "mount" | "update" | "nested-update",
+			actualDuration: number,
+		) => {
+			if (!perfEnabled()) return;
+			if (phase === "mount" || actualDuration > 5) {
+				perfLog("react", `${id} ${phase} ${actualDuration.toFixed(1)}ms`);
+			}
+		},
+		[],
 	);
 
 	const scanProgress = useScanProgress(
@@ -355,7 +383,9 @@ export const Application = () => {
 			/>
 			<div className="flex min-h-0 flex-col overflow-hidden">
 				<ErrorBoundary key={`${view}-${inspecting ?? "menu"}`}>
-					{body}
+					<Profiler id="screen" onRender={handleProfilerRender}>
+						{body}
+					</Profiler>
 				</ErrorBoundary>
 			</div>
 			{confirmCleanup && (
