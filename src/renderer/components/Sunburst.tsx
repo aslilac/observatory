@@ -38,11 +38,7 @@ export const Sunburst = ({
 	onNavigateUp,
 	onNavigateForward,
 }: SunburstProps) => {
-	const [hover, setHover] = useState<{
-		shard: ShardEntry;
-		clientX: number;
-		clientY: number;
-	} | null>(null);
+	const [hover, setHover] = useState<HoverState | null>(null);
 
 	const dark =
 		typeof document !== "undefined" &&
@@ -63,45 +59,12 @@ export const Sunburst = ({
 				preserveAspectRatio="xMidYMid meet"
 			>
 				{shards.map((shard) => {
-					const { ir, or } = layerRadii(shard.layer);
-					const fill = sunburstColor(shard.hue, shard.layer, shard.type, dark);
-					const isHovered = hover?.shard.id === shard.id;
-					const interactive =
-						shard.type === "directory" || shard.type === "file";
-					return (
-						<path
-							key={shard.id}
-							d={arcPath(shard.position, shard.size, ir, or)}
-							fill={fill}
-							stroke="var(--color-paper)"
-							strokeWidth={1.2}
-							className="transition-opacity duration-100"
-							style={{
-								cursor: interactive ? "pointer" : "default",
-								opacity: isHovered ? 0.78 : 1,
-							}}
-							onPointerEnter={(e) =>
-								setHover({
-									shard,
-									clientX: e.clientX,
-									clientY: e.clientY,
-								})
-							}
-							onPointerMove={(e) =>
-								setHover((prev) =>
-									prev && prev.shard.id === shard.id
-										? { ...prev, clientX: e.clientX, clientY: e.clientY }
-										: prev,
-								)
-							}
-							onClick={() => {
-								if (shard.type === "directory") {
-									onNavigateForward(...shard.path);
-								}
-							}}
-						/>
-					);
+					if (hover?.shard.id === shard.id) return null;
+					return renderShard(shard, false, dark, setHover, onNavigateForward);
 				})}
+				{/* Render the hovered shard last so its pulse animation paints on
+				    top of neighboring strokes. */}
+				{hover && renderShard(hover.shard, true, dark, setHover, onNavigateForward)}
 
 				<circle
 					cx={0}
@@ -130,6 +93,50 @@ export const Sunburst = ({
 		</div>
 	);
 };
+
+type HoverState = {
+	shard: ShardEntry;
+	clientX: number;
+	clientY: number;
+};
+
+function renderShard(
+	shard: ShardEntry,
+	isHovered: boolean,
+	dark: boolean,
+	setHover: React.Dispatch<React.SetStateAction<HoverState | null>>,
+	onNavigateForward: (...into: string[]) => void,
+): React.ReactNode {
+	const { ir, or } = layerRadii(shard.layer);
+	const fill = sunburstColor(shard.hue, shard.layer, shard.type, dark);
+	const interactive = shard.type === "directory" || shard.type === "file";
+	return (
+		<path
+			key={shard.id}
+			d={arcPath(shard.position, shard.size, ir, or)}
+			fill={fill}
+			stroke="var(--color-paper)"
+			strokeWidth={1.2}
+			className={isHovered ? "sunburst-shard-hover" : undefined}
+			style={{ cursor: interactive ? "pointer" : "default" }}
+			onPointerEnter={(e) =>
+				setHover({ shard, clientX: e.clientX, clientY: e.clientY })
+			}
+			onPointerMove={(e) =>
+				setHover((prev) =>
+					prev && prev.shard.id === shard.id
+						? { ...prev, clientX: e.clientX, clientY: e.clientY }
+						: prev,
+				)
+			}
+			onClick={() => {
+				if (shard.type === "directory") {
+					onNavigateForward(...shard.path);
+				}
+			}}
+		/>
+	);
+}
 
 const Tooltip = ({
 	shard,

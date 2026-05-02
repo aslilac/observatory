@@ -88,3 +88,20 @@ body {
 		@apply border-ink bg-fill;
 	}
 }
+
+/* Sunburst hover pulse — softly desaturates and brightens the hovered
+   wedge so it's easy to track at a glance. Mirrors the layer-0↔layer-4
+   shimmer the old canvas implementation animated frame by frame. */
+@keyframes sunburst-pulse {
+	0%, 100% {
+		filter: brightness(1) saturate(1);
+		opacity: 1;
+	}
+	50% {
+		filter: brightness(1.18) saturate(0.6);
+		opacity: 0.85;
+	}
+}
+.sunburst-shard-hover {
+	animation: sunburst-pulse 1.4s ease-in-out infinite;
+}
