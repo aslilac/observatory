@@ -22,7 +22,7 @@ type SortPickerProps = {
 };
 
 export const SortPicker = ({ value, onChange }: SortPickerProps) => (
-	<label className="relative inline-flex cursor-pointer items-center gap-[6px] rounded-button border border-line bg-paper py-[4px] pr-[22px] pl-[10px] font-mono text-[11px] text-ink hover:bg-fill">
+	<label className="relative inline-flex cursor-pointer items-center gap-[6px] rounded-button border border-line bg-paper py-[6px] pr-[22px] pl-[10px] font-mono text-[11px] text-ink hover:bg-fill">
 		<span className="text-muted">Sort:</span>
 		<span>{LABEL[value]}</span>
 		<span className="pointer-events-none absolute right-[8px] top-1/2 -translate-y-1/2 text-[9px] text-faint">
