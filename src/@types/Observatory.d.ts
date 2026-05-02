@@ -12,6 +12,7 @@ declare global {
 			cursor: string[],
 		): Promise<RenderTree | null>;
 		function getScanProgress(path: string): Promise<ScanProgress | null>;
+		function deleteFiles(paths: string[]): Promise<DeleteResult>;
 
 		// Push events (main -> renderer); each returns an unsubscribe.
 		function onDrives(cb: (drives: PhysicalDrive[]) => void): () => void;
@@ -29,6 +30,11 @@ declare global {
 		export interface ScanInfo {
 			path: string;
 			status: ScanStatus;
+		}
+
+		export interface DeleteResult {
+			deleted: string[];
+			failed: Array<{ path: string; error: string }>;
 		}
 
 		export interface ScanProgress {

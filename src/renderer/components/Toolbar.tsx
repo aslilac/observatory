@@ -11,6 +11,7 @@ type ToolbarProps = {
 	canForward?: boolean;
 	onBack?: () => void;
 	onForward?: () => void;
+	cleanupChip?: React.ReactNode;
 };
 
 export const Toolbar = ({
@@ -24,6 +25,7 @@ export const Toolbar = ({
 	canForward,
 	onBack,
 	onForward,
+	cleanupChip,
 }: ToolbarProps) => {
 	const inAScan = !!root;
 	return (
@@ -70,7 +72,7 @@ export const Toolbar = ({
 			{scanning && <ScanningBadge />}
 			<div className="flex-1" />
 			{right}
-			<CleanupChip />
+			{cleanupChip}
 		</div>
 	);
 };
@@ -158,31 +160,3 @@ export function Segmented<T extends string>({
 	);
 }
 
-const CleanupChip = () => (
-	<button
-		type="button"
-		disabled
-		className="ml-[6px] inline-flex cursor-default items-center gap-[6px] rounded-full border border-dashed border-line bg-transparent px-[10px] py-[5px] font-sans text-[11px] text-muted"
-		title="Cleanup queue (coming soon)"
-	>
-		<TrashIcon />
-		<span>Cleanup</span>
-	</button>
-);
-
-const TrashIcon = () => (
-	<svg
-		width="12"
-		height="12"
-		viewBox="0 0 24 24"
-		fill="none"
-		stroke="currentColor"
-		strokeWidth="1.8"
-		strokeLinecap="round"
-		strokeLinejoin="round"
-	>
-		<path d="M3 6h18" />
-		<path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-		<path d="M5 6l1 14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-14" />
-	</svg>
-);

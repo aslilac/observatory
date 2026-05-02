@@ -1,23 +1,37 @@
 import React, { useState } from "react";
 
 import { hueFor, oklchSwatch } from "../colors";
+import { joinPath } from "../state";
 import { readableSize } from "../util";
 
+type SelectableItem = { path: string; name: string; size: number };
+
 type FolderTreeProps = {
+	inspecting: string;
+	cursor: string[];
 	files: Ob.VfsNode[];
+	selection: Map<string, SelectableItem>;
 	onForward: (...names: string[]) => void;
+	onToggleSelect: (item: SelectableItem) => void;
 };
 
-export const FolderTree = ({ files, onForward }: FolderTreeProps) => {
+export const FolderTree = ({
+	inspecting,
+	cursor,
+	files,
+	selection,
+	onForward,
+	onToggleSelect,
+}: FolderTreeProps) => {
 	const [expanded, setExpanded] = useState<Set<string>>(() => new Set([""]));
-	const toggle = (key: string) => {
+	const toggle = (key: string) =>
 		setExpanded((prev) => {
 			const next = new Set(prev);
 			if (next.has(key)) next.delete(key);
 			else next.add(key);
 			return next;
 		});
-	};
+
 	return (
 		<div className="text-[13px]">
 			<Row
@@ -27,17 +41,24 @@ export const FolderTree = ({ files, onForward }: FolderTreeProps) => {
 				hue={null}
 				expandable={files.length > 0}
 				expanded={expanded.has("")}
-				onToggle={() => toggle("")}
-				onClick={() => undefined}
+				selected={false}
+				selectable={false}
+				onToggleExpand={() => toggle("")}
+				onToggleSelect={undefined}
+				onClick={undefined}
 			/>
 			{expanded.has("") && (
 				<TreeChildren
+					inspecting={inspecting}
+					cursor={cursor}
 					files={files}
 					depth={1}
 					path={[]}
 					expanded={expanded}
-					toggle={toggle}
+					toggleExpand={toggle}
+					selection={selection}
 					onForward={onForward}
+					onToggleSelect={onToggleSelect}
 				/>
 			)}
 		</div>
@@ -45,25 +66,39 @@ export const FolderTree = ({ files, onForward }: FolderTreeProps) => {
 };
 
 type ChildrenProps = {
+	inspecting: string;
+	cursor: string[];
 	files: Ob.VfsNode[];
 	depth: number;
 	path: string[];
 	expanded: Set<string>;
-	toggle: (key: string) => void;
+	toggleExpand: (key: string) => void;
+	selection: Map<string, SelectableItem>;
 	onForward: (...names: string[]) => void;
+	onToggleSelect: (item: SelectableItem) => void;
 };
 
 const TreeChildren = ({
+	inspecting,
+	cursor,
 	files,
 	depth,
 	path,
 	expanded,
-	toggle,
+	toggleExpand,
+	selection,
 	onForward,
+	onToggleSelect,
 }: ChildrenProps) => (
 	<>
 		{files.map((file, i) => {
 			const key = [...path, file.name].join("/");
+			const fullPath = joinPath(inspecting, ...cursor, ...path, file.name);
+			const item: SelectableItem = {
+				path: fullPath,
+				name: file.name,
+				size: file.size,
+			};
 			const isOpen = expanded.has(key);
 			const isDir = file.type === "directory";
 			const hasChildren = isDir && file.files.length > 0;
@@ -76,17 +111,28 @@ const TreeChildren = ({
 						hue={depth === 1 && isDir ? hueFor(i) : null}
 						expandable={hasChildren}
 						expanded={isOpen}
-						onToggle={() => toggle(key)}
-						onClick={isDir ? () => onForward(...path, file.name) : undefined}
+						selected={selection.has(fullPath)}
+						selectable
+						onToggleExpand={() => toggleExpand(key)}
+						onToggleSelect={() => onToggleSelect(item)}
+						onClick={
+							isDir
+								? () => onForward(...path, file.name)
+								: () => onToggleSelect(item)
+						}
 					/>
 					{isOpen && hasChildren && (
 						<TreeChildren
+							inspecting={inspecting}
+							cursor={cursor}
 							files={file.files}
 							depth={depth + 1}
 							path={[...path, file.name]}
 							expanded={expanded}
-							toggle={toggle}
+							toggleExpand={toggleExpand}
+							selection={selection}
 							onForward={onForward}
+							onToggleSelect={onToggleSelect}
 						/>
 					)}
 				</React.Fragment>
@@ -102,7 +148,10 @@ type RowProps = {
 	hue: number | null;
 	expandable: boolean;
 	expanded: boolean;
-	onToggle: () => void;
+	selected: boolean;
+	selectable: boolean;
+	onToggleExpand: () => void;
+	onToggleSelect: (() => void) | undefined;
 	onClick: (() => void) | undefined;
 };
 
@@ -113,13 +162,16 @@ const Row = ({
 	hue,
 	expandable,
 	expanded,
-	onToggle,
+	selected,
+	selectable,
+	onToggleExpand,
+	onToggleSelect,
 	onClick,
 }: RowProps) => (
 	<div
-		className={`flex items-center gap-[6px] rounded-[5px] py-[5px] pr-[8px] pl-[8px] hover:bg-fill ${
-			onClick ? "cursor-pointer" : "cursor-default"
-		}`}
+		className={`group flex items-center gap-[6px] rounded-[5px] py-[5px] pr-[8px] pl-[8px] ${
+			selected ? "bg-fill" : "hover:bg-fill"
+		} ${onClick ? "cursor-pointer" : "cursor-default"}`}
 		onClick={onClick}
 	>
 		<span style={{ width: depth * 14 }} className="flex-shrink-0" />
@@ -127,13 +179,18 @@ const Row = ({
 			type="button"
 			onClick={(e) => {
 				e.stopPropagation();
-				if (expandable) onToggle();
+				if (expandable) onToggleExpand();
 			}}
 			disabled={!expandable}
 			className="w-[14px] flex-shrink-0 cursor-pointer text-[10px] text-faint disabled:cursor-default disabled:opacity-0"
 		>
 			{expanded ? "▾" : "▸"}
 		</button>
+		{selectable && onToggleSelect ? (
+			<Checkbox checked={selected} onChange={onToggleSelect} />
+		) : (
+			<span className="block h-[14px] w-[14px] flex-shrink-0" />
+		)}
 		{hue !== null ? (
 			<span
 				className="block h-[8px] w-[8px] flex-shrink-0 rounded-full"
@@ -147,4 +204,38 @@ const Row = ({
 			{readableSize(size)}
 		</span>
 	</div>
+);
+
+const Checkbox = ({
+	checked,
+	onChange,
+}: {
+	checked: boolean;
+	onChange: () => void;
+}) => (
+	<span
+		role="checkbox"
+		aria-checked={checked}
+		onClick={(e) => {
+			e.stopPropagation();
+			onChange();
+		}}
+		className={`flex h-[14px] w-[14px] flex-shrink-0 cursor-pointer items-center justify-center rounded-[3px] border transition-opacity ${
+			checked
+				? "border-ink bg-ink text-paper opacity-100"
+				: "border-line bg-paper opacity-0 group-hover:opacity-100"
+		}`}
+	>
+		{checked && (
+			<svg width="9" height="9" viewBox="0 0 12 12" fill="none">
+				<path
+					d="M2 6.5 L5 9 L10 3.5"
+					stroke="currentColor"
+					strokeWidth="2"
+					strokeLinecap="round"
+					strokeLinejoin="round"
+				/>
+			</svg>
+		)}
+	</span>
 );

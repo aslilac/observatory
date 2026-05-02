@@ -10,6 +10,7 @@ type ScanningProps = {
 	canForward: boolean;
 	onBack: () => void;
 	onForward: () => void;
+	cleanupChip: React.ReactNode;
 };
 
 export const Scanning = ({
@@ -20,6 +21,7 @@ export const Scanning = ({
 	canForward,
 	onBack,
 	onForward,
+	cleanupChip,
 }: ScanningProps) => {
 	const counts = progress?.counts;
 	const total =
@@ -39,6 +41,7 @@ export const Scanning = ({
 				canForward={canForward}
 				onBack={onBack}
 				onForward={onForward}
+				cleanupChip={cleanupChip}
 			/>
 			<div className="flex flex-1 items-center justify-center px-[28px]">
 				<div className="flex flex-col items-center gap-[18px]">

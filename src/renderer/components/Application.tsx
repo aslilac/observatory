@@ -1,12 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
+	useCleanupQueue,
 	useDrives,
 	useRecentScans,
 	useRenderTree,
 	useScanProgress,
 	useScans,
 } from "../state";
+import { CleanupChip } from "./CleanupChip";
+import { CleanupModal } from "./CleanupModal";
 import { Inspect } from "./Inspect";
 import { Scanning } from "./Scanning";
 import { Welcome } from "./Welcome";
@@ -24,6 +27,8 @@ export const Application = () => {
 	const drives = useDrives();
 	const scans = useScans();
 	const { recent, push: pushRecent } = useRecentScans();
+	const cleanup = useCleanupQueue();
+	const [cleanupOpen, setCleanupOpen] = useState(false);
 
 	const [nav, setNav] = useState<NavState>({
 		history: [{ inspecting: null, cursor: [] }],
@@ -120,6 +125,30 @@ export const Application = () => {
 		[setInspecting],
 	);
 
+	const onTrashCleanup = useCallback(async () => {
+		const queued = cleanup.items;
+		const sizeByPath = new Map(queued.map((i) => [i.path, i.size]));
+		const result = await Ob.deleteFiles(queued.map((i) => i.path));
+		const reclaimed = result.deleted.reduce(
+			(sum, p) => sum + (sizeByPath.get(p) ?? 0),
+			0,
+		);
+		result.deleted.forEach((p) => cleanup.remove(p));
+		return {
+			deleted: result.deleted.length,
+			reclaimed,
+			failed: result.failed.length,
+		};
+	}, [cleanup]);
+
+	const cleanupChip = (
+		<CleanupChip
+			count={cleanup.items.length}
+			totalSize={cleanup.totalSize}
+			onClick={() => setCleanupOpen(true)}
+		/>
+	);
+
 	const navProps = {
 		canBack,
 		canForward,
@@ -133,10 +162,13 @@ export const Application = () => {
 	if (inspecting && inspectingScan?.status === "complete" && tree) {
 		body = (
 			<Inspect
+				inspecting={inspecting}
 				tree={tree}
 				cursor={cursor}
 				setCursor={setCursor}
 				onShowMenu={showMenu}
+				cleanupChip={cleanupChip}
+				onAddToCleanup={cleanup.add}
 				{...navProps}
 			/>
 		);
@@ -146,6 +178,7 @@ export const Application = () => {
 				root={inspectingName}
 				progress={scanProgress}
 				onShowMenu={showMenu}
+				cleanupChip={cleanupChip}
 				{...navProps}
 			/>
 		);
@@ -157,6 +190,7 @@ export const Application = () => {
 				recent={recent}
 				onScan={onScan}
 				onInspect={onInspect}
+				cleanupChip={cleanupChip}
 				{...navProps}
 			/>
 		);
@@ -173,10 +207,19 @@ export const Application = () => {
 	return (
 		<div
 			id="application"
-			className={`grid h-screen grid-rows-[36px_1fr] bg-paper ${Ob.platform}`}
+			className={`relative grid h-screen grid-rows-[36px_1fr] bg-paper ${Ob.platform}`}
 		>
 			<TitleBar title={titleSuffix} />
 			<div className="flex min-h-0 flex-col overflow-hidden">{body}</div>
+			{cleanupOpen && (
+				<CleanupModal
+					items={cleanup.items}
+					totalSize={cleanup.totalSize}
+					onClose={() => setCleanupOpen(false)}
+					onRemove={cleanup.remove}
+					onTrash={onTrashCleanup}
+				/>
+			)}
 		</div>
 	);
 };

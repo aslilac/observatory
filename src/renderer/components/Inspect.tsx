@@ -1,12 +1,17 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
+import type { CleanupItem } from "../state";
 import { readableSize } from "../util";
 import { FolderTree } from "./FolderTree";
 import { LegendList } from "./LegendList";
+import { MultiSelectBar } from "./MultiSelectBar";
 import { Sunburst } from "./Sunburst";
 import { Segmented, Toolbar } from "./Toolbar";
 
+type SelectableItem = { path: string; name: string; size: number };
+
 type InspectProps = {
+	inspecting: string;
 	tree: Ob.RenderTree;
 	cursor: string[];
 	setCursor: (cursor: string[]) => void;
@@ -15,11 +20,14 @@ type InspectProps = {
 	canForward: boolean;
 	onBack: () => void;
 	onForward: () => void;
+	cleanupChip: React.ReactNode;
+	onAddToCleanup: (items: Array<Omit<CleanupItem, "addedAt">>) => void;
 };
 
 type ViewMode = "list" | "tree";
 
 export const Inspect = ({
+	inspecting,
 	tree,
 	cursor,
 	setCursor,
@@ -28,8 +36,46 @@ export const Inspect = ({
 	canForward,
 	onBack,
 	onForward,
+	cleanupChip,
+	onAddToCleanup,
 }: InspectProps) => {
 	const [mode, setMode] = useState<ViewMode>("list");
+	const [selection, setSelection] = useState<Map<string, SelectableItem>>(
+		() => new Map(),
+	);
+
+	const cursorKey = cursor.join("/");
+
+	// Reset selection on any navigation.
+	useEffect(() => {
+		setSelection(new Map());
+	}, [inspecting, cursorKey]);
+
+	const toggleSelect = useCallback((item: SelectableItem) => {
+		setSelection((prev) => {
+			const next = new Map(prev);
+			if (next.has(item.path)) next.delete(item.path);
+			else next.set(item.path, item);
+			return next;
+		});
+	}, []);
+
+	const cancelSelect = useCallback(() => setSelection(new Map()), []);
+
+	const addSelectedToCleanup = useCallback(() => {
+		const items = Array.from(selection.values()).map((i) => ({
+			path: i.path,
+			name: i.name,
+			size: i.size,
+		}));
+		onAddToCleanup(items);
+		setSelection(new Map());
+	}, [selection, onAddToCleanup]);
+
+	const selectionTotal = useMemo(
+		() => Array.from(selection.values()).reduce((s, i) => s + i.size, 0),
+		[selection],
+	);
 
 	const navigateForward = (...into: string[]) =>
 		setCursor([...cursor, ...into]);
@@ -58,6 +104,7 @@ export const Inspect = ({
 						onChange={setMode}
 					/>
 				}
+				cleanupChip={cleanupChip}
 			/>
 			<div className="grid min-h-0 flex-1 grid-cols-[1fr_minmax(360px,1fr)] overflow-hidden">
 				<Sunburst
@@ -73,27 +120,47 @@ export const Inspect = ({
 					<div className="min-h-0 flex-1 overflow-auto">
 						{mode === "list" ? (
 							<LegendList
+								inspecting={inspecting}
+								cursor={cursor}
 								name={tree.name}
 								size={tree.size}
 								capacity={tree.capacity}
 								files={list.files}
+								selection={selection}
 								onForward={navigateForward}
+								onToggleSelect={toggleSelect}
 							/>
 						) : (
-							<FolderTree files={sunburst.files} onForward={navigateForward} />
+							<FolderTree
+								inspecting={inspecting}
+								cursor={cursor}
+								files={sunburst.files}
+								selection={selection}
+								onForward={navigateForward}
+								onToggleSelect={toggleSelect}
+							/>
 						)}
 					</div>
 				</div>
 			</div>
-			<div className="flex h-[28px] items-center border-t border-line-soft px-[14px] font-mono text-[11px] text-muted">
-				{readableSize(tree.size)}
-				{tree.capacity !== tree.size && (
-					<>
-						<span className="mx-[6px]">·</span>
-						{readableSize(tree.capacity)} capacity
-					</>
-				)}
-			</div>
+			{selection.size > 0 ? (
+				<MultiSelectBar
+					count={selection.size}
+					totalSize={selectionTotal}
+					onCancel={cancelSelect}
+					onAddToCleanup={addSelectedToCleanup}
+				/>
+			) : (
+				<div className="flex h-[28px] items-center border-t border-line-soft px-[14px] font-mono text-[11px] text-muted">
+					{readableSize(tree.size)}
+					{tree.capacity !== tree.size && (
+						<>
+							<span className="mx-[6px]">·</span>
+							{readableSize(tree.capacity)} capacity
+						</>
+					)}
+				</div>
+			)}
 		</>
 	);
 };

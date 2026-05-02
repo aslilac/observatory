@@ -65,6 +65,20 @@ export function useRenderTree(
 	return tree;
 }
 
+// Renderer-side path join. We never see Windows paths in this app (the
+// scan roots come from drivelist or a POSIX dialog on Linux/macOS), so
+// forward slashes and a couple of normalizations are enough.
+export function joinPath(base: string, ...rest: string[]): string {
+	const trimmedBase = base === "/" ? "" : base.replace(/\/+$/, "");
+	const tail = rest
+		.filter((p) => p.length > 0)
+		.map((p) => p.replace(/^\/+|\/+$/g, ""))
+		.filter((p) => p.length > 0)
+		.join("/");
+	if (!tail) return base;
+	return `${trimmedBase}/${tail}`;
+}
+
 export type RecentScan = {
 	path: string;
 	scannedAt: number;
@@ -113,4 +127,85 @@ export function useRecentScans(): {
 	}, []);
 
 	return { recent, push };
+}
+
+export type CleanupItem = {
+	path: string;
+	name: string;
+	size: number;
+	addedAt: number;
+};
+
+const CLEANUP_KEY = "observatory:cleanup-queue";
+
+function readCleanup(): CleanupItem[] {
+	try {
+		const raw = localStorage.getItem(CLEANUP_KEY);
+		if (!raw) return [];
+		const parsed: unknown = JSON.parse(raw);
+		if (!Array.isArray(parsed)) return [];
+		return parsed.filter(
+			(item): item is CleanupItem =>
+				typeof item === "object" &&
+				item !== null &&
+				typeof (item as CleanupItem).path === "string" &&
+				typeof (item as CleanupItem).name === "string" &&
+				typeof (item as CleanupItem).size === "number" &&
+				typeof (item as CleanupItem).addedAt === "number",
+		);
+	} catch {
+		return [];
+	}
+}
+
+function writeCleanup(items: CleanupItem[]) {
+	try {
+		localStorage.setItem(CLEANUP_KEY, JSON.stringify(items));
+	} catch {
+		// localStorage full / unavailable — silently ignore
+	}
+}
+
+export function useCleanupQueue(): {
+	items: CleanupItem[];
+	add: (next: Array<Omit<CleanupItem, "addedAt">>) => void;
+	remove: (path: string) => void;
+	clear: () => void;
+	totalSize: number;
+} {
+	const [items, setItems] = useState<CleanupItem[]>(() => readCleanup());
+
+	const add = useCallback((next: Array<Omit<CleanupItem, "addedAt">>) => {
+		setItems((prev) => {
+			const seen = new Set(prev.map((i) => i.path));
+			const additions = next
+				.filter((i) => !seen.has(i.path))
+				.map((i) => ({ ...i, addedAt: Date.now() }));
+			if (additions.length === 0) return prev;
+			const merged = [...prev, ...additions];
+			writeCleanup(merged);
+			return merged;
+		});
+	}, []);
+
+	const remove = useCallback((path: string) => {
+		setItems((prev) => {
+			const next = prev.filter((i) => i.path !== path);
+			if (next.length === prev.length) return prev;
+			writeCleanup(next);
+			return next;
+		});
+	}, []);
+
+	const clear = useCallback(() => {
+		setItems((prev) => {
+			if (prev.length === 0) return prev;
+			writeCleanup([]);
+			return [];
+		});
+	}, []);
+
+	const totalSize = items.reduce((sum, i) => sum + i.size, 0);
+
+	return { items, add, remove, clear, totalSize };
 }

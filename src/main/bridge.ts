@@ -1,5 +1,6 @@
 import { app, dialog, ipcMain, webContents } from "electron";
 
+import { deleteFiles } from "./cleanup";
 import {
 	getDrives,
 	getRenderTree,
@@ -19,6 +20,9 @@ ipcMain.handle("ob:getRenderTree", (_event, path: string, cursor: string[]) =>
 );
 ipcMain.handle("ob:getScanProgress", (_event, path: string) =>
 	getScanProgress(path),
+);
+ipcMain.handle("ob:deleteFiles", (_event, paths: string[]) =>
+	deleteFiles(paths),
 );
 
 function broadcast(channel: string, payload: unknown) {
