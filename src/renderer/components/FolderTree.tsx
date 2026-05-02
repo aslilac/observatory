@@ -182,7 +182,8 @@ const Row = ({
 				if (expandable) onToggleExpand();
 			}}
 			disabled={!expandable}
-			className="w-[14px] flex-shrink-0 cursor-pointer text-[10px] text-faint disabled:cursor-default disabled:opacity-0"
+			title={expandable ? (expanded ? "Collapse" : "Expand") : undefined}
+			className="-mx-[2px] grid h-[22px] w-[22px] flex-shrink-0 cursor-pointer place-items-center rounded-button text-[12px] text-faint hover:bg-fill-strong hover:text-ink disabled:cursor-default disabled:opacity-0 disabled:hover:bg-transparent"
 		>
 			{expanded ? "▾" : "▸"}
 		</button>
