@@ -18,6 +18,8 @@ declare global {
 			query: string,
 		): Promise<SearchResults | null>;
 		function getScanErrors(path: string): Promise<ScanError[]>;
+		function statPath(path: string): Promise<PathStat | null>;
+		function pathForFile(file: File): string;
 
 		// Push events (main -> renderer); each returns an unsubscribe.
 		function onDrives(cb: (drives: PhysicalDrive[]) => void): () => void;
@@ -62,6 +64,11 @@ declare global {
 			kind: "permission" | "missing" | "loop" | "other";
 			code: string | null;
 			message: string;
+		}
+
+		export interface PathStat {
+			exists: boolean;
+			isDirectory: boolean;
 		}
 
 		export interface ScanProgress {

@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from "electron";
+import { contextBridge, ipcRenderer, webUtils } from "electron";
 
 const subscribe = <T>(channel: string, cb: (payload: T) => void) => {
 	const handler = (_event: unknown, payload: T) => cb(payload);
@@ -25,6 +25,8 @@ contextBridge.exposeInMainWorld("Ob", {
 		ipcRenderer.invoke("ob:searchScan", path, query),
 	getScanErrors: (path: string) =>
 		ipcRenderer.invoke("ob:getScanErrors", path),
+	statPath: (path: string) => ipcRenderer.invoke("ob:statPath", path),
+	pathForFile: (file: File) => webUtils.getPathForFile(file),
 
 	onDrives: (cb: (drives: Ob.PhysicalDrive[]) => void) => {
 		const unsub = subscribe<Ob.PhysicalDrive[]>("ob:drives", cb);

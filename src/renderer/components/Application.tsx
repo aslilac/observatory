@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 
 import {
 	useCleanupQueue,
@@ -13,9 +19,11 @@ import {
 import { Cleanup } from "./Cleanup";
 import { CleanupChip } from "./CleanupChip";
 import { CleanupModal } from "./CleanupModal";
+import { DropOverlay } from "./DropOverlay";
 import { Inspect } from "./Inspect";
 import { IssuesChip } from "./IssuesChip";
 import { IssuesModal } from "./IssuesModal";
+import { PasteConfirm } from "./PasteConfirm";
 import { Scanning } from "./Scanning";
 import { ThemeToggle } from "./ThemeToggle";
 import { Welcome } from "./Welcome";
@@ -149,6 +157,78 @@ export const Application = () => {
 		[setInspecting],
 	);
 
+	const [dragOver, setDragOver] = useState(false);
+	const dragCounter = useRef(0);
+
+	const handleDragEnter = useCallback((e: React.DragEvent) => {
+		if (!e.dataTransfer.types.includes("Files")) return;
+		e.preventDefault();
+		dragCounter.current += 1;
+		setDragOver(true);
+	}, []);
+
+	const handleDragOver = useCallback((e: React.DragEvent) => {
+		if (!e.dataTransfer.types.includes("Files")) return;
+		e.preventDefault();
+		e.dataTransfer.dropEffect = "copy";
+	}, []);
+
+	const handleDragLeave = useCallback((e: React.DragEvent) => {
+		if (!e.dataTransfer.types.includes("Files")) return;
+		dragCounter.current = Math.max(0, dragCounter.current - 1);
+		if (dragCounter.current === 0) setDragOver(false);
+	}, []);
+
+	const handleDrop = useCallback(
+		(e: React.DragEvent) => {
+			if (!e.dataTransfer.types.includes("Files")) return;
+			e.preventDefault();
+			dragCounter.current = 0;
+			setDragOver(false);
+			const file = e.dataTransfer.files[0];
+			if (!file) return;
+			const path = Ob.pathForFile(file);
+			if (path) onScan(path);
+		},
+		[onScan],
+	);
+
+	const [pastePath, setPastePath] = useState<string | null>(null);
+	const [pasteStat, setPasteStat] = useState<Ob.PathStat | null>(null);
+
+	useEffect(() => {
+		const handler = (e: ClipboardEvent) => {
+			const target = e.target as HTMLElement | null;
+			if (
+				target &&
+				(target.tagName === "INPUT" ||
+					target.tagName === "TEXTAREA" ||
+					target.isContentEditable)
+			) {
+				return;
+			}
+			const text = e.clipboardData?.getData("text/plain")?.trim();
+			if (!text) return;
+			// Heuristic: a pasted scan target should look like an absolute path.
+			// Anything else (URLs, snippets) gets ignored so the global handler
+			// stays out of the user's way.
+			if (!/^([/~]|[A-Za-z]:[\\/])/.test(text)) return;
+			e.preventDefault();
+			setPastePath(text);
+			setPasteStat(null);
+			void Ob.statPath(text).then(setPasteStat);
+		};
+		document.addEventListener("paste", handler);
+		return () => document.removeEventListener("paste", handler);
+	}, []);
+
+	const confirmPaste = useCallback(() => {
+		if (!pastePath) return;
+		onScan(pastePath);
+		setPastePath(null);
+		setPasteStat(null);
+	}, [pastePath, onScan]);
+
 	const onInspect = useCallback(
 		(path: string) => setInspecting(path),
 		[setInspecting],
@@ -262,6 +342,10 @@ export const Application = () => {
 		<div
 			id="application"
 			className={`relative grid h-screen grid-rows-[36px_1fr] bg-paper ${Ob.platform}`}
+			onDragEnter={handleDragEnter}
+			onDragOver={handleDragOver}
+			onDragLeave={handleDragLeave}
+			onDrop={handleDrop}
 		>
 			<TitleBar
 				title={titleSuffix}
@@ -283,6 +367,18 @@ export const Application = () => {
 					onClose={() => setIssuesOpen(false)}
 				/>
 			)}
+			{pastePath && (
+				<PasteConfirm
+					path={pastePath}
+					stat={pasteStat}
+					onCancel={() => {
+						setPastePath(null);
+						setPasteStat(null);
+					}}
+					onConfirm={confirmPaste}
+				/>
+			)}
+			{dragOver && <DropOverlay />}
 		</div>
 	);
 };

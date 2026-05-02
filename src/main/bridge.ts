@@ -1,4 +1,5 @@
 import { app, dialog, ipcMain, webContents } from "electron";
+import * as fs from "node:fs/promises";
 
 import { deleteFiles } from "./cleanup";
 import {
@@ -31,6 +32,17 @@ ipcMain.handle("ob:searchScan", (_event, path: string, query: string) =>
 );
 ipcMain.handle("ob:getScanErrors", (_event, path: string) =>
 	getScanErrors(path),
+);
+ipcMain.handle(
+	"ob:statPath",
+	async (_event, path: string): Promise<Ob.PathStat | null> => {
+		try {
+			const stats = await fs.stat(path);
+			return { exists: true, isDirectory: stats.isDirectory() };
+		} catch {
+			return { exists: false, isDirectory: false };
+		}
+	},
 );
 
 function broadcast(channel: string, payload: unknown) {
