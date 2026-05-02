@@ -11,6 +11,7 @@ declare global {
 			path: string,
 			cursor: string[],
 		): Promise<RenderTree | null>;
+		function getScanProgress(path: string): Promise<ScanProgress | null>;
 
 		// Push events (main -> renderer); each returns an unsubscribe.
 		function onDrives(cb: (drives: PhysicalDrive[]) => void): () => void;
@@ -28,6 +29,19 @@ declare global {
 		export interface ScanInfo {
 			path: string;
 			status: ScanStatus;
+		}
+
+		export interface ScanProgress {
+			path: string;
+			status: ScanStatus;
+			counts: {
+				files: number;
+				directories: number;
+				symlinks: number;
+				devices: number;
+				misc: number;
+			};
+			currentPath: string | null;
 		}
 
 		export type NodeType =

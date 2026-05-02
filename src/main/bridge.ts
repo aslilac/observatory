@@ -4,6 +4,7 @@ import {
 	getDrives,
 	getRenderTree,
 	getScans,
+	getScanProgress,
 	onDrivesChange,
 	onScansChange,
 	startScan,
@@ -15,6 +16,9 @@ ipcMain.handle("ob:getDrives", () => getDrives());
 ipcMain.handle("ob:getScans", () => getScans());
 ipcMain.handle("ob:getRenderTree", (_event, path: string, cursor: string[]) =>
 	getRenderTree(path, cursor),
+);
+ipcMain.handle("ob:getScanProgress", (_event, path: string) =>
+	getScanProgress(path),
 );
 
 function broadcast(channel: string, payload: unknown) {

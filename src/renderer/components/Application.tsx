@@ -1,6 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
-import { useDrives, useRecentScans, useRenderTree, useScans } from "../state";
+import {
+	useDrives,
+	useRecentScans,
+	useRenderTree,
+	useScanProgress,
+	useScans,
+} from "../state";
 import { Inspect } from "./Inspect";
 import { Scanning } from "./Scanning";
 import { Welcome } from "./Welcome";
@@ -88,6 +94,11 @@ export const Application = () => {
 		inspectingScan?.status ?? null,
 	);
 
+	const scanProgress = useScanProgress(
+		inspecting,
+		inspectingScan?.status === "building",
+	);
+
 	useEffect(() => {
 		if (inspecting && inspectingScan?.status === "complete") {
 			pushRecent(inspecting);
@@ -133,6 +144,7 @@ export const Application = () => {
 		body = (
 			<Scanning
 				root={inspectingName}
+				progress={scanProgress}
 				onShowMenu={showMenu}
 				{...navProps}
 			/>

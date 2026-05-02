@@ -15,6 +15,11 @@ export class VirtualFileSystem {
 		misc: number;
 	};
 
+	// Most recent directory entered by `_scan`. The recursion is parallel via
+	// Promise.all, so this is an arbitrary "we're somewhere here" indicator
+	// rather than a precise breadth-first tip — good enough for a status line.
+	currentPath: string | null = null;
+
 	private onCompleteCallbacks: Array<() => void> = [];
 
 	constructor(location: string) {
@@ -54,15 +59,10 @@ export class VirtualFileSystem {
 		await fs.stat(location);
 
 		console.time("vfs creation");
-		const status = setInterval(() => {
-			console.log(this.counts);
-		}, 5000);
 
 		const vfs = await this._scan(location);
 		vfs.name = path.basename(location);
 
-		clearInterval(status);
-		console.log(this.counts);
 		console.timeEnd("vfs creation");
 
 		// Set the name and capacity if it's a drive
@@ -83,6 +83,8 @@ export class VirtualFileSystem {
 	}
 
 	private async _scan(location: string): Promise<Ob.VfsDirectory> {
+		this.currentPath = location;
+
 		const state: Ob.VfsDirectory = {
 			type: "directory",
 			name: "MISSING_NO",

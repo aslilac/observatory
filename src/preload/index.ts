@@ -17,6 +17,8 @@ contextBridge.exposeInMainWorld("Ob", {
 	getScans: () => ipcRenderer.invoke("ob:getScans"),
 	getRenderTree: (path: string, cursor: string[]) =>
 		ipcRenderer.invoke("ob:getRenderTree", path, cursor),
+	getScanProgress: (path: string) =>
+		ipcRenderer.invoke("ob:getScanProgress", path),
 
 	onDrives: (cb: (drives: Ob.PhysicalDrive[]) => void) => {
 		const unsub = subscribe<Ob.PhysicalDrive[]>("ob:drives", cb);

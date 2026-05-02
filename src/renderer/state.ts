@@ -12,6 +12,34 @@ export function useScans(): Ob.ScanInfo[] {
 	return scans;
 }
 
+export function useScanProgress(
+	path: string | null,
+	active: boolean,
+): Ob.ScanProgress | null {
+	const [progress, setProgress] = useState<Ob.ScanProgress | null>(null);
+
+	useEffect(() => {
+		if (!path || !active) {
+			setProgress(null);
+			return;
+		}
+		let cancelled = false;
+		const tick = () => {
+			void Ob.getScanProgress(path).then((next) => {
+				if (!cancelled) setProgress(next);
+			});
+		};
+		tick();
+		const id = setInterval(tick, 250);
+		return () => {
+			cancelled = true;
+			clearInterval(id);
+		};
+	}, [path, active]);
+
+	return progress;
+}
+
 export function useRenderTree(
 	path: string | null,
 	cursor: string[],

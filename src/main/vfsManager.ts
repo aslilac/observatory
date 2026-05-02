@@ -45,6 +45,17 @@ export function getRenderTree(
 	return entry.vfs.getRenderTree(cursor);
 }
 
+export function getScanProgress(path: string): Ob.ScanProgress | null {
+	const entry = scans.get(path);
+	if (!entry) return null;
+	return {
+		path,
+		status: entry.status,
+		counts: { ...entry.vfs.counts },
+		currentPath: entry.vfs.currentPath,
+	};
+}
+
 export function startScan(path: string) {
 	if (scans.has(path)) return;
 
