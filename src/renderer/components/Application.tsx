@@ -20,6 +20,7 @@ import { Cleanup } from "./Cleanup";
 import { CleanupChip } from "./CleanupChip";
 import { CleanupModal } from "./CleanupModal";
 import { DropOverlay } from "./DropOverlay";
+import { ErrorBoundary } from "./ErrorBoundary";
 import { Inspect } from "./Inspect";
 import { IssuesChip } from "./IssuesChip";
 import { IssuesModal } from "./IssuesModal";
@@ -352,7 +353,11 @@ export const Application = () => {
 				theme={theme}
 				onToggleTheme={toggleTheme}
 			/>
-			<div className="flex min-h-0 flex-col overflow-hidden">{body}</div>
+			<div className="flex min-h-0 flex-col overflow-hidden">
+				<ErrorBoundary key={`${view}-${inspecting ?? "menu"}`}>
+					{body}
+				</ErrorBoundary>
+			</div>
 			{confirmCleanup && (
 				<CleanupModal
 					items={cleanup.items}

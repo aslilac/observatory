@@ -115,6 +115,7 @@ export const Inspect = ({
 	const navigateUp = () => setCursor(cursor.slice(0, -1));
 
 	const { sunburst, list, tree: treeFiles, ...shared } = tree;
+	const treeChildren = treeFiles?.files ?? list.files;
 
 	return (
 		<>
@@ -189,7 +190,7 @@ export const Inspect = ({
 							<FolderTree
 								inspecting={inspecting}
 								cursor={cursor}
-								files={treeFiles.files}
+								files={treeChildren}
 								selection={selection}
 								onForward={navigateForward}
 								onToggleSelect={toggleSelect}
