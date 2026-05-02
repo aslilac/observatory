@@ -12,6 +12,10 @@ type ToolbarProps = {
 	onBack?: () => void;
 	onForward?: () => void;
 	chips?: React.ReactNode;
+	// When set, render a "Disks and folders › <view>" breadcrumb pattern. The
+	// root crumb becomes inactive-clickable (hops home) and `view` is the
+	// terminal active label. Used for the cleanup destination.
+	view?: string;
 };
 
 export const Toolbar = ({
@@ -26,8 +30,10 @@ export const Toolbar = ({
 	onBack,
 	onForward,
 	chips,
+	view,
 }: ToolbarProps) => {
 	const inAScan = !!root;
+	const inView = !!view;
 	return (
 		<div className="flex h-[44px] items-center gap-2 border-b border-line-soft px-[14px]">
 			<IconBtn onClick={onBack} disabled={!canBack} title="Back">
@@ -38,11 +44,17 @@ export const Toolbar = ({
 			</IconBtn>
 			<div className="mx-1 h-[18px] w-px bg-line" />
 			<Crumb
-				active={!inAScan}
-				onClick={inAScan ? onShowMenu : undefined}
+				active={!inAScan && !inView}
+				onClick={inAScan || inView ? onShowMenu : undefined}
 			>
 				Disks and folders
 			</Crumb>
+			{inView && (
+				<>
+					<Chevron />
+					<Crumb active>{view}</Crumb>
+				</>
+			)}
 			{inAScan && (
 				<>
 					<Chevron />

@@ -8,12 +8,10 @@ type CleanupModalProps = {
 	items: CleanupItem[];
 	totalSize: number;
 	onClose: () => void;
-	onRemove: (path: string) => void;
 	onTrash: () => Promise<{ deleted: number; reclaimed: number; failed: number }>;
 };
 
 type Stage =
-	| { kind: "list" }
 	| { kind: "confirm" }
 	| { kind: "deleting" }
 	| {
@@ -27,10 +25,9 @@ export const CleanupModal = ({
 	items,
 	totalSize,
 	onClose,
-	onRemove,
 	onTrash,
 }: CleanupModalProps) => {
-	const [stage, setStage] = useState<Stage>({ kind: "list" });
+	const [stage, setStage] = useState<Stage>({ kind: "confirm" });
 
 	const handleTrash = async () => {
 		setStage({ kind: "deleting" });
@@ -38,7 +35,7 @@ export const CleanupModal = ({
 			const result = await onTrash();
 			setStage({ kind: "success", ...result });
 		} catch {
-			setStage({ kind: "list" });
+			onClose();
 		}
 	};
 
@@ -57,20 +54,11 @@ export const CleanupModal = ({
 				role="dialog"
 				aria-modal="true"
 			>
-				{stage.kind === "list" && (
-					<ListStage
-						items={items}
-						totalSize={totalSize}
-						onClose={onClose}
-						onRemove={onRemove}
-						onConfirm={() => setStage({ kind: "confirm" })}
-					/>
-				)}
 				{stage.kind === "confirm" && (
 					<ConfirmStage
-						count={items.length}
+						items={items}
 						totalSize={totalSize}
-						onCancel={() => setStage({ kind: "list" })}
+						onCancel={onClose}
 						onTrash={() => void handleTrash()}
 					/>
 				)}
@@ -88,103 +76,54 @@ export const CleanupModal = ({
 	);
 };
 
-const ListStage = ({
-	items,
-	totalSize,
-	onClose,
-	onRemove,
-	onConfirm,
-}: {
-	items: CleanupItem[];
-	totalSize: number;
-	onClose: () => void;
-	onRemove: (path: string) => void;
-	onConfirm: () => void;
-}) => (
-	<>
-		<div className="mb-[16px] flex items-baseline justify-between">
-			<div>
-				<div className="text-[16px] font-semibold">Cleanup queue</div>
-				<div className="font-mono text-[11px] text-muted">
-					{items.length} item{items.length === 1 ? "" : "s"} ·{" "}
-					{readableSize(totalSize)}
-				</div>
-			</div>
-			<button
-				type="button"
-				onClick={onClose}
-				className="cursor-pointer text-[18px] leading-none text-faint hover:text-ink"
-			>
-				×
-			</button>
-		</div>
-
-		<div className="max-h-[320px] overflow-auto rounded-card border border-line-soft">
-			{items.map((item, i) => (
-				<div
-					key={item.path}
-					className={`flex items-center gap-[10px] px-[12px] py-[8px] text-[12px] ${
-						i < items.length - 1 ? "border-b border-line-soft" : ""
-					}`}
-				>
-					<div className="min-w-0 flex-1">
-						<div className="truncate text-[12px]">{item.name}</div>
-						<div className="truncate font-mono text-[10px] text-muted">
-							{item.path}
-						</div>
-					</div>
-					<div className="font-mono text-[11px] text-muted">
-						{readableSize(item.size)}
-					</div>
-					<button
-						type="button"
-						onClick={() => onRemove(item.path)}
-						className="cursor-pointer text-[14px] leading-none text-faint hover:text-ink"
-						title="Remove from queue"
-					>
-						×
-					</button>
-				</div>
-			))}
-		</div>
-
-		<div className="mt-[20px] flex justify-end gap-[8px]">
-			<Button onClick={onClose}>Close</Button>
-			<Button variant="primary" onClick={onConfirm}>
-				Move to Trash
-			</Button>
-		</div>
-	</>
-);
-
 const ConfirmStage = ({
-	count,
+	items,
 	totalSize,
 	onCancel,
 	onTrash,
 }: {
-	count: number;
+	items: CleanupItem[];
 	totalSize: number;
 	onCancel: () => void;
 	onTrash: () => void;
-}) => (
-	<>
-		<div className="mb-[12px] text-[16px] font-semibold">
-			Move {count} item{count === 1 ? "" : "s"} to Trash?
-		</div>
-		<div className="mb-[24px] text-[13px] text-muted">
-			<span className="font-mono text-ink">{readableSize(totalSize)}</span>{" "}
-			will be reclaimed. Items go to your system Trash and can be restored
-			from there.
-		</div>
-		<div className="flex justify-end gap-[8px]">
-			<Button onClick={onCancel}>Cancel</Button>
-			<Button variant="danger" onClick={onTrash}>
-				Move to Trash
-			</Button>
-		</div>
-	</>
-);
+}) => {
+	const preview = items.slice(0, 5);
+	const overflow = items.length - preview.length;
+	return (
+		<>
+			<div className="mb-[12px] flex items-center gap-[8px]">
+				<AlertIcon />
+				<div className="text-[16px] font-semibold">
+					Move {items.length} item{items.length === 1 ? "" : "s"} to Trash?
+				</div>
+			</div>
+			<div className="mb-[14px] text-[13px] text-muted">
+				This will move{" "}
+				<span className="font-mono font-semibold text-ink">
+					{readableSize(totalSize)}
+				</span>{" "}
+				across {items.length} path{items.length === 1 ? "" : "s"} to your
+				system Trash. You can restore items from Trash until you empty it.
+			</div>
+			<div className="mb-[20px] rounded-card border border-line-soft bg-fill px-[12px] py-[10px] font-mono text-[11px] text-ink">
+				{preview.map((item) => (
+					<div key={item.path} className="truncate" title={item.path}>
+						{item.path}
+					</div>
+				))}
+				{overflow > 0 && (
+					<div className="text-muted">+ {overflow} more</div>
+				)}
+			</div>
+			<div className="flex justify-end gap-[8px]">
+				<Button onClick={onCancel}>Cancel</Button>
+				<Button variant="danger" onClick={onTrash}>
+					Move to Trash
+				</Button>
+			</div>
+		</>
+	);
+};
 
 const DeletingStage = () => (
 	<div className="flex items-center justify-center py-[32px] font-mono text-[12px] text-muted">
@@ -222,4 +161,22 @@ const SuccessStage = ({
 			</Button>
 		</div>
 	</>
+);
+
+const AlertIcon = () => (
+	<svg
+		width="18"
+		height="18"
+		viewBox="0 0 24 24"
+		fill="none"
+		stroke="currentColor"
+		strokeWidth="1.8"
+		strokeLinecap="round"
+		strokeLinejoin="round"
+		className="text-ink"
+	>
+		<circle cx="12" cy="12" r="10" />
+		<path d="M12 8v4" />
+		<path d="M12 16h.01" />
+	</svg>
 );

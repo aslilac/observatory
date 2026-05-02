@@ -5,19 +5,21 @@ import { readableSize } from "../util";
 type CleanupChipProps = {
 	count: number;
 	totalSize: number;
-	onClick?: () => void;
+	onClick: () => void;
 };
 
 export const CleanupChip = ({ count, totalSize, onClick }: CleanupChipProps) => {
 	if (count === 0) {
 		return (
-			<span
-				className="ml-[6px] inline-flex cursor-default items-center gap-[6px] rounded-full border border-dashed border-line bg-transparent px-[10px] py-[5px] font-sans text-[11px] text-muted"
-				title="Right-click rows to add to cleanup"
+			<button
+				type="button"
+				onClick={onClick}
+				className="ml-[6px] inline-flex cursor-pointer items-center gap-[6px] rounded-full border border-dashed border-line bg-transparent px-[10px] py-[5px] font-sans text-[11px] text-muted hover:border-ink hover:text-ink"
+				title="Open cleanup queue"
 			>
 				<TrashIcon />
 				<span>Cleanup</span>
-			</span>
+			</button>
 		);
 	}
 

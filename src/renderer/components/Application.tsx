@@ -10,6 +10,7 @@ import {
 	useScans,
 	useTheme,
 } from "../state";
+import { Cleanup } from "./Cleanup";
 import { CleanupChip } from "./CleanupChip";
 import { CleanupModal } from "./CleanupModal";
 import { Inspect } from "./Inspect";
@@ -19,30 +20,37 @@ import { Scanning } from "./Scanning";
 import { ThemeToggle } from "./ThemeToggle";
 import { Welcome } from "./Welcome";
 
-type NavEntry = { inspecting: string | null; cursor: string[] };
+type NavView = "scan" | "cleanup";
+type NavEntry = {
+	view: NavView;
+	inspecting: string | null;
+	cursor: string[];
+};
 type NavState = { history: NavEntry[]; index: number };
 
 const sameCursor = (a: string[], b: string[]) =>
 	a.length === b.length && a.every((v, i) => v === b[i]);
 
 const sameEntry = (a: NavEntry, b: NavEntry) =>
-	a.inspecting === b.inspecting && sameCursor(a.cursor, b.cursor);
+	a.view === b.view &&
+	a.inspecting === b.inspecting &&
+	sameCursor(a.cursor, b.cursor);
 
 export const Application = () => {
 	const drives = useDrives();
 	const scans = useScans();
 	const { recent, push: pushRecent } = useRecentScans();
 	const cleanup = useCleanupQueue();
-	const [cleanupOpen, setCleanupOpen] = useState(false);
+	const [confirmCleanup, setConfirmCleanup] = useState(false);
 	const [issuesOpen, setIssuesOpen] = useState(false);
 	const { theme, toggle: toggleTheme } = useTheme();
 
 	const [nav, setNav] = useState<NavState>({
-		history: [{ inspecting: null, cursor: [] }],
+		history: [{ view: "scan", inspecting: null, cursor: [] }],
 		index: 0,
 	});
 	const current = nav.history[nav.index]!;
-	const { inspecting, cursor } = current;
+	const { view, inspecting, cursor } = current;
 
 	const navigate = useCallback((entry: NavEntry) => {
 		setNav((prev) => {
@@ -74,13 +82,25 @@ export const Application = () => {
 	const canForward = nav.index < nav.history.length - 1;
 
 	const setInspecting = useCallback(
-		(path: string | null) => navigate({ inspecting: path, cursor: [] }),
+		(path: string | null) =>
+			navigate({ view: "scan", inspecting: path, cursor: [] }),
 		[navigate],
 	);
 
 	const setCursor = useCallback(
-		(next: string[]) => navigate({ inspecting, cursor: next }),
+		(next: string[]) =>
+			navigate({ view: "scan", inspecting, cursor: next }),
 		[navigate, inspecting],
+	);
+
+	const showCleanup = useCallback(
+		() =>
+			navigate({
+				view: "cleanup",
+				inspecting,
+				cursor,
+			}),
+		[navigate, inspecting, cursor],
 	);
 
 	useEffect(() => Ob.onSetInspecting(setInspecting), [setInspecting]);
@@ -159,7 +179,7 @@ export const Application = () => {
 			<CleanupChip
 				count={cleanup.items.length}
 				totalSize={cleanup.totalSize}
-				onClick={() => setCleanupOpen(true)}
+				onClick={showCleanup}
 			/>
 		</>
 	);
@@ -174,7 +194,21 @@ export const Application = () => {
 	const inspectingName = inspecting ? displayName(inspecting, drives) : "";
 
 	let body: React.ReactNode;
-	if (inspecting && inspectingScan?.status === "complete" && tree) {
+	if (view === "cleanup") {
+		body = (
+			<Cleanup
+				items={cleanup.items}
+				totalSize={cleanup.totalSize}
+				onRemove={cleanup.remove}
+				onClear={cleanup.clear}
+				onReview={() => setConfirmCleanup(true)}
+				onShowMenu={showMenu}
+				onBrowseFiles={() => void Ob.selectDirectory()}
+				chips={chips}
+				{...navProps}
+			/>
+		);
+	} else if (inspecting && inspectingScan?.status === "complete" && tree) {
 		body = (
 			<Inspect
 				inspecting={inspecting}
@@ -211,13 +245,18 @@ export const Application = () => {
 		);
 	}
 
-	const titleSuffix = inspecting
-		? inspectingScan?.status === "complete"
-			? cursor.length > 0
-				? `inspect · ${cursor[cursor.length - 1]}`
-				: "inspect"
-			: "scanning"
-		: "welcome";
+	const titleSuffix =
+		view === "cleanup"
+			? `cleanup queue · ${
+					cleanup.items.length === 0 ? "empty" : `${cleanup.items.length} items`
+				}`
+			: inspecting
+				? inspectingScan?.status === "complete"
+					? cursor.length > 0
+						? `inspect · ${cursor[cursor.length - 1]}`
+						: "inspect"
+					: "scanning"
+				: "welcome";
 
 	return (
 		<div
@@ -230,12 +269,11 @@ export const Application = () => {
 				onToggleTheme={toggleTheme}
 			/>
 			<div className="flex min-h-0 flex-col overflow-hidden">{body}</div>
-			{cleanupOpen && (
+			{confirmCleanup && (
 				<CleanupModal
 					items={cleanup.items}
 					totalSize={cleanup.totalSize}
-					onClose={() => setCleanupOpen(false)}
-					onRemove={cleanup.remove}
+					onClose={() => setConfirmCleanup(false)}
 					onTrash={onTrashCleanup}
 				/>
 			)}
