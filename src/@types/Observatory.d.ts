@@ -127,6 +127,11 @@ declare global {
 			size: number;
 			list: DisplayInfo;
 			sunburst: DisplayInfo;
+			// Full recursive directory listing for the tree view: every child
+			// of every descendant up to a fixed depth, alphabetically sorted at
+			// each level. Unlike `sunburst.files` it isn't filtered by size, so
+			// the tree shows tiny entries the sunburst would drop.
+			tree: DisplayInfo;
 		};
 	}
 }

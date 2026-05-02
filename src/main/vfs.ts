@@ -239,6 +239,31 @@ export class VirtualFileSystem {
 							mtime: file.mtime,
 						};
 
+		const sortAlpha = (files: Ob.VfsNode[]) =>
+			files.slice().sort((a, b) =>
+				a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+			);
+		const sanitizeFull =
+			(recursive: number) =>
+			(file: Ob.VfsNode): Ob.VfsNode =>
+				file.type === "directory"
+					? {
+							name: file.name,
+							type: file.type,
+							size: file.size,
+							mtime: file.mtime,
+							files:
+								recursive > 0
+									? sortAlpha(file.files).map(sanitizeFull(recursive - 1))
+									: [],
+						}
+					: {
+							name: file.name,
+							type: file.type,
+							size: file.size,
+							mtime: file.mtime,
+						};
+
 		const root = this.root;
 
 		return {
@@ -255,6 +280,9 @@ export class VirtualFileSystem {
 			},
 			sunburst: {
 				files: directory.files.filter(isLargeEnough).map(sanitize(6)),
+			},
+			tree: {
+				files: sortAlpha(directory.files).map(sanitizeFull(6)),
 			},
 		};
 	}
