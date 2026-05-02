@@ -1,10 +1,13 @@
-import React from "react";
+import React, { useMemo } from "react";
 
 import { hueFor, oklchSwatch } from "../colors";
 import { joinPath } from "../state";
 import { readableSize } from "../util";
+import type { SortMode } from "./SortPicker";
 
 type SelectableItem = { path: string; name: string; size: number };
+
+const TOP_N = 10;
 
 type LegendListProps = {
 	inspecting: string;
@@ -16,6 +19,9 @@ type LegendListProps = {
 	selection: Map<string, SelectableItem>;
 	onForward: (name: string) => void;
 	onToggleSelect: (item: SelectableItem) => void;
+	sortMode: SortMode;
+	showAll: boolean;
+	onShowAll: () => void;
 };
 
 export const LegendList = ({
@@ -28,8 +34,27 @@ export const LegendList = ({
 	selection,
 	onForward,
 	onToggleSelect,
+	sortMode,
+	showAll,
+	onShowAll,
 }: LegendListProps) => {
 	const free = capacity > size ? capacity - size : 0;
+
+	// `files` arrives sorted by size descending from the VFS, which is also
+	// the order the sunburst draws its top-level slices. Lock each item's
+	// dot color to that order so re-sorting the list doesn't shuffle the
+	// palette away from the wedges.
+	const hueByName = useMemo(() => {
+		const map = new Map<string, number>();
+		files.forEach((f, i) => map.set(f.name, hueFor(i)));
+		return map;
+	}, [files]);
+
+	const sorted = useMemo(() => sortFiles(files, sortMode), [files, sortMode]);
+
+	const collapse = sortMode === "size" && !showAll && sorted.length > TOP_N;
+	const visible = collapse ? sorted.slice(0, TOP_N) : sorted;
+	const hiddenCount = sorted.length - visible.length;
 
 	return (
 		<div className="flex flex-col text-[13px]">
@@ -42,7 +67,7 @@ export const LegendList = ({
 				</div>
 			</div>
 
-			{files.map((file, i) => {
+			{visible.map((file) => {
 				const fullPath = joinPath(inspecting, ...cursor, file.name);
 				const item: SelectableItem = {
 					path: fullPath,
@@ -51,14 +76,13 @@ export const LegendList = ({
 				};
 				const isSelected = selection.has(fullPath);
 				const isDir = file.type === "directory";
+				const hue = hueByName.get(file.name) ?? hueFor(0);
 
 				return (
 					<div
-						key={`${file.name}-${i}`}
+						key={file.name}
 						className={`group flex items-center justify-between rounded-[5px] px-[8px] py-[7px] ${
-							isSelected
-								? "bg-fill"
-								: "hover:bg-fill"
+							isSelected ? "bg-fill" : "hover:bg-fill"
 						} ${isDir ? "cursor-pointer" : ""}`}
 						onClick={() =>
 							isDir ? onForward(file.name) : onToggleSelect(item)
@@ -71,7 +95,7 @@ export const LegendList = ({
 							/>
 							<span
 								className="block h-[8px] w-[8px] flex-shrink-0 rounded-full"
-								style={{ background: oklchSwatch(hueFor(i)) }}
+								style={{ background: oklchSwatch(hue) }}
 							/>
 							<span className="truncate">{file.name}</span>
 						</span>
@@ -81,6 +105,19 @@ export const LegendList = ({
 					</div>
 				);
 			})}
+
+			{collapse && (
+				<button
+					type="button"
+					onClick={onShowAll}
+					className="mt-[6px] cursor-pointer rounded-[5px] px-[8px] py-[7px] text-left text-[12px] text-muted hover:bg-fill hover:text-ink"
+				>
+					Show all {sorted.length} items{" "}
+					<span className="font-mono text-faint">
+						({hiddenCount} more)
+					</span>
+				</button>
+			)}
 
 			{free > 0 && (
 				<div className="mt-[8px] flex justify-between border-t border-line-soft px-[8px] pt-[10px] pb-[4px] text-[12px] text-muted">
@@ -94,6 +131,24 @@ export const LegendList = ({
 		</div>
 	);
 };
+
+function sortFiles(files: Ob.VfsNode[], mode: SortMode): Ob.VfsNode[] {
+	const next = files.slice();
+	switch (mode) {
+		case "size":
+			// Already in size-desc order from the backend, but slice() preserves
+			// it so this branch is a no-op aside from returning a fresh array.
+			return next;
+		case "name":
+			return next.sort((a, b) =>
+				a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+			);
+		case "newest":
+			return next.sort((a, b) => b.mtime - a.mtime);
+		case "oldest":
+			return next.sort((a, b) => a.mtime - b.mtime);
+	}
+}
 
 type CheckboxProps = {
 	checked: boolean;

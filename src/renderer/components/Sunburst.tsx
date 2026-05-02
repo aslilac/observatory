@@ -1,31 +1,7 @@
 import React, { Component, RefObject } from "react";
 
+import { hueFor, sunburstColor } from "../colors";
 import { readableSize } from "../util";
-
-const hsl = (h: number | string, s: number | string, l: number | string) => {
-	return `hsl(${h}, ${s}%, ${l}%)`;
-};
-
-const getShardHsl = (
-	hue: number,
-	layer: number,
-	min = 0,
-	range = 1,
-	type: Ob.NodeType$,
-	dark: boolean,
-) => {
-	const h = ((min + hue * range) * 360 - 5).toFixed(2);
-
-	if (dark) {
-		if (type === "directory") return hsl(h, 55, layer * 4 + 40);
-		if (type === "imaginary") return hsl(h, 0, 18);
-		return hsl(h, 0, layer * 4 + 28);
-	}
-
-	if (type === "directory") return hsl(h, 95, layer * 5 + 65);
-	if (type === "imaginary") return hsl(h, 0, 85);
-	return hsl(h, 0, layer * 5 + 45);
-};
 
 function readThemeColors(): {
 	ink: string;
@@ -376,36 +352,45 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 			const cx = bounds.width / windowScale / 2;
 			const cy = bounds.height / windowScale / 2;
 
-			const draw = (layer: number) => (position: number, file: Ob.VfsNode) => {
-				const size = file.size / scale;
-				const state =
-					hoverTarget?._original === file ? hoverTarget.state : null;
-				this.drawShard(position, size, layer, state, file.type);
+			const draw =
+				(layer: number, parentHue: number | null) =>
+				(position: number, file: Ob.VfsNode, idx: number) => {
+					const size = file.size / scale;
+					const state =
+						hoverTarget?._original === file ? hoverTarget.state : null;
+					// Top-level slices anchor a categorical hue from the same palette
+					// as the legend list; descendants inherit the parent's hue so an
+					// outer ring's color reads as related to its parent slice.
+					const myHue = layer === 0 ? hueFor(idx) : (parentHue ?? hueFor(0));
+					this.drawShard(position, size, layer, state, file.type, myHue);
 
-				if (file.type === "directory" && layer < 6) {
-					if (file.files.length > 0) {
-						const drawnEnd = file.files.reduce(draw(layer + 1), position);
-						const remainderSize = file.size / scale - (drawnEnd - position);
-
-						if (
-							layer < 4 &&
-							remainderSize > (this.props.capacity / scale) * 0.003
-						) {
-							// smaller items...
-							this.drawShard(
-								drawnEnd,
-								// Size of the directory minus the size of things drawn already
-								remainderSize,
-								layer + 1,
-								null,
-								"imaginary",
+					if (file.type === "directory" && layer < 6) {
+						if (file.files.length > 0) {
+							const drawnEnd = file.files.reduce(
+								draw(layer + 1, myHue),
+								position,
 							);
+							const remainderSize = file.size / scale - (drawnEnd - position);
+
+							if (
+								layer < 4 &&
+								remainderSize > (this.props.capacity / scale) * 0.003
+							) {
+								// smaller items...
+								this.drawShard(
+									drawnEnd,
+									remainderSize,
+									layer + 1,
+									null,
+									"imaginary",
+									myHue,
+								);
+							}
 						}
 					}
-				}
 
-				return position + size;
-			};
+					return position + size;
+				};
 
 			_2d.clearRect(
 				0,
@@ -414,7 +399,7 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 				bounds.height * window.devicePixelRatio * windowScale,
 			);
 
-			const drawnEnd = this.props.files.reduce(draw(0), 0);
+			const drawnEnd = this.props.files.reduce(draw(0, null), 0);
 
 			// smaller items...
 			this.drawShard(
@@ -423,6 +408,7 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 				0,
 				null,
 				"imaginary",
+				hueFor(0),
 			);
 
 			// Ink center disc with total size — the design's defining moment.
@@ -452,35 +438,26 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 		layer: number,
 		state: AnimationState | null,
 		type: Ob.NodeType$,
+		hue: number,
 	) {
 		const _2d = this._2d!;
 		const bounds = this.bounds!;
 		const windowScale = this.windowScale!;
 
 		const baseAngle = 5 / 8;
-		const colorScale = this.props.capacity / this.props.size;
 		const cx = bounds.width / windowScale / 2;
 		const cy = bounds.height / windowScale / 2;
 
 		const a = (baseAngle + position) * Math.PI * 2;
 		const b = (baseAngle + position + size) * Math.PI * 2;
 
-		// TODO: Might be nice to do some full circle special casing to look a bit tidier
-		// if ((b - a) > Math.PI * 2) {
-		// }
-
 		const ir = layer > 4 ? 228 + 8 * (layer - 5) : 70 + 31 * layer;
 		const or = layer > 4 ? 233 + 8 * (layer - 5) : 101 + 31 * layer;
 
 		const outline = new Path2D();
-		// Outer border clockwise
 		outline.arc(cx, cy, or, a, b);
-		// From outer border to inner border on far side
 		outline.lineTo(cx + ir * Math.cos(b), cy + ir * Math.sin(b));
-		// Inner border counter clockwise
 		outline.arc(cx, cy, ir, b, a, true);
-		// From inner border to outer border on starting side
-		// outline.lineTo(cx + or * Math.cos(a), cy + or * Math.sin(a));
 		outline.closePath();
 
 		// Check state
@@ -496,19 +473,10 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 
 		const { paper, dark } = readThemeColors();
 
-		// Set styles
-		_2d.fillStyle = getShardHsl(
-			(position + size / 2) * colorScale,
-			layer,
-			this.props.position,
-			this.props.size / this.props.rootSize,
-			type,
-			dark,
-		);
+		_2d.fillStyle = sunburstColor(hue, layer, type, dark);
 		_2d.strokeStyle = paper;
 		_2d.lineWidth = 1.2;
 
-		// Draw frame
 		_2d.fill(outline);
 		_2d.stroke(outline);
 	}

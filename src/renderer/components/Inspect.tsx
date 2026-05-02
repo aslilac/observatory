@@ -7,6 +7,7 @@ import { LegendList } from "./LegendList";
 import { MultiSelectBar } from "./MultiSelectBar";
 import { SearchBar } from "./SearchBar";
 import { SearchResults } from "./SearchResults";
+import { type SortMode, SortPicker } from "./SortPicker";
 import { Sunburst } from "./Sunburst";
 import { Segmented, Toolbar } from "./Toolbar";
 
@@ -46,11 +47,21 @@ export const Inspect = ({
 		() => new Map(),
 	);
 	const [query, setQuery] = useState("");
+	const [sortMode, setSortMode] = useState<SortMode>("size");
+	const [showAll, setShowAll] = useState(false);
 	const { results: searchResults, loading: searching } = useSearch(
 		inspecting,
 		query,
 	);
 	const searchActive = query.trim().length > 0;
+
+	const onSortChange = useCallback((next: SortMode) => {
+		setSortMode(next);
+		// Non-default sorts are usually intentional searches for an item by
+		// name or recency, so expand by default; flipping back to size collapses
+		// to the top-N view again.
+		setShowAll(next !== "size");
+	}, []);
 
 	// Reset on scan switch only — navigating around inside a scan keeps
 	// whatever the user has already checked so they can browse for more
@@ -58,7 +69,20 @@ export const Inspect = ({
 	useEffect(() => {
 		setSelection(new Map());
 		setQuery("");
+		setSortMode("size");
+		setShowAll(false);
 	}, [inspecting]);
+
+	// Each new directory collapses the list back to top-N for size-sort so
+	// a previously-expanded view doesn't follow the user into a child
+	// folder. Non-size sorts stay expanded — a partial alphabetical or
+	// recency view would just be confusing.
+	const cursorKey = cursor.join("/");
+	const sortModeRef = React.useRef(sortMode);
+	sortModeRef.current = sortMode;
+	useEffect(() => {
+		setShowAll(sortModeRef.current !== "size");
+	}, [cursorKey]);
 
 	const toggleSelect = useCallback((item: SelectableItem) => {
 		setSelection((prev) => {
@@ -120,6 +144,11 @@ export const Inspect = ({
 				onQueryChange={setQuery}
 				matchCount={searchResults?.totalCount ?? null}
 				loading={searching}
+				right={
+					!searchActive && mode === "list" ? (
+						<SortPicker value={sortMode} onChange={onSortChange} />
+					) : null
+				}
 			/>
 			<div className="grid min-h-0 flex-1 grid-cols-[1fr_minmax(360px,1fr)] overflow-hidden">
 				<Sunburst
@@ -152,6 +181,9 @@ export const Inspect = ({
 								selection={selection}
 								onForward={navigateForward}
 								onToggleSelect={toggleSelect}
+								sortMode={sortMode}
+								showAll={showAll}
+								onShowAll={() => setShowAll(true)}
 							/>
 						) : (
 							<FolderTree

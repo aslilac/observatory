@@ -90,6 +90,9 @@ declare global {
 			name: string;
 			size: number;
 			capacity?: number; // for drives
+			// Latest mtime among this directory and all its descendants (epoch
+			// ms). Useful for "what's been touched recently" sorting.
+			mtime: number;
 			files: VfsNode[];
 		};
 
@@ -97,6 +100,7 @@ declare global {
 			type: "file";
 			name: string;
 			size: number;
+			mtime: number;
 		};
 
 		export type DisplayInfo = {

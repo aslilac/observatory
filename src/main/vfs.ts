@@ -87,10 +87,16 @@ export class VirtualFileSystem {
 	private async _scan(location: string): Promise<Ob.VfsDirectory> {
 		this.currentPath = location;
 
+		const ownStats = await fs.lstat(location).catch((error: unknown) => {
+			this.recordError(location, error);
+			return undefined;
+		});
+
 		const state: Ob.VfsDirectory = {
 			type: "directory",
 			name: "MISSING_NO",
 			size: 0,
+			mtime: ownStats?.mtimeMs ?? 0,
 			files: [],
 		};
 
@@ -116,8 +122,10 @@ export class VirtualFileSystem {
 						type: "file",
 						name,
 						size: stats.size,
+						mtime: stats.mtimeMs,
 					});
 					state.size += stats.size;
+					if (stats.mtimeMs > state.mtime) state.mtime = stats.mtimeMs;
 				} else if (stats.isDirectory()) {
 					this.counts.directories++;
 
@@ -136,6 +144,7 @@ export class VirtualFileSystem {
 						name,
 					});
 					state.size += directory.size;
+					if (directory.mtime > state.mtime) state.mtime = directory.mtime;
 				} else if (stats.isSymbolicLink()) {
 					this.counts.symlinks++;
 				} else if (stats.isCharacterDevice() || stats.isBlockDevice()) {
@@ -215,6 +224,7 @@ export class VirtualFileSystem {
 							name: file.name,
 							type: file.type,
 							size: file.size,
+							mtime: file.mtime,
 							files:
 								recursive > 0 && file.type === "directory"
 									? file.files
@@ -226,6 +236,7 @@ export class VirtualFileSystem {
 							name: file.name,
 							type: file.type,
 							size: file.size,
+							mtime: file.mtime,
 						};
 
 		const root = this.root;

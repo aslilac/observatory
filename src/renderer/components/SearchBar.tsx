@@ -5,6 +5,7 @@ type SearchBarProps = {
 	onQueryChange: (next: string) => void;
 	matchCount: number | null;
 	loading: boolean;
+	right?: React.ReactNode;
 };
 
 export const SearchBar = ({
@@ -12,6 +13,7 @@ export const SearchBar = ({
 	onQueryChange,
 	matchCount,
 	loading,
+	right,
 }: SearchBarProps) => (
 	<div className="flex items-center gap-[8px] border-b border-line-soft px-[14px] py-[8px]">
 		<div className="flex flex-1 items-center gap-[8px] rounded-[7px] border border-line bg-fill px-[10px] py-[5px]">
@@ -39,6 +41,7 @@ export const SearchBar = ({
 				</span>
 			)}
 		</div>
+		{right}
 	</div>
 );
 
