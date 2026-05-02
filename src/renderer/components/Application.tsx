@@ -171,7 +171,10 @@ export const Application = () => {
 
 const TitleBar = ({ title }: { title: string }) => (
 	<div className="relative flex h-[36px] items-center border-b border-line-soft bg-paper px-[12px] darwin:[-webkit-app-region:drag]">
-		<div className="flex gap-[6px] darwin:[-webkit-app-region:no-drag]">
+		{/* macOS draws its own traffic lights at the top-left when
+		    titleBarStyle is "hiddenInset" — only render placeholders on
+		    other platforms so we don't double up. */}
+		<div className="flex gap-[6px] darwin:hidden">
 			<TrafficLight />
 			<TrafficLight />
 			<TrafficLight />
@@ -183,7 +186,7 @@ const TitleBar = ({ title }: { title: string }) => (
 );
 
 const TrafficLight = () => (
-	<span className="block h-[11px] w-[11px] rounded-full border border-line bg-fill darwin:bg-faint darwin:border-faint" />
+	<span className="block h-[11px] w-[11px] rounded-full border border-line bg-fill" />
 );
 
 // Display name for a scan target. Drive paths get the drive description
