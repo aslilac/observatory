@@ -5,8 +5,6 @@ import {
 } from "electron";
 import * as path from "node:path";
 
-import { initTouchBar } from "./system/touchbar";
-
 // electron-vite injects this in dev mode pointing at the Vite dev server
 // (e.g. http://localhost:5173). Empty in packaged builds — use the bundled
 // HTML on disk instead.
@@ -74,9 +72,6 @@ export function createWindow() {
 	} else {
 		void view.loadFile(path.join(__dirname, "../renderer/index.html"));
 	}
-
-	// Make the touch bar manager aware of this window
-	initTouchBar(view);
 
 	// Prevent seeing an unpopulated screen.
 	view.on("ready-to-show", () => {

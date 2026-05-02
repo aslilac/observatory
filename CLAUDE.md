@@ -42,7 +42,7 @@ RPC: `selectDirectory`, `scanPath`, `getDrives`, `getScans`, `getRenderTree(path
 
 ### State ownership
 
-- **Main**: `vfsManager.ts` holds two `Map`s — `drives` (polled every 5s via `drivelist`) and `scans` (`{ status, vfs }` per path). It exposes pure getters (`getDrives`, `getScans`, `getRenderTree`) and a `startScan(path)` mutator. Changes are emitted through a Node `EventEmitter`; `bridge.ts` subscribes and re-broadcasts to all `webContents.send(...)`. The touchbar (`system/touchbar.ts`) also subscribes and rebuilds itself on change.
+- **Main**: `vfsManager.ts` holds two `Map`s — `drives` (polled every 5s via `drivelist`) and `scans` (`{ status, vfs }` per path). It exposes pure getters (`getDrives`, `getScans`, `getRenderTree`) and a `startScan(path)` mutator. Changes are emitted through a Node `EventEmitter`; `bridge.ts` subscribes and re-broadcasts to all `webContents.send(...)`.
 - **Renderer**: `Application.tsx` keeps `inspecting: string | null` and `cursor: string[]` in `useState`. `useDrives()` / `useScans()` hooks subscribe to the corresponding push events. `useRenderTree(path, cursor, status)` calls `Ob.getRenderTree` whenever path/cursor/status changes and the scan is `complete`.
 
 ### Scanning flow
@@ -58,9 +58,9 @@ RPC: `selectDirectory`, `scanPath`, `getDrives`, `getScans`, `getRenderTree(path
 
 ### Renderer UI
 
-`Application.tsx` switches between `<Menu/>` (drive picker) and `<Display/>` based on whether the inspected scan is complete and a render tree has loaded. `<Display/>` composes `<List/>` and `<Sunburst/>` and passes navigation callbacks down (no global dispatch). Styling is Tailwind v4 utilities inline on JSX; theme variables, the `darwin:` / `win32:` / `linux:` custom variants, and a single `.btn` component class live in `src/renderer/resources/app.css`. The about window uses its own `about.css` entry. PostCSS config (`@tailwindcss/postcss`) lives in `.postcssrc`.
+`Application.tsx` switches between `<Menu/>` (drive picker) and `<Display/>` based on whether the inspected scan is complete and a render tree has loaded. `<Display/>` composes `<List/>` and `<Sunburst/>` and passes navigation callbacks down (no global dispatch). Styling is Tailwind v4 utilities inline on JSX; theme variables, the `darwin:` / `win32:` / `linux:` custom variants, and a single `.btn` component class live in `src/renderer/resources/app.css`. The about window uses its own `about.css` entry. Tailwind is wired through `@tailwindcss/vite` in the renderer config.
 
-The touchbar (macOS only) drives the renderer's `inspecting` state by sending an `ob:setInspecting` event; the renderer subscribes via `Ob.onSetInspecting`.
+Main → renderer "set inspecting" events still flow through `Ob.onSetInspecting`; right now only `bridge.ts:selectDirectory` uses it (so the user lands on the new scan after the dialog closes).
 
 ### Native dependency
 
