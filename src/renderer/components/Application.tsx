@@ -116,6 +116,8 @@ export const Application = () => {
 		onForward: goForward,
 	};
 
+	const inspectingName = inspecting ? displayName(inspecting, drives) : "";
+
 	let body: React.ReactNode;
 	if (inspecting && inspectingScan?.status === "complete" && tree) {
 		body = (
@@ -130,7 +132,7 @@ export const Application = () => {
 	} else if (inspecting) {
 		body = (
 			<Scanning
-				root={inspectingScan?.path ?? inspecting}
+				root={inspectingName}
 				onShowMenu={showMenu}
 				{...navProps}
 			/>
@@ -183,3 +185,14 @@ const TitleBar = ({ title }: { title: string }) => (
 const TrafficLight = () => (
 	<span className="block h-[11px] w-[11px] rounded-full border border-line bg-fill darwin:bg-faint darwin:border-faint" />
 );
+
+// Display name for a scan target. Drive paths get the drive description
+// ("Macintosh HD"); folder scans get the basename ("Movies", not the full
+// path).
+function displayName(p: string, drives: Ob.PhysicalDrive[]): string {
+	const drive = drives.find((d) => d.mountPath === p);
+	if (drive) return drive.description;
+	const trimmed = p.replace(/[/\\]+$/, "") || p;
+	const slash = Math.max(trimmed.lastIndexOf("/"), trimmed.lastIndexOf("\\"));
+	return slash >= 0 ? trimmed.slice(slash + 1) || trimmed : trimmed;
+}

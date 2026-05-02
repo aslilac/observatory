@@ -36,10 +36,10 @@ export const Toolbar = ({
 			</IconBtn>
 			<div className="mx-1 h-[18px] w-px bg-line" />
 			<Crumb
-				active={!inAScan && cursor.length === 0}
+				active={!inAScan}
 				onClick={inAScan ? onShowMenu : undefined}
 			>
-				{root ?? "Disks and folders"}
+				Disks and folders
 			</Crumb>
 			{inAScan && (
 				<>
@@ -48,7 +48,7 @@ export const Toolbar = ({
 						active={cursor.length === 0}
 						onClick={cursor.length > 0 ? () => onCursor?.([]) : undefined}
 					>
-						/
+						{root}
 					</Crumb>
 				</>
 			)}
