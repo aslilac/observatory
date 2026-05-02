@@ -13,15 +13,18 @@ Package manager: **yarn** (yarn.lock is the source of truth; no committed packag
 Node: see `.nvmrc` (currently 22 LTS). Electron bundles its own Node, so this only governs build-side tooling.
 
 - `yarn` — install deps. After install, run `yarn configure` once to rebuild the native `drivelist` module against the Electron ABI.
-- `yarn dev` — runs four watchers concurrently (`tsc` for main, `esbuild` for preload, `parcel` for renderer, `nodemon` to restart Electron). Renderer/preload changes hot-reload via their watchers; main-process changes trigger a 2s-debounced Electron restart (see `nodemon.json`).
-- `yarn build` — three sequential builds: `build:main` (tsc → `build/main`), `build:preload` (esbuild bundle → `build/preload.js`), `build:renderer` (parcel → `build/renderer`).
-- `yarn forge` — `build` + Electron Forge packager/maker. DMG (macOS), Squirrel (win32), and zip artifacts.
-- `yarn type-check` — `tsc --noEmit` over the whole project (includes renderer).
-- `yarn test` — Vitest, single run. `yarn test:watch` for the watcher. Single file: `yarn test path/to/file.test.ts`; single test: `yarn test -t "name"`.
+- `yarn dev` — `electron-vite dev`. Vite serves the renderer with HMR (typically `http://localhost:5173`); main + preload are bundled with esbuild and Electron auto-restarts on main-process changes. One process, one log stream.
+- `yarn build` — `electron-vite build`. Bundles all three processes into `build/main/index.js`, `build/preload/index.js`, and `build/renderer/` (multi-entry: `index.html` + `about.html`).
+- `yarn forge` — `build` + `electron-forge make`. DMG (macOS), Squirrel (win32), and zip artifacts.
+- `yarn preview` — `electron-vite preview`. Runs the packaged build without rebuilding — useful to verify `file://` loading for the renderer.
+- `yarn type-check` — `tsc --noEmit` over the whole project.
+- `yarn test` — Vitest, single run. `yarn test:watch` for the watcher.
 - `yarn fmt` — Prettier write. (No lint step; `tsc --strict` covers what ESLint would have.)
 - Rust backend: `cd rust-backend && cargo test` — only `v4_big_scan` is uncommented and it hardcodes `/Library/Source` (macOS path), so it will fail on other machines unless edited.
 
-Note: the README mentions Parcel; commit `c5f7af5` is `Revert "Use Vite instead of Parcel"`, so Parcel is the current/intended bundler — don't reintroduce Vite without checking why it was reverted.
+Build config lives in `electron.vite.config.ts` at the root — one file for all three processes. Renderer uses `@vitejs/plugin-react` and `@tailwindcss/vite` (Tailwind v4); main and preload use `externalizeDepsPlugin()` so runtime `dependencies` (notably the native `drivelist`) stay external.
+
+In dev, the main process reads `process.env.ELECTRON_RENDERER_URL` and loads from it; in packaged builds it falls back to `loadFile("../renderer/index.html")`. Same pattern for the about window.
 
 ## Architecture
 

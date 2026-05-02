@@ -1,7 +1,8 @@
 import { BrowserWindow, shell, TouchBar } from "electron";
 const { TouchBarButton } = TouchBar;
-import path from "path";
-import url from "url";
+import * as path from "node:path";
+
+const RENDERER_DEV_URL = process.env["ELECTRON_RENDERER_URL"];
 
 let aboutWindow: BrowserWindow | null = null;
 
@@ -21,14 +22,14 @@ function showAboutWindow() {
 			alwaysOnTop: true,
 		});
 
-		// Load the about page
-		aboutWindow.loadURL(
-			url.format({
-				pathname: path.join(__dirname, "../../renderer/about.html"),
-				protocol: "file:",
-				slashes: true,
-			}),
-		);
+		// Load the about page — Vite dev server in dev, bundled HTML in prod.
+		if (RENDERER_DEV_URL) {
+			void aboutWindow.loadURL(`${RENDERER_DEV_URL}/about.html`);
+		} else {
+			void aboutWindow.loadFile(
+				path.join(__dirname, "../renderer/about.html"),
+			);
+		}
 
 		// aboutWindow.webContents.on("new-window", (event, externalUrl) => {
 		// 	event.preventDefault();

@@ -4,9 +4,13 @@ import {
 	screen,
 } from "electron";
 import * as path from "node:path";
-import * as url from "node:url";
 
 import { initTouchBar } from "./system/touchbar";
+
+// electron-vite injects this in dev mode pointing at the Vite dev server
+// (e.g. http://localhost:5173). Empty in packaged builds — use the bundled
+// HTML on disk instead.
+const RENDERER_DEV_URL = process.env["ELECTRON_RENDERER_URL"];
 
 export const windowSettings = (
 	preload?: string,
@@ -60,16 +64,16 @@ export function createWindow() {
 	}
 
 	// Create the browser window.
-	view = new BrowserWindow(devWindowSettings(require.resolve("../preload")));
-
-	// Load the app.
-	view.loadURL(
-		url.format({
-			pathname: path.join(__dirname, "../renderer/index.html"),
-			protocol: "file:",
-			slashes: true,
-		}),
+	view = new BrowserWindow(
+		devWindowSettings(path.join(__dirname, "../preload/index.js")),
 	);
+
+	// Load the app — Vite dev server in dev, bundled HTML in prod.
+	if (RENDERER_DEV_URL) {
+		void view.loadURL(RENDERER_DEV_URL);
+	} else {
+		void view.loadFile(path.join(__dirname, "../renderer/index.html"));
+	}
 
 	// Make the touch bar manager aware of this window
 	initTouchBar(view);

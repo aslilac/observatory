@@ -1,7 +1,0 @@
-{
-	"extends": ".",
-	"compilerOptions": {
-		"rootDir": "./src"
-	},
-	"exclude": ["./src/preload/**/*", "./src/renderer/**/*"]
-}

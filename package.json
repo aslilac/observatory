@@ -8,16 +8,6 @@
 	"license": "MIT",
 	"repository": "https://github.com/aslilac/observatory",
 	"bugs": "https://github.com/aslilac/observatory/issues",
-	"targets": {
-		"renderer": {
-			"context": "browser",
-			"publicUrl": ".",
-			"distDir": "./build/renderer",
-			"engines": {
-				"electron": ">= 41.x.x"
-			}
-		}
-	},
 	"config": {
 		"forge": "forge.config.js"
 	},
@@ -35,32 +25,25 @@
 		"@electron-forge/maker-squirrel": "^7.11.1",
 		"@electron-forge/maker-zip": "^7.11.1",
 		"@electron/rebuild": "^4.0.4",
-		"@tailwindcss/postcss": "^4.2.4",
+		"@tailwindcss/vite": "^4.2.4",
 		"@types/react": "^19.2.14",
 		"@types/react-dom": "^19.2.3",
-		"concurrently": "^9.1.0",
+		"@vitejs/plugin-react": "^6.0.1",
 		"electron": "^41.5.0",
-		"electron-build-env": "^0.2.0",
-		"esbuild": "^0.28.0",
-		"nodemon": "^3.1.7",
-		"parcel": "^2.13.3",
+		"electron-vite": "^6.0.0-beta.1",
 		"prettier": "~3.8.3",
 		"tailwindcss": "^4.2.4",
 		"typescript": "~5.7.2",
+		"vite": "^8.0.10",
 		"vitest": "^4.1.5"
 	},
 	"scripts": {
 		"configure": "electron-rebuild -f -w drivelist",
-		"build": "npm run build:main && npm run build:preload && npm run build:renderer",
-		"build:main": "tsc -p tsconfig.build.json",
-		"build:preload": "esbuild --bundle --external:electron --format=cjs --outfile=build/preload.js ./src/preload/index.ts",
-		"build:renderer": "parcel build --target renderer ./src/renderer/index.html ./src/renderer/about.html",
-		"dev": "concurrently 'npm run dev:main' 'npm run dev:preload' 'npm run dev:renderer' 'nodemon'",
-		"dev:main": "tsc -p tsconfig.build.json -w -preserveWatchOutput",
-		"dev:preload": "esbuild --watch --bundle --external:electron --format=cjs --outfile=build/preload.js ./src/preload/index.ts",
-		"dev:renderer": "parcel watch --target renderer ./src/renderer/index.html ./src/renderer/about.html",
+		"build": "electron-vite build",
+		"dev": "electron-vite dev",
 		"fmt": "prettier --ignore-path .gitignore --write .",
-		"forge": "npm run build && electron-forge make",
+		"forge": "yarn build && electron-forge make",
+		"preview": "electron-vite preview",
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"type-check": "tsc -p . --noEmit"
