@@ -35,7 +35,7 @@ Main owns the truth; renderer is a view that asks for it. Communication is plain
 
 ### The Ob surface (declared in `src/@types/Observatory.d.ts`)
 
-RPC: `selectDirectory`, `scanPath`, `getDrives`, `getScans`, `getRenderTree(path, cursor)`, `sizeToDisplay`, `sizeToMenu`. Subscriptions (each returns an unsubscribe): `onDrives`, `onScans`, `onSetInspecting`. The `onDrives` / `onScans` subscriptions also fire once with the current state immediately after subscribing, so renderer hooks don't need a separate initial fetch.
+RPC: `selectDirectory`, `scanPath`, `getDrives`, `getScans`, `getRenderTree(path, cursor)`. Subscriptions (each returns an unsubscribe): `onDrives`, `onScans`, `onSetInspecting`. The `onDrives` / `onScans` subscriptions also fire once with the current state immediately after subscribing, so renderer hooks don't need a separate initial fetch.
 
 ### State ownership
 
