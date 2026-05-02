@@ -61,7 +61,7 @@ type SunburstState = {
 };
 
 export class Sunburst extends Component<SunburstProps, SunburstState> {
-	canvasRef: RefObject<HTMLCanvasElement>;
+	canvasRef: RefObject<HTMLCanvasElement | null>;
 
 	_2d?: CanvasRenderingContext2D;
 	animationRequest: number | null;
