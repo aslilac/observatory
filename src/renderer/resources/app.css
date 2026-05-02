@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+@theme {
+	--font-sans: Montserrat, "Avenir Next", sans-serif;
+	--font-serif: "Roboto Slab", serif;
+	--font-mono: "Roboto Mono", monospace;
+
+	--color-background: #eeeef0;
+	--color-accent: #423e5d;
+	--color-text: #423e5d;
+	--color-titlebar: #000000;
+	--color-menu-row: #eeeef5;
+	--color-menu-divider: #c2c3ca;
+}
+
+/* Treat the .darwin / .win32 / .linux class on #application as a top-level
+   ancestor selector so children can opt into per-platform styling with the
+   `darwin:` / `win32:` / `linux:` variants. */
+@custom-variant darwin (&:where(.darwin *), &:where(.darwin));
+@custom-variant win32 (&:where(.win32 *), &:where(.win32));
+@custom-variant linux (&:where(.linux *), &:where(.linux));
+
+html,
+body {
+	@apply m-0 min-h-screen p-0 font-sans text-base font-light leading-normal text-text;
+}
+
+body {
+	@apply select-none bg-background;
+}
+
+#root {
+	@apply min-h-full;
+}
+
+@layer components {
+	.btn {
+		@apply mr-[0.6rem] my-[0.6rem] inline-block cursor-pointer rounded border border-[rgba(89,88,112,0.71)] px-[0.6rem] py-[0.6rem] text-[0.15in] transition-shadow [background-image:linear-gradient(0deg,rgba(222,226,238,0.5),rgba(255,255,255,0.5))] active:translate-y-px active:bg-[rgba(228,228,228,0.5)] active:bg-none disabled:cursor-default disabled:bg-[rgba(93,93,93,0.29)] disabled:text-[rgba(52,71,66,0.71)];
+	}
+}

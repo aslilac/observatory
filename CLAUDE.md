@@ -54,7 +54,7 @@ RPC: `selectDirectory`, `scanPath`, `getDrives`, `getScans`, `getRenderTree(path
 
 ### Renderer UI
 
-`Application.tsx` switches between `<Menu/>` (drive picker) and `<Display/>` based on whether the inspected scan is complete and a render tree has loaded. `<Display/>` composes `<List/>` and `<Sunburst/>` and passes navigation callbacks down (no global dispatch). SCSS lives in `src/renderer/resources/`.
+`Application.tsx` switches between `<Menu/>` (drive picker) and `<Display/>` based on whether the inspected scan is complete and a render tree has loaded. `<Display/>` composes `<List/>` and `<Sunburst/>` and passes navigation callbacks down (no global dispatch). Styling is Tailwind v4 utilities inline on JSX; theme variables, the `darwin:` / `win32:` / `linux:` custom variants, and a single `.btn` component class live in `src/renderer/resources/app.css`. The about window uses its own `about.css` entry. PostCSS config (`@tailwindcss/postcss`) lives in `.postcssrc`.
 
 The touchbar (macOS only) drives the renderer's `inspecting` state by sending an `ob:setInspecting` event; the renderer subscribes via `Ob.onSetInspecting`.
 

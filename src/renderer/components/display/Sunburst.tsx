@@ -90,25 +90,37 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 
 		return (
 			<>
-				<canvas id="fs-display-sunburst" ref={this.canvasRef}></canvas>
+				<canvas
+					id="fs-display-sunburst"
+					ref={this.canvasRef}
+					className="h-full w-full [grid-area:sunburst]"
+				></canvas>
 				{target && (
 					<span
 						id="fs-display-sunburst-float"
+						className="pointer-events-none fixed select-none rounded bg-black p-[0.2in] text-white transition-opacity duration-300 [box-shadow:0_0_5px_#0004]"
 						style={{
 							left: `${this.state.tooltipOffsetX + 15}px`,
 							top: `${this.state.tooltipOffsetY + 5}px`,
 						}}
 					>
 						{target.name}
-						<span className="size">{readableSize(target.size)}</span>
+						<span className="float-right pl-[0.2in]">
+							{readableSize(target.size)}
+						</span>
 						<br />
 
 						{target.type === "directory" && target.files.length > 0 && (
-							<ol>
+							<ol className="m-0 list-none p-[0.1in] pb-0 pr-0">
 								{target.files.slice(0, 7).map((file, index) => (
-									<li key={`${file.name}-${index}`}>
+									<li
+										key={`${file.name}-${index}`}
+										className="m-0 p-[0.1in] pb-0 pr-0"
+									>
 										{file.name}
-										<span className="size">{readableSize(file.size)}</span>
+										<span className="float-right pl-[0.2in]">
+											{readableSize(file.size)}
+										</span>
 									</li>
 								))}
 							</ol>

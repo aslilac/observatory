@@ -4,7 +4,6 @@
 	"description": "Disk usage analyzer",
 	"private": true,
 	"main": "./build/main/index.js",
-	"renderer": "./build/renderer/index.html",
 	"author": "McKayla Washburn <mckayla@hey.com>",
 	"license": "MIT",
 	"repository": "https://github.com/aslilac/observatory",
@@ -13,6 +12,7 @@
 		"renderer": {
 			"context": "browser",
 			"publicUrl": ".",
+			"distDir": "./build/renderer",
 			"engines": {
 				"electron": ">= 41.x.x"
 			}
@@ -36,7 +36,7 @@
 		"@electron-forge/maker-squirrel": "^7.11.1",
 		"@electron-forge/maker-zip": "^7.11.1",
 		"@electron/rebuild": "^4.0.4",
-		"@parcel/transformer-sass": "^2.13.3",
+		"@tailwindcss/postcss": "^4.2.4",
 		"@types/jest": "^29.5.14",
 		"@types/react": "^19.2.14",
 		"@types/react-dom": "^19.2.3",
@@ -48,7 +48,7 @@
 		"nodemon": "^3.1.7",
 		"parcel": "^2.13.3",
 		"prettier": "~3.4.1",
-		"sass": "^1.81.0",
+		"tailwindcss": "^4.2.4",
 		"ts-jest": "^29.2.5",
 		"typescript": "~5.7.2"
 	},
@@ -57,11 +57,11 @@
 		"build": "npm run build:main && npm run build:preload && npm run build:renderer",
 		"build:main": "tsc -p tsconfig.build.json",
 		"build:preload": "esbuild --bundle --external:electron --format=cjs --outfile=build/preload.js ./src/preload/index.ts",
-		"build:renderer": "parcel build --target renderer ./src/renderer/index.html",
+		"build:renderer": "parcel build --target renderer ./src/renderer/index.html ./src/renderer/about.html",
 		"dev": "concurrently 'npm run dev:main' 'npm run dev:preload' 'npm run dev:renderer' 'nodemon'",
 		"dev:main": "tsc -p tsconfig.build.json -w -preserveWatchOutput",
 		"dev:preload": "esbuild --watch --bundle --external:electron --format=cjs --outfile=build/preload.js ./src/preload/index.ts",
-		"dev:renderer": "parcel watch --target renderer ./src/renderer/index.html",
+		"dev:renderer": "parcel watch --target renderer ./src/renderer/index.html ./src/renderer/about.html",
 		"fmt": "prettier --ignore-path .gitignore --write .",
 		"forge": "npm run build && electron-forge make",
 		"test": "jest",

@@ -44,12 +44,20 @@ export const Display = ({
 
 	return (
 		<>
-			<section id="fs-display-navbar">
-				<button onClick={onShowMenu}>Disks and folders</button>
-				<button onClick={navigateToRoot}>{shared.name}</button>
+			<section
+				id="fs-display-navbar"
+				className="relative px-[0.2in] py-[0.1in] [grid-area:navbar]"
+			>
+				<button className="btn" onClick={onShowMenu}>
+					Disks and folders
+				</button>
+				<button className="btn" onClick={navigateToRoot}>
+					{shared.name}
+				</button>
 				{shared.cursor.map((piece, i) => (
 					<button
 						key={i}
+						className="btn"
 						onClick={() => navigateTo(shared.cursor.slice(0, i + 1))}
 					>
 						{piece}

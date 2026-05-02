@@ -34,11 +34,26 @@ export const Application = () => {
 	const viewTree = inspectingScan?.status === "complete" && tree;
 
 	return (
-		<div id="application" className={Ob.platform}>
-			<div id="titlebar">
-				<h1>Observatory</h1>
+		<div
+			id="application"
+			className={`grid h-screen [grid-template-rows:auto_1fr] [grid-template-areas:'titlebar'_'display'] ${Ob.platform}`}
+		>
+			<div
+				id="titlebar"
+				className="hidden h-0 [grid-area:titlebar] transition-[background-color,color,height] duration-300 darwin:block darwin:h-[37px] darwin:bg-titlebar darwin:text-center darwin:text-white darwin:z-100 darwin:[-webkit-app-region:drag] darwin:[box-shadow:0_0_15px_#252525]"
+			>
+				<h1 className="m-0 p-[0.4em] text-[17px] font-extralight">
+					Observatory
+				</h1>
 			</div>
-			<div id="application-display" className={viewTree ? "fs" : ""}>
+			<div
+				id="application-display"
+				className={
+					viewTree
+						? "grid overflow-hidden [grid-area:display] [grid-template-areas:'navbar_list'_'sunburst_list'] [grid-template-columns:1fr_minmax(3.8in,1fr)] [grid-template-rows:1px_1fr]"
+						: "grid [grid-area:display]"
+				}
+			>
 				{viewTree ? (
 					<Display
 						tree={tree}
