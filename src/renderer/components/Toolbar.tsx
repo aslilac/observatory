@@ -7,6 +7,10 @@ type ToolbarProps = {
 	onCursor?: (next: string[]) => void;
 	right?: React.ReactNode;
 	scanning?: boolean;
+	canBack?: boolean;
+	canForward?: boolean;
+	onBack?: () => void;
+	onForward?: () => void;
 };
 
 export const Toolbar = ({
@@ -16,12 +20,20 @@ export const Toolbar = ({
 	onCursor,
 	right,
 	scanning,
+	canBack,
+	canForward,
+	onBack,
+	onForward,
 }: ToolbarProps) => {
 	const inAScan = !!root;
 	return (
 		<div className="flex h-[44px] items-center gap-2 border-b border-line-soft px-[14px]">
-			<IconBtn disabled>‹</IconBtn>
-			<IconBtn disabled>›</IconBtn>
+			<IconBtn onClick={onBack} disabled={!canBack} title="Back">
+				‹
+			</IconBtn>
+			<IconBtn onClick={onForward} disabled={!canForward} title="Forward">
+				›
+			</IconBtn>
 			<div className="mx-1 h-[18px] w-px bg-line" />
 			<Crumb
 				active={!inAScan && cursor.length === 0}
@@ -98,13 +110,15 @@ type IconBtnProps = {
 	onClick?: () => void;
 	active?: boolean;
 	disabled?: boolean;
+	title?: string;
 };
 
-const IconBtn = ({ children, onClick, active, disabled }: IconBtnProps) => (
+const IconBtn = ({ children, onClick, active, disabled, title }: IconBtnProps) => (
 	<button
 		type="button"
 		onClick={onClick}
 		disabled={disabled}
+		title={title}
 		className={`icon-btn ${active ? "icon-btn-active" : ""} ${
 			disabled ? "cursor-default opacity-40" : ""
 		}`}

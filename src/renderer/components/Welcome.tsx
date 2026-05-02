@@ -9,6 +9,10 @@ type WelcomeProps = {
 	recent: RecentScan[];
 	onScan: (path: string) => void;
 	onInspect: (path: string) => void;
+	canBack: boolean;
+	canForward: boolean;
+	onBack: () => void;
+	onForward: () => void;
 };
 
 export const Welcome = ({
@@ -17,11 +21,20 @@ export const Welcome = ({
 	recent,
 	onScan,
 	onInspect,
+	canBack,
+	canForward,
+	onBack,
+	onForward,
 }: WelcomeProps) => {
 	const scanByPath = new Map(scans.map((s) => [s.path, s]));
 	return (
 		<>
-			<Toolbar />
+			<Toolbar
+				canBack={canBack}
+				canForward={canForward}
+				onBack={onBack}
+				onForward={onForward}
+			/>
 			<div className="flex flex-1 flex-col gap-[22px] overflow-auto px-[28px] py-[24px]">
 				<div>
 					<div className="text-[22px] font-semibold tracking-[-0.2px]">

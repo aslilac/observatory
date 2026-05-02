@@ -30,4 +30,6 @@ contextBridge.exposeInMainWorld("Ob", {
 	},
 	onSetInspecting: (cb: (path: string | null) => void) =>
 		subscribe<string | null>("ob:setInspecting", cb),
+	onNav: (cb: (direction: "back" | "forward") => void) =>
+		subscribe<"back" | "forward">("ob:nav", cb),
 });

@@ -85,23 +85,20 @@ export function createWindow() {
 		view = null;
 	});
 
-	view.on("app-command", (event, command) => {
-		const history = view!.webContents.navigationHistory;
-		// Navigate the window back when the user hits their mouse back button
-		if (command === "browser-backward" && history.canGoBack()) {
-			history.goBack();
-		} else if (command === "browser-forward" && history.canGoForward()) {
-			history.goForward();
-		}
+	const sendNav = (direction: "back" | "forward") => {
+		if (!view || view.isDestroyed()) return;
+		view.webContents.send("ob:nav", direction);
+	};
+
+	// Mouse back/forward buttons.
+	view.on("app-command", (_event, command) => {
+		if (command === "browser-backward") sendNav("back");
+		else if (command === "browser-forward") sendNav("forward");
 	});
 
-	view.on("swipe", (event, direction) => {
-		const history = view!.webContents.navigationHistory;
-		// Navigate the window back when the users swipe
-		if (direction === "left" && history.canGoBack()) {
-			history.goBack();
-		} else if (direction === "right" && history.canGoForward()) {
-			history.goForward();
-		}
+	// Two-finger swipe on macOS.
+	view.on("swipe", (_event, direction) => {
+		if (direction === "left") sendNav("back");
+		else if (direction === "right") sendNav("forward");
 	});
 }

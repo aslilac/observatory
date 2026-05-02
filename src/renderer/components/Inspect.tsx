@@ -11,6 +11,10 @@ type InspectProps = {
 	cursor: string[];
 	setCursor: (cursor: string[]) => void;
 	onShowMenu: () => void;
+	canBack: boolean;
+	canForward: boolean;
+	onBack: () => void;
+	onForward: () => void;
 };
 
 type ViewMode = "list" | "tree";
@@ -20,6 +24,10 @@ export const Inspect = ({
 	cursor,
 	setCursor,
 	onShowMenu,
+	canBack,
+	canForward,
+	onBack,
+	onForward,
 }: InspectProps) => {
 	const [mode, setMode] = useState<ViewMode>("list");
 
@@ -36,6 +44,10 @@ export const Inspect = ({
 				cursor={cursor}
 				onShowMenu={onShowMenu}
 				onCursor={setCursor}
+				canBack={canBack}
+				canForward={canForward}
+				onBack={onBack}
+				onForward={onForward}
 				right={
 					<Segmented<ViewMode>
 						value={mode}

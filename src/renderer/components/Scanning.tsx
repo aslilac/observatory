@@ -5,11 +5,30 @@ import { Toolbar } from "./Toolbar";
 type ScanningProps = {
 	root: string;
 	onShowMenu: () => void;
+	canBack: boolean;
+	canForward: boolean;
+	onBack: () => void;
+	onForward: () => void;
 };
 
-export const Scanning = ({ root, onShowMenu }: ScanningProps) => (
+export const Scanning = ({
+	root,
+	onShowMenu,
+	canBack,
+	canForward,
+	onBack,
+	onForward,
+}: ScanningProps) => (
 	<>
-		<Toolbar root={root} onShowMenu={onShowMenu} scanning />
+		<Toolbar
+			root={root}
+			onShowMenu={onShowMenu}
+			scanning
+			canBack={canBack}
+			canForward={canForward}
+			onBack={onBack}
+			onForward={onForward}
+		/>
 		<div className="flex flex-1 items-center justify-center px-[28px]">
 			<div className="flex flex-col items-center gap-[18px]">
 				<div className="relative h-[260px] w-[260px]">

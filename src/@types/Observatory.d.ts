@@ -16,6 +16,7 @@ declare global {
 		function onDrives(cb: (drives: PhysicalDrive[]) => void): () => void;
 		function onScans(cb: (scans: ScanInfo[]) => void): () => void;
 		function onSetInspecting(cb: (path: string | null) => void): () => void;
+		function onNav(cb: (direction: "back" | "forward") => void): () => void;
 
 		export interface PhysicalDrive {
 			mountPath: string;

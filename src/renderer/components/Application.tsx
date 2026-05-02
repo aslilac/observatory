@@ -1,21 +1,80 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+
 import { useDrives, useRecentScans, useRenderTree, useScans } from "../state";
 import { Inspect } from "./Inspect";
 import { Scanning } from "./Scanning";
 import { Welcome } from "./Welcome";
 
+type NavEntry = { inspecting: string | null; cursor: string[] };
+type NavState = { history: NavEntry[]; index: number };
+
+const sameCursor = (a: string[], b: string[]) =>
+	a.length === b.length && a.every((v, i) => v === b[i]);
+
+const sameEntry = (a: NavEntry, b: NavEntry) =>
+	a.inspecting === b.inspecting && sameCursor(a.cursor, b.cursor);
+
 export const Application = () => {
 	const drives = useDrives();
 	const scans = useScans();
 	const { recent, push: pushRecent } = useRecentScans();
-	const [inspecting, setInspecting] = useState<string | null>(null);
-	const [cursor, setCursor] = useState<string[]>([]);
 
-	useEffect(() => Ob.onSetInspecting(setInspecting), []);
+	const [nav, setNav] = useState<NavState>({
+		history: [{ inspecting: null, cursor: [] }],
+		index: 0,
+	});
+	const current = nav.history[nav.index]!;
+	const { inspecting, cursor } = current;
 
-	useEffect(() => {
-		setCursor([]);
-	}, [inspecting]);
+	const navigate = useCallback((entry: NavEntry) => {
+		setNav((prev) => {
+			const truncated = prev.history.slice(0, prev.index + 1);
+			const last = truncated[truncated.length - 1]!;
+			if (sameEntry(last, entry)) return prev;
+			return {
+				history: [...truncated, entry],
+				index: truncated.length,
+			};
+		});
+	}, []);
+
+	const goBack = useCallback(() => {
+		setNav((prev) =>
+			prev.index > 0 ? { ...prev, index: prev.index - 1 } : prev,
+		);
+	}, []);
+
+	const goForward = useCallback(() => {
+		setNav((prev) =>
+			prev.index < prev.history.length - 1
+				? { ...prev, index: prev.index + 1 }
+				: prev,
+		);
+	}, []);
+
+	const canBack = nav.index > 0;
+	const canForward = nav.index < nav.history.length - 1;
+
+	const setInspecting = useCallback(
+		(path: string | null) => navigate({ inspecting: path, cursor: [] }),
+		[navigate],
+	);
+
+	const setCursor = useCallback(
+		(next: string[]) => navigate({ inspecting, cursor: next }),
+		[navigate, inspecting],
+	);
+
+	useEffect(() => Ob.onSetInspecting(setInspecting), [setInspecting]);
+
+	useEffect(
+		() =>
+			Ob.onNav((direction) => {
+				if (direction === "back") goBack();
+				else goForward();
+			}),
+		[goBack, goForward],
+	);
 
 	const inspectingScan = useMemo(
 		() =>
@@ -29,23 +88,33 @@ export const Application = () => {
 		inspectingScan?.status ?? null,
 	);
 
-	// Push to recent the moment a scan flips to complete while inspected.
 	useEffect(() => {
 		if (inspecting && inspectingScan?.status === "complete") {
 			pushRecent(inspecting);
 		}
 	}, [inspecting, inspectingScan?.status, pushRecent]);
 
-	const showMenu = useCallback(() => setInspecting(null), []);
+	const showMenu = useCallback(() => setInspecting(null), [setInspecting]);
 
-	const onScan = useCallback((path: string) => {
-		void Ob.scanPath(path);
-		setInspecting(path);
-	}, []);
+	const onScan = useCallback(
+		(path: string) => {
+			void Ob.scanPath(path);
+			setInspecting(path);
+		},
+		[setInspecting],
+	);
 
-	const onInspect = useCallback((path: string) => {
-		setInspecting(path);
-	}, []);
+	const onInspect = useCallback(
+		(path: string) => setInspecting(path),
+		[setInspecting],
+	);
+
+	const navProps = {
+		canBack,
+		canForward,
+		onBack: goBack,
+		onForward: goForward,
+	};
 
 	let body: React.ReactNode;
 	if (inspecting && inspectingScan?.status === "complete" && tree) {
@@ -55,6 +124,7 @@ export const Application = () => {
 				cursor={cursor}
 				setCursor={setCursor}
 				onShowMenu={showMenu}
+				{...navProps}
 			/>
 		);
 	} else if (inspecting) {
@@ -62,6 +132,7 @@ export const Application = () => {
 			<Scanning
 				root={inspectingScan?.path ?? inspecting}
 				onShowMenu={showMenu}
+				{...navProps}
 			/>
 		);
 	} else {
@@ -72,6 +143,7 @@ export const Application = () => {
 				recent={recent}
 				onScan={onScan}
 				onInspect={onInspect}
+				{...navProps}
 			/>
 		);
 	}
