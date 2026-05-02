@@ -12,20 +12,35 @@ const getShardHsl = (
 	min = 0,
 	range = 1,
 	type: Ob.NodeType$,
+	dark: boolean,
 ) => {
 	const h = ((min + hue * range) * 360 - 5).toFixed(2);
 
-	// TODO: Use in dark mode in the future
-	// if (type === "directory") return hsl(h, 95, layer * 5 + 65);
-	// if (type === "imaginary") return hsl(h, 0, 10);
-
-	// return hsl(h, 0, layer * 5 + 35);
+	if (dark) {
+		if (type === "directory") return hsl(h, 55, layer * 4 + 40);
+		if (type === "imaginary") return hsl(h, 0, 18);
+		return hsl(h, 0, layer * 4 + 28);
+	}
 
 	if (type === "directory") return hsl(h, 95, layer * 5 + 65);
 	if (type === "imaginary") return hsl(h, 0, 85);
-
 	return hsl(h, 0, layer * 5 + 45);
 };
+
+function readThemeColors(): {
+	ink: string;
+	paper: string;
+	dark: boolean;
+} {
+	if (typeof document === "undefined") {
+		return { ink: "#1a1a1a", paper: "#fafaf8", dark: false };
+	}
+	const styles = getComputedStyle(document.documentElement);
+	const ink = styles.getPropertyValue("--color-ink").trim() || "#1a1a1a";
+	const paper = styles.getPropertyValue("--color-paper").trim() || "#fafaf8";
+	const dark = document.documentElement.classList.contains("dark");
+	return { ink, paper, dark };
+}
 
 type AnimationState = {
 	hover: boolean | "smallerItems";
@@ -411,13 +426,14 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 			);
 
 			// Ink center disc with total size — the design's defining moment.
-			_2d.fillStyle = "#1a1a1a";
+			const { ink, paper } = readThemeColors();
+			_2d.fillStyle = ink;
 			_2d.beginPath();
 			_2d.arc(cx, cy, 64, 0, 2 * Math.PI);
 			_2d.fill();
 
 			const total = readableSize(this.props.size);
-			_2d.fillStyle = "#fafaf8";
+			_2d.fillStyle = paper;
 			_2d.font = "600 17px 'IBM Plex Mono', ui-monospace, monospace";
 			_2d.textAlign = "center";
 			_2d.textBaseline = "middle";
@@ -478,6 +494,8 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 					: 8 - state.hoverAnimation;
 		}
 
+		const { paper, dark } = readThemeColors();
+
 		// Set styles
 		_2d.fillStyle = getShardHsl(
 			(position + size / 2) * colorScale,
@@ -485,10 +503,9 @@ export class Sunburst extends Component<SunburstProps, SunburstState> {
 			this.props.position,
 			this.props.size / this.props.rootSize,
 			type,
+			dark,
 		);
-		// TODO: Use in dark mode
-		// _2d.strokeStyle = "#3d3350";
-		_2d.strokeStyle = "#fafaf8";
+		_2d.strokeStyle = paper;
 		_2d.lineWidth = 1.2;
 
 		// Draw frame

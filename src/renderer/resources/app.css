@@ -40,6 +40,27 @@
 @custom-variant win32 (&:where(.win32 *), &:where(.win32));
 @custom-variant linux (&:where(.linux *), &:where(.linux));
 
+/* Dark theme — opt-in via a `.dark` class on <html>. Overrides every token
+   defined in @theme so utilities (bg-paper, text-ink, …) flip automatically
+   without a `dark:` prefix on every node. */
+:where(.dark) {
+	--color-paper: #1c1b18;
+	--color-ink: #ededea;
+	--color-muted: #9a9890;
+	--color-faint: #5e5c56;
+	--color-line: #3a3833;
+	--color-line-soft: #2a2925;
+	--color-fill: #2a2924;
+	--color-fill-strong: #36342e;
+	--color-canvas: #131210;
+
+	--color-danger-bg: #2a1715;
+	--color-danger-fg: #ff9b96;
+	--color-danger-border: #c25a55;
+
+	color-scheme: dark;
+}
+
 html,
 body {
 	@apply m-0 min-h-screen p-0 font-sans text-[13px] font-normal leading-normal text-ink;

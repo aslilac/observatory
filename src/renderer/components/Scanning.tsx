@@ -53,7 +53,7 @@ export const Scanning = ({
 								cy="130"
 								r="118"
 								fill="none"
-								stroke="#d8d6cf"
+								stroke="var(--color-line)"
 								strokeWidth="2"
 								strokeDasharray="3 4"
 							/>
@@ -62,19 +62,19 @@ export const Scanning = ({
 								<path
 									d="M 130 12 A 118 118 0 0 1 248 130"
 									fill="none"
-									stroke="#1a1a1a"
+									stroke="var(--color-ink)"
 									strokeWidth="6"
 									strokeLinecap="round"
 								/>
 							</g>
 							{/* Center disc */}
-							<circle cx="130" cy="130" r="62" fill="#1a1a1a" />
+							<circle cx="130" cy="130" r="62" fill="var(--color-ink)" />
 							<text
 								x="130"
 								y="128"
 								textAnchor="middle"
 								dominantBaseline="middle"
-								fill="#fafaf8"
+								fill="var(--color-paper)"
 								fontFamily="IBM Plex Mono, ui-monospace, monospace"
 								fontSize="20"
 								fontWeight="600"
@@ -86,7 +86,8 @@ export const Scanning = ({
 								y="148"
 								textAnchor="middle"
 								dominantBaseline="middle"
-								fill="rgba(255,255,255,0.55)"
+								fill="var(--color-paper)"
+								fillOpacity="0.55"
 								fontFamily="IBM Plex Mono, ui-monospace, monospace"
 								fontSize="11"
 							>

@@ -79,6 +79,54 @@ export function joinPath(base: string, ...rest: string[]): string {
 	return `${trimmedBase}/${tail}`;
 }
 
+export type Theme = "light" | "dark";
+
+const THEME_KEY = "observatory:theme";
+
+function readInitialTheme(): Theme {
+	try {
+		const stored = localStorage.getItem(THEME_KEY);
+		if (stored === "light" || stored === "dark") return stored;
+	} catch {
+		// localStorage unavailable
+	}
+	if (
+		typeof window !== "undefined" &&
+		window.matchMedia?.("(prefers-color-scheme: dark)").matches
+	) {
+		return "dark";
+	}
+	return "light";
+}
+
+function applyTheme(theme: Theme) {
+	if (typeof document === "undefined") return;
+	document.documentElement.classList.toggle("dark", theme === "dark");
+}
+
+export function useTheme(): { theme: Theme; toggle: () => void } {
+	const [theme, setTheme] = useState<Theme>(() => {
+		const initial = readInitialTheme();
+		applyTheme(initial);
+		return initial;
+	});
+
+	const toggle = useCallback(() => {
+		setTheme((prev) => {
+			const next: Theme = prev === "dark" ? "light" : "dark";
+			applyTheme(next);
+			try {
+				localStorage.setItem(THEME_KEY, next);
+			} catch {
+				// localStorage full / unavailable
+			}
+			return next;
+		});
+	}, []);
+
+	return { theme, toggle };
+}
+
 export function useScanErrors(
 	path: string | null,
 	status: Ob.ScanStatus | null,

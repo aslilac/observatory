@@ -8,6 +8,7 @@ import {
 	useScanErrors,
 	useScanProgress,
 	useScans,
+	useTheme,
 } from "../state";
 import { CleanupChip } from "./CleanupChip";
 import { CleanupModal } from "./CleanupModal";
@@ -15,6 +16,7 @@ import { Inspect } from "./Inspect";
 import { IssuesChip } from "./IssuesChip";
 import { IssuesModal } from "./IssuesModal";
 import { Scanning } from "./Scanning";
+import { ThemeToggle } from "./ThemeToggle";
 import { Welcome } from "./Welcome";
 
 type NavEntry = { inspecting: string | null; cursor: string[] };
@@ -33,6 +35,7 @@ export const Application = () => {
 	const cleanup = useCleanupQueue();
 	const [cleanupOpen, setCleanupOpen] = useState(false);
 	const [issuesOpen, setIssuesOpen] = useState(false);
+	const { theme, toggle: toggleTheme } = useTheme();
 
 	const [nav, setNav] = useState<NavState>({
 		history: [{ inspecting: null, cursor: [] }],
@@ -221,7 +224,11 @@ export const Application = () => {
 			id="application"
 			className={`relative grid h-screen grid-rows-[36px_1fr] bg-paper ${Ob.platform}`}
 		>
-			<TitleBar title={titleSuffix} />
+			<TitleBar
+				title={titleSuffix}
+				theme={theme}
+				onToggleTheme={toggleTheme}
+			/>
 			<div className="flex min-h-0 flex-col overflow-hidden">{body}</div>
 			{cleanupOpen && (
 				<CleanupModal
@@ -242,9 +249,20 @@ export const Application = () => {
 	);
 };
 
-const TitleBar = ({ title }: { title: string }) => (
+const TitleBar = ({
+	title,
+	theme,
+	onToggleTheme,
+}: {
+	title: string;
+	theme: "light" | "dark";
+	onToggleTheme: () => void;
+}) => (
 	<div className="relative flex h-[36px] items-center justify-center border-b border-line-soft bg-paper text-[12px] font-medium text-muted darwin:[-webkit-app-region:drag]">
 		Observatory — {title}
+		<div className="absolute top-1/2 right-[10px] -translate-y-1/2">
+			<ThemeToggle theme={theme} onToggle={onToggleTheme} />
+		</div>
 	</div>
 );
 
