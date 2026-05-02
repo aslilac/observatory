@@ -34,6 +34,7 @@ export function getScans(): Ob.ScanInfo[] {
 	return Array.from(scans.entries()).map(([path, entry]) => ({
 		path,
 		status: entry.status,
+		size: entry.vfs.root?.size,
 	}));
 }
 

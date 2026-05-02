@@ -35,6 +35,8 @@ declare global {
 		export interface ScanInfo {
 			path: string;
 			status: ScanStatus;
+			// Only set once the scan has completed.
+			size?: number;
 		}
 
 		export interface DeleteResult {

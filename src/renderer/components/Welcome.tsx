@@ -1,6 +1,7 @@
 import React from "react";
 
 import type { RecentScan } from "../state";
+import { readableSize } from "../util";
 import { Button } from "./Button";
 import { Toolbar } from "./Toolbar";
 
@@ -105,12 +106,18 @@ export const Welcome = ({
 										<span className="mr-[14px] text-muted">
 											{formatDate(entry.scannedAt)}
 										</span>
-										<span className="w-[80px] text-right text-muted">
-											{scan?.status === "complete"
-												? "scanned"
-												: scan?.status === "building"
-													? "scanning"
-													: "—"}
+										<span className="w-[100px] text-right">
+											{scan?.status === "complete" ? (
+												<span className="text-ink">
+													{scan.size !== undefined
+														? readableSize(scan.size)
+														: "scanned"}
+												</span>
+											) : scan?.status === "building" ? (
+												<span className="text-muted">scanning</span>
+											) : (
+												<span className="text-muted">—</span>
+											)}
 										</span>
 									</button>
 								);
