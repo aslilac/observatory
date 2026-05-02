@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 
 import { hueFor, oklchSwatch } from "../colors";
 import { joinPath } from "../state";
-import { readableSize } from "../util";
+import { readableDate, readableSize } from "../util";
 import type { SortMode } from "./SortPicker";
 
 type SelectableItem = { path: string; name: string; size: number };
@@ -55,6 +55,7 @@ export const LegendList = ({
 	const collapse = sortMode === "size" && !showAll && sorted.length > TOP_N;
 	const visible = collapse ? sorted.slice(0, TOP_N) : sorted;
 	const hiddenCount = sorted.length - visible.length;
+	const showDate = sortMode === "newest" || sortMode === "oldest";
 
 	return (
 		<div className="flex flex-col text-[13px]">
@@ -99,6 +100,14 @@ export const LegendList = ({
 							/>
 							<span className="truncate">{file.name}</span>
 						</span>
+						{showDate && (
+							<span
+								className="ml-[12px] w-[88px] flex-shrink-0 text-right font-mono text-[11px] text-faint"
+								title={new Date(file.mtime).toLocaleString()}
+							>
+								{readableDate(file.mtime)}
+							</span>
+						)}
 						<span className="ml-[12px] flex-shrink-0 font-mono text-[12px] text-muted">
 							{readableSize(file.size)}
 						</span>

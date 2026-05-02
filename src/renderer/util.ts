@@ -15,3 +15,27 @@ export const readableSize = (size: number) => {
 
 	return `${sizeString} ${suffixes[exp]!}`;
 };
+
+const MINUTE = 60_000;
+const HOUR = 60 * MINUTE;
+const DAY = 24 * HOUR;
+
+// Compact human-friendly mtime label: "5m", "3h", "2d" for recent activity,
+// "Mar 5" for this year, "Mar 5, 2024" for older. Tuned to fit in a fixed-
+// width column next to the size readout.
+export function readableDate(epochMs: number, now: number = Date.now()): string {
+	if (!epochMs || !Number.isFinite(epochMs)) return "—";
+	const delta = now - epochMs;
+	if (delta < 0) return "just now";
+	if (delta < MINUTE) return "just now";
+	if (delta < HOUR) return `${Math.floor(delta / MINUTE)}m ago`;
+	if (delta < DAY) return `${Math.floor(delta / HOUR)}h ago`;
+	if (delta < 14 * DAY) return `${Math.floor(delta / DAY)}d ago`;
+	const d = new Date(epochMs);
+	const month = d.toLocaleString("en-US", { month: "short" });
+	const thisYear = new Date(now).getFullYear();
+	if (d.getFullYear() === thisYear) {
+		return `${month} ${d.getDate()}`;
+	}
+	return `${month} ${d.getDate()}, ${d.getFullYear()}`;
+}
