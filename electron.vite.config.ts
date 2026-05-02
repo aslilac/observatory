@@ -15,7 +15,8 @@ export default {
 		plugins: [externalizeDepsPlugin()],
 		build: {
 			outDir: "build/main/",
-			rollupOptions: {
+			emptyOutDir: true,
+			rolldownOptions: {
 				input: { index: resolve(__dirname, "src/main/index.ts") },
 			},
 		},
@@ -24,12 +25,9 @@ export default {
 		plugins: [externalizeDepsPlugin()],
 		build: {
 			outDir: "build/preload/",
-			rollupOptions: {
+			emptyOutDir: true,
+			rolldownOptions: {
 				input: { index: resolve(__dirname, "src/preload/index.ts") },
-				output: {
-					format: "cjs",
-					entryFileNames: "index.js",
-				},
 			},
 		},
 	},
@@ -39,7 +37,7 @@ export default {
 		build: {
 			outDir: resolve(__dirname, "build/renderer/"),
 			emptyOutDir: true,
-			rollupOptions: {
+			rolldownOptions: {
 				input: {
 					index: resolve(__dirname, "src/renderer/index.html"),
 					about: resolve(__dirname, "src/renderer/about.html"),
