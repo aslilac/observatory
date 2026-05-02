@@ -59,7 +59,7 @@ export const Menu = () => {
 				))}
 				{directoryList}
 			</ul>
-			<button onClick={Ob.selectDirectory}>Scan directory</button>
+			<button onClick={() => Ob.selectDirectory()}>Scan directory</button>
 		</section>
 	);
 };
