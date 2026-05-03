@@ -89,9 +89,9 @@ export const Inspect: React.FC<InspectProps> = ({
 		setShowAll(next !== "size");
 	}, []);
 
-	// Reset on scan switch only — navigating around inside a scan keeps
-	// whatever the user has already checked so they can browse for more
-	// things to cleanup without losing prior selections.
+	// Reset on scan switch only — navigating around inside a scan keeps whatever
+	// the user has already checked so they can browse for more things to cleanup
+	// without losing prior selections.
 	useEffect(() => {
 		setSelection(new Map());
 		setQuery("");
@@ -99,10 +99,10 @@ export const Inspect: React.FC<InspectProps> = ({
 		setShowAll(false);
 	}, [inspecting]);
 
-	// Each new directory collapses the list back to top-N for size-sort so
-	// a previously-expanded view doesn't follow the user into a child
-	// folder. Non-size sorts stay expanded — a partial alphabetical or
-	// recency view would just be confusing.
+	// Each new directory collapses the list back to top-N for size-sort so a
+	// previously-expanded view doesn't follow the user into a child folder.
+	// Non-size sorts stay expanded — a partial alphabetical or recency view would
+	// just be confusing.
 	const cursorKey = cursor.join("/");
 	const sortModeRef = React.useRef(sortMode);
 	sortModeRef.current = sortMode;

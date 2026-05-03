@@ -10,38 +10,17 @@ import * as path from "node:path";
 // HTML on disk instead.
 const RENDERER_DEV_URL = process.env["ELECTRON_RENDERER_URL"];
 
-export const windowSettings = (
-	preload?: string,
-): BrowserWindowConstructorOptions => ({
-	x: 100,
-	y: Math.floor(screen.getPrimaryDisplay().workArea.height / 8),
+export const windowSettings: BrowserWindowConstructorOptions = {
 	minWidth: 880,
-	minHeight: 600,
-	titleBarStyle: "hiddenInset",
-	autoHideMenuBar: true,
-	webPreferences: {
-		contextIsolation: true,
-		preload,
-	},
-});
-
-export const devWindowSettings = (
-	preload?: string,
-): BrowserWindowConstructorOptions => ({
-	x: 0,
-	y: screen.getPrimaryDisplay().workArea.y,
-	width: Math.min(1400, screen.getPrimaryDisplay().workArea.width),
-	minWidth: 880,
-	height: Math.min(880, screen.getPrimaryDisplay().workArea.height),
 	minHeight: 600,
 	show: false,
 	titleBarStyle: "hiddenInset",
 	autoHideMenuBar: true,
 	webPreferences: {
 		contextIsolation: true,
-		preload,
+		preload: path.join(__dirname, "../preload/index.js"),
 	},
-});
+};
 
 let view: BrowserWindow | null = null;
 
@@ -59,9 +38,8 @@ export function createWindow() {
 	}
 
 	// Create the browser window.
-	view = new BrowserWindow(
-		devWindowSettings(path.join(__dirname, "../preload/index.js")),
-	);
+	view = new BrowserWindow(windowSettings);
+	view.maximize();
 
 	// Load the app — Vite dev server in dev, bundled HTML in prod.
 	if (RENDERER_DEV_URL) {
