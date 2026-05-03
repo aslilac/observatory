@@ -2,8 +2,8 @@ module.exports = {
 	packagerConfig: {
 		appBundleId: "dev.mckayla.observatory",
 		appCategoryType: "public.app-category.utilities",
-		appCopyright: "© 2023 ♥ McKayla",
-		asar: false,
+		appCopyright: "© 2023 McKayla Washburn-Love ♥",
+		asar: true,
 		darwinDarkModeSupport: true,
 		derefSymlinks: true,
 		// Forge appends the right extension per platform — .icns on darwin,

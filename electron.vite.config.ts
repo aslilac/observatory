@@ -2,13 +2,6 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { resolve } from "node:path";
 
-// One config to drive all three Electron processes. Outputs land under
-// build/ to match the existing layout (forge.config.js, .gitignore, etc.):
-//   build/main/index.js   — main process bundle
-//   build/preload.js      — preload, CJS, single file (require.resolve from
-//                           viewManager finds it without extension)
-//   build/renderer/       — renderer entries (index.html + about.html) plus
-//                           hashed assets
 export default {
 	main: {
 		build: {
