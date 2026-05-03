@@ -47,7 +47,7 @@ const sameEntry = (a: NavEntry, b: NavEntry) =>
 	a.inspecting === b.inspecting &&
 	sameCursor(a.cursor, b.cursor);
 
-export const Application = () => {
+export const Application: React.FC = () => {
 	const drives = useDrives();
 	const scans = useScans();
 	const { recent, push: pushRecent } = useRecentScans();

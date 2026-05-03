@@ -226,13 +226,12 @@ const TreeChildren: React.FC<ChildrenProps> = ({
 	</>
 );
 
-const Placeholder = ({
-	depth,
-	children,
-}: {
+type PlaceholderProps = {
 	depth: number;
 	children: React.ReactNode;
-}) => (
+};
+
+const Placeholder: React.FC<PlaceholderProps> = ({ depth, children }) => (
 	<div className="flex items-center gap-[6px] px-[8px] py-[4px] font-mono text-[11px] text-faint">
 		<span style={{ width: depth * 14 }} className="flex-shrink-0" />
 		<span className="w-[22px] flex-shrink-0" />
@@ -254,7 +253,7 @@ type RowProps = {
 	onClick: (() => void) | undefined;
 };
 
-const Row = ({
+const Row: React.FC<RowProps> = ({
 	name,
 	size,
 	depth,
@@ -266,7 +265,7 @@ const Row = ({
 	onToggleExpand,
 	onToggleSelect,
 	onClick,
-}: RowProps) => (
+}) => (
 	<div
 		className={`group flex items-center gap-[6px] rounded-[5px] py-[5px] pr-[8px] pl-[8px] ${
 			selected ? "bg-fill" : "hover:bg-fill"
@@ -333,13 +332,12 @@ const Chevron: React.FC<ChevronProps> = ({ rotation = "right" }) => (
 	</svg>
 );
 
-const Checkbox = ({
-	checked,
-	onChange,
-}: {
+type CheckboxProps = {
 	checked: boolean;
 	onChange: () => void;
-}) => (
+};
+
+const Checkbox: React.FC<CheckboxProps> = ({ checked, onChange }) => (
 	<span
 		role="checkbox"
 		aria-checked={checked}

@@ -13,7 +13,7 @@ type ScanningProps = {
 	chips: React.ReactNode;
 };
 
-export const Scanning = ({
+export const Scanning: React.FC<ScanningProps> = ({
 	root,
 	progress,
 	onShowMenu,
@@ -23,7 +23,7 @@ export const Scanning = ({
 	onBack,
 	onForward,
 	chips,
-}: ScanningProps) => {
+}) => {
 	const counts = progress?.counts;
 	const total =
 		(counts?.files ?? 0) +

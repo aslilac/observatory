@@ -14,7 +14,7 @@ import { Sunburst } from "./Sunburst";
 
 type SelectableItem = { path: string; name: string; size: number };
 
-const ListIcon = () => (
+const ListIcon: React.FC = () => (
 	<svg
 		width="12"
 		height="12"
@@ -34,7 +34,7 @@ const ListIcon = () => (
 	</svg>
 );
 
-const TreeIcon = () => (
+const TreeIcon: React.FC = () => (
 	<svg
 		width="12"
 		height="12"
@@ -67,7 +67,7 @@ type InspectProps = {
 
 type ViewMode = "list" | "tree";
 
-export const Inspect = ({
+export const Inspect: React.FC<InspectProps> = ({
 	inspecting,
 	tree,
 	cursor,
@@ -79,7 +79,7 @@ export const Inspect = ({
 	onForward,
 	chips,
 	onAddToCleanup,
-}: InspectProps) => {
+}) => {
 	const [mode, setMode] = useState<ViewMode>("list");
 	const [selection, setSelection] = useState<Map<string, SelectableItem>>(
 		() => new Map(),

@@ -21,13 +21,13 @@ const sizes: Record<Size, string> = {
 	small: "px-[10px] py-[4px] text-[11px]",
 };
 
-export const Button = ({
+export const Button: React.FC<ButtonProps> = ({
 	variant = "default",
 	size = "default",
 	className,
 	type = "button",
 	...rest
-}: ButtonProps) => (
+}) => (
 	<button
 		type={type}
 		className={`${base} ${variants[variant]} ${sizes[size]} ${className ?? ""}`}

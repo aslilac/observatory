@@ -18,7 +18,7 @@ type CleanupProps = {
 	chips: React.ReactNode;
 };
 
-export const Cleanup = ({
+export const Cleanup: React.FC<CleanupProps> = ({
 	items,
 	totalSize,
 	onRemove,
@@ -31,7 +31,7 @@ export const Cleanup = ({
 	onShowMenu,
 	onBrowseFiles,
 	chips,
-}: CleanupProps) => {
+}) => {
 	const empty = items.length === 0;
 	return (
 		<>
@@ -65,7 +65,11 @@ export const Cleanup = ({
 	);
 };
 
-const EmptyState = ({ onBrowseFiles }: { onBrowseFiles: () => void }) => (
+type EmptyStateProps = {
+	onBrowseFiles: () => void;
+};
+
+const EmptyState: React.FC<EmptyStateProps> = ({ onBrowseFiles }) => (
 	<div className="flex flex-1 flex-col items-center justify-center gap-[14px] px-[28px]">
 		<div className="grid h-[68px] w-[68px] place-items-center rounded-full border border-dashed border-line text-muted">
 			<TrashIcon />
@@ -81,15 +85,13 @@ const EmptyState = ({ onBrowseFiles }: { onBrowseFiles: () => void }) => (
 	</div>
 );
 
-const QueueList = ({
-	items,
-	totalSize,
-	onRemove,
-}: {
+type QueueListProps = {
 	items: CleanupItem[];
 	totalSize: number;
 	onRemove: (path: string) => void;
-}) => (
+};
+
+const QueueList: React.FC<QueueListProps> = ({ items, totalSize, onRemove }) => (
 	<div className="flex flex-1 flex-col overflow-hidden px-[28px] py-[20px]">
 		<div className="mb-[18px] flex items-end justify-between">
 			<div>
@@ -177,7 +179,7 @@ function kindLabel(item: CleanupItem): string {
 	return "file";
 }
 
-const TrashIcon = () => (
+const TrashIcon: React.FC = () => (
 	<svg
 		width="22"
 		height="22"

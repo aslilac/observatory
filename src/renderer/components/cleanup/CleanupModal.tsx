@@ -23,12 +23,12 @@ type Stage =
 			failed: number;
 	  };
 
-export const CleanupModal = ({
+export const CleanupModal: React.FC<CleanupModalProps> = ({
 	items,
 	totalSize,
 	onClose,
 	onTrash,
-}: CleanupModalProps) => {
+}) => {
 	const [stage, setStage] = useState<Stage>({ kind: "confirm" });
 	// Snapshot the queue at modal-open time. Anything queued from a different
 	// window (or another concurrent action) after the user clicks
@@ -83,16 +83,18 @@ export const CleanupModal = ({
 	);
 };
 
-const ConfirmStage = ({
-	items,
-	totalSize,
-	onCancel,
-	onTrash,
-}: {
+type ConfirmStageProps = {
 	items: CleanupItem[];
 	totalSize: number;
 	onCancel: () => void;
 	onTrash: () => void;
+};
+
+const ConfirmStage: React.FC<ConfirmStageProps> = ({
+	items,
+	totalSize,
+	onCancel,
+	onTrash,
 }) => {
 	const preview = items.slice(0, 5);
 	const overflow = items.length - preview.length;
@@ -130,22 +132,24 @@ const ConfirmStage = ({
 	);
 };
 
-const DeletingStage = () => (
+const DeletingStage: React.FC = () => (
 	<div className="flex items-center justify-center py-[32px] font-mono text-[12px] text-muted">
 		Moving items to Trash…
 	</div>
 );
 
-const SuccessStage = ({
-	deleted,
-	reclaimed,
-	failed,
-	onClose,
-}: {
+type SuccessStageProps = {
 	deleted: number;
 	reclaimed: number;
 	failed: number;
 	onClose: () => void;
+};
+
+const SuccessStage: React.FC<SuccessStageProps> = ({
+	deleted,
+	reclaimed,
+	failed,
+	onClose,
 }) => (
 	<>
 		<div className="mb-[8px] text-[16px] font-semibold">Cleanup complete</div>
@@ -168,7 +172,7 @@ const SuccessStage = ({
 	</>
 );
 
-const AlertIcon = () => (
+const AlertIcon: React.FC = () => (
 	<svg
 		width="18"
 		height="18"

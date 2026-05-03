@@ -6,11 +6,11 @@ type CleanupChipProps = {
 	onClick: () => void;
 };
 
-export const CleanupChip = ({
+export const CleanupChip: React.FC<CleanupChipProps> = ({
 	count,
 	totalSize,
 	onClick,
-}: CleanupChipProps) => {
+}) => {
 	if (count === 0) {
 		return (
 			<button
@@ -43,7 +43,7 @@ export const CleanupChip = ({
 	);
 };
 
-const TrashIcon = () => (
+const TrashIcon: React.FC = () => (
 	<svg
 		width="12"
 		height="12"

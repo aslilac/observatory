@@ -3,7 +3,7 @@ type IssuesChipProps = {
 	onClick: () => void;
 };
 
-export const IssuesChip = ({ count, onClick }: IssuesChipProps) => {
+export const IssuesChip: React.FC<IssuesChipProps> = ({ count, onClick }) => {
 	if (count === 0) return null;
 	return (
 		<button

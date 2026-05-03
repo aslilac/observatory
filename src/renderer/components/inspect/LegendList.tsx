@@ -155,7 +155,7 @@ function sortFiles(files: Ob.VfsNode[], mode: SortMode): Ob.VfsNode[] {
 	}
 }
 
-const FolderIcon = () => (
+const FolderIcon: React.FC = () => (
 	<svg
 		width="13"
 		height="13"
@@ -170,7 +170,7 @@ const FolderIcon = () => (
 	</svg>
 );
 
-const FileIcon = () => (
+const FileIcon: React.FC = () => (
 	<svg
 		width="13"
 		height="13"
@@ -191,7 +191,7 @@ type CheckboxProps = {
 	onChange: () => void;
 };
 
-const Checkbox = ({ checked, onChange }: CheckboxProps) => (
+const Checkbox: React.FC<CheckboxProps> = ({ checked, onChange }) => (
 	<span
 		role="checkbox"
 		aria-checked={checked}

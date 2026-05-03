@@ -10,13 +10,13 @@ type SearchResultsProps = {
 	onToggleSelect: (item: SelectableItem) => void;
 };
 
-export const SearchResults = ({
+export const SearchResults: React.FC<SearchResultsProps> = ({
 	results,
 	loading,
 	query,
 	selection,
 	onToggleSelect,
-}: SearchResultsProps) => {
+}) => {
 	if (!query.trim()) return null;
 
 	if (loading && !results) {
@@ -97,13 +97,12 @@ function basename(p: string): string {
 	return slash >= 0 ? trimmed.slice(slash + 1) || trimmed : trimmed;
 }
 
-const Checkbox = ({
-	checked,
-	onChange,
-}: {
+type CheckboxProps = {
 	checked: boolean;
 	onChange: () => void;
-}) => (
+};
+
+const Checkbox: React.FC<CheckboxProps> = ({ checked, onChange }) => (
 	<span
 		role="checkbox"
 		aria-checked={checked}
