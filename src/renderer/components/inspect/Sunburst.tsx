@@ -52,30 +52,19 @@ export const Sunburst = ({
 	const clearHover = () => setHover(null);
 
 	return (
-		<div className="relative h-full w-full" onMouseLeave={clearHover}>
+		<div className="relative h-full w-full">
 			<svg
 				viewBox={`${-VIEW_HALF} ${-VIEW_HALF} ${VIEW_HALF * 2} ${VIEW_HALF * 2}`}
 				className="h-full w-full select-none"
 				preserveAspectRatio="xMidYMid meet"
 			>
-				{/* Transparent backdrop catches pointer events that aren't over a
-				    shard so the tooltip clears as soon as the cursor enters
-				    empty space (rather than only when leaving the SVG entirely). */}
-				<rect
-					x={-VIEW_HALF}
-					y={-VIEW_HALF}
-					width={VIEW_HALF * 2}
-					height={VIEW_HALF * 2}
-					fill="transparent"
-					onPointerEnter={clearHover}
-				/>
 				{shards.map((shard) => {
 					if (hover?.shard.id === shard.id) return null;
-					return renderShard(shard, false, dark, setHover, onNavigateForward);
+					return renderShard(shard, false, dark, setHover, clearHover, onNavigateForward);
 				})}
 				{/* Render the hovered shard last so its pulse animation paints on
 				    top of neighboring strokes. */}
-				{hover && renderShard(hover.shard, true, dark, setHover, onNavigateForward)}
+				{hover && renderShard(hover.shard, true, dark, setHover, clearHover, onNavigateForward)}
 
 				<circle
 					cx={0}
@@ -84,7 +73,6 @@ export const Sunburst = ({
 					fill="var(--color-ink)"
 					style={{ cursor: "pointer" }}
 					onClick={onNavigateUp}
-					onPointerEnter={clearHover}
 				/>
 				<text
 					x={0}
@@ -117,6 +105,7 @@ function renderShard(
 	isHovered: boolean,
 	dark: boolean,
 	setHover: React.Dispatch<React.SetStateAction<HoverState | null>>,
+	clearHover: () => void,
 	onNavigateForward: (...into: string[]) => void,
 ): React.ReactNode {
 	const { ir, or } = layerRadii(shard.layer);
@@ -141,6 +130,7 @@ function renderShard(
 						: prev,
 				)
 			}
+			onPointerLeave={clearHover}
 			onClick={() => {
 				if (shard.type === "directory") {
 					onNavigateForward(...shard.path);
