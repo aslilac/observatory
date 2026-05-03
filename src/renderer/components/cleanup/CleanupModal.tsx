@@ -8,7 +8,9 @@ type CleanupModalProps = {
 	items: CleanupItem[];
 	totalSize: number;
 	onClose: () => void;
-	onTrash: () => Promise<{ deleted: number; reclaimed: number; failed: number }>;
+	onTrash: (
+		items: CleanupItem[],
+	) => Promise<{ deleted: number; reclaimed: number; failed: number }>;
 };
 
 type Stage =
@@ -28,11 +30,16 @@ export const CleanupModal = ({
 	onTrash,
 }: CleanupModalProps) => {
 	const [stage, setStage] = useState<Stage>({ kind: "confirm" });
+	// Snapshot the queue at modal-open time. Anything queued from a different
+	// window (or another concurrent action) after the user clicks
+	// "Review & delete" stays out of this confirmation — they only act on
+	// what they actually reviewed.
+	const [snapshot] = useState(() => ({ items, totalSize }));
 
 	const handleTrash = async () => {
 		setStage({ kind: "deleting" });
 		try {
-			const result = await onTrash();
+			const result = await onTrash(snapshot.items);
 			setStage({ kind: "success", ...result });
 		} catch {
 			onClose();
@@ -56,8 +63,8 @@ export const CleanupModal = ({
 			>
 				{stage.kind === "confirm" && (
 					<ConfirmStage
-						items={items}
-						totalSize={totalSize}
+						items={snapshot.items}
+						totalSize={snapshot.totalSize}
 						onCancel={onClose}
 						onTrash={() => void handleTrash()}
 					/>

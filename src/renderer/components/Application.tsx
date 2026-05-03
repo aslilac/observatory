@@ -263,21 +263,23 @@ export const Application = () => {
 		[setInspecting],
 	);
 
-	const onTrashCleanup = useCallback(async () => {
-		const queued = cleanup.items;
-		const sizeByPath = new Map(queued.map((i) => [i.path, i.size]));
-		const result = await Ob.deleteFiles(queued.map((i) => i.path));
-		const reclaimed = result.deleted.reduce(
-			(sum, p) => sum + (sizeByPath.get(p) ?? 0),
-			0,
-		);
-		result.deleted.forEach((p) => cleanup.remove(p));
-		return {
-			deleted: result.deleted.length,
-			reclaimed,
-			failed: result.failed.length,
-		};
-	}, [cleanup]);
+	const onTrashCleanup = useCallback(
+		async (items: typeof cleanup.items) => {
+			const sizeByPath = new Map(items.map((i) => [i.path, i.size]));
+			const result = await Ob.deleteFiles(items.map((i) => i.path));
+			const reclaimed = result.deleted.reduce(
+				(sum, p) => sum + (sizeByPath.get(p) ?? 0),
+				0,
+			);
+			result.deleted.forEach((p) => cleanup.remove(p));
+			return {
+				deleted: result.deleted.length,
+				reclaimed,
+				failed: result.failed.length,
+			};
+		},
+		[cleanup],
+	);
 
 	const chips = (
 		<>
