@@ -97,7 +97,17 @@ export const LegendList = ({
 							className="block h-[8px] w-[8px] flex-shrink-0 rounded-full"
 							style={{ background: oklchSwatch(hue) }}
 						/>
-						<span className="min-w-0 flex-1 truncate">{file.name}</span>
+						<span className="flex-shrink-0 text-faint">
+							{isDir ? <FolderIcon /> : <FileIcon />}
+						</span>
+						<span
+							className={`min-w-0 flex-1 truncate ${
+								isDir ? "font-medium text-ink" : "text-muted"
+							}`}
+						>
+							{file.name}
+							{isDir && <span className="text-faint">/</span>}
+						</span>
 						{showDate && (
 							<span
 								className="w-[88px] flex-shrink-0 text-right font-mono text-[11px] text-faint tabular-nums"
@@ -156,6 +166,37 @@ function sortFiles(files: Ob.VfsNode[], mode: SortMode): Ob.VfsNode[] {
 			return next.sort((a, b) => a.mtime - b.mtime);
 	}
 }
+
+const FolderIcon = () => (
+	<svg
+		width="13"
+		height="13"
+		viewBox="0 0 24 24"
+		fill="none"
+		stroke="currentColor"
+		strokeWidth="1.6"
+		strokeLinecap="round"
+		strokeLinejoin="round"
+	>
+		<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" />
+	</svg>
+);
+
+const FileIcon = () => (
+	<svg
+		width="13"
+		height="13"
+		viewBox="0 0 24 24"
+		fill="none"
+		stroke="currentColor"
+		strokeWidth="1.6"
+		strokeLinecap="round"
+		strokeLinejoin="round"
+	>
+		<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+		<path d="M14 3v6h6" />
+	</svg>
+);
 
 type CheckboxProps = {
 	checked: boolean;

@@ -362,10 +362,10 @@ export const Application = () => {
 			: inspecting
 				? inspectingScan?.status === "complete"
 					? cursor.length > 0
-						? `inspect · ${cursor[cursor.length - 1]}`
-						: "inspect"
+						? cursor[cursor.length - 1]!
+						: inspectingName
 					: "scanning"
-				: "welcome";
+				: "";
 
 	return (
 		<div
@@ -428,7 +428,7 @@ const TitleBar = ({
 	onToggleTheme: () => void;
 }) => (
 	<div className="relative flex h-[36px] items-center justify-center border-b border-line-soft bg-paper text-[12px] font-medium text-muted darwin:[-webkit-app-region:drag]">
-		Observatory — {title}
+		Observatory{title ? ` — ${title}` : ""}
 		<div className="absolute top-1/2 right-[10px] -translate-y-1/2">
 			<ThemeToggle theme={theme} onToggle={onToggleTheme} />
 		</div>

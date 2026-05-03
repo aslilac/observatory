@@ -11,6 +11,7 @@ type CacheValue = Ob.VfsNode[] | "loading" | "error";
 type FolderTreeProps = {
 	inspecting: string;
 	cursor: string[];
+	rootName: string;
 	files: Ob.VfsNode[];
 	selection: Map<string, SelectableItem>;
 	onForward: (...names: string[]) => void;
@@ -20,6 +21,7 @@ type FolderTreeProps = {
 export const FolderTree = ({
 	inspecting,
 	cursor,
+	rootName,
 	files,
 	selection,
 	onForward,
@@ -72,7 +74,7 @@ export const FolderTree = ({
 	return (
 		<div className="text-[13px]">
 			<Row
-				name="/"
+				name={rootName}
 				size={files.reduce((sum, f) => sum + f.size, 0)}
 				depth={0}
 				hue={null}

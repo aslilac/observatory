@@ -143,7 +143,7 @@ const IconBtn = ({ children, onClick, active, disabled, title }: IconBtnProps) =
 
 type SegmentedProps<T extends string> = {
 	value: T;
-	options: ReadonlyArray<{ value: T; label: string }>;
+	options: ReadonlyArray<{ value: T; label: string; icon?: React.ReactNode }>;
 	onChange: (next: T) => void;
 };
 
@@ -159,12 +159,14 @@ export function Segmented<T extends string>({
 					key={o.value}
 					type="button"
 					onClick={() => onChange(o.value)}
-					className={`cursor-pointer rounded-[5px] border-0 px-[12px] py-[3px] text-[11px] ${
+					title={o.label}
+					className={`inline-flex cursor-pointer items-center gap-[6px] rounded-[5px] border-0 px-[10px] py-[3px] text-[11px] ${
 						value === o.value
 							? "bg-paper font-semibold text-ink shadow-[0_1px_2px_rgba(0,0,0,0.06)]"
 							: "bg-transparent font-medium text-muted"
 					}`}
 				>
+					{o.icon}
 					{o.label}
 				</button>
 			))}

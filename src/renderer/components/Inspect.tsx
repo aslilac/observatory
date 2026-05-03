@@ -13,6 +13,43 @@ import { Segmented, Toolbar } from "./Toolbar";
 
 type SelectableItem = { path: string; name: string; size: number };
 
+const ListIcon = () => (
+	<svg
+		width="12"
+		height="12"
+		viewBox="0 0 24 24"
+		fill="none"
+		stroke="currentColor"
+		strokeWidth="2"
+		strokeLinecap="round"
+		strokeLinejoin="round"
+	>
+		<line x1="8" y1="6" x2="21" y2="6" />
+		<line x1="8" y1="12" x2="21" y2="12" />
+		<line x1="8" y1="18" x2="21" y2="18" />
+		<line x1="3" y1="6" x2="3.01" y2="6" />
+		<line x1="3" y1="12" x2="3.01" y2="12" />
+		<line x1="3" y1="18" x2="3.01" y2="18" />
+	</svg>
+);
+
+const TreeIcon = () => (
+	<svg
+		width="12"
+		height="12"
+		viewBox="0 0 24 24"
+		fill="none"
+		stroke="currentColor"
+		strokeWidth="2"
+		strokeLinecap="round"
+		strokeLinejoin="round"
+	>
+		<path d="M5 4v6a2 2 0 0 0 2 2h12" />
+		<path d="M9 12v6a2 2 0 0 0 2 2h8" />
+		<circle cx="5" cy="4" r="0.5" fill="currentColor" />
+	</svg>
+);
+
 type InspectProps = {
 	inspecting: string;
 	tree: Ob.RenderTree;
@@ -132,8 +169,8 @@ export const Inspect = ({
 					<Segmented<ViewMode>
 						value={mode}
 						options={[
-							{ value: "list", label: "List" },
-							{ value: "tree", label: "Tree" },
+							{ value: "list", label: "List", icon: <ListIcon /> },
+							{ value: "tree", label: "Tree", icon: <TreeIcon /> },
 						]}
 						onChange={setMode}
 					/>
@@ -190,6 +227,11 @@ export const Inspect = ({
 							<FolderTree
 								inspecting={inspecting}
 								cursor={cursor}
+								rootName={
+									cursor.length > 0
+										? cursor[cursor.length - 1]!
+										: tree.name
+								}
 								files={treeChildren}
 								selection={selection}
 								onForward={navigateForward}
