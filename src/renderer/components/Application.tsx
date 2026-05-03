@@ -54,6 +54,7 @@ export const Application: React.FC = () => {
 		inspecting,
 		cursor,
 		inspectingScan?.status ?? null,
+		inspectingScan?.revision,
 	);
 
 	// Measure click → painted: nav:start is set inside `navigate`, and we

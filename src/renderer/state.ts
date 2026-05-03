@@ -44,6 +44,7 @@ export function useRenderTree(
 	path: string | null,
 	cursor: string[],
 	status: Ob.ScanStatus | null,
+	revision: number | undefined,
 ): Ob.RenderTree | null {
 	const [tree, setTree] = useState<Ob.RenderTree | null>(null);
 	const cursorKey = cursor.join("/");
@@ -60,7 +61,7 @@ export function useRenderTree(
 		return () => {
 			active = false;
 		};
-	}, [path, cursorKey, status]);
+	}, [path, cursorKey, status, revision]);
 
 	return tree;
 }

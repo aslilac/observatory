@@ -10,6 +10,7 @@ import { VirtualFileSystem } from "./vfs";
 type ScanEntry = {
 	status: Ob.ScanStatus;
 	vfs: VirtualFileSystem;
+	revision: number;
 };
 
 const drives = new Map<string, Ob.PhysicalDrive>();
@@ -36,6 +37,7 @@ export function getScans(): Ob.ScanInfo[] {
 		path,
 		status: entry.status,
 		size: entry.vfs.root?.size,
+		revision: entry.revision,
 	}));
 }
 
@@ -79,7 +81,7 @@ export function startScan(path: string) {
 	if (scans.has(path)) return;
 
 	const vfs = new VirtualFileSystem(path);
-	scans.set(path, { status: "building", vfs });
+	scans.set(path, { status: "building", vfs, revision: 0 });
 	emitter.emit("scans", getScans());
 
 	vfs.onComplete(() => {
@@ -88,8 +90,55 @@ export function startScan(path: string) {
 		// up; the manager already broadcast the deletion, nothing to do here.
 		if (!entry || entry.vfs !== vfs) return;
 		entry.status = "complete";
+		entry.revision++;
 		emitter.emit("scans", getScans());
 	});
+}
+
+// Drop a path from the appropriate scan's VFS in place, propagating the
+// removed size up through every ancestor. Used after the cleanup queue
+// trashes things so subsequent browsing doesn't keep showing them.
+export function removePath(target: string) {
+	let bestRoot: string | undefined;
+	let bestEntry: ScanEntry | undefined;
+	for (const [root, entry] of scans) {
+		const inside =
+			target === root ||
+			target.startsWith(`${root}/`) ||
+			target.startsWith(`${root}\\`);
+		if (!inside) continue;
+		if (!bestRoot || root.length > bestRoot.length) {
+			bestRoot = root;
+			bestEntry = entry;
+		}
+	}
+	if (!bestRoot || !bestEntry?.vfs.root) return;
+
+	const relative = target.slice(bestRoot.length).replace(/^[/\\]+/, "");
+	if (!relative) return; // can't remove the scan root itself
+	const parts = relative.split(/[/\\]+/);
+
+	let current: Ob.VfsDirectory = bestEntry.vfs.root;
+	const ancestors: Ob.VfsDirectory[] = [current];
+	for (let i = 0; i < parts.length - 1; i++) {
+		const child = current.files.find(
+			(f) => f.name === parts[i] && f.type === "directory",
+		);
+		if (!child) return;
+		current = child as Ob.VfsDirectory;
+		ancestors.push(current);
+	}
+
+	const lastPart = parts[parts.length - 1]!;
+	const idx = current.files.findIndex((f) => f.name === lastPart);
+	if (idx < 0) return;
+
+	const removedSize = current.files[idx]!.size;
+	current.files.splice(idx, 1);
+	for (const ancestor of ancestors) ancestor.size -= removedSize;
+
+	bestEntry.revision++;
+	emitter.emit("scans", getScans());
 }
 
 export function cancelScan(path: string) {

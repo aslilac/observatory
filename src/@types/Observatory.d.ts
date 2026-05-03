@@ -45,6 +45,9 @@ declare global {
 			status: ScanStatus;
 			// Only set once the scan has completed.
 			size?: number;
+			// Bumped whenever the VFS for this scan is mutated (e.g. after
+			// trash). Lets the renderer key its render-tree fetch on it.
+			revision: number;
 		}
 
 		export interface DeleteResult {
