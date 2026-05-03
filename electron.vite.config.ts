@@ -33,7 +33,14 @@ export default {
 	},
 	renderer: {
 		root: resolve(__dirname, "src/renderer/"),
-		plugins: [react(), tailwindcss()],
+		plugins: [
+			react({
+				babel: {
+					plugins: [["babel-plugin-react-compiler", {}]],
+				},
+			}),
+			tailwindcss(),
+		],
 		build: {
 			outDir: resolve(__dirname, "build/renderer/"),
 			emptyOutDir: true,
