@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { sunburstColor } from "../../colors";
 import { readableSize } from "../../util";
@@ -9,6 +9,15 @@ import { readableSize } from "../../util";
 const VIEW_HALF = 275;
 const CENTER_R = 64;
 const BASE_ANGLE_TURNS = 5 / 8;
+const MIN_IMAGINARY = 0.003;
+const MAX_LAYER = 6;
+
+type HoverState = {
+	id: string;
+	file: Ob.VfsNode;
+	clientX: number;
+	clientY: number;
+};
 
 type SunburstProps = {
 	capacity: number;
@@ -19,17 +28,6 @@ type SunburstProps = {
 	hueByName: Map<string, number>;
 	onNavigateUp: () => void;
 	onNavigateForward: (...into: string[]) => void;
-};
-
-type ShardEntry = {
-	id: string;
-	file: Ob.VfsNode;
-	layer: number;
-	position: number;
-	size: number;
-	hue: number;
-	type: Ob.NodeType$;
-	path: string[];
 };
 
 export const Sunburst: React.FC<SunburstProps> = ({
@@ -46,12 +44,8 @@ export const Sunburst: React.FC<SunburstProps> = ({
 		typeof document !== "undefined" &&
 		document.documentElement.classList.contains("dark");
 
-	const shards = useMemo(
-		() => buildShards(files, capacity, hueByName),
-		[files, capacity, hueByName],
-	);
-
-	const clearHover = () => setHover(null);
+	const usedFraction = files.reduce((s, f) => s + f.size, 0) / capacity;
+	const freeRemainder = 1 - usedFraction;
 
 	return (
 		<div className="grow">
@@ -60,27 +54,35 @@ export const Sunburst: React.FC<SunburstProps> = ({
 				className="h-full w-full"
 				preserveAspectRatio="xMidYMid meet"
 			>
-				{shards.map((shard) => {
-					if (hover?.shard.id === shard.id) return null;
-					return renderShard(
-						shard,
-						dark,
-						setHover,
-						clearHover,
-						onNavigateForward,
-					);
-				})}
-				{/* Render the hovered shard last so its pulse animation paints on
-				    top of neighboring strokes. */}
-				{hover &&
-					renderShard(
-						hover.shard,
-						dark,
-						setHover,
-						clearHover,
-						onNavigateForward,
-					)}
-
+				<ShardTree
+					nodes={files}
+					layer={0}
+					startPos={0}
+					parentHue={null}
+					parentPath={[]}
+					capacity={capacity}
+					hueByName={hueByName}
+					hover={hover}
+					setHover={setHover}
+					dark={dark}
+					onNavigateForward={onNavigateForward}
+				/>
+				{freeRemainder > MIN_IMAGINARY && (
+					<Shard
+						id="imaginary/0"
+						file={IMAGINARY_FILE}
+						layer={0}
+						position={usedFraction}
+						size={freeRemainder}
+						hue={0}
+						type="imaginary"
+						path={[]}
+						hovered={false}
+						dark={dark}
+						setHover={setHover}
+						onNavigateForward={onNavigateForward}
+					/>
+				)}
 				<circle
 					cx={0}
 					cy={0}
@@ -105,66 +107,184 @@ export const Sunburst: React.FC<SunburstProps> = ({
 			</svg>
 
 			{hover && (
-				<Tooltip shard={hover.shard} x={hover.clientX} y={hover.clientY} />
+				<Tooltip file={hover.file} x={hover.clientX} y={hover.clientY} />
 			)}
 		</div>
 	);
 };
 
-type HoverState = {
-	shard: ShardEntry;
-	clientX: number;
-	clientY: number;
+type ShardTreeProps = {
+	nodes: Ob.VfsNode[];
+	layer: number;
+	startPos: number;
+	parentHue: number | null;
+	parentPath: string[];
+	capacity: number;
+	hueByName: Map<string, number>;
+	hover: HoverState | null;
+	setHover: React.Dispatch<React.SetStateAction<HoverState | null>>;
+	dark: boolean;
+	onNavigateForward: (...into: string[]) => void;
 };
 
-function renderShard(
-	shard: ShardEntry,
-	dark: boolean,
-	setHover: React.Dispatch<React.SetStateAction<HoverState | null>>,
-	clearHover: () => void,
-	onNavigateForward: (...into: string[]) => void,
-): React.ReactNode {
-	const { ir, or } = layerRadii(shard.layer);
-	const fill = sunburstColor(shard.hue, shard.layer, shard.type, dark);
-	const interactive = shard.type === "directory" || shard.type === "file";
+const ShardTree: React.FC<ShardTreeProps> = ({
+	nodes,
+	layer,
+	startPos,
+	parentHue,
+	parentPath,
+	capacity,
+	hueByName,
+	hover,
+	setHover,
+	dark,
+	onNavigateForward,
+}) => {
+	const elements: React.ReactNode[] = [];
+	let pos = startPos;
+	for (const file of nodes) {
+		const sliceSize = file.size / capacity;
+		const myHue =
+			layer === 0 ? (hueByName.get(file.name) ?? 0) : (parentHue ?? 0);
+		const path = [...parentPath, file.name];
+		const id = `${layer}/${path.join("/")}`;
+
+		elements.push(
+			<Shard
+				key={id}
+				id={id}
+				file={file}
+				layer={layer}
+				position={pos}
+				size={sliceSize}
+				hue={myHue}
+				type={file.type}
+				path={path}
+				hovered={hover?.id === id}
+				dark={dark}
+				setHover={setHover}
+				onNavigateForward={onNavigateForward}
+			/>,
+		);
+
+		if (
+			file.type === "directory" &&
+			layer < MAX_LAYER &&
+			file.files.length > 0
+		) {
+			elements.push(
+				<ShardTree
+					key={`${id}/children`}
+					nodes={file.files}
+					layer={layer + 1}
+					startPos={pos}
+					parentHue={myHue}
+					parentPath={path}
+					capacity={capacity}
+					hueByName={hueByName}
+					hover={hover}
+					setHover={setHover}
+					dark={dark}
+					onNavigateForward={onNavigateForward}
+				/>,
+			);
+
+			const childrenSum =
+				file.files.reduce((s, f) => s + f.size, 0) / capacity;
+			const remainder = sliceSize - childrenSum;
+			if (layer < 4 && remainder > MIN_IMAGINARY) {
+				const remainderId = `imaginary/${layer + 1}/${path.join("/")}`;
+				elements.push(
+					<Shard
+						key={remainderId}
+						id={remainderId}
+						file={file}
+						layer={layer + 1}
+						position={pos + childrenSum}
+						size={remainder}
+						hue={myHue}
+						type="imaginary"
+						path={path}
+						hovered={hover?.id === remainderId}
+						dark={dark}
+						setHover={setHover}
+						onNavigateForward={onNavigateForward}
+					/>,
+				);
+			}
+		}
+
+		pos += sliceSize;
+	}
+	return <>{elements}</>;
+};
+
+type ShardProps = {
+	id: string;
+	file: Ob.VfsNode;
+	layer: number;
+	position: number;
+	size: number;
+	hue: number;
+	type: Ob.NodeType$;
+	path: string[];
+	hovered: boolean;
+	dark: boolean;
+	setHover: React.Dispatch<React.SetStateAction<HoverState | null>>;
+	onNavigateForward: (...into: string[]) => void;
+};
+
+const Shard: React.FC<ShardProps> = ({
+	id,
+	file,
+	layer,
+	position,
+	size,
+	hue,
+	type,
+	path,
+	hovered,
+	dark,
+	setHover,
+	onNavigateForward,
+}) => {
+	const { ir, or } = layerRadii(layer);
+	const fill = sunburstColor(hue, layer, type, dark);
+	const interactive = type === "directory" || type === "file";
 	return (
 		<path
-			key={shard.id}
-			d={arcPath(shard.position, shard.size, ir, or)}
+			d={arcPath(position, size, ir, or)}
 			fill={fill}
 			stroke="var(--color-paper)"
 			strokeWidth={1.2}
-			className="hover:pulse"
+			className={hovered ? "pulse" : undefined}
 			style={{ cursor: interactive ? "pointer" : "default" }}
 			onPointerEnter={(e) =>
-				setHover({ shard, clientX: e.clientX, clientY: e.clientY })
+				setHover({ id, file, clientX: e.clientX, clientY: e.clientY })
 			}
 			onPointerMove={(e) =>
 				setHover((prev) =>
-					prev && prev.shard.id === shard.id
+					prev?.id === id
 						? { ...prev, clientX: e.clientX, clientY: e.clientY }
 						: prev,
 				)
 			}
-			onPointerLeave={clearHover}
+			onPointerLeave={() => setHover((prev) => (prev?.id === id ? null : prev))}
 			onClick={() => {
-				if (shard.type === "directory") {
-					onNavigateForward(...shard.path);
-				}
+				if (type === "directory") onNavigateForward(...path);
 			}}
 		/>
 	);
-}
+};
 
 type TooltipProps = {
-	shard: ShardEntry;
+	file: Ob.VfsNode;
 	x: number;
 	y: number;
 };
 
-const Tooltip: React.FC<TooltipProps> = ({ shard, x, y }) => {
-	const top =
-		shard.file.type === "directory" ? shard.file.files.slice(0, 7) : [];
+const Tooltip: React.FC<TooltipProps> = ({ file, x, y }) => {
+	const top = file.type === "directory" ? file.files.slice(0, 7) : [];
 	return (
 		<div
 			role="tooltip"
@@ -172,21 +292,21 @@ const Tooltip: React.FC<TooltipProps> = ({ shard, x, y }) => {
 			style={{ left: x + 15, top: y + 5 }}
 		>
 			<div className="flex justify-between gap-3">
-				<span className="font-semibold">{shard.file.name}</span>
+				<span className="font-semibold">{file.name}</span>
 				<span className="ml-[14px] font-mono opacity-80">
-					{readableSize(shard.file.size)}
+					{readableSize(file.size)}
 				</span>
 			</div>
 			{top.length > 0 && (
 				<ol className="mt-2">
-					{top.map((file, i) => (
+					{top.map((child, i) => (
 						<li
-							key={`${file.name}-${i}`}
+							key={`${child.name}-${i}`}
 							className="flex justify-between gap-3 py-[2px] text-[11px]"
 						>
-							<span className="truncate">{file.name}</span>
+							<span className="truncate">{child.name}</span>
 							<span className="font-mono opacity-80">
-								{readableSize(file.size)}
+								{readableSize(child.size)}
 							</span>
 						</li>
 					))}
@@ -196,88 +316,13 @@ const Tooltip: React.FC<TooltipProps> = ({ shard, x, y }) => {
 	);
 };
 
-function buildShards(
-	files: Ob.VfsNode[],
-	capacity: number,
-	hueByName: Map<string, number>,
-): ShardEntry[] {
-	const result: ShardEntry[] = [];
-	const minImaginary = 0.003;
-
-	const walk = (
-		nodes: Ob.VfsNode[],
-		layer: number,
-		startPos: number,
-		parentHue: number | null,
-		parentPath: string[],
-	): number => {
-		let pos = startPos;
-		for (const file of nodes) {
-			const sliceSize = file.size / capacity;
-			const myHue =
-				layer === 0
-					? (hueByName.get(file.name) ?? 0)
-					: (parentHue ?? 0);
-			const path = [...parentPath, file.name];
-			result.push({
-				id: `${layer}/${path.join("/")}`,
-				file,
-				layer,
-				position: pos,
-				size: sliceSize,
-				hue: myHue,
-				type: file.type,
-				path,
-			});
-
-			if (file.type === "directory" && layer < 6 && file.files.length > 0) {
-				const childEnd = walk(file.files, layer + 1, pos, myHue, path);
-				const remainder = sliceSize - (childEnd - pos);
-				if (layer < 4 && remainder > minImaginary) {
-					result.push({
-						id: `imaginary/${layer + 1}/${path.join("/")}`,
-						file,
-						layer: layer + 1,
-						position: childEnd,
-						size: remainder,
-						hue: myHue,
-						type: "imaginary",
-						path,
-					});
-				}
-			}
-
-			pos += sliceSize;
-		}
-		return pos;
-	};
-
-	const totalEnd = walk(files, 0, 0, null, []);
-
-	// Top-level imaginary remainder (small-items wedge at the inner ring).
-	const totalUsed = files.reduce((sum, f) => sum + f.size, 0) / capacity;
-	const remainder = totalUsed - totalEnd;
-	if (remainder > minImaginary) {
-		result.push({
-			id: "imaginary/0",
-			file: {
-				type: "directory",
-				name: "small items",
-				size: 0,
-				mtime: 0,
-				files: [],
-			},
-			layer: 0,
-			position: totalEnd,
-			size: remainder,
-			hue: 0,
-			type: "imaginary",
-			path: [],
-		});
-	}
-
-	return result;
-}
+const IMAGINARY_FILE: Ob.VfsDirectory = {
+	type: "directory",
+	name: "small items",
+	size: 0,
+	mtime: 0,
+	files: [],
+};
 
 // Layer ring geometry mirrors the original canvas widths: five 31-unit
 // inner rings followed by tighter 5-unit outer rings for deep hierarchies.
