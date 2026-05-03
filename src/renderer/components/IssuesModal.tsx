@@ -40,7 +40,7 @@ export const IssuesModal = ({ errors, onClose }: IssuesModalProps) => {
 			}}
 		>
 			<div
-				className="w-[560px] rounded-modal bg-paper p-[24px] [box-shadow:var(--shadow-modal)]"
+				className="w-[560px] rounded-modal bg-background p-[24px] [box-shadow:var(--shadow-modal)]"
 				role="dialog"
 				aria-modal="true"
 			>
@@ -55,7 +55,7 @@ export const IssuesModal = ({ errors, onClose }: IssuesModalProps) => {
 					<button
 						type="button"
 						onClick={onClose}
-						className="cursor-pointer text-[18px] leading-none text-faint hover:text-ink"
+						className="cursor-pointer text-[18px] leading-none text-faint hover:text-default"
 					>
 						×
 					</button>
@@ -86,7 +86,7 @@ export const IssuesModal = ({ errors, onClose }: IssuesModalProps) => {
 											className="px-[12px] py-[5px] text-[11px]"
 										>
 											<div
-												className="truncate font-mono text-ink"
+												className="truncate font-mono text-default"
 												title={err.path}
 											>
 												{err.path}

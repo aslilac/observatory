@@ -68,19 +68,19 @@ export const Scanning = ({
 								<path
 									d="M 130 12 A 118 118 0 0 1 248 130"
 									fill="none"
-									stroke="var(--color-ink)"
+									stroke="var(--color-default)"
 									strokeWidth="6"
 									strokeLinecap="round"
 								/>
 							</g>
 							{/* Center disc */}
-							<circle cx="130" cy="130" r="62" fill="var(--color-ink)" />
+							<circle cx="130" cy="130" r="62" fill="var(--color-default)" />
 							<text
 								x="130"
 								y="128"
 								textAnchor="middle"
 								dominantBaseline="middle"
-								fill="var(--color-paper)"
+								fill="var(--color-background)"
 								fontFamily="IBM Plex Mono, ui-monospace, monospace"
 								fontSize="20"
 								fontWeight="600"
@@ -92,7 +92,7 @@ export const Scanning = ({
 								y="148"
 								textAnchor="middle"
 								dominantBaseline="middle"
-								fill="var(--color-paper)"
+								fill="var(--color-background)"
 								fillOpacity="0.55"
 								fontFamily="IBM Plex Mono, ui-monospace, monospace"
 								fontSize="11"
@@ -110,7 +110,7 @@ export const Scanning = ({
 							{progress?.currentPath ? (
 								<>
 									indexing&nbsp;
-									<span className="text-ink">{progress.currentPath}</span>
+									<span className="text-default">{progress.currentPath}</span>
 								</>
 							) : (
 								"hold tight — counting files"

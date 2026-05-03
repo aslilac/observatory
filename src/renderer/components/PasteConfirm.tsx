@@ -24,7 +24,7 @@ export const PasteConfirm: React.FC<PasteConfirmProps> = ({
 			}}
 		>
 			<div
-				className="w-[480px] rounded-modal bg-paper p-6 [box-shadow:var(--shadow-modal)]"
+				className="w-[480px] rounded-modal bg-background p-6 [box-shadow:var(--shadow-modal)]"
 				role="dialog"
 				aria-modal="true"
 			>

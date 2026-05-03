@@ -13,7 +13,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
 		type="button"
 		onClick={onToggle}
 		title={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
-		className="grid size-[22px] cursor-pointer place-items-center rounded-button text-muted hover:bg-fill hover:text-ink darwin:[-webkit-app-region:no-drag]"
+		className="grid size-[22px] cursor-pointer place-items-center rounded-button text-muted hover:bg-fill hover:text-default darwin:[-webkit-app-region:no-drag]"
 	>
 		{theme === "dark" ? <SunIcon /> : <MoonIcon />}
 	</button>

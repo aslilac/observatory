@@ -55,7 +55,7 @@ export const LegendList: React.FC<LegendListProps> = ({
 				<div>
 					<div className="text-[14px] font-semibold">{name}</div>
 				</div>
-				<div className="font-mono text-[13px] text-ink">
+				<div className="font-mono text-[13px] text-default">
 					{readableSize(size)}
 				</div>
 			</div>
@@ -94,7 +94,7 @@ export const LegendList: React.FC<LegendListProps> = ({
 						</span>
 						<span
 							className={`min-w-0 flex-1 truncate ${
-								isDir ? "text-ink" : "text-muted"
+								isDir ? "text-default" : "text-muted"
 							}`}
 						>
 							{file.name}
@@ -119,7 +119,7 @@ export const LegendList: React.FC<LegendListProps> = ({
 				<button
 					type="button"
 					onClick={onShowAll}
-					className="mt-[6px] cursor-pointer rounded-[5px] px-[8px] py-[7px] text-left text-[12px] text-muted hover:bg-fill hover:text-ink"
+					className="mt-[6px] cursor-pointer rounded-[5px] px-[8px] py-[7px] text-left text-[12px] text-muted hover:bg-fill hover:text-default"
 				>
 					Show all {sorted.length} items{" "}
 					<span className="font-mono text-faint">({hiddenCount} more)</span>
@@ -201,8 +201,8 @@ const Checkbox = ({ checked, onChange }: CheckboxProps) => (
 		}}
 		className={`flex h-[14px] w-[14px] flex-shrink-0 cursor-pointer items-center justify-center rounded-[3px] border transition-opacity ${
 			checked
-				? "border-ink bg-ink text-paper opacity-100"
-				: "border-line bg-paper opacity-0 group-hover:opacity-100"
+				? "border-default bg-default text-background opacity-100"
+				: "border-line bg-background opacity-0 group-hover:opacity-100"
 		}`}
 	>
 		{checked && (

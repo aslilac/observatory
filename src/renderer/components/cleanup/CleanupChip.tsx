@@ -16,7 +16,7 @@ export const CleanupChip = ({
 			<button
 				type="button"
 				onClick={onClick}
-				className="ml-[6px] inline-flex cursor-pointer items-center gap-[6px] rounded-full border border-dashed border-line bg-transparent px-[10px] py-[5px] font-sans text-[11px] text-muted hover:border-ink hover:text-ink"
+				className="ml-[6px] inline-flex cursor-pointer items-center gap-[6px] rounded-full border border-dashed border-line bg-transparent px-[10px] py-[5px] font-sans text-[11px] text-muted hover:border-default hover:text-default"
 				title="Open cleanup queue"
 			>
 				<TrashIcon />
@@ -29,14 +29,14 @@ export const CleanupChip = ({
 		<button
 			type="button"
 			onClick={onClick}
-			className="ml-[6px] inline-flex cursor-pointer items-center gap-[8px] rounded-full border border-ink bg-paper py-[4px] pr-[4px] pl-[10px] font-sans text-[11px] text-ink hover:bg-fill"
+			className="ml-[6px] inline-flex cursor-pointer items-center gap-[8px] rounded-full border border-default bg-background py-[4px] pr-[4px] pl-[10px] font-sans text-[11px] text-default hover:bg-fill"
 			title="Open cleanup queue"
 		>
 			<TrashIcon />
 			<span className="font-medium">Cleanup</span>
 			<span className="font-mono text-muted">·</span>
 			<span className="font-mono">{count}</span>
-			<span className="rounded-full bg-ink px-[9px] py-[3px] font-mono text-[10px] font-semibold text-paper">
+			<span className="rounded-full bg-default px-[9px] py-[3px] font-mono text-[10px] font-semibold text-background">
 				{readableSize(totalSize)}
 			</span>
 		</button>

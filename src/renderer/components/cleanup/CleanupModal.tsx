@@ -57,7 +57,7 @@ export const CleanupModal = ({
 			}}
 		>
 			<div
-				className="w-[480px] rounded-modal bg-paper p-[24px] [box-shadow:var(--shadow-modal)]"
+				className="w-[480px] rounded-modal bg-background p-[24px] [box-shadow:var(--shadow-modal)]"
 				role="dialog"
 				aria-modal="true"
 			>
@@ -106,13 +106,13 @@ const ConfirmStage = ({
 			</div>
 			<div className="mb-[14px] text-[13px] text-muted">
 				This will move{" "}
-				<span className="font-mono font-semibold text-ink">
+				<span className="font-mono font-semibold text-default">
 					{readableSize(totalSize)}
 				</span>{" "}
 				across {items.length} path{items.length === 1 ? "" : "s"} to your system
 				Trash. You can restore items from Trash until you empty it.
 			</div>
-			<div className="mb-[20px] rounded-card border border-line-soft bg-fill px-[12px] py-[10px] font-mono text-[11px] text-ink">
+			<div className="mb-[20px] rounded-card border border-line-soft bg-fill px-[12px] py-[10px] font-mono text-[11px] text-default">
 				{preview.map((item) => (
 					<div key={item.path} className="truncate" title={item.path}>
 						{item.path}
@@ -150,9 +150,9 @@ const SuccessStage = ({
 	<>
 		<div className="mb-[8px] text-[16px] font-semibold">Cleanup complete</div>
 		<div className="mb-[24px] text-[13px] text-muted">
-			<span className="font-mono text-ink">{deleted}</span> item
+			<span className="font-mono text-default">{deleted}</span> item
 			{deleted === 1 ? "" : "s"} moved ·{" "}
-			<span className="font-mono text-ink">{readableSize(reclaimed)}</span>{" "}
+			<span className="font-mono text-default">{readableSize(reclaimed)}</span>{" "}
 			reclaimed.
 			{failed > 0 && (
 				<div className="mt-[8px] text-danger-fg">
@@ -178,7 +178,7 @@ const AlertIcon = () => (
 		strokeWidth="1.8"
 		strokeLinecap="round"
 		strokeLinejoin="round"
-		className="text-ink"
+		className="text-default"
 	>
 		<circle cx="12" cy="12" r="10" />
 		<path d="M12 8v4" />

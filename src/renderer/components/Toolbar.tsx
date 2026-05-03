@@ -96,7 +96,7 @@ const Chevron: React.FC = () => {
 
 const ScanningBadge: React.FC = () => (
 	<span className="ml-1.5 flex items-center gap-1.5 font-mono text-[11px] text-muted">
-		<span className="block size-1.5 animate-pulse rounded-full bg-ink" />
+		<span className="block size-1.5 animate-pulse rounded-full bg-default" />
 		scanning
 	</span>
 );
@@ -114,8 +114,8 @@ const Crumb: React.FC<CrumbProps> = ({ children, active, onClick }) => (
 		disabled={!onClick}
 		className={`rounded-button px-2.5 py-1 text-[12px] disabled:cursor-default ${
 			active
-				? "bg-fill font-semibold text-ink"
-				: "bg-transparent font-medium text-muted enabled:hover:bg-fill enabled:hover:text-ink"
+				? "bg-fill font-semibold text-default"
+				: "bg-transparent font-medium text-muted enabled:hover:bg-fill enabled:hover:text-default"
 		}`}
 	>
 		{children}
@@ -143,8 +143,8 @@ const IconButton: React.FC<IconButtonProps> = ({
 		disabled={disabled}
 		title={title}
 		className={`
-			inline-flex size-[26px] cursor-pointer items-center justify-center rounded-button border border-line bg-transparent p-0 text-[14px] text-ink hover:bg-fill
-			${active ? "border-ink bg-fill" : ""}
+			inline-flex size-[26px] cursor-pointer items-center justify-center rounded-button border border-line bg-transparent p-0 text-[14px] text-default hover:bg-fill
+			${active ? "border-default bg-fill" : ""}
 			${disabled ? "cursor-default opacity-40" : ""}
 		`}
 	>
@@ -173,7 +173,7 @@ export function Segmented<T extends string>({
 					title={o.label}
 					className={`inline-flex cursor-pointer items-center gap-[6px] rounded-[5px] border-0 px-[10px] py-[3px] text-[11px] ${
 						value === o.value
-							? "bg-paper font-semibold text-ink shadow-[0_1px_2px_rgba(0,0,0,0.06)]"
+							? "bg-background font-semibold text-default shadow-[0_1px_2px_rgba(0,0,0,0.06)]"
 							: "bg-transparent font-medium text-muted"
 					}`}
 				>

@@ -282,7 +282,7 @@ const Row = ({
 			}}
 			disabled={!expandable}
 			title={expandable ? (expanded ? "Collapse" : "Expand") : undefined}
-			className="-mx-[2px] grid h-[22px] w-[22px] flex-shrink-0 cursor-pointer place-items-center rounded-button text-faint hover:bg-fill-strong hover:text-ink disabled:cursor-default disabled:opacity-0 disabled:hover:bg-transparent"
+			className="-mx-[2px] grid h-[22px] w-[22px] flex-shrink-0 cursor-pointer place-items-center rounded-button text-faint hover:bg-fill-strong hover:text-default disabled:cursor-default disabled:opacity-0 disabled:hover:bg-transparent"
 		>
 			<Chevron rotation={expanded ? "down" : "right"} />
 		</button>
@@ -349,8 +349,8 @@ const Checkbox = ({
 		}}
 		className={`flex h-[14px] w-[14px] flex-shrink-0 cursor-pointer items-center justify-center rounded-[3px] border transition-opacity ${
 			checked
-				? "border-ink bg-ink text-paper opacity-100"
-				: "border-line bg-paper opacity-0 group-hover:opacity-100"
+				? "border-default bg-default text-background opacity-100"
+				: "border-line bg-background opacity-0 group-hover:opacity-100"
 		}`}
 	>
 		{checked && (

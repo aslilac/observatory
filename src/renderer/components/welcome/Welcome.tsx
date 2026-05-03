@@ -100,7 +100,7 @@ export const Welcome: React.FC<WelcomeProps> = ({
 										</span>
 										<span className="w-[100px] text-right font-mono">
 											{scan?.status === "complete" ? (
-												<span className="text-ink">
+												<span className="text-default">
 													{scan.size !== undefined
 														? readableSize(scan.size)
 														: "scanned"}
@@ -140,7 +140,7 @@ const VolumeCard: React.FC<VolumeCardProps> = ({ drive, scan, onOpen }) => {
 			`}
 		>
 			<div className="grid h-[36px] w-[36px] flex-shrink-0 place-items-center rounded-button border border-line">
-				<div className="h-[16px] w-[12px] rounded-[1px] border-[1.25px] border-ink" />
+				<div className="h-[16px] w-[12px] rounded-[1px] border-[1.25px] border-default" />
 			</div>
 			<div className="min-w-0 flex-1">
 				<div className="truncate text-[13px] font-semibold">

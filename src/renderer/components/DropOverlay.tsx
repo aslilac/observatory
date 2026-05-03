@@ -1,6 +1,6 @@
 export const DropOverlay: React.FC = () => (
 	<div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center bg-[rgba(26,26,26,0.32)] p-6">
-		<div className="flex min-h-[60%] w-full flex-col items-center justify-center gap-3 rounded-modal border-[2.5px] border-dashed border-paper bg-[rgba(250,250,248,0.08)] p-[40px] text-paper">
+		<div className="flex min-h-[60%] w-full flex-col items-center justify-center gap-3 rounded-modal border-[2.5px] border-dashed border-background bg-[rgba(250,250,248,0.08)] p-[40px] text-background">
 			<FolderIcon />
 			<div className="text-[20px] font-semibold">Drop folder to scan</div>
 			<div className="font-mono text-[12px] opacity-80">

@@ -20,7 +20,7 @@ type SortPickerProps = {
 };
 
 export const SortPicker: React.FC<SortPickerProps> = ({ value, onChange }) => (
-	<label className="relative inline-flex cursor-pointer items-center gap-1 rounded-button border border-line bg-paper h-8 px-2.5 font-mono text-[11px] text-ink hover:bg-fill">
+	<label className="relative inline-flex cursor-pointer items-center gap-1 rounded-button border border-line bg-background h-8 px-2.5 font-mono text-[11px] text-default hover:bg-fill">
 		<span className="text-muted">Sort:</span>
 		<span>{LABEL[value]}</span>
 		<span className="pl-1 text-[12px] text-faint">▾</span>

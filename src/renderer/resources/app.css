@@ -5,16 +5,16 @@
 	--font-sans: "Inter Variable", -apple-system, system-ui, sans-serif;
 	--font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
-	/* Classic palette — paper-and-ink with no accent. */
-	--color-paper: #fafaf8;
-	--color-ink: #1a1a1a;
+	/* Classic palette — background-and-default with no accent. */
+	--color-background: #fafaf8;
+	--color-default: #1a1a1a;
 	--color-muted: #6e6e68;
 	--color-faint: #9c9a92;
 	--color-line: #d8d6cf;
 	--color-line-soft: #e7e5dd;
 	--color-fill: #f0eee8;
 	--color-fill-strong: #e6e3dc;
-	/* The page-level canvas behind window surfaces; slightly warmer than paper. */
+	/* The page-level canvas behind window surfaces; slightly warmer. */
 	--color-canvas: #ebe8e0;
 
 	/* Inline-only danger; never used for hover/focus. */
@@ -42,11 +42,11 @@
 @custom-variant linux (&:where(.linux *), &:where(.linux));
 
 /* Dark theme — opt-in via a `.dark` class on <html>. Overrides every token
-   defined in @theme so utilities (bg-paper, text-ink, …) flip automatically
-   without a `dark:` prefix on every node. */
+   defined in @theme so utilities (bg-background, text-default, …) flip
+   automatically without a `dark:` prefix on every node. */
 :where(.dark) {
-	--color-paper: #1c1b18;
-	--color-ink: #ededea;
+	--color-background: #1c1b18;
+	--color-default: #ededea;
 	--color-muted: #9a9890;
 	--color-faint: #5e5c56;
 	--color-line: #3a3833;
@@ -69,7 +69,7 @@ body {
 	font-family: var(--font-sans);
 	font-size: 13px;
 	line-height: var(--leading-normal);
-	color: var(--text-ink);
+	color: var(--color-default);
 	/**
 	 * ss01 — open digits (more open apertures on 3/6/9, friendlier numerics)
 	 * cv05 — lowercase `l` with a tail (fewer collisions with `1` / `I`)
@@ -80,7 +80,7 @@ body {
 
 body {
 	user-select: none;
-	background-color: var(--color-paper);
+	background-color: var(--color-background);
 }
 
 #root {

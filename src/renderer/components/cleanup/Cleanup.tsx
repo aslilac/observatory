@@ -94,7 +94,7 @@ const QueueList = ({
 		<div className="mb-[18px] flex items-end justify-between">
 			<div>
 				<div className="eyebrow">You'll reclaim</div>
-				<div className="font-mono text-[40px] leading-[1.1] font-semibold text-ink">
+				<div className="font-mono text-[40px] leading-[1.1] font-semibold text-default">
 					{readableSize(totalSize)}
 				</div>
 			</div>
@@ -114,7 +114,7 @@ const QueueList = ({
 						{kindLabel(item)}
 					</span>
 					<span
-						className="min-w-0 flex-1 truncate font-mono text-ink"
+						className="min-w-0 flex-1 truncate font-mono text-default"
 						title={item.path}
 					>
 						{item.path}
@@ -126,7 +126,7 @@ const QueueList = ({
 						type="button"
 						onClick={() => onRemove(item.path)}
 						title="Remove from queue"
-						className="cursor-pointer text-[14px] leading-none text-faint hover:text-ink"
+						className="cursor-pointer text-[14px] leading-none text-faint hover:text-default"
 					>
 						×
 					</button>

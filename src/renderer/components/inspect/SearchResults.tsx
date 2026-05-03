@@ -33,7 +33,7 @@ export const SearchResults = ({
 				<div className="font-medium">No matches</div>
 				<div className="font-mono text-[11px] text-muted">
 					Nothing in this scan contains{" "}
-					<span className="text-ink">{query}</span>.
+					<span className="text-default">{query}</span>.
 				</div>
 			</div>
 		);
@@ -46,7 +46,7 @@ export const SearchResults = ({
 					{results.totalCount.toLocaleString()} match
 					{results.totalCount === 1 ? "" : "es"}
 				</div>
-				<div className="font-mono text-[12px] text-ink">
+				<div className="font-mono text-[12px] text-default">
 					{readableSize(results.totalSize)}
 				</div>
 			</div>
@@ -113,8 +113,8 @@ const Checkbox = ({
 		}}
 		className={`flex h-[14px] w-[14px] flex-shrink-0 cursor-pointer items-center justify-center rounded-[3px] border transition-opacity ${
 			checked
-				? "border-ink bg-ink text-paper opacity-100"
-				: "border-line bg-paper opacity-0 group-hover:opacity-100"
+				? "border-default bg-default text-background opacity-100"
+				: "border-line bg-background opacity-0 group-hover:opacity-100"
 		}`}
 	>
 		{checked && (

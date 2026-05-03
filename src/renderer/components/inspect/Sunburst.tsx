@@ -87,7 +87,7 @@ export const Sunburst: React.FC<SunburstProps> = ({
 					cx={0}
 					cy={0}
 					r={CENTER_R}
-					fill="var(--color-ink)"
+					fill="var(--color-default)"
 					style={{ cursor: "pointer" }}
 					onClick={onNavigateUp}
 				/>
@@ -96,7 +96,7 @@ export const Sunburst: React.FC<SunburstProps> = ({
 					y={1}
 					textAnchor="middle"
 					dominantBaseline="middle"
-					fill="var(--color-paper)"
+					fill="var(--color-background)"
 					fontFamily="IBM Plex Mono, ui-monospace, monospace"
 					fontSize={17}
 					fontWeight={600}
@@ -255,7 +255,7 @@ const Shard: React.FC<ShardProps> = ({
 		<path
 			d={arcPath(position, size, ir, or)}
 			fill={fill}
-			stroke="var(--color-paper)"
+			stroke="var(--color-background)"
 			strokeWidth={1.2}
 			className={hovered ? "pulse" : undefined}
 			style={{ cursor: interactive ? "pointer" : "default" }}
@@ -288,7 +288,7 @@ const Tooltip: React.FC<TooltipProps> = ({ file, x, y }) => {
 	return (
 		<div
 			role="tooltip"
-			className="pointer-events-none fixed min-w-[180px] z-10 rounded-card bg-ink px-4 py-3 text-[12px] text-paper shadow-menu"
+			className="pointer-events-none fixed min-w-[180px] z-10 rounded-card bg-default px-4 py-3 text-[12px] text-background shadow-menu"
 			style={{ left: x + 15, top: y + 5 }}
 		>
 			<div className="flex justify-between gap-3">

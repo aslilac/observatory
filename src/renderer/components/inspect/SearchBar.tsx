@@ -21,14 +21,14 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 				value={query}
 				onChange={(e) => onQueryChange(e.target.value)}
 				placeholder="Find files in this scan…"
-				className="flex-1 border-none bg-transparent font-sans text-[12px] text-ink outline-none placeholder:text-faint"
+				className="flex-1 border-none bg-transparent font-sans text-[12px] text-default outline-none placeholder:text-faint"
 			/>
 			{query && (
 				<button
 					type="button"
 					onClick={() => onQueryChange("")}
 					title="Clear search"
-					className="cursor-pointer text-[12px] leading-none text-faint hover:text-ink"
+					className="cursor-pointer text-[12px] leading-none text-faint hover:text-default"
 				>
 					×
 				</button>

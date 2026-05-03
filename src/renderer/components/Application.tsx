@@ -333,7 +333,7 @@ export const Application = () => {
 	return (
 		<div
 			id="application"
-			className={`relative grid h-screen grid-rows-[36px_1fr] bg-paper ${Ob.platform}`}
+			className={`relative grid h-screen grid-rows-[36px_1fr] bg-background ${Ob.platform}`}
 		>
 			<TitleBar title={titleSuffix} theme={theme} onToggleTheme={toggleTheme} />
 			<div className="flex min-h-0 flex-col overflow-hidden">

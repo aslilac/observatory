@@ -11,8 +11,8 @@ const base =
 	"disabled:cursor-default disabled:translate-y-0 disabled:bg-fill disabled:text-muted disabled:border-line";
 
 const variants: Record<Variant, string> = {
-	default: "border border-ink bg-paper text-ink",
-	primary: "border border-ink bg-ink text-paper",
+	default: "border border-default bg-background text-default",
+	primary: "border border-default bg-default text-background",
 	danger: "border border-danger-border bg-danger-bg text-danger-fg",
 };
 
