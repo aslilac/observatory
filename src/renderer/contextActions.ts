@@ -1,7 +1,6 @@
 import type { ContextMenuItem } from "./components/ContextMenu";
 
 const isMac = Ob.platform === "darwin";
-const meta = isMac ? "⌘" : "Ctrl+";
 
 type RowActionsArgs = {
 	path: string;
@@ -11,9 +10,9 @@ type RowActionsArgs = {
 	onAddToCleanup: (item: { path: string; name: string; size: number }) => void;
 };
 
-// The menu the design calls for on a file/folder row: open, reveal, copy,
-// add to cleanup. Sort actions are list-scoped so they're emitted by
-// LegendList itself rather than this shared builder.
+// Right-click items shared across LegendList, FolderTree, and SearchResults
+// rows. Keeps the four destructive-or-navigational actions the design calls
+// for; per-list controls (sort, etc.) live next to their own UI.
 export function rowActions({
 	path,
 	name,
@@ -22,22 +21,15 @@ export function rowActions({
 	onAddToCleanup,
 }: RowActionsArgs): ContextMenuItem[] {
 	return [
-		{
-			kind: "item",
-			label: "Open",
-			accelerator: "↵",
-			onClick: () => void Ob.openPath(path),
-		},
+		{ kind: "item", label: "Open", onClick: () => void Ob.openPath(path) },
 		{
 			kind: "item",
 			label: isMac ? "Reveal in Finder" : "Show in Folder",
-			accelerator: `${meta}R`,
 			onClick: () => void Ob.revealInFinder(path),
 		},
 		{
 			kind: "item",
 			label: "Copy path",
-			accelerator: `${meta}C`,
 			onClick: () => {
 				void navigator.clipboard.writeText(path);
 			},
@@ -46,7 +38,6 @@ export function rowActions({
 		{
 			kind: "item",
 			label: type === "directory" ? "Add folder to cleanup" : "Add to cleanup",
-			accelerator: `${meta}⏎`,
 			onClick: () => onAddToCleanup({ path, name, size }),
 		},
 	];

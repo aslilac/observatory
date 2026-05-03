@@ -210,7 +210,6 @@ export const Inspect: React.FC<InspectProps> = ({
 							onToggleSelect={toggleSelect}
 							onAddToCleanup={(item) => onAddToCleanup([item])}
 							sortMode={sortMode}
-							onSortChange={onSortChange}
 							showAll={showAll}
 							onShowAll={() => setShowAll(true)}
 						/>

@@ -4,7 +4,6 @@ export type ContextMenuItem =
 	| {
 			kind: "item";
 			label: string;
-			accelerator?: string;
 			disabled?: boolean;
 			onClick: () => void;
 	  }
@@ -101,14 +100,9 @@ export function useContextMenu(): ContextMenuHandle {
 							close();
 							item.onClick();
 						}}
-						className="flex w-full cursor-pointer items-center justify-between gap-6 px-3 py-1.5 text-left text-default hover:bg-fill disabled:cursor-default disabled:text-faint disabled:hover:bg-transparent"
+						className="block w-full cursor-pointer px-3 py-1.5 text-left text-default hover:bg-fill disabled:cursor-default disabled:text-faint disabled:hover:bg-transparent"
 					>
-						<span>{item.label}</span>
-						{item.accelerator && (
-							<span className="font-mono text-[11px] text-faint">
-								{item.accelerator}
-							</span>
-						)}
+						{item.label}
 					</button>
 				),
 			)}
