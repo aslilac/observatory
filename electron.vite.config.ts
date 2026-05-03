@@ -53,5 +53,3 @@ export default {
 		},
 	},
 } satisfies import("electron-vite").UserConfig;
-
-/Applications
