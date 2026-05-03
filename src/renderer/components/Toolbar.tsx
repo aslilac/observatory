@@ -34,46 +34,47 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 				›
 			</IconButton>
 			<div className="mx-1 h-6 w-px bg-line" />
-			<Crumb
-				active={!inAScan && !inView}
-				onClick={inAScan || inView ? showMenu : undefined}
-			>
-				Disks and folders
-			</Crumb>
-			{inView && (
-				<>
-					<Chevron />
-					<Crumb active>{view}</Crumb>
-				</>
-			)}
-			{inAScan && (
-				<>
-					<Chevron />
-					<Crumb
-						active={cursor.length === 0}
-						onClick={cursor.length > 0 ? () => setCursor([]) : undefined}
-					>
-						{root}
-					</Crumb>
-				</>
-			)}
-			{cursor.map((piece, i) => (
-				<Fragment key={i}>
-					<Chevron />
-					<Crumb
-						active={i === cursor.length - 1}
-						onClick={
-							i < cursor.length - 1
-								? () => setCursor(cursor.slice(0, i + 1))
-								: undefined
-						}
-					>
-						{piece}
-					</Crumb>
-				</Fragment>
-			))}
-			{scanning && <ScanningBadge />}
-			<div className="flex-1" />
+			<div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+				<Crumb
+					active={!inAScan && !inView}
+					onClick={inAScan || inView ? showMenu : undefined}
+				>
+					Disks and folders
+				</Crumb>
+				{inView && (
+					<>
+						<Chevron />
+						<Crumb active>{view}</Crumb>
+					</>
+				)}
+				{inAScan && (
+					<>
+						<Chevron />
+						<Crumb
+							active={cursor.length === 0}
+							onClick={cursor.length > 0 ? () => setCursor([]) : undefined}
+						>
+							{root}
+						</Crumb>
+					</>
+				)}
+				{cursor.map((piece, i) => (
+					<Fragment key={i}>
+						<Chevron />
+						<Crumb
+							active={i === cursor.length - 1}
+							onClick={
+								i < cursor.length - 1
+									? () => setCursor(cursor.slice(0, i + 1))
+									: undefined
+							}
+						>
+							{piece}
+						</Crumb>
+					</Fragment>
+				))}
+				{scanning && <ScanningBadge />}
+			</div>
 			{right}
 			{chips}
 		</div>
@@ -81,7 +82,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 };
 
 const Chevron: React.FC = () => {
-	return <span className="text-[12px] text-faint">›</span>;
+	return <span className="flex-shrink-0 text-[12px] text-faint">›</span>;
 };
 
 const ScanningBadge: React.FC = () => (
@@ -102,7 +103,7 @@ const Crumb: React.FC<CrumbProps> = ({ children, active, onClick }) => (
 		type="button"
 		onClick={onClick}
 		disabled={!onClick}
-		className={`rounded-button px-2.5 py-1 text-[12px] disabled:cursor-default ${
+		className={`flex-shrink-0 rounded-button px-2.5 py-1 text-[12px] disabled:cursor-default ${
 			active
 				? "bg-fill font-semibold text-default"
 				: "bg-transparent font-medium text-muted enabled:hover:bg-fill enabled:hover:text-default"
