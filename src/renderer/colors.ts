@@ -1,26 +1,28 @@
-// Categorical palette for top-level slice / dot color. Hues are spaced
-// across the wheel so neighbors stay distinguishable; the design uses these
-// or close to them. Lightness/chroma are constant (oklch) so colors read as
-// equally weighted against paper.
-const HUE_TABLE = [140, 280, 200, 0, 30, 320, 60, 240, 100, 180, 240, 90];
-
-export function hueFor(index: number): number {
-	return HUE_TABLE[index % HUE_TABLE.length]!;
+// Map each top-level entry to a hue placed around the colour wheel by
+// cumulative byte position. Files arrive size-desc, so the biggest entry
+// gets the widest wedge of the hue range and the rainbow wraps the full
+// 0..360 around the sunburst circle. Returned hues are at the angular
+// midpoint of each entry's slice so the colour reads as "centered" on the
+// wedge.
+export function huesByPosition(files: Ob.VfsNode[]): Map<string, number> {
+	const map = new Map<string, number>();
+	const total = files.reduce((s, f) => s + f.size, 0);
+	if (total === 0) return map;
+	let bytes = 0;
+	for (const file of files) {
+		map.set(file.name, ((bytes + file.size / 2) / total) * 360);
+		bytes += file.size;
+	}
+	return map;
 }
 
 export function oklchSwatch(hue: number): string {
 	return `oklch(0.7 0.18 ${hue})`;
 }
 
-// Slightly lighter shade for outer-ring children in the sunburst.
-export function oklchOuter(hue: number, jitter = 0): string {
-	return `oklch(0.78 0.16 ${hue + jitter})`;
-}
-
-// Color for a sunburst arc. `hue` is from `hueFor(topLevelIndex)` so the dot
-// in the legend list and the corresponding wedge in the sunburst share a
-// hue. Layer adjusts lightness/chroma so deeper rings read as related but
-// distinct. The `imaginary` type is the small-items remainder slice.
+// Color for a sunburst arc. Layer adjusts lightness/chroma so deeper rings
+// read as related but distinct. The `imaginary` type is the small-items
+// remainder slice.
 export function sunburstColor(
 	hue: number,
 	layer: number,

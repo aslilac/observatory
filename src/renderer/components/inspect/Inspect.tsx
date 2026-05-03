@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
+import { huesByPosition } from "../../colors";
 import { type CleanupItem, useSearch } from "../../state";
 import { readableSize } from "../../util";
 import { Segmented, Toolbar } from "../Toolbar";
@@ -153,6 +154,11 @@ export const Inspect = ({
 
 	const { sunburst, list, tree: treeFiles, ...shared } = tree;
 	const treeChildren = treeFiles?.files ?? list.files;
+	// Single source of truth for top-level hues so the dot in the legend list,
+	// the depth-1 hint in the folder tree, and the wedge in the sunburst all
+	// agree. Built from the size-desc list so the rainbow lays itself out
+	// proportionally to byte share.
+	const hueByName = useMemo(() => huesByPosition(list.files), [list.files]);
 
 	return (
 		<>
@@ -195,6 +201,7 @@ export const Inspect = ({
 					size={shared.size}
 					position={shared.position}
 					rootSize={shared.rootSize}
+					hueByName={hueByName}
 					onNavigateUp={navigateUp}
 					onNavigateForward={navigateForward}
 				/>
@@ -215,6 +222,7 @@ export const Inspect = ({
 							size={tree.size}
 							capacity={tree.capacity}
 							files={list.files}
+							hueByName={hueByName}
 							selection={selection}
 							onForward={navigateForward}
 							onToggleSelect={toggleSelect}
@@ -230,6 +238,7 @@ export const Inspect = ({
 								cursor.length > 0 ? cursor[cursor.length - 1]! : tree.name
 							}
 							files={treeChildren}
+							hueByName={hueByName}
 							selection={selection}
 							onForward={navigateForward}
 							onToggleSelect={toggleSelect}

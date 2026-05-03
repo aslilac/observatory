@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 
-import { hueFor, sunburstColor } from "../../colors";
+import { sunburstColor } from "../../colors";
 import { readableSize } from "../../util";
 
 // The sunburst is built around a 600-unit square viewBox so the inner
@@ -16,6 +16,7 @@ type SunburstProps = {
 	size: number;
 	position: number;
 	rootSize: number;
+	hueByName: Map<string, number>;
 	onNavigateUp: () => void;
 	onNavigateForward: (...into: string[]) => void;
 };
@@ -35,6 +36,7 @@ export const Sunburst: React.FC<SunburstProps> = ({
 	capacity,
 	files,
 	size,
+	hueByName,
 	onNavigateUp,
 	onNavigateForward,
 }) => {
@@ -44,7 +46,10 @@ export const Sunburst: React.FC<SunburstProps> = ({
 		typeof document !== "undefined" &&
 		document.documentElement.classList.contains("dark");
 
-	const shards = useMemo(() => buildShards(files, capacity), [files, capacity]);
+	const shards = useMemo(
+		() => buildShards(files, capacity, hueByName),
+		[files, capacity, hueByName],
+	);
 
 	const clearHover = () => setHover(null);
 
@@ -191,7 +196,11 @@ const Tooltip: React.FC<TooltipProps> = ({ shard, x, y }) => {
 	);
 };
 
-function buildShards(files: Ob.VfsNode[], capacity: number): ShardEntry[] {
+function buildShards(
+	files: Ob.VfsNode[],
+	capacity: number,
+	hueByName: Map<string, number>,
+): ShardEntry[] {
 	const result: ShardEntry[] = [];
 	const minImaginary = 0.003;
 
@@ -203,9 +212,12 @@ function buildShards(files: Ob.VfsNode[], capacity: number): ShardEntry[] {
 		parentPath: string[],
 	): number => {
 		let pos = startPos;
-		for (const [idx, file] of nodes.entries()) {
+		for (const file of nodes) {
 			const sliceSize = file.size / capacity;
-			const myHue = layer === 0 ? hueFor(idx) : (parentHue ?? hueFor(0));
+			const myHue =
+				layer === 0
+					? (hueByName.get(file.name) ?? 0)
+					: (parentHue ?? 0);
 			const path = [...parentPath, file.name];
 			result.push({
 				id: `${layer}/${path.join("/")}`,
@@ -258,7 +270,7 @@ function buildShards(files: Ob.VfsNode[], capacity: number): ShardEntry[] {
 			layer: 0,
 			position: totalEnd,
 			size: remainder,
-			hue: hueFor(0),
+			hue: 0,
 			type: "imaginary",
 			path: [],
 		});
@@ -278,6 +290,29 @@ function layerRadii(layer: number): { ir: number; or: number } {
 	return { ir, or: ir + 31 };
 }
 
+// Build the SVG `d` attribute for one wedge of an annulus (donut slice).
+//
+// Inputs are in "turns" of a unit circle so the rest of the file can stay in
+// fractional-of-total terms:
+//
+//   position  cumulative offset of this wedge's start, 0..1
+//   size      angular width of this wedge, 0..1
+//   ir, or    inner / outer radius in viewBox units
+//
+// `a` and `b` are the start and end angles in radians, rotated by
+// BASE_ANGLE_TURNS so the 0-position lands where the design wants it (5/8
+// of the way around, i.e. roughly the top-left). The `largeArc` flag is
+// SVG's way of disambiguating arcs over 180°: 0 picks the short way, 1
+// picks the long way. We need it set for any single wedge that wraps more
+// than half the circle.
+//
+// The outline is built outer-arc clockwise, then radially in to the inner
+// circle, then inner-arc counter-clockwise (sweep-flag 0) back to the
+// starting angle, then closed:
+//
+//       (ox1,oy1) ─→ outer arc ─→ (ox2,oy2)
+//          ↑                          ↓
+//       (ix1,iy1) ←─ inner arc ←─ (ix2,iy2)
 function arcPath(
 	position: number,
 	size: number,
@@ -288,10 +323,12 @@ function arcPath(
 	const b = (BASE_ANGLE_TURNS + position + size) * Math.PI * 2;
 	const largeArc = b - a > Math.PI ? 1 : 0;
 
+	// Outer ring endpoints
 	const ox1 = (or * Math.cos(a)).toFixed(2);
 	const oy1 = (or * Math.sin(a)).toFixed(2);
 	const ox2 = (or * Math.cos(b)).toFixed(2);
 	const oy2 = (or * Math.sin(b)).toFixed(2);
+	// Inner ring endpoints
 	const ix1 = (ir * Math.cos(a)).toFixed(2);
 	const iy1 = (ir * Math.sin(a)).toFixed(2);
 	const ix2 = (ir * Math.cos(b)).toFixed(2);

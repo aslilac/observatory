@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 
-import { hueFor, oklchSwatch } from "../../colors";
+import { oklchSwatch } from "../../colors";
 import { joinPath } from "../../state";
 import { readableDate, readableSize } from "../../util";
 import type { SortMode } from "./SortPicker";
@@ -16,6 +16,7 @@ type LegendListProps = {
 	size: number;
 	capacity: number;
 	files: Ob.VfsNode[];
+	hueByName: Map<string, number>;
 	selection: Map<string, SelectableItem>;
 	onForward: (name: string) => void;
 	onToggleSelect: (item: SelectableItem) => void;
@@ -24,31 +25,22 @@ type LegendListProps = {
 	onShowAll: () => void;
 };
 
-export const LegendList = ({
+export const LegendList: React.FC<LegendListProps> = ({
 	inspecting,
 	cursor,
 	name,
 	size,
 	capacity,
 	files,
+	hueByName,
 	selection,
 	onForward,
 	onToggleSelect,
 	sortMode,
 	showAll,
 	onShowAll,
-}: LegendListProps) => {
+}) => {
 	const free = capacity > size ? capacity - size : 0;
-
-	// `files` arrives sorted by size descending from the VFS, which is also
-	// the order the sunburst draws its top-level slices. Lock each item's
-	// dot color to that order so re-sorting the list doesn't shuffle the
-	// palette away from the wedges.
-	const hueByName = useMemo(() => {
-		const map = new Map<string, number>();
-		for (const [i, f] of files.entries()) map.set(f.name, hueFor(i));
-		return map;
-	}, [files]);
 
 	const sorted = useMemo(() => sortFiles(files, sortMode), [files, sortMode]);
 
@@ -77,7 +69,7 @@ export const LegendList = ({
 				};
 				const isSelected = selection.has(fullPath);
 				const isDir = file.type === "directory";
-				const hue = hueByName.get(file.name) ?? hueFor(0);
+				const hue = hueByName.get(file.name) ?? 0;
 
 				return (
 					<div

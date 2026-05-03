@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 
-import { hueFor, oklchSwatch } from "../../colors";
+import { oklchSwatch } from "../../colors";
 import { joinPath } from "../../state";
 import { readableSize } from "../../util";
 
@@ -13,20 +13,22 @@ type FolderTreeProps = {
 	cursor: string[];
 	rootName: string;
 	files: Ob.VfsNode[];
+	hueByName: Map<string, number>;
 	selection: Map<string, SelectableItem>;
 	onForward: (...names: string[]) => void;
 	onToggleSelect: (item: SelectableItem) => void;
 };
 
-export const FolderTree = ({
+export const FolderTree: React.FC<FolderTreeProps> = ({
 	inspecting,
 	cursor,
 	rootName,
 	files,
+	hueByName,
 	selection,
 	onForward,
 	onToggleSelect,
-}: FolderTreeProps) => {
+}) => {
 	const [expanded, setExpanded] = useState<Set<string>>(() => new Set([""]));
 	const [cache, setCache] = useState<Map<string, CacheValue>>(new Map());
 
@@ -96,6 +98,7 @@ export const FolderTree = ({
 					toggleExpand={toggleExpand}
 					cache={cache}
 					requestChildren={requestChildren}
+					hueByName={hueByName}
 					selection={selection}
 					onForward={onForward}
 					onToggleSelect={onToggleSelect}
@@ -115,12 +118,13 @@ type ChildrenProps = {
 	toggleExpand: (key: string) => void;
 	cache: Map<string, CacheValue>;
 	requestChildren: (key: string, subCursor: string[]) => void;
+	hueByName: Map<string, number>;
 	selection: Map<string, SelectableItem>;
 	onForward: (...names: string[]) => void;
 	onToggleSelect: (item: SelectableItem) => void;
 };
 
-const TreeChildren = ({
+const TreeChildren: React.FC<ChildrenProps> = ({
 	inspecting,
 	cursor,
 	files,
@@ -130,12 +134,13 @@ const TreeChildren = ({
 	toggleExpand,
 	cache,
 	requestChildren,
+	hueByName,
 	selection,
 	onForward,
 	onToggleSelect,
-}: ChildrenProps) => (
+}) => (
 	<>
-		{files.map((file, i) => {
+		{files.map((file) => {
 			const key = [...path, file.name].join("/");
 			const fullPath = joinPath(inspecting, ...cursor, ...path, file.name);
 			const item: SelectableItem = {
@@ -172,7 +177,7 @@ const TreeChildren = ({
 						name={file.name}
 						size={file.size}
 						depth={depth}
-						hue={depth === 1 && isDir ? hueFor(i) : null}
+						hue={depth === 1 && isDir ? hueByName.get(file.name) ?? null : null}
 						expandable={expandable}
 						expanded={isOpen}
 						selected={selection.has(fullPath)}
@@ -207,6 +212,7 @@ const TreeChildren = ({
 									toggleExpand={toggleExpand}
 									cache={cache}
 									requestChildren={requestChildren}
+									hueByName={hueByName}
 									selection={selection}
 									onForward={onForward}
 									onToggleSelect={onToggleSelect}
