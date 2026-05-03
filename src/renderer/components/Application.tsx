@@ -4,7 +4,6 @@ import React, {
 	useEffect,
 	useLayoutEffect,
 	useMemo,
-	useRef,
 	useState,
 } from "react";
 
@@ -22,7 +21,7 @@ import {
 import { Cleanup } from "./cleanup/Cleanup";
 import { CleanupChip } from "./cleanup/CleanupChip";
 import { CleanupModal } from "./cleanup/CleanupModal";
-import { DropOverlay } from "./DropOverlay";
+import { DragReceiver } from "./DragReceiver";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { Inspect } from "./inspect/Inspect";
 import { IssuesChip } from "./IssuesChip";
@@ -191,42 +190,6 @@ export const Application = () => {
 		setInspecting(null);
 	}, [inspecting, setInspecting]);
 
-	const [dragOver, setDragOver] = useState(false);
-	const dragCounter = useRef(0);
-
-	const handleDragEnter = useCallback((e: React.DragEvent) => {
-		if (!e.dataTransfer.types.includes("Files")) return;
-		e.preventDefault();
-		dragCounter.current += 1;
-		setDragOver(true);
-	}, []);
-
-	const handleDragOver = useCallback((e: React.DragEvent) => {
-		if (!e.dataTransfer.types.includes("Files")) return;
-		e.preventDefault();
-		e.dataTransfer.dropEffect = "copy";
-	}, []);
-
-	const handleDragLeave = useCallback((e: React.DragEvent) => {
-		if (!e.dataTransfer.types.includes("Files")) return;
-		dragCounter.current = Math.max(0, dragCounter.current - 1);
-		if (dragCounter.current === 0) setDragOver(false);
-	}, []);
-
-	const handleDrop = useCallback(
-		(e: React.DragEvent) => {
-			if (!e.dataTransfer.types.includes("Files")) return;
-			e.preventDefault();
-			dragCounter.current = 0;
-			setDragOver(false);
-			const file = e.dataTransfer.files[0];
-			if (!file) return;
-			const path = Ob.pathForFile(file);
-			if (path) onOpen(path);
-		},
-		[onOpen],
-	);
-
 	const [pastePath, setPastePath] = useState<string | null>(null);
 	const [pasteStat, setPasteStat] = useState<Ob.PathStat | null>(null);
 
@@ -371,10 +334,6 @@ export const Application = () => {
 		<div
 			id="application"
 			className={`relative grid h-screen grid-rows-[36px_1fr] bg-paper ${Ob.platform}`}
-			onDragEnter={handleDragEnter}
-			onDragOver={handleDragOver}
-			onDragLeave={handleDragLeave}
-			onDrop={handleDrop}
 		>
 			<TitleBar title={titleSuffix} theme={theme} onToggleTheme={toggleTheme} />
 			<div className="flex min-h-0 flex-col overflow-hidden">
@@ -406,7 +365,7 @@ export const Application = () => {
 					onConfirm={confirmPaste}
 				/>
 			)}
-			{dragOver && <DropOverlay />}
+			<DragReceiver onDrop={onOpen} />
 		</div>
 	);
 };
