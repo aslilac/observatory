@@ -1,9 +1,7 @@
-import React from "react";
-
-import type { RecentScan } from "../state";
-import { readableSize } from "../util";
-import { Button } from "./Button";
-import { Toolbar } from "./Toolbar";
+import type { RecentScan } from "../../state";
+import { readableSize } from "../../util";
+import { Button } from "../Button";
+import { Toolbar } from "../Toolbar";
 
 type WelcomeProps = {
 	drives: Ob.PhysicalDrive[];
@@ -18,7 +16,7 @@ type WelcomeProps = {
 	chips: React.ReactNode;
 };
 
-export const Welcome = ({
+export const Welcome: React.FC<WelcomeProps> = ({
 	drives,
 	scans,
 	recent,
@@ -29,7 +27,7 @@ export const Welcome = ({
 	onBack,
 	onForward,
 	chips,
-}: WelcomeProps) => {
+}) => {
 	const scanByPath = new Map(scans.map((s) => [s.path, s]));
 	return (
 		<>
@@ -40,7 +38,7 @@ export const Welcome = ({
 				onForward={onForward}
 				chips={chips}
 			/>
-			<div className="flex flex-1 flex-col gap-[22px] overflow-auto px-[28px] py-[24px]">
+			<div className="flex flex-1 flex-col gap-6 overflow-auto px-8 py-6">
 				<div>
 					<div className="text-[22px] font-semibold tracking-[-0.2px]">
 						Pick something to scan
@@ -52,14 +50,13 @@ export const Welcome = ({
 
 				{drives.length > 0 && (
 					<div>
-						<div className="eyebrow mb-[8px]">Mounted volumes</div>
+						<div className="eyebrow mb-2">Disks</div>
 						<div className="grid grid-cols-2 gap-[10px]">
 							{drives.map((drive, i) => (
 								<VolumeCard
 									key={drive.mountPath}
 									drive={drive}
 									scan={scanByPath.get(drive.mountPath)}
-									primary={i === 0}
 									onScan={() => onScan(drive.mountPath)}
 									onInspect={() => onInspect(drive.mountPath)}
 								/>
@@ -68,23 +65,26 @@ export const Welcome = ({
 					</div>
 				)}
 
-				<div className="flex items-center gap-[14px] rounded-card border-[1.5px] border-dashed border-line px-[18px] py-[14px]">
-					<div className="flex-1">
-						<div className="text-[13px] font-semibold">
-							Drop a folder here to scan
+				<div>
+					<div className="eyebrow mb-2">Folders</div>
+					<div className="flex items-center gap-[14px] rounded-card border-[1.5px] border-dashed border-line px-[18px] py-[14px]">
+						<div className="flex-1">
+							<div className="text-[13px] font-semibold">
+								Drop a folder here to scan
+							</div>
+							<div className="mt-[2px] font-mono text-[11px] text-muted">
+								or paste a path
+							</div>
 						</div>
-						<div className="mt-[2px] font-mono text-[11px] text-muted">
-							or paste a path
-						</div>
+						<Button onClick={() => void Ob.selectDirectory()}>
+							Choose folder…
+						</Button>
 					</div>
-					<Button onClick={() => void Ob.selectDirectory()}>
-						Choose folder…
-					</Button>
 				</div>
 
 				{recent.length > 0 && (
 					<div>
-						<div className="eyebrow mb-[8px]">Recent</div>
+						<div className="eyebrow mb-2">Recent</div>
 						<div className="overflow-hidden rounded-card border border-line-soft">
 							{recent.map((entry, i) => {
 								const scan = scanByPath.get(entry.path);
@@ -133,39 +133,31 @@ export const Welcome = ({
 type VolumeCardProps = {
 	drive: Ob.PhysicalDrive;
 	scan?: Ob.ScanInfo;
-	primary: boolean;
 	onScan: () => void;
 	onInspect: () => void;
 };
 
-const VolumeCard = ({
+const VolumeCard: React.FC<VolumeCardProps> = ({
 	drive,
 	scan,
-	primary,
 	onScan,
 	onInspect,
-}: VolumeCardProps) => {
+}) => {
 	const status = scan?.status;
 	// While a scan is building we still want clicks to land on the progress
 	// view — onScan covers it because Ob.scanPath is a no-op when the path
 	// already has an entry in vfsManager and setInspecting routes the user
 	// to whatever view matches the scan's current status.
 	const handleClick = status === "complete" ? onInspect : onScan;
-	const action =
-		status === "complete"
-			? "View"
-			: status === "building"
-				? "Scanning…"
-				: "Scan";
+
 	return (
 		<button
 			type="button"
 			onClick={handleClick}
-			className={`flex items-center gap-[12px] rounded-card border bg-paper p-[12px] text-left transition-shadow ${
-				primary
-					? "border-ink shadow-[0_0_0_3px_rgba(26,26,26,0.06)]"
-					: "border-line"
-			} hover:shadow-window`}
+			className={`
+				flex items-center gap-3 p-3 rounded-card
+				border border-line text-left transition-shadow hover:shadow-window
+			`}
 		>
 			<div className="grid h-[36px] w-[36px] flex-shrink-0 place-items-center rounded-button border border-line">
 				<div className="h-[16px] w-[12px] rounded-[1px] border-[1.25px] border-ink" />
@@ -178,7 +170,10 @@ const VolumeCard = ({
 					{drive.mountPath}
 				</div>
 			</div>
-			<span className="font-mono text-[11px] text-muted">{action}</span>
+			<span className="font-mono text-[11px] text-muted">
+				{status === "complete" && scan?.size && readableSize(scan.size)}
+				{status === "building" && "Scanning…"}
+			</span>
 		</button>
 	);
 };

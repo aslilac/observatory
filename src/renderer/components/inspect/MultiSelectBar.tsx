@@ -1,5 +1,3 @@
-import React from "react";
-
 import { readableSize } from "../../util";
 import { Button } from "../Button";
 

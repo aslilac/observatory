@@ -30,7 +30,7 @@ import { IssuesModal } from "./IssuesModal";
 import { PasteConfirm } from "./PasteConfirm";
 import { Scanning } from "./Scanning";
 import { ThemeToggle } from "./ThemeToggle";
-import { Welcome } from "./Welcome";
+import { Welcome } from "./welcome/Welcome";
 
 type NavView = "scan" | "cleanup";
 type NavEntry = {

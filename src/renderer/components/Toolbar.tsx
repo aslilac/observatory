@@ -1,4 +1,4 @@
-import React from "react";
+import { Fragment } from "react";
 
 type ToolbarProps = {
 	root?: string;
@@ -18,7 +18,7 @@ type ToolbarProps = {
 	view?: string;
 };
 
-export const Toolbar = ({
+export const Toolbar: React.FC<ToolbarProps> = ({
 	root,
 	cursor = [],
 	onShowMenu,
@@ -31,18 +31,19 @@ export const Toolbar = ({
 	onForward,
 	chips,
 	view,
-}: ToolbarProps) => {
-	const inAScan = !!root;
-	const inView = !!view;
+}) => {
+	const inAScan = Boolean(root);
+	const inView = Boolean(view);
+
 	return (
 		<div className="flex h-[44px] items-center gap-2 border-b border-line-soft px-3">
-			<IconBtn onClick={onBack} disabled={!canBack} title="Back">
+			<IconButton onClick={onBack} disabled={!canBack} title="Back">
 				‹
-			</IconBtn>
-			<IconBtn onClick={onForward} disabled={!canForward} title="Forward">
+			</IconButton>
+			<IconButton onClick={onForward} disabled={!canForward} title="Forward">
 				›
-			</IconBtn>
-			<div className="mx-1 h-[18px] w-px bg-line" />
+			</IconButton>
+			<div className="mx-1 h-6 w-px bg-line" />
 			<Crumb
 				active={!inAScan && !inView}
 				onClick={inAScan || inView ? onShowMenu : undefined}
@@ -67,7 +68,7 @@ export const Toolbar = ({
 				</>
 			)}
 			{cursor.map((piece, i) => (
-				<React.Fragment key={i}>
+				<Fragment key={i}>
 					<Chevron />
 					<Crumb
 						active={i === cursor.length - 1}
@@ -79,7 +80,7 @@ export const Toolbar = ({
 					>
 						{piece}
 					</Crumb>
-				</React.Fragment>
+				</Fragment>
 			))}
 			{scanning && <ScanningBadge />}
 			<div className="flex-1" />
@@ -89,11 +90,13 @@ export const Toolbar = ({
 	);
 };
 
-const Chevron = () => <span className="text-[12px] text-faint">›</span>;
+const Chevron: React.FC = () => {
+	return <span className="text-[12px] text-faint">›</span>;
+};
 
-const ScanningBadge = () => (
-	<span className="ml-[6px] flex items-center gap-[6px] font-mono text-[11px] text-muted">
-		<span className="block h-[6px] w-[6px] animate-pulse rounded-full bg-ink" />
+const ScanningBadge: React.FC = () => (
+	<span className="ml-1.5 flex items-center gap-1.5 font-mono text-[11px] text-muted">
+		<span className="block size-1.5 animate-pulse rounded-full bg-ink" />
 		scanning
 	</span>
 );
@@ -104,12 +107,12 @@ type CrumbProps = {
 	onClick?: () => void;
 };
 
-const Crumb = ({ children, active, onClick }: CrumbProps) => (
+const Crumb: React.FC<CrumbProps> = ({ children, active, onClick }) => (
 	<button
 		type="button"
 		onClick={onClick}
 		disabled={!onClick}
-		className={`rounded-button px-[10px] py-[4px] text-[12px] disabled:cursor-default ${
+		className={`rounded-button px-2.5 py-1 text-[12px] disabled:cursor-default ${
 			active
 				? "bg-fill font-semibold text-ink"
 				: "bg-transparent font-medium text-muted enabled:hover:bg-fill enabled:hover:text-ink"
@@ -119,7 +122,7 @@ const Crumb = ({ children, active, onClick }: CrumbProps) => (
 	</button>
 );
 
-type IconBtnProps = {
+type IconButtonProps = {
 	children: React.ReactNode;
 	onClick?: () => void;
 	active?: boolean;
@@ -127,21 +130,23 @@ type IconBtnProps = {
 	title?: string;
 };
 
-const IconBtn = ({
+const IconButton: React.FC<IconButtonProps> = ({
 	children,
 	onClick,
 	active,
 	disabled,
 	title,
-}: IconBtnProps) => (
+}) => (
 	<button
 		type="button"
 		onClick={onClick}
 		disabled={disabled}
 		title={title}
-		className={`icon-btn ${active ? "icon-btn-active" : ""} ${
-			disabled ? "cursor-default opacity-40" : ""
-		}`}
+		className={`
+			inline-flex size-[26px] cursor-pointer items-center justify-center rounded-button border border-line bg-transparent p-0 text-[14px] text-ink hover:bg-fill
+			${active ? "border-ink bg-fill" : ""}
+			${disabled ? "cursor-default opacity-40" : ""}
+		`}
 	>
 		{children}
 	</button>

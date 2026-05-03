@@ -1,5 +1,3 @@
-import React from "react";
-
 type IssuesChipProps = {
 	count: number;
 	onClick: () => void;
@@ -22,7 +20,7 @@ export const IssuesChip = ({ count, onClick }: IssuesChipProps) => {
 	);
 };
 
-const AlertIcon = () => (
+const AlertIcon: React.FC = () => (
 	<svg
 		width="11"
 		height="11"

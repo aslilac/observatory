@@ -6,7 +6,7 @@ import { readableSize } from "../../util";
 // The sunburst is built around a 600-unit square viewBox so the inner
 // radii (70, 101, 132, …) can be reused as raw user-space numbers from
 // the original canvas implementation. SVG centers via preserveAspectRatio.
-const VIEW_HALF = 300;
+const VIEW_HALF = 275;
 const CENTER_R = 64;
 const BASE_ANGLE_TURNS = 5 / 8;
 
@@ -31,13 +31,13 @@ type ShardEntry = {
 	path: string[];
 };
 
-export const Sunburst = ({
+export const Sunburst: React.FC<SunburstProps> = ({
 	capacity,
 	files,
 	size,
 	onNavigateUp,
 	onNavigateForward,
-}: SunburstProps) => {
+}) => {
 	const [hover, setHover] = useState<HoverState | null>(null);
 
 	const dark =
@@ -49,17 +49,16 @@ export const Sunburst = ({
 	const clearHover = () => setHover(null);
 
 	return (
-		<div className="relative h-full w-full">
+		<div className="grow">
 			<svg
 				viewBox={`${-VIEW_HALF} ${-VIEW_HALF} ${VIEW_HALF * 2} ${VIEW_HALF * 2}`}
-				className="h-full w-full select-none"
+				className="h-full w-full"
 				preserveAspectRatio="xMidYMid meet"
 			>
 				{shards.map((shard) => {
 					if (hover?.shard.id === shard.id) return null;
 					return renderShard(
 						shard,
-						false,
 						dark,
 						setHover,
 						clearHover,
@@ -71,7 +70,6 @@ export const Sunburst = ({
 				{hover &&
 					renderShard(
 						hover.shard,
-						true,
 						dark,
 						setHover,
 						clearHover,
@@ -116,7 +114,6 @@ type HoverState = {
 
 function renderShard(
 	shard: ShardEntry,
-	isHovered: boolean,
 	dark: boolean,
 	setHover: React.Dispatch<React.SetStateAction<HoverState | null>>,
 	clearHover: () => void,
@@ -132,7 +129,7 @@ function renderShard(
 			fill={fill}
 			stroke="var(--color-paper)"
 			strokeWidth={1.2}
-			className={isHovered ? "sunburst-shard-hover" : undefined}
+			className="hover:pulse"
 			style={{ cursor: interactive ? "pointer" : "default" }}
 			onPointerEnter={(e) =>
 				setHover({ shard, clientX: e.clientX, clientY: e.clientY })
@@ -154,32 +151,33 @@ function renderShard(
 	);
 }
 
-const Tooltip = ({
-	shard,
-	x,
-	y,
-}: {
+type TooltipProps = {
 	shard: ShardEntry;
 	x: number;
 	y: number;
-}) => {
+};
+
+const Tooltip: React.FC<TooltipProps> = ({ shard, x, y }) => {
 	const top =
 		shard.file.type === "directory" ? shard.file.files.slice(0, 7) : [];
 	return (
-		<span
-			className="pointer-events-none fixed z-10 select-none rounded-card bg-ink px-[14px] py-[10px] text-[12px] text-paper [box-shadow:var(--shadow-menu)]"
+		<div
+			role="tooltip"
+			className="pointer-events-none fixed min-w-[180px] z-10 rounded-card bg-ink px-4 py-3 text-[12px] text-paper shadow-menu"
 			style={{ left: x + 15, top: y + 5 }}
 		>
-			<span className="font-semibold">{shard.file.name}</span>
-			<span className="ml-[14px] font-mono opacity-80">
-				{readableSize(shard.file.size)}
-			</span>
+			<div className="flex justify-between gap-3">
+				<span className="font-semibold">{shard.file.name}</span>
+				<span className="ml-[14px] font-mono opacity-80">
+					{readableSize(shard.file.size)}
+				</span>
+			</div>
 			{top.length > 0 && (
-				<ol className="m-0 mt-[6px] list-none p-0">
+				<ol className="mt-2">
 					{top.map((file, i) => (
 						<li
 							key={`${file.name}-${i}`}
-							className="m-0 flex justify-between gap-[14px] py-[2px] text-[11px]"
+							className="flex justify-between gap-3 py-[2px] text-[11px]"
 						>
 							<span className="truncate">{file.name}</span>
 							<span className="font-mono opacity-80">
@@ -189,7 +187,7 @@ const Tooltip = ({
 					))}
 				</ol>
 			)}
-		</span>
+		</div>
 	);
 };
 

@@ -1,5 +1,3 @@
-import React from "react";
-
 import type { CleanupItem } from "../../state";
 import { readableSize } from "../../util";
 import { Button } from "../Button";

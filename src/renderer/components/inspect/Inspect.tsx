@@ -188,7 +188,7 @@ export const Inspect = ({
 					) : null
 				}
 			/>
-			<div className="grid min-h-0 flex-1 grid-cols-[1fr_minmax(360px,1fr)] overflow-hidden">
+			<div className="flex flex-1 overflow-hidden justify-items-stretch">
 				<Sunburst
 					files={sunburst.files}
 					capacity={shared.capacity}
@@ -198,7 +198,7 @@ export const Inspect = ({
 					onNavigateUp={navigateUp}
 					onNavigateForward={navigateForward}
 				/>
-				<div className="flex min-h-0 flex-col py-4 px-3 overflow-auto">
+				<div className="flex w-1/3 max-w-[600px] flex-col p-4 overflow-auto">
 					{searchActive ? (
 						<SearchResults
 							results={searchResults}

@@ -1,5 +1,3 @@
-import React from "react";
-
 import { readableSize } from "../../util";
 
 type SelectableItem = { path: string; name: string; size: number };

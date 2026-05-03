@@ -1,5 +1,3 @@
-import React from "react";
-
 type Variant = "default" | "primary" | "danger";
 type Size = "default" | "small";
 

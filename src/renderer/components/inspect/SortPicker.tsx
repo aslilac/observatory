@@ -1,5 +1,3 @@
-import React from "react";
-
 export type SortMode = "size" | "name" | "newest" | "oldest";
 
 const OPTIONS: ReadonlyArray<{ value: SortMode; label: string }> = [
@@ -21,13 +19,11 @@ type SortPickerProps = {
 	onChange: (next: SortMode) => void;
 };
 
-export const SortPicker = ({ value, onChange }: SortPickerProps) => (
-	<label className="relative inline-flex cursor-pointer items-center gap-[6px] rounded-button border border-line bg-paper py-[6px] pr-[22px] pl-[10px] font-mono text-[11px] text-ink hover:bg-fill">
+export const SortPicker: React.FC<SortPickerProps> = ({ value, onChange }) => (
+	<label className="relative inline-flex cursor-pointer items-center gap-1 rounded-button border border-line bg-paper h-8 px-2.5 font-mono text-[11px] text-ink hover:bg-fill">
 		<span className="text-muted">Sort:</span>
 		<span>{LABEL[value]}</span>
-		<span className="pointer-events-none absolute right-[8px] top-1/2 -translate-y-1/2 text-[9px] text-faint">
-			▾
-		</span>
+		<span className="pl-1 text-[12px] text-faint">▾</span>
 		<select
 			value={value}
 			onChange={(e) => onChange(e.target.value as SortMode)}

@@ -1,8 +1,6 @@
-import React from "react";
-
-export const DropOverlay = () => (
-	<div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center bg-[rgba(26,26,26,0.32)] p-[24px]">
-		<div className="flex min-h-[60%] w-full flex-col items-center justify-center gap-[14px] rounded-modal border-[2.5px] border-dashed border-paper bg-[rgba(250,250,248,0.08)] p-[40px] text-paper">
+export const DropOverlay: React.FC = () => (
+	<div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center bg-[rgba(26,26,26,0.32)] p-6">
+		<div className="flex min-h-[60%] w-full flex-col items-center justify-center gap-3 rounded-modal border-[2.5px] border-dashed border-paper bg-[rgba(250,250,248,0.08)] p-[40px] text-paper">
 			<FolderIcon />
 			<div className="text-[20px] font-semibold">Drop folder to scan</div>
 			<div className="font-mono text-[12px] opacity-80">
@@ -12,10 +10,8 @@ export const DropOverlay = () => (
 	</div>
 );
 
-const FolderIcon = () => (
+const FolderIcon: React.FC = () => (
 	<svg
-		width="56"
-		height="56"
 		viewBox="0 0 24 24"
 		fill="none"
 		stroke="currentColor"

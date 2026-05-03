@@ -1,5 +1,3 @@
-import React from "react";
-
 import { Button } from "./Button";
 
 type PasteConfirmProps = {
@@ -9,12 +7,12 @@ type PasteConfirmProps = {
 	onConfirm: () => void;
 };
 
-export const PasteConfirm = ({
+export const PasteConfirm: React.FC<PasteConfirmProps> = ({
 	path,
 	stat,
 	onCancel,
 	onConfirm,
-}: PasteConfirmProps) => {
+}) => {
 	const validating = stat === null;
 	const blocked = stat !== null && (!stat.exists || !stat.isDirectory);
 
@@ -26,7 +24,7 @@ export const PasteConfirm = ({
 			}}
 		>
 			<div
-				className="w-[480px] rounded-modal bg-paper p-[24px] [box-shadow:var(--shadow-modal)]"
+				className="w-[480px] rounded-modal bg-paper p-6 [box-shadow:var(--shadow-modal)]"
 				role="dialog"
 				aria-modal="true"
 			>
@@ -46,7 +44,7 @@ export const PasteConfirm = ({
 							: "Couldn't find that path on disk."}
 					</div>
 				)}
-				<div className="flex justify-end gap-[8px]">
+				<div className="flex justify-end gap-2">
 					<Button onClick={onCancel}>Cancel</Button>
 					<Button
 						variant="primary"

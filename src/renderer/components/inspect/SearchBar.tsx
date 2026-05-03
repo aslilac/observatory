@@ -1,5 +1,3 @@
-import React from "react";
-
 type SearchBarProps = {
 	query: string;
 	onQueryChange: (next: string) => void;
@@ -8,15 +6,15 @@ type SearchBarProps = {
 	right?: React.ReactNode;
 };
 
-export const SearchBar = ({
+export const SearchBar: React.FC<SearchBarProps> = ({
 	query,
 	onQueryChange,
 	matchCount,
 	loading,
 	right,
-}: SearchBarProps) => (
-	<div className="flex items-center gap-2 border-b border-line-soft px-3 py-[8px]">
-		<div className="flex flex-1 items-center gap-2 rounded-[7px] border border-line bg-fill px-2.5 py-[5px]">
+}) => (
+	<div className="flex items-center gap-2 border-b border-line-soft px-3 py-2">
+		<div className="flex flex-1 items-center gap-2 rounded-md border border-line bg-fill px-2.5 h-8">
 			<SearchIcon />
 			<input
 				type="text"
@@ -45,7 +43,7 @@ export const SearchBar = ({
 	</div>
 );
 
-const SearchIcon = () => (
+const SearchIcon: React.FC = () => (
 	<svg
 		width="12"
 		height="12"

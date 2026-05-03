@@ -1,5 +1,4 @@
-import React from "react";
-
+import { Component } from "react";
 import { Button } from "./Button";
 
 type ErrorBoundaryProps = {
@@ -10,7 +9,7 @@ type ErrorBoundaryState = {
 	error: Error | null;
 };
 
-export class ErrorBoundary extends React.Component<
+export class ErrorBoundary extends Component<
 	ErrorBoundaryProps,
 	ErrorBoundaryState
 > {
@@ -24,15 +23,20 @@ export class ErrorBoundary extends React.Component<
 		console.error("Caught render error:", error, info.componentStack);
 	}
 
-	private reset = () => this.setState({ error: null });
+	#reset = () => {
+		this.setState({ error: null });
+	};
 
-	private reload = () => {
-		if (typeof window !== "undefined") window.location.reload();
+	#reload = () => {
+		location.reload();
 	};
 
 	render() {
 		const { error } = this.state;
-		if (!error) return this.props.children;
+
+		if (!error) {
+			return this.props.children;
+		}
 
 		return (
 			<div className="flex flex-1 flex-col items-center justify-center gap-[14px] px-[28px] text-center">
@@ -41,13 +45,13 @@ export class ErrorBoundary extends React.Component<
 					{error.message || String(error)}
 				</div>
 				{error.stack && (
-					<pre className="max-h-[200px] max-w-[640px] overflow-auto rounded-card border border-line-soft bg-fill px-[12px] py-[10px] text-left font-mono text-[10px] text-muted">
+					<pre className="max-h-[200px] max-w-[640px] overflow-auto rounded-card border border-line-soft bg-fill px-3 py-2.5 text-left font-mono text-[10px] text-muted">
 						{error.stack}
 					</pre>
 				)}
-				<div className="flex gap-[8px]">
-					<Button onClick={this.reset}>Try again</Button>
-					<Button variant="primary" onClick={this.reload}>
+				<div className="flex gap-2">
+					<Button onClick={this.#reset}>Try again</Button>
+					<Button variant="primary" onClick={this.#reload}>
 						Reload window
 					</Button>
 				</div>

@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 @theme {
+	--spacing: 4px;
 	--font-sans: "Inter Variable", -apple-system, system-ui, sans-serif;
 	--font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
@@ -52,7 +53,6 @@
 	--color-line-soft: #2a2925;
 	--color-fill: #2a2924;
 	--color-fill-strong: #36342e;
-	--color-canvas: #131210;
 
 	--color-danger-bg: #2a1715;
 	--color-danger-fg: #ff9b96;
@@ -63,41 +63,44 @@
 
 html,
 body {
-	@apply m-0 min-h-screen p-0 font-sans text-[13px] font-normal leading-normal text-ink;
-	/* Inter OpenType tweaks:
-	   ss01 — open digits (more open apertures on 3/6/9, friendlier numerics)
-	   cv05 — lowercase `l` with a tail (fewer collisions with `1` / `I`)
-	   cv11 — single-story `a` */
+	margin: 0;
+	padding: 0;
+	min-height: 100vh;
+	font-family: var(--font-sans);
+	font-size: 13px;
+	line-height: var(--leading-normal);
+	color: var(--text-ink);
+	/**
+	 * ss01 — open digits (more open apertures on 3/6/9, friendlier numerics)
+	 * cv05 — lowercase `l` with a tail (fewer collisions with `1` / `I`)
+	 * cv11 — single-story `a`
+	 */
 	font-feature-settings: "ss01", "cv05", "cv11";
 }
 
 body {
-	@apply select-none bg-canvas;
+	user-select: none;
+	background-color: var(--color-paper);
 }
 
 #root {
-	@apply min-h-full;
+	min-height: 100%;
 }
 
-@layer components {
-	/* Section eyebrow — `MOUNTED VOLUMES`, `RECENT`, `CHILDREN`. */
-	.eyebrow {
-		@apply text-[10px] font-semibold uppercase tracking-[0.08em] text-muted;
-	}
-
-	/* Toolbar icon button. */
-	.icon-btn {
-		@apply inline-flex h-[26px] w-[26px] cursor-pointer items-center justify-center rounded-button border border-line bg-transparent p-0 text-[14px] text-ink hover:bg-fill;
-	}
-	.icon-btn-active {
-		@apply border-ink bg-fill;
-	}
+/* Section eyebrow — `MOUNTED VOLUMES`, `RECENT`, `CHILDREN`. */
+@utility eyebrow {
+	font-size: 10px;
+	font-weight: var(--font-weight-semibold);
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	color: var(--color-muted);
 }
 
-/* Sunburst hover pulse — softly desaturates and brightens the hovered
-   wedge so it's easy to track at a glance. Mirrors the layer-0↔layer-4
-   shimmer the old canvas implementation animated frame by frame. */
-@keyframes sunburst-pulse {
+@utility pulse {
+	animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
 	0%,
 	100% {
 		filter: brightness(1) saturate(1);
@@ -107,7 +110,4 @@ body {
 		filter: brightness(1.18) saturate(0.6);
 		opacity: 0.85;
 	}
-}
-.sunburst-shard-hover {
-	animation: sunburst-pulse 1.4s ease-in-out infinite;
 }

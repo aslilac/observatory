@@ -1,5 +1,3 @@
-import React from "react";
-
 import type { Theme } from "../state";
 
 type ThemeToggleProps = {
@@ -7,18 +5,21 @@ type ThemeToggleProps = {
 	onToggle: () => void;
 };
 
-export const ThemeToggle = ({ theme, onToggle }: ThemeToggleProps) => (
+export const ThemeToggle: React.FC<ThemeToggleProps> = ({
+	theme,
+	onToggle,
+}) => (
 	<button
 		type="button"
 		onClick={onToggle}
 		title={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
-		className="grid h-[22px] w-[22px] cursor-pointer place-items-center rounded-button text-muted hover:bg-fill hover:text-ink darwin:[-webkit-app-region:no-drag]"
+		className="grid size-[22px] cursor-pointer place-items-center rounded-button text-muted hover:bg-fill hover:text-ink darwin:[-webkit-app-region:no-drag]"
 	>
 		{theme === "dark" ? <SunIcon /> : <MoonIcon />}
 	</button>
 );
 
-const MoonIcon = () => (
+const MoonIcon: React.FC = () => (
 	<svg
 		width="13"
 		height="13"
@@ -33,7 +34,7 @@ const MoonIcon = () => (
 	</svg>
 );
 
-const SunIcon = () => (
+const SunIcon: React.FC = () => (
 	<svg
 		width="13"
 		height="13"

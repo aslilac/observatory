@@ -102,11 +102,11 @@ export const LegendList = ({
 						</span>
 						<span
 							className={`min-w-0 flex-1 truncate ${
-								isDir ? "font-medium text-ink" : "text-muted"
+								isDir ? "text-ink" : "text-muted"
 							}`}
 						>
 							{file.name}
-							{isDir && <span className="text-faint">/</span>}
+							{isDir && <span className="text-muted">/</span>}
 						</span>
 						{showDate && (
 							<span
@@ -148,20 +148,18 @@ export const LegendList = ({
 };
 
 function sortFiles(files: Ob.VfsNode[], mode: SortMode): Ob.VfsNode[] {
-	const next = files.slice();
 	switch (mode) {
 		case "size":
-			// Already in size-desc order from the backend, but slice() preserves
-			// it so this branch is a no-op aside from returning a fresh array.
-			return next;
+			// Already in size-desc order from the backend.
+			return files;
 		case "name":
-			return next.sort((a, b) =>
+			return files.toSorted((a, b) =>
 				a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
 			);
 		case "newest":
-			return next.sort((a, b) => b.mtime - a.mtime);
+			return files.toSorted((a, b) => b.mtime - a.mtime);
 		case "oldest":
-			return next.sort((a, b) => a.mtime - b.mtime);
+			return files.toSorted((a, b) => a.mtime - b.mtime);
 	}
 }
 
