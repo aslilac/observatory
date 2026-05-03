@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 
-import { hueFor, sunburstColor } from "../colors";
-import { readableSize } from "../util";
+import { hueFor, sunburstColor } from "../../colors";
+import { readableSize } from "../../util";
 
 // The sunburst is built around a 600-unit square viewBox so the inner
 // radii (70, 101, 132, …) can be reused as raw user-space numbers from

@@ -98,7 +98,7 @@ export const Welcome = ({
 												? () => onInspect(entry.path)
 												: () => onScan(entry.path)
 										}
-										className={`flex w-full items-center px-[12px] py-[9px] text-left font-mono text-[12px] ${
+										className={`flex w-full items-center px-[12px] py-[9px] text-left text-[12px] ${
 											i < recent.length - 1 ? "border-b border-line-soft" : ""
 										} hover:bg-fill`}
 									>
@@ -106,7 +106,7 @@ export const Welcome = ({
 										<span className="mr-[14px] text-muted">
 											{formatDate(entry.scannedAt)}
 										</span>
-										<span className="w-[100px] text-right">
+										<span className="w-[100px] text-right font-mono">
 											{scan?.status === "complete" ? (
 												<span className="text-ink">
 													{scan.size !== undefined

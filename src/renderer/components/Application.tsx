@@ -1,11 +1,14 @@
 import React, {
+	Profiler,
 	useCallback,
 	useEffect,
+	useLayoutEffect,
 	useMemo,
 	useRef,
 	useState,
 } from "react";
 
+import { perfEnabled, perfLog, perfMark, perfMeasure } from "../perf";
 import {
 	useCleanupQueue,
 	useDrives,
@@ -16,12 +19,12 @@ import {
 	useScans,
 	useTheme,
 } from "../state";
-import { Cleanup } from "./Cleanup";
-import { CleanupChip } from "./CleanupChip";
-import { CleanupModal } from "./CleanupModal";
+import { Cleanup } from "./cleanup/Cleanup";
+import { CleanupChip } from "./cleanup/CleanupChip";
+import { CleanupModal } from "./cleanup/CleanupModal";
 import { DropOverlay } from "./DropOverlay";
 import { ErrorBoundary } from "./ErrorBoundary";
-import { Inspect } from "./Inspect";
+import { Inspect } from "./inspect/Inspect";
 import { IssuesChip } from "./IssuesChip";
 import { IssuesModal } from "./IssuesModal";
 import { PasteConfirm } from "./PasteConfirm";
@@ -62,6 +65,7 @@ export const Application = () => {
 	const { view, inspecting, cursor } = current;
 
 	const navigate = useCallback((entry: NavEntry) => {
+		perfMark("nav:start");
 		setNav((prev) => {
 			const truncated = prev.history.slice(0, prev.index + 1);
 			const last = truncated[truncated.length - 1]!;
@@ -133,6 +137,30 @@ export const Application = () => {
 		inspecting,
 		cursor,
 		inspectingScan?.status ?? null,
+	);
+
+	// Measure click → painted: nav:start is set inside `navigate`, and we
+	// resolve once React has actually committed the new view. rAF runs after
+	// layout so the user-perceived navigation includes paint.
+	const cursorKey = cursor.join("/");
+	useLayoutEffect(() => {
+		if (!perfEnabled()) return;
+		const id = requestAnimationFrame(() => perfMeasure("nav", "nav:start"));
+		return () => cancelAnimationFrame(id);
+	}, [tree, view, inspecting, cursorKey]);
+
+	const handleProfilerRender = useCallback(
+		(
+			id: string,
+			phase: "mount" | "update" | "nested-update",
+			actualDuration: number,
+		) => {
+			if (!perfEnabled()) return;
+			if (phase === "mount" || actualDuration > 5) {
+				perfLog("react", `${id} ${phase} ${actualDuration.toFixed(1)}ms`);
+			}
+		},
+		[],
 	);
 
 	const scanProgress = useScanProgress(
@@ -332,12 +360,10 @@ export const Application = () => {
 					cleanup.items.length === 0 ? "empty" : `${cleanup.items.length} items`
 				}`
 			: inspecting
-				? inspectingScan?.status === "complete"
-					? cursor.length > 0
-						? `inspect · ${cursor[cursor.length - 1]}`
-						: "inspect"
-					: "scanning"
-				: "welcome";
+				? cursor.length > 0
+					? cursor[cursor.length - 1]!
+					: tree?.name || inspectingName || inspecting
+				: "";
 
 	return (
 		<div
@@ -355,7 +381,9 @@ export const Application = () => {
 			/>
 			<div className="flex min-h-0 flex-col overflow-hidden">
 				<ErrorBoundary key={`${view}-${inspecting ?? "menu"}`}>
-					{body}
+					<Profiler id="screen" onRender={handleProfilerRender}>
+						{body}
+					</Profiler>
 				</ErrorBoundary>
 			</div>
 			{confirmCleanup && (
@@ -398,7 +426,7 @@ const TitleBar = ({
 	onToggleTheme: () => void;
 }) => (
 	<div className="relative flex h-[36px] items-center justify-center border-b border-line-soft bg-paper text-[12px] font-medium text-muted darwin:[-webkit-app-region:drag]">
-		Observatory — {title}
+		Observatory{title ? ` — ${title}` : ""}
 		<div className="absolute top-1/2 right-[10px] -translate-y-1/2">
 			<ThemeToggle theme={theme} onToggle={onToggleTheme} />
 		</div>

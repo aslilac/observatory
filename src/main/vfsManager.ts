@@ -6,6 +6,17 @@ import { searchVfs, type SearchResults } from "./search";
 import { areMapsSimilar } from "./util";
 import { VirtualFileSystem } from "./vfs";
 
+// Toggle main-side perf logs by launching with OB_PERF=1 in the environment.
+const PERF = process.env["OB_PERF"] === "1";
+
+function timed<T>(tag: string, fn: () => T): T {
+	if (!PERF) return fn();
+	const start = performance.now();
+	const result = fn();
+	console.log(`[perf:main] ${tag} ${(performance.now() - start).toFixed(1)}ms`);
+	return result;
+}
+
 type ScanEntry = {
 	status: Ob.ScanStatus;
 	vfs: VirtualFileSystem;
@@ -44,7 +55,9 @@ export function getRenderTree(
 ): Ob.RenderTree | null {
 	const entry = scans.get(path);
 	if (!entry || entry.status !== "complete") return null;
-	return entry.vfs.getRenderTree(cursor);
+	return timed(`getRenderTree(${cursor.length} deep)`, () =>
+		entry.vfs.getRenderTree(cursor),
+	);
 }
 
 export function getScanErrors(path: string): Ob.ScanError[] {
@@ -59,7 +72,9 @@ export function searchScan(
 ): SearchResults | null {
 	const entry = scans.get(path);
 	if (!entry || entry.status !== "complete" || !entry.vfs.root) return null;
-	return searchVfs(entry.vfs.root, path, query);
+	return timed(`searchScan("${query}")`, () =>
+		searchVfs(entry.vfs.root!, path, query),
+	);
 }
 
 export function getScanProgress(path: string): Ob.ScanProgress | null {

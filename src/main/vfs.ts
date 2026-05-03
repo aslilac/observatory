@@ -22,6 +22,13 @@ export class VirtualFileSystem {
 
 	errors: Ob.ScanError[] = [];
 
+	// Device id of the scan root. Subdirectories on other devices are
+	// crossed-mount-point boundaries (procfs, sysfs, tmpfs, /Volumes,
+	// network shares, FUSE mounts, …) — none of which represent real
+	// disk usage on the device the user actually wants to inspect, so
+	// we refuse to descend past them.
+	private rootDev: number | null = null;
+
 	private onCompleteCallbacks: Array<() => void> = [];
 
 	constructor(location: string) {
@@ -58,12 +65,15 @@ export class VirtualFileSystem {
 
 		// TODO: We should probably check that it's a directory, and handle errors
 		// if it doesn't exist
-		await fs.stat(location);
+		const rootStats = await fs.stat(location);
+		this.rootDev = rootStats.dev;
 
 		console.time("vfs creation");
 
 		const vfs = await this._scan(location);
-		vfs.name = path.basename(location);
+		// path.basename("/") returns "" — fall back to the location itself so
+		// the renderer never gets an empty name to display.
+		vfs.name = path.basename(location) || location;
 
 		console.timeEnd("vfs creation");
 
@@ -129,14 +139,15 @@ export class VirtualFileSystem {
 				} else if (stats.isDirectory()) {
 					this.counts.directories++;
 
-					if (process.platform === "linux" && entity === "/proc") return;
-					if (process.platform === "darwin")
-						if (
-							entity === "/Volumes" ||
-							entity === "/System/Volumes" ||
-							entity.includes("/Templates/Data/")
-						)
-							return;
+					// Refuse to cross device boundaries. Mount points (procfs,
+					// sysfs, tmpfs, autofs firmlinks, /Volumes children,
+					// network shares, FUSE mounts, …) all show up as a child
+					// directory whose `dev` differs from the scan root; their
+					// reported sizes are virtual and recursing into them is
+					// either misleading or actively dangerous (loops).
+					if (this.rootDev !== null && stats.dev !== this.rootDev) {
+						return;
+					}
 
 					const directory = await this._scan(entity);
 					state.files.push({
@@ -243,26 +254,6 @@ export class VirtualFileSystem {
 			files.slice().sort((a, b) =>
 				a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
 			);
-		const sanitizeFull =
-			(recursive: number) =>
-			(file: Ob.VfsNode): Ob.VfsNode =>
-				file.type === "directory"
-					? {
-							name: file.name,
-							type: file.type,
-							size: file.size,
-							mtime: file.mtime,
-							files:
-								recursive > 0
-									? sortAlpha(file.files).map(sanitizeFull(recursive - 1))
-									: [],
-						}
-					: {
-							name: file.name,
-							type: file.type,
-							size: file.size,
-							mtime: file.mtime,
-						};
 
 		const root = this.root;
 
@@ -282,7 +273,11 @@ export class VirtualFileSystem {
 				files: directory.files.filter(isLargeEnough).map(sanitize(6)),
 			},
 			tree: {
-				files: sortAlpha(directory.files).map(sanitizeFull(6)),
+				// Only ship immediate children — the FolderTree component
+				// lazily fetches deeper levels via getRenderTree(subCursor),
+				// so a recursive payload here would balloon to tens of MB on
+				// dense scans without buying anything the user can see yet.
+				files: sortAlpha(directory.files).map(sanitize()),
 			},
 		};
 	}

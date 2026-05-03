@@ -1,6 +1,6 @@
 import React from "react";
 
-import { readableSize } from "../util";
+import { readableSize } from "../../util";
 
 type CleanupChipProps = {
 	count: number;
