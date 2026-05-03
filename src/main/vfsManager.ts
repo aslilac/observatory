@@ -2,20 +2,10 @@ import * as drivelist from "drivelist";
 import { app } from "electron";
 import { EventEmitter } from "node:events";
 
+import { timed, timedAsync } from "./perf";
 import { searchVfs, type SearchResults } from "./search";
 import { areMapsSimilar } from "./util";
 import { VirtualFileSystem } from "./vfs";
-
-// Toggle main-side perf logs by launching with OB_PERF=1 in the environment.
-const PERF = process.env["OB_PERF"] === "1";
-
-function timed<T>(tag: string, fn: () => T): T {
-	if (!PERF) return fn();
-	const start = performance.now();
-	const result = fn();
-	console.log(`[perf:main] ${tag} ${(performance.now() - start).toFixed(1)}ms`);
-	return result;
-}
 
 type ScanEntry = {
 	status: Ob.ScanStatus;
@@ -104,7 +94,7 @@ export function startScan(path: string) {
 }
 
 async function pollDrives() {
-	const driveList = await drivelist.list();
+	const driveList = await timedAsync("drivelist.list", () => drivelist.list());
 	const next = new Map<string, Ob.PhysicalDrive>();
 
 	driveList.forEach((device) =>

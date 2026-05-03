@@ -2,6 +2,11 @@ import * as drivelist from "drivelist";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 
+import { PERF, perfLog } from "./perf";
+
+// Per-directory work below this is too noisy to log individually.
+const DIR_LOG_THRESHOLD_MS = 50;
+
 export class VirtualFileSystem {
 	location: string;
 	root: Ob.VfsDirectory | null = null;
@@ -68,14 +73,19 @@ export class VirtualFileSystem {
 		const rootStats = await fs.stat(location);
 		this.rootDev = rootStats.dev;
 
-		console.time("vfs creation");
+		const scanStart = performance.now();
 
 		const vfs = await this._scan(location);
 		// path.basename("/") returns "" — fall back to the location itself so
 		// the renderer never gets an empty name to display.
 		vfs.name = path.basename(location) || location;
 
-		console.timeEnd("vfs creation");
+		const scanMs = performance.now() - scanStart;
+		const c = this.counts;
+		const total = c.files + c.directories + c.symlinks + c.devices + c.misc;
+		console.log(
+			`[perf:scan] ${location} ${scanMs.toFixed(0)}ms · ${total.toLocaleString()} entries (${c.files} files, ${c.directories} dirs, ${c.symlinks} symlinks)`,
+		);
 
 		// Set the name and capacity if it's a drive
 		const list = await drivelist.list();
@@ -110,10 +120,20 @@ export class VirtualFileSystem {
 			files: [],
 		};
 
+		const readdirStart = PERF ? performance.now() : 0;
 		const files = await fs.readdir(location).catch((error: unknown) => {
 			this.recordError(location, error);
 			return undefined;
 		});
+		if (PERF) {
+			const readdirMs = performance.now() - readdirStart;
+			if (readdirMs > DIR_LOG_THRESHOLD_MS) {
+				perfLog(
+					"scan",
+					`readdir ${location} ${readdirMs.toFixed(0)}ms (${files?.length ?? 0} entries)`,
+				);
+			}
+		}
 
 		if (!files) return state;
 
