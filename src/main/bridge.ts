@@ -1,4 +1,4 @@
-import { app, dialog, ipcMain, webContents } from "electron";
+import { app, dialog, ipcMain, shell, webContents } from "electron";
 import * as fs from "node:fs/promises";
 
 import { deleteFiles } from "./cleanup";
@@ -51,6 +51,12 @@ ipcMain.handle(
 	"ob:publishRecentScans",
 	(_event, recents: Array<{ path: string; scannedAt: number }>) =>
 		setRecentScans(recents),
+);
+ipcMain.handle("ob:revealInFinder", (_event, path: string) => {
+	shell.showItemInFolder(path);
+});
+ipcMain.handle("ob:openPath", (_event, path: string) =>
+	shell.openPath(path),
 );
 
 function broadcast(channel: string, payload: unknown) {

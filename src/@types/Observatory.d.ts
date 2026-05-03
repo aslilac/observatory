@@ -24,6 +24,8 @@ declare global {
 		function publishRecentScans(
 			recents: ReadonlyArray<{ path: string; scannedAt: number }>,
 		): Promise<void>;
+		function revealInFinder(path: string): Promise<void>;
+		function openPath(path: string): Promise<string>;
 
 		// Push events (main -> renderer); each returns an unsubscribe.
 		function onDrives(cb: (drives: PhysicalDrive[]) => void): () => void;

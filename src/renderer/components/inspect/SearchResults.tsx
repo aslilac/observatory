@@ -1,4 +1,6 @@
+import { rowActions } from "../../contextActions";
 import { readableSize } from "../../util";
+import { useContextMenu } from "../ContextMenu";
 
 type SelectableItem = { path: string; name: string; size: number };
 
@@ -8,6 +10,7 @@ type SearchResultsProps = {
 	query: string;
 	selection: Map<string, SelectableItem>;
 	onToggleSelect: (item: SelectableItem) => void;
+	onAddToCleanup: (item: SelectableItem) => void;
 };
 
 export const SearchResults: React.FC<SearchResultsProps> = ({
@@ -16,7 +19,9 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
 	query,
 	selection,
 	onToggleSelect,
+	onAddToCleanup,
 }) => {
+	const menu = useContextMenu();
 	if (!query.trim()) return null;
 
 	if (loading && !results) {
@@ -61,6 +66,18 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
 					<div
 						key={match.path}
 						onClick={() => onToggleSelect(item)}
+						onContextMenu={(e) =>
+							menu.open(
+								e,
+								rowActions({
+									path: match.path,
+									name: item.name,
+									size: match.size,
+									type: match.type,
+									onAddToCleanup,
+								}),
+							)
+						}
 						className={`group flex cursor-pointer items-center gap-[8px] rounded-[5px] px-[8px] py-[7px] ${
 							isSelected ? "bg-fill" : "hover:bg-fill"
 						}`}
@@ -87,6 +104,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
 					{results.totalCount.toLocaleString()} — refine the query to see more.
 				</div>
 			)}
+			{menu.render}
 		</div>
 	);
 };

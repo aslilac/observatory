@@ -194,6 +194,7 @@ export const Inspect: React.FC<InspectProps> = ({
 							query={query}
 							selection={selection}
 							onToggleSelect={toggleSelect}
+							onAddToCleanup={(item) => onAddToCleanup([item])}
 						/>
 					) : mode === "list" ? (
 						<LegendList
@@ -207,7 +208,9 @@ export const Inspect: React.FC<InspectProps> = ({
 							selection={selection}
 							onForward={navigateForward}
 							onToggleSelect={toggleSelect}
+							onAddToCleanup={(item) => onAddToCleanup([item])}
 							sortMode={sortMode}
+							onSortChange={onSortChange}
 							showAll={showAll}
 							onShowAll={() => setShowAll(true)}
 						/>
@@ -223,6 +226,7 @@ export const Inspect: React.FC<InspectProps> = ({
 							selection={selection}
 							onForward={navigateForward}
 							onToggleSelect={toggleSelect}
+							onAddToCleanup={(item) => onAddToCleanup([item])}
 						/>
 					)}
 				</div>

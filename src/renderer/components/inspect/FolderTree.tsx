@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useState } from "react";
 
 import { oklchSwatch } from "../../colors";
+import { rowActions } from "../../contextActions";
 import { joinPath } from "../../state";
 import { readableSize } from "../../util";
+import { useContextMenu } from "../ContextMenu";
 
 type SelectableItem = { path: string; name: string; size: number };
 
@@ -17,6 +19,7 @@ type FolderTreeProps = {
 	selection: Map<string, SelectableItem>;
 	onForward: (...names: string[]) => void;
 	onToggleSelect: (item: SelectableItem) => void;
+	onAddToCleanup: (item: SelectableItem) => void;
 };
 
 export const FolderTree: React.FC<FolderTreeProps> = ({
@@ -28,7 +31,9 @@ export const FolderTree: React.FC<FolderTreeProps> = ({
 	selection,
 	onForward,
 	onToggleSelect,
+	onAddToCleanup,
 }) => {
+	const menu = useContextMenu();
 	const [expanded, setExpanded] = useState<Set<string>>(() => new Set([""]));
 	const [cache, setCache] = useState<Map<string, CacheValue>>(new Map());
 
@@ -102,8 +107,11 @@ export const FolderTree: React.FC<FolderTreeProps> = ({
 					selection={selection}
 					onForward={onForward}
 					onToggleSelect={onToggleSelect}
+					onAddToCleanup={onAddToCleanup}
+					openContextMenu={menu.open}
 				/>
 			)}
+			{menu.render}
 		</div>
 	);
 };
@@ -122,6 +130,11 @@ type ChildrenProps = {
 	selection: Map<string, SelectableItem>;
 	onForward: (...names: string[]) => void;
 	onToggleSelect: (item: SelectableItem) => void;
+	onAddToCleanup: (item: SelectableItem) => void;
+	openContextMenu: (
+		e: React.MouseEvent,
+		items: ReturnType<typeof rowActions>,
+	) => void;
 };
 
 const TreeChildren: React.FC<ChildrenProps> = ({
@@ -138,6 +151,8 @@ const TreeChildren: React.FC<ChildrenProps> = ({
 	selection,
 	onForward,
 	onToggleSelect,
+	onAddToCleanup,
+	openContextMenu,
 }) => (
 	<>
 		{files.map((file) => {
@@ -191,6 +206,18 @@ const TreeChildren: React.FC<ChildrenProps> = ({
 								? () => onForward(...path, file.name)
 								: () => onToggleSelect(item)
 						}
+						onContextMenu={(e) =>
+							openContextMenu(
+								e,
+								rowActions({
+									path: fullPath,
+									name: file.name,
+									size: file.size,
+									type: isDir ? "directory" : "file",
+									onAddToCleanup,
+								}),
+							)
+						}
 					/>
 					{isOpen && isDir && (
 						<>
@@ -218,6 +245,8 @@ const TreeChildren: React.FC<ChildrenProps> = ({
 									selection={selection}
 									onForward={onForward}
 									onToggleSelect={onToggleSelect}
+									onAddToCleanup={onAddToCleanup}
+									openContextMenu={openContextMenu}
 								/>
 							)}
 						</>
@@ -253,6 +282,7 @@ type RowProps = {
 	onToggleExpand: () => void;
 	onToggleSelect: (() => void) | undefined;
 	onClick: (() => void) | undefined;
+	onContextMenu?: (e: React.MouseEvent) => void;
 };
 
 const Row: React.FC<RowProps> = ({
@@ -267,12 +297,14 @@ const Row: React.FC<RowProps> = ({
 	onToggleExpand,
 	onToggleSelect,
 	onClick,
+	onContextMenu,
 }) => (
 	<div
 		className={`group flex items-center gap-[6px] rounded-[5px] py-[5px] pr-[8px] pl-[8px] ${
 			selected ? "bg-fill" : "hover:bg-fill"
 		} ${onClick ? "cursor-pointer" : "cursor-default"}`}
 		onClick={onClick}
+		onContextMenu={onContextMenu}
 	>
 		<span style={{ width: depth * 14 }} className="flex-shrink-0" />
 		<button

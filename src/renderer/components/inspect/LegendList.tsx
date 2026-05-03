@@ -1,8 +1,10 @@
 import React, { useMemo } from "react";
 
 import { oklchSwatch } from "../../colors";
+import { rowActions } from "../../contextActions";
 import { joinPath } from "../../state";
 import { readableDate, readableSize } from "../../util";
+import { type ContextMenuItem, useContextMenu } from "../ContextMenu";
 import type { SortMode } from "./SortPicker";
 
 type SelectableItem = { path: string; name: string; size: number };
@@ -20,7 +22,9 @@ type LegendListProps = {
 	selection: Map<string, SelectableItem>;
 	onForward: (name: string) => void;
 	onToggleSelect: (item: SelectableItem) => void;
+	onAddToCleanup: (item: SelectableItem) => void;
 	sortMode: SortMode;
+	onSortChange: (mode: SortMode) => void;
 	showAll: boolean;
 	onShowAll: () => void;
 };
@@ -36,11 +40,35 @@ export const LegendList: React.FC<LegendListProps> = ({
 	selection,
 	onForward,
 	onToggleSelect,
+	onAddToCleanup,
 	sortMode,
+	onSortChange,
 	showAll,
 	onShowAll,
 }) => {
 	const free = capacity > size ? capacity - size : 0;
+	const menu = useContextMenu();
+
+	const sortItems = (current: SortMode): ContextMenuItem[] => [
+		{
+			kind: "item",
+			label: "Sort by size",
+			disabled: current === "size",
+			onClick: () => onSortChange("size"),
+		},
+		{
+			kind: "item",
+			label: "Sort by name",
+			disabled: current === "name",
+			onClick: () => onSortChange("name"),
+		},
+		{
+			kind: "item",
+			label: "Sort by modified",
+			disabled: current === "newest",
+			onClick: () => onSortChange("newest"),
+		},
+	];
 
 	const sorted = useMemo(() => sortFiles(files, sortMode), [files, sortMode]);
 
@@ -79,6 +107,19 @@ export const LegendList: React.FC<LegendListProps> = ({
 						} ${isDir ? "cursor-pointer" : ""}`}
 						onClick={() =>
 							isDir ? onForward(file.name) : onToggleSelect(item)
+						}
+						onContextMenu={(e) =>
+							menu.open(e, [
+								...rowActions({
+									path: fullPath,
+									name: file.name,
+									size: file.size,
+									type: isDir ? "directory" : "file",
+									onAddToCleanup,
+								}),
+								{ kind: "separator" },
+								...sortItems(sortMode),
+							])
 						}
 					>
 						<Checkbox
@@ -135,6 +176,7 @@ export const LegendList: React.FC<LegendListProps> = ({
 					<span className="font-mono">{readableSize(free)}</span>
 				</div>
 			)}
+			{menu.render}
 		</div>
 	);
 };

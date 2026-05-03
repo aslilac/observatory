@@ -61,6 +61,8 @@ contextBridge.exposeInMainWorld("Ob", {
 	publishRecentScans: (
 		recents: ReadonlyArray<{ path: string; scannedAt: number }>,
 	) => timedInvoke("ob:publishRecentScans", recents),
+	revealInFinder: (path: string) => timedInvoke("ob:revealInFinder", path),
+	openPath: (path: string) => timedInvoke("ob:openPath", path),
 
 	onDrives: (cb: (drives: Ob.PhysicalDrive[]) => void) => {
 		const unsub = subscribe<Ob.PhysicalDrive[]>("ob:drives", cb);
