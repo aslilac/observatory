@@ -58,6 +58,17 @@ export const Sunburst = ({
 				className="h-full w-full select-none"
 				preserveAspectRatio="xMidYMid meet"
 			>
+				{/* Transparent backdrop catches pointer events that aren't over a
+				    shard so the tooltip clears as soon as the cursor enters
+				    empty space (rather than only when leaving the SVG entirely). */}
+				<rect
+					x={-VIEW_HALF}
+					y={-VIEW_HALF}
+					width={VIEW_HALF * 2}
+					height={VIEW_HALF * 2}
+					fill="transparent"
+					onPointerEnter={clearHover}
+				/>
 				{shards.map((shard) => {
 					if (hover?.shard.id === shard.id) return null;
 					return renderShard(shard, false, dark, setHover, onNavigateForward);
@@ -73,6 +84,7 @@ export const Sunburst = ({
 					fill="var(--color-ink)"
 					style={{ cursor: "pointer" }}
 					onClick={onNavigateUp}
+					onPointerEnter={clearHover}
 				/>
 				<text
 					x={0}
