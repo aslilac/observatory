@@ -1,78 +1,121 @@
 <!doctype html>
-<html>
+<html lang="en">
 	<head>
-		<title>Observatory</title>
+		<meta charset="utf-8" />
+		<title>About Observatory</title>
 		<link rel="stylesheet" type="text/css" href="./resources/about.css" />
 	</head>
-
 	<body>
-		<section
-			class="min-h-full p-0 text-[1.45em] [box-shadow:0_0_100px_black] bg-[#12142d]"
-		>
-			<div class="grid-area-display px-[0.8in] py-[0.6in] text-white">
-				<h1
-					class="text-[3em] font-extralight m-0 px-0 pt-[0.6rem] pb-[0.1rem] [text-shadow:0_0_0.5in_black]"
-				>
-					Observatory
-				</h1>
-				<p class="m-0 py-[0.3rem] px-0">
-					A cross-platform Electron based disk usage analyzer
-				</p>
-
-				<ul
-					class="my-0 mr-0 mb-[0.3in] ml-0 list-none border-l-2 border-l-[#efffff] p-[0.1in] text-black"
-				>
-					<li class="p-[0.1in]">
-						<a
-							href="https://electronjs.org"
-							target="_blank"
-							class="group relative block max-w-[3.5in] my-[0.1in] mr-[0.5in] ml-[0.15in] px-[0.25in] py-[0.15in] rounded-[5px] bg-white/85 [box-shadow:0_0_0.3in_black] text-[1.5em] font-normal text-inherit no-underline transition-[padding,margin,background] duration-300 hover:bg-white hover:px-[0.3in] hover:py-[0.2in] hover:my-0 hover:mr-[0.45in] hover:mb-[0.1in] hover:ml-[0.1in] hover:no-underline"
-							><span
-								class="invisible absolute opacity-0 transition-opacity duration-300 my-0 mx-[2.3in] p-[0.2in] w-full max-w-[3in] rounded-[5px] bg-[#8e85f5] [box-shadow:0_0_0.3in_black] text-[0.5em] group-hover:visible group-hover:opacity-100"
-							>
-								Electron is a platform for developing native apps on macOS,
-								Windows, and Linux using HTML, CSS, and JavaScript.</span
-							>Electron</a
-						>
-					</li>
-					<li class="p-[0.1in]">
-						<a
-							href="https://reactjs.org"
-							target="_blank"
-							class="group relative block max-w-[3.5in] my-[0.1in] mr-[0.5in] ml-[0.15in] px-[0.25in] py-[0.15in] rounded-[5px] bg-white/85 [box-shadow:0_0_0.3in_black] text-[1.5em] font-normal text-inherit no-underline transition-[padding,margin,background] duration-300 hover:bg-white hover:px-[0.3in] hover:py-[0.2in] hover:my-0 hover:mr-[0.45in] hover:mb-[0.1in] hover:ml-[0.1in] hover:no-underline"
-							><span
-								class="invisible absolute opacity-0 transition-opacity duration-300 my-0 mx-[2.3in] p-[0.2in] w-full max-w-[3in] rounded-[5px] bg-[#8e85f5] [box-shadow:0_0_0.3in_black] text-[0.5em] group-hover:visible group-hover:opacity-100"
-							>
-								React is a framework for making robust HTML apps using modern
-								JavaScript.</span
-							>React</a
-						>
-					</li>
-				</ul>
-
-				<div
-					class="my-0 mx-[0.4in] p-0 text-[0.55em] text-white [text-shadow:0_0_1em_black]"
-				>
-					&copy; 2020 &hearts;
-					<a href="https://mckay.la/" target="_blank" class="text-inherit"
-						>McKayla</a
-					>
-					&middot;
-					<a
-						href="https://github.com/partheseas/observatory/issues"
-						target="_blank"
-						class="text-inherit"
-						>Issues</a
-					>
-					&middot;
-					<a
-						href="https://github.com/partheseas/observatory"
-						target="_blank"
-						class="text-inherit"
-						>Source</a
-					>
-				</div>
+		<main>
+			<div class="icon">
+				<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+					<defs>
+						<clipPath id="squircle">
+							<path
+								d="M512 0 C870 0 1024 154 1024 512 C1024 870 870 1024 512 1024 C154 1024 0 870 0 512 C0 154 154 0 512 0 Z"
+							/>
+						</clipPath>
+						<radialGradient id="domeSky" cx="50%" cy="38%" r="65%">
+							<stop offset="0%" stop-color="#3a6df0" stop-opacity="0.18" />
+							<stop offset="100%" stop-color="#3a6df0" stop-opacity="0" />
+						</radialGradient>
+						<linearGradient id="domePanel" x1="0" x2="0" y1="0" y2="1">
+							<stop offset="0%" stop-color="#ffffff" />
+							<stop offset="100%" stop-color="#e8e3d4" />
+						</linearGradient>
+						<linearGradient id="domeGround" x1="0" x2="0" y1="0" y2="1">
+							<stop offset="0%" stop-color="#bfb6a1" />
+							<stop offset="100%" stop-color="#9d9582" />
+						</linearGradient>
+						<clipPath id="domeArc">
+							<path d="M 132 537 A 380 360 0 0 1 892 537 Z" />
+						</clipPath>
+					</defs>
+					<path
+						d="M512 0 C870 0 1024 154 1024 512 C1024 870 870 1024 512 1024 C154 1024 0 870 0 512 C0 154 154 0 512 0 Z"
+						fill="#fafaf8"
+					/>
+					<g clip-path="url(#squircle)">
+						<rect x="0" y="0" width="1024" height="1024" fill="url(#domeSky)" />
+						<circle cx="120" cy="197" r="4" fill="#1a2d6b" opacity="0.35" />
+						<circle cx="200" cy="287" r="3" fill="#1a2d6b" opacity="0.35" />
+						<circle cx="880" cy="237" r="5" fill="#1a2d6b" opacity="0.35" />
+						<circle cx="820" cy="377" r="3" fill="#1a2d6b" opacity="0.35" />
+						<circle cx="80" cy="437" r="3" fill="#1a2d6b" opacity="0.35" />
+						<circle cx="940" cy="497" r="4" fill="#1a2d6b" opacity="0.35" />
+						<circle cx="160" cy="657" r="3" fill="#1a2d6b" opacity="0.35" />
+						<circle cx="900" cy="657" r="3" fill="#1a2d6b" opacity="0.35" />
+						<rect x="0" y="737" width="1024" height="287" fill="url(#domeGround)" />
+						<rect x="0" y="737" width="1024" height="6" fill="#10131a" opacity="0.18" />
+						<ellipse cx="512" cy="751" rx="420" ry="14" fill="#10131a" opacity="0.18" />
+						<rect x="132" y="537" width="760" height="200" fill="#f1ede2" />
+						<line x1="132" y1="577" x2="892" y2="577" stroke="#7c7a72" stroke-width="1.5" opacity="0.18" />
+						<line x1="132" y1="617" x2="892" y2="617" stroke="#7c7a72" stroke-width="1.5" opacity="0.18" />
+						<line x1="132" y1="657" x2="892" y2="657" stroke="#7c7a72" stroke-width="1.5" opacity="0.18" />
+						<line x1="132" y1="697" x2="892" y2="697" stroke="#7c7a72" stroke-width="1.5" opacity="0.18" />
+						<rect x="124" y="527" width="776" height="20" fill="#10131a" />
+						<rect x="132" y="537" width="760" height="14" fill="#10131a" opacity="0.15" />
+						<path d="M 132 537 A 380 360 0 0 1 892 537 Z" fill="url(#domePanel)" />
+						<g clip-path="url(#domeArc)">
+							<line x1="512" y1="177" x2="382" y2="537" stroke="#7c7a72" stroke-width="1.5" opacity="0.25" />
+							<line x1="512" y1="177" x2="221" y2="537" stroke="#7c7a72" stroke-width="1.5" opacity="0.45" />
+							<line x1="512" y1="177" x2="133" y2="537" stroke="#7c7a72" stroke-width="2.2" opacity="0.45" />
+							<line x1="512" y1="177" x2="201" y2="537" stroke="#7c7a72" stroke-width="2.2" opacity="0.45" />
+							<line x1="512" y1="177" x2="395" y2="537" stroke="#7c7a72" stroke-width="2.2" opacity="0.45" />
+							<line x1="512" y1="177" x2="629" y2="537" stroke="#7c7a72" stroke-width="2.2" opacity="0.45" />
+							<line x1="512" y1="177" x2="823" y2="537" stroke="#7c7a72" stroke-width="2.2" opacity="0.45" />
+							<line x1="512" y1="177" x2="891" y2="537" stroke="#7c7a72" stroke-width="2.2" opacity="0.45" />
+							<line x1="512" y1="177" x2="803" y2="537" stroke="#7c7a72" stroke-width="1.5" opacity="0.45" />
+							<line x1="512" y1="177" x2="642" y2="537" stroke="#7c7a72" stroke-width="1.5" opacity="0.25" />
+							<ellipse cx="512" cy="413.5" rx="133" ry="22.7" fill="none" stroke="#7c7a72" stroke-width="1.5" opacity="0.22" />
+							<ellipse cx="512" cy="325.3" rx="228" ry="38.9" fill="none" stroke="#7c7a72" stroke-width="1.5" opacity="0.22" />
+							<ellipse cx="512" cy="247.7" rx="311.6" ry="53.1" fill="none" stroke="#7c7a72" stroke-width="1.5" opacity="0.22" />
+						</g>
+						<path d="M 132 537 A 380 360 0 0 1 892 537" fill="none" stroke="#10131a" stroke-width="6" />
+						<path d="M 468 195 Q 512 163 556 195 L 556 537 L 468 537 Z" fill="#1a2d6b" />
+						<path d="M 484 203 Q 512 181 540 203 L 540 531 L 484 531 Z" fill="#3a6df0" opacity="0.85" />
+						<path d="M 468 195 Q 512 163 556 195" fill="none" stroke="#10131a" stroke-width="4" />
+						<line x1="468" y1="195" x2="468" y2="537" stroke="#10131a" stroke-width="3" />
+						<line x1="556" y1="195" x2="556" y2="537" stroke="#10131a" stroke-width="3" />
+						<circle cx="506" cy="257" r="9" fill="#fafaf8" />
+						<circle cx="528" cy="337" r="5" fill="#fafaf8" opacity="0.85" />
+						<circle cx="498" cy="397" r="3" fill="#fafaf8" opacity="0.7" />
+						<line x1="506" y1="241" x2="506" y2="273" stroke="#fafaf8" stroke-width="1.5" opacity="0.7" />
+						<line x1="490" y1="257" x2="522" y2="257" stroke="#fafaf8" stroke-width="1.5" opacity="0.7" />
+						<path d="M 468 737 L 468 617 A 44 44 0 0 1 556 617 L 556 737 Z" fill="#10131a" />
+						<circle cx="534" cy="681" r="3.5" fill="#f1ede2" />
+						<rect x="330" y="607" width="44" height="56" rx="6" fill="#10131a" />
+						<line x1="352" y1="613" x2="352" y2="657" stroke="#f1ede2" stroke-width="2" opacity="0.6" />
+						<line x1="334" y1="635" x2="370" y2="635" stroke="#f1ede2" stroke-width="2" opacity="0.6" />
+						<rect x="650" y="607" width="44" height="56" rx="6" fill="#10131a" />
+						<line x1="672" y1="613" x2="672" y2="657" stroke="#f1ede2" stroke-width="2" opacity="0.6" />
+						<line x1="654" y1="635" x2="690" y2="635" stroke="#f1ede2" stroke-width="2" opacity="0.6" />
+						<rect x="116" y="725" width="792" height="14" fill="#10131a" opacity="0.85" />
+					</g>
+				</svg>
 			</div>
-		</section>
+			<h1>Observatory</h1>
+			<div class="version">Version 1.0.0</div>
+			<p class="tagline">
+				A cross-platform disk usage analyzer with a modern UI.
+			</p>
+			<div class="stack">Electron · React · TypeScript</div>
+			<div class="links">
+				<a
+					href="https://github.com/partheseas/observatory"
+					target="_blank"
+					rel="noreferrer"
+					>GitHub</a
+				>
+				<span class="dot">·</span>
+				<a
+					href="https://github.com/partheseas/observatory/issues"
+					target="_blank"
+					rel="noreferrer"
+					>Issues</a
+				>
+			</div>
+			<div class="copyright">© 2020 McKayla Washburn</div>
+		</main>
 	</body>
 </html>

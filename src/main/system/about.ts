@@ -8,9 +8,11 @@ let aboutWindow: BrowserWindow | null = null;
 function showAboutWindow() {
 	if (!aboutWindow) {
 		aboutWindow = new BrowserWindow({
-			backgroundColor: "#e73219",
-			width: 800,
-			height: 575,
+			// Match about.css's --color-background so the window doesn't flash
+			// the system default while the renderer is loading.
+			backgroundColor: "#12142d",
+			width: 480,
+			height: 540,
 			show: false,
 			titleBarStyle: "hiddenInset",
 			autoHideMenuBar: true,
@@ -18,7 +20,6 @@ function showAboutWindow() {
 			minimizable: false,
 			maximizable: false,
 			resizable: false,
-			alwaysOnTop: true,
 		});
 
 		// Load the about page — Vite dev server in dev, bundled HTML in prod.

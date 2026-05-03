@@ -1,9 +1,22 @@
 @import "tailwindcss";
 
 @theme {
-	--font-sans: Montserrat, "Avenir Next", sans-serif;
-	--font-serif: "Roboto Slab", serif;
-	--font-mono: "Roboto Mono", monospace;
+	/* Stick with system fonts so the about window doesn't drag in the
+	   variable Inter bundle just for one screen. */
+	--font-sans:
+		-apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", sans-serif;
+	--font-mono:
+		ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+	--color-background: #12142d;
+	--color-default: #f1ede2;
+	--color-muted: rgba(241, 237, 226, 0.55);
+	--color-faint: rgba(241, 237, 226, 0.35);
+	--color-accent: #7e9eff;
+}
+
+* {
+	box-sizing: border-box;
 }
 
 html,
@@ -12,13 +25,94 @@ body {
 	padding: 0;
 	min-height: 100vh;
 	font-family: var(--font-sans);
-	font-size: 1.45em;
+	font-size: 14px;
 	font-weight: 300;
-	line-height: var(--leading-normal);
-	color: white;
+	line-height: 1.5;
+	color: var(--color-default);
+	background-color: var(--color-background);
+	-webkit-font-smoothing: antialiased;
+	user-select: none;
 }
 
 body {
-	user-select: none;
-	background-color: #12142d;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	-webkit-app-region: drag;
+}
+
+main {
+	width: 100%;
+	max-width: 360px;
+	padding: 32px 24px;
+	text-align: center;
+}
+
+.icon {
+	width: 96px;
+	height: 96px;
+	margin: 0 auto 18px;
+	filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.45));
+}
+
+.icon svg {
+	display: block;
+	width: 100%;
+	height: 100%;
+}
+
+h1 {
+	margin: 0;
+	font-size: 26px;
+	font-weight: 500;
+	letter-spacing: -0.4px;
+	color: var(--color-default);
+}
+
+.version {
+	margin: 4px 0 18px;
+	font-family: var(--font-mono);
+	font-size: 11px;
+	color: var(--color-muted);
+}
+
+.tagline {
+	max-width: 280px;
+	margin: 0 auto 28px;
+	color: var(--color-muted);
+}
+
+.stack {
+	margin: 0 0 18px;
+	font-family: var(--font-mono);
+	font-size: 10px;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+	color: var(--color-faint);
+}
+
+.links {
+	margin-bottom: 22px;
+	-webkit-app-region: no-drag;
+}
+
+a {
+	color: var(--color-accent);
+	font-size: 13px;
+	text-decoration: none;
+	transition: opacity 120ms ease;
+}
+
+a:hover {
+	opacity: 0.75;
+}
+
+.dot {
+	margin: 0 10px;
+	color: var(--color-faint);
+}
+
+.copyright {
+	font-size: 11px;
+	color: var(--color-faint);
 }
