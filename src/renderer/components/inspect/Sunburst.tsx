@@ -203,7 +203,7 @@ function buildShards(files: Ob.VfsNode[], capacity: number): ShardEntry[] {
 		parentPath: string[],
 	): number => {
 		let pos = startPos;
-		nodes.forEach((file, idx) => {
+		for (const [idx, file] of nodes.entries()) {
 			const sliceSize = file.size / capacity;
 			const myHue = layer === 0 ? hueFor(idx) : (parentHue ?? hueFor(0));
 			const path = [...parentPath, file.name];
@@ -236,7 +236,7 @@ function buildShards(files: Ob.VfsNode[], capacity: number): ShardEntry[] {
 			}
 
 			pos += sliceSize;
-		});
+		}
 		return pos;
 	};
 

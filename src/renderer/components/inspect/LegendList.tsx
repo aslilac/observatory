@@ -46,7 +46,7 @@ export const LegendList = ({
 	// palette away from the wedges.
 	const hueByName = useMemo(() => {
 		const map = new Map<string, number>();
-		files.forEach((f, i) => map.set(f.name, hueFor(i)));
+		for (const [i, f] of files.entries()) map.set(f.name, hueFor(i));
 		return map;
 	}, [files]);
 

@@ -273,7 +273,7 @@ export const Application = () => {
 				(sum, p) => sum + (sizeByPath.get(p) ?? 0),
 				0,
 			);
-			result.deleted.forEach((p) => cleanup.remove(p));
+			for (const p of result.deleted) cleanup.remove(p);
 			return {
 				deleted: result.deleted.length,
 				reclaimed,

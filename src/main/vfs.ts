@@ -115,7 +115,7 @@ export class VirtualFileSystem {
 		this.root = vfs;
 		const callbacks = this.onCompleteCallbacks;
 		this.onCompleteCallbacks = [];
-		callbacks.forEach((cb) => cb());
+		for (const cb of callbacks) cb();
 	}
 
 	private async _scan(location: string): Promise<Ob.VfsDirectory> {

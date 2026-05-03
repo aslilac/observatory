@@ -48,9 +48,9 @@ ipcMain.handle(
 );
 
 function broadcast(channel: string, payload: unknown) {
-	webContents.getAllWebContents().forEach((view) => {
+	for (const view of webContents.getAllWebContents()) {
 		if (!view.isDestroyed()) view.send(channel, payload);
-	});
+	}
 }
 
 app.on("ready", () => {
@@ -69,7 +69,7 @@ export async function selectDirectory() {
 
 	if (result.canceled) return;
 
-	result.filePaths.forEach((selectedPath) => startScan(selectedPath));
+	for (const selectedPath of result.filePaths) startScan(selectedPath);
 
 	// Drop the renderer onto the first picked path so it sees the scan
 	// progress (and eventually the result) without having to navigate by

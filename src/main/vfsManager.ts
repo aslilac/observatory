@@ -104,13 +104,13 @@ async function pollDrives() {
 	const driveList = await timedAsync("drivelist.list", () => drivelist.list());
 	const next = new Map<string, Ob.PhysicalDrive>();
 
-	driveList.forEach((device) =>
-		device.mountpoints.forEach((mount) => {
+	for (const device of driveList) {
+		for (const mount of device.mountpoints) {
 			if (
 				process.platform === "darwin" &&
 				mount.path.startsWith("/System/Volumes")
 			) {
-				return;
+				continue;
 			}
 
 			if (!next.has(mount.path)) {
@@ -119,12 +119,12 @@ async function pollDrives() {
 					description: mount.label || `${mount.path} (${device.description})`,
 				});
 			}
-		}),
-	);
+		}
+	}
 
 	if (!areMapsSimilar(drives, next)) {
 		drives.clear();
-		next.forEach((value, key) => drives.set(key, value));
+		for (const [key, value] of next) drives.set(key, value);
 		emitter.emit("drives", getDrives());
 	}
 }
