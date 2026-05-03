@@ -64,6 +64,11 @@
 html,
 body {
 	@apply m-0 min-h-screen p-0 font-sans text-[13px] font-normal leading-normal text-ink;
+	/* Inter OpenType tweaks:
+	   ss01 — single-story `a` and `g` (calmer at small sizes)
+	   cv05 — lowercase `l` with a tail (fewer collisions with `1` / `I`)
+	   cv11 — single-story `a` */
+	font-feature-settings: "ss01", "cv05", "cv11";
 }
 
 body {
