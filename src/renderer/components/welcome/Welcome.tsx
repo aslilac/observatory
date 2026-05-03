@@ -7,8 +7,7 @@ type WelcomeProps = {
 	drives: Ob.PhysicalDrive[];
 	scans: Ob.ScanInfo[];
 	recent: RecentScan[];
-	onScan: (path: string) => void;
-	onInspect: (path: string) => void;
+	onOpen: (path: string) => void;
 	canBack: boolean;
 	canForward: boolean;
 	onBack: () => void;
@@ -20,8 +19,7 @@ export const Welcome: React.FC<WelcomeProps> = ({
 	drives,
 	scans,
 	recent,
-	onScan,
-	onInspect,
+	onOpen,
 	canBack,
 	canForward,
 	onBack,
@@ -52,13 +50,12 @@ export const Welcome: React.FC<WelcomeProps> = ({
 					<div>
 						<div className="eyebrow mb-2">Disks</div>
 						<div className="grid grid-cols-2 gap-[10px]">
-							{drives.map((drive, i) => (
+							{drives.map((drive) => (
 								<VolumeCard
 									key={drive.mountPath}
 									drive={drive}
 									scan={scanByPath.get(drive.mountPath)}
-									onScan={() => onScan(drive.mountPath)}
-									onInspect={() => onInspect(drive.mountPath)}
+									onOpen={() => onOpen(drive.mountPath)}
 								/>
 							))}
 						</div>
@@ -88,16 +85,11 @@ export const Welcome: React.FC<WelcomeProps> = ({
 						<div className="overflow-hidden rounded-card border border-line-soft">
 							{recent.map((entry, i) => {
 								const scan = scanByPath.get(entry.path);
-								const interactive = scan?.status === "complete";
 								return (
 									<button
 										key={entry.path}
 										type="button"
-										onClick={
-											interactive
-												? () => onInspect(entry.path)
-												: () => onScan(entry.path)
-										}
+										onClick={() => onOpen(entry.path)}
 										className={`flex w-full items-center px-[12px] py-[9px] text-left text-[12px] ${
 											i < recent.length - 1 ? "border-b border-line-soft" : ""
 										} hover:bg-fill`}
@@ -133,27 +125,15 @@ export const Welcome: React.FC<WelcomeProps> = ({
 type VolumeCardProps = {
 	drive: Ob.PhysicalDrive;
 	scan?: Ob.ScanInfo;
-	onScan: () => void;
-	onInspect: () => void;
+	onOpen: () => void;
 };
 
-const VolumeCard: React.FC<VolumeCardProps> = ({
-	drive,
-	scan,
-	onScan,
-	onInspect,
-}) => {
+const VolumeCard: React.FC<VolumeCardProps> = ({ drive, scan, onOpen }) => {
 	const status = scan?.status;
-	// While a scan is building we still want clicks to land on the progress
-	// view — onScan covers it because Ob.scanPath is a no-op when the path
-	// already has an entry in vfsManager and setInspecting routes the user
-	// to whatever view matches the scan's current status.
-	const handleClick = status === "complete" ? onInspect : onScan;
-
 	return (
 		<button
 			type="button"
-			onClick={handleClick}
+			onClick={onOpen}
 			className={`
 				flex items-center gap-3 p-3 rounded-card
 				border border-line text-left transition-shadow hover:shadow-window

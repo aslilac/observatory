@@ -169,21 +169,16 @@ export const Application = () => {
 
 	const scanErrors = useScanErrors(inspecting, inspectingScan?.status ?? null);
 
-	useEffect(() => {
-		if (inspecting && inspectingScan?.status === "complete") {
-			pushRecent(inspecting);
-		}
-	}, [inspecting, inspectingScan?.status, pushRecent]);
-
 	const showMenu = useCallback(() => setInspecting(null), [setInspecting]);
 
-	const onScan = useCallback(
+	// One entry point that covers both "scan this path" and "open this scan":
+	// Ob.scanPath is a no-op for paths already tracked by vfsManager, the
+	// recent entry is the same in either case, and Application's body picks
+	// Scanning vs Inspect based on the live scan status. Recent gets a single
+	// stamp at start — no second push when the scan completes.
+	const onOpen = useCallback(
 		(path: string) => {
 			void Ob.scanPath(path);
-			// Land it in Recent up front so a one-off drag / paste / Volume
-			// click is reachable from the welcome menu while it's still
-			// scanning. The on-complete effect below bumps the timestamp once
-			// the scan actually finishes, but the entry is visible immediately.
 			pushRecent(path);
 			setInspecting(path);
 		},
@@ -227,9 +222,9 @@ export const Application = () => {
 			const file = e.dataTransfer.files[0];
 			if (!file) return;
 			const path = Ob.pathForFile(file);
-			if (path) onScan(path);
+			if (path) onOpen(path);
 		},
-		[onScan],
+		[onOpen],
 	);
 
 	const [pastePath, setPastePath] = useState<string | null>(null);
@@ -265,13 +260,9 @@ export const Application = () => {
 		if (!pastePath) {
 			return;
 		}
-		onScan(pastePath);
+		onOpen(pastePath);
 		setPastePath(null);
 		setPasteStat(null);
-	};
-
-	const onInspect = (path: string) => {
-		setInspecting(path);
 	};
 
 	const onTrashCleanup = useCallback(
@@ -360,8 +351,7 @@ export const Application = () => {
 				drives={drives}
 				scans={scans}
 				recent={recent}
-				onScan={onScan}
-				onInspect={onInspect}
+				onOpen={onOpen}
 				chips={chips}
 				{...navProps}
 			/>
