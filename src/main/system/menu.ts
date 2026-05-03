@@ -1,96 +1,73 @@
-import { Menu, shell } from "electron";
+import { app, Menu, type MenuItemConstructorOptions, shell } from "electron";
 
+import { selectDirectory } from "../bridge";
 import showAboutWindow from "./about";
 
-const template = [
-	// { role: 'appMenu' }
-	...(process.platform === "darwin"
-		? [
+const isMac = process.platform === "darwin";
+
+const template: MenuItemConstructorOptions[] = [
+	// macOS expects an "appMenu" role with the app's name as label. The
+	// system uses it for About / Quit / Hide / Services bindings; without
+	// it Cmd-Q goes through Electron's defaults and the About entry won't
+	// show up where users look for it.
+	...(isMac
+		? ([
 				{
-					label: "File",
+					label: app.name,
 					submenu: [
-						{
-							label: "About Observatory",
-							click() {
-								showAboutWindow();
-							},
-						},
+						{ label: `About ${app.name}`, click: () => showAboutWindow() },
 						{ type: "separator" },
 						{ role: "services" },
 						{ type: "separator" },
 						{ role: "hide" },
-						{ role: "hideothers" },
+						{ role: "hideOthers" },
 						{ role: "unhide" },
 						{ type: "separator" },
 						{ role: "quit" },
 					],
 				},
-			]
+			] satisfies MenuItemConstructorOptions[])
 		: []),
 	{
-		label: "Edit",
+		label: "File",
 		submenu: [
-			{ role: "undo" },
-			{ role: "redo" },
+			{
+				label: "Open Folder…",
+				accelerator: "CmdOrCtrl+O",
+				click: () => void selectDirectory(),
+			},
 			{ type: "separator" },
-			{ role: "delete" },
+			isMac ? { role: "close" } : { role: "quit" },
 		],
 	},
-	{
-		label: "View",
-		submenu: [
-			{ role: "reload" },
-			{ role: "forcereload" },
-			{ role: "toggledevtools" },
-			{ type: "separator" },
-			{ role: "togglefullscreen" },
-		],
-	},
-	{
-		label: "Window",
-		submenu: [
-			{ role: "close" },
-			{ role: "minimize" },
-			...(process.platform === "darwin"
-				? [
-						// Remember that this is what macOS calls maximizing
-						{ role: "zoom" },
-						{ type: "separator" },
-						{ role: "front" },
-						{ type: "separator" },
-						{ role: "window" },
-					]
-				: []),
-		],
-	},
+	{ role: "editMenu" },
+	{ role: "viewMenu" },
+	{ role: "windowMenu" },
 	{
 		role: "help",
 		submenu: [
 			{
 				label: "Visit GitHub",
-				click() {
-					shell.openExternal("https://github.com/partheseas/observatory");
-				},
+				click: () =>
+					void shell.openExternal("https://github.com/partheseas/observatory"),
 			},
 			{
-				label: "Report an issue 🐛",
-				click() {
-					shell.openExternal(
+				label: "Report an Issue",
+				click: () =>
+					void shell.openExternal(
 						"https://github.com/partheseas/observatory/issues",
-					);
-				},
+					),
 			},
-			...(process.platform === "darwin"
+			...(isMac
 				? []
-				: [
+				: ([
 						{ type: "separator" },
-						{
-							label: "About Observatory",
-							click: () => showAboutWindow(),
-						},
-					]),
+						{ label: "About Observatory", click: () => showAboutWindow() },
+					] satisfies MenuItemConstructorOptions[])),
 		],
 	},
 ];
 
-// Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+app.on("ready", () => {
+	Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+});
