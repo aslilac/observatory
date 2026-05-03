@@ -360,11 +360,9 @@ export const Application = () => {
 					cleanup.items.length === 0 ? "empty" : `${cleanup.items.length} items`
 				}`
 			: inspecting
-				? inspectingScan?.status === "complete"
-					? cursor.length > 0
-						? cursor[cursor.length - 1]!
-						: inspectingName
-					: "scanning"
+				? cursor.length > 0
+					? cursor[cursor.length - 1]!
+					: tree?.name || inspectingName || inspecting
 				: "";
 
 	return (
