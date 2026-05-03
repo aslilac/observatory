@@ -93,7 +93,6 @@ h1 {
 
 .links {
 	margin-bottom: 22px;
-	-webkit-app-region: no-drag;
 }
 
 a {
@@ -101,6 +100,7 @@ a {
 	font-size: 13px;
 	text-decoration: none;
 	transition: opacity 120ms ease;
+	-webkit-app-region: no-drag;
 }
 
 a:hover {
