@@ -19,12 +19,12 @@ import {
 	useScans,
 	useTheme,
 } from "../state";
-import { Cleanup } from "./Cleanup";
-import { CleanupChip } from "./CleanupChip";
-import { CleanupModal } from "./CleanupModal";
+import { Cleanup } from "./cleanup/Cleanup";
+import { CleanupChip } from "./cleanup/CleanupChip";
+import { CleanupModal } from "./cleanup/CleanupModal";
 import { DropOverlay } from "./DropOverlay";
 import { ErrorBoundary } from "./ErrorBoundary";
-import { Inspect } from "./Inspect";
+import { Inspect } from "./inspect/Inspect";
 import { IssuesChip } from "./IssuesChip";
 import { IssuesModal } from "./IssuesModal";
 import { PasteConfirm } from "./PasteConfirm";

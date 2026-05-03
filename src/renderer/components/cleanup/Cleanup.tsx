@@ -1,9 +1,9 @@
 import React from "react";
 
-import type { CleanupItem } from "../state";
-import { readableSize } from "../util";
-import { Button } from "./Button";
-import { Toolbar } from "./Toolbar";
+import type { CleanupItem } from "../../state";
+import { readableSize } from "../../util";
+import { Button } from "../Button";
+import { Toolbar } from "../Toolbar";
 
 type CleanupProps = {
 	items: CleanupItem[];

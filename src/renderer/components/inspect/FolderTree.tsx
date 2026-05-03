@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useState } from "react";
 
-import { hueFor, oklchSwatch } from "../colors";
-import { joinPath } from "../state";
-import { readableSize } from "../util";
+import { hueFor, oklchSwatch } from "../../colors";
+import { joinPath } from "../../state";
+import { readableSize } from "../../util";
 
 type SelectableItem = { path: string; name: string; size: number };
 

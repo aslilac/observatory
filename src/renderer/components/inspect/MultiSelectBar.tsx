@@ -1,7 +1,7 @@
 import React from "react";
 
-import { readableSize } from "../util";
-import { Button } from "./Button";
+import { readableSize } from "../../util";
+import { Button } from "../Button";
 
 type MultiSelectBarProps = {
 	count: number;

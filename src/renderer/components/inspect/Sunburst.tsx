@@ -1,7 +1,7 @@
 import React, { Component, RefObject } from "react";
 
-import { hueFor, sunburstColor } from "../colors";
-import { readableSize } from "../util";
+import { hueFor, sunburstColor } from "../../colors";
+import { readableSize } from "../../util";
 
 function readThemeColors(): {
 	ink: string;

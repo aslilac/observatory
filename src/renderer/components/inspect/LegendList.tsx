@@ -1,8 +1,8 @@
 import React, { useMemo } from "react";
 
-import { hueFor, oklchSwatch } from "../colors";
-import { joinPath } from "../state";
-import { readableDate, readableSize } from "../util";
+import { hueFor, oklchSwatch } from "../../colors";
+import { joinPath } from "../../state";
+import { readableDate, readableSize } from "../../util";
 import type { SortMode } from "./SortPicker";
 
 type SelectableItem = { path: string; name: string; size: number };
