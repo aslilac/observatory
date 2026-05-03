@@ -146,6 +146,10 @@ const VolumeCard = ({
 	onInspect,
 }: VolumeCardProps) => {
 	const status = scan?.status;
+	// While a scan is building we still want clicks to land on the progress
+	// view — onScan covers it because Ob.scanPath is a no-op when the path
+	// already has an entry in vfsManager and setInspecting routes the user
+	// to whatever view matches the scan's current status.
 	const handleClick = status === "complete" ? onInspect : onScan;
 	const action =
 		status === "complete"
@@ -157,8 +161,7 @@ const VolumeCard = ({
 		<button
 			type="button"
 			onClick={handleClick}
-			disabled={status === "building"}
-			className={`flex items-center gap-[12px] rounded-card border bg-paper p-[12px] text-left transition-shadow disabled:cursor-default ${
+			className={`flex items-center gap-[12px] rounded-card border bg-paper p-[12px] text-left transition-shadow ${
 				primary
 					? "border-ink shadow-[0_0_0_3px_rgba(26,26,26,0.06)]"
 					: "border-line"
