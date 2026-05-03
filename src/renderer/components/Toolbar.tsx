@@ -35,7 +35,7 @@ export const Toolbar = ({
 	const inAScan = !!root;
 	const inView = !!view;
 	return (
-		<div className="flex h-[44px] items-center gap-2 border-b border-line-soft px-[14px]">
+		<div className="flex h-[44px] items-center gap-2 border-b border-line-soft px-3">
 			<IconBtn onClick={onBack} disabled={!canBack} title="Back">
 				‹
 			</IconBtn>
@@ -127,7 +127,13 @@ type IconBtnProps = {
 	title?: string;
 };
 
-const IconBtn = ({ children, onClick, active, disabled, title }: IconBtnProps) => (
+const IconBtn = ({
+	children,
+	onClick,
+	active,
+	disabled,
+	title,
+}: IconBtnProps) => (
 	<button
 		type="button"
 		onClick={onClick}
@@ -173,4 +179,3 @@ export function Segmented<T extends string>({
 		</div>
 	);
 }
-

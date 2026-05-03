@@ -56,10 +56,7 @@ export function getScanErrors(path: string): Ob.ScanError[] {
 	return entry.vfs.errors;
 }
 
-export function searchScan(
-	path: string,
-	query: string,
-): SearchResults | null {
+export function searchScan(path: string, query: string): SearchResults | null {
 	const entry = scans.get(path);
 	if (!entry || entry.status !== "complete" || !entry.vfs.root) return null;
 	return timed(`searchScan("${query}")`, () =>

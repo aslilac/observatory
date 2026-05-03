@@ -1,8 +1,8 @@
 {
-	"name": "observatory",
-	"version": "0.10.0",
-	"description": "Disk usage analyzer",
 	"private": true,
+	"name": "observatory",
+	"version": "1.0.0",
+	"description": "A cross platform disk usage analyzer with a modern UI",
 	"main": "./build/main/index.js",
 	"author": "McKayla Washburn <mckayla@hey.com>",
 	"license": "MIT",

@@ -15,8 +15,8 @@ export const SearchBar = ({
 	loading,
 	right,
 }: SearchBarProps) => (
-	<div className="flex items-center gap-[8px] border-b border-line-soft px-[14px] py-[8px]">
-		<div className="flex flex-1 items-center gap-[8px] rounded-[7px] border border-line bg-fill px-[10px] py-[5px]">
+	<div className="flex items-center gap-2 border-b border-line-soft px-3 py-[8px]">
+		<div className="flex flex-1 items-center gap-2 rounded-[7px] border border-line bg-fill px-2.5 py-[5px]">
 			<SearchIcon />
 			<input
 				type="text"

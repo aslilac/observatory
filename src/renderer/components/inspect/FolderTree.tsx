@@ -59,8 +59,7 @@ export const FolderTree = ({
 			});
 			void Ob.getRenderTree(inspecting, subCursor).then(
 				(result) => {
-					const children =
-						result?.tree?.files ?? result?.list.files ?? [];
+					const children = result?.tree?.files ?? result?.list.files ?? [];
 					setCache((prev) => new Map(prev).set(key, children));
 				},
 				() => {
@@ -192,9 +191,7 @@ const TreeChildren = ({
 								<Placeholder depth={depth + 1}>loading…</Placeholder>
 							)}
 							{isError && (
-								<Placeholder depth={depth + 1}>
-									couldn't load
-								</Placeholder>
+								<Placeholder depth={depth + 1}>couldn't load</Placeholder>
 							)}
 							{!isLoading && !isError && childList.length === 0 && (
 								<Placeholder depth={depth + 1}>empty</Placeholder>

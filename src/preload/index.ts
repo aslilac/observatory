@@ -18,7 +18,10 @@ function approxBytes(value: unknown): number {
 	}
 }
 
-async function timedInvoke(channel: string, ...args: unknown[]): Promise<unknown> {
+async function timedInvoke(
+	channel: string,
+	...args: unknown[]
+): Promise<unknown> {
 	if (!perfEnabled()) return ipcRenderer.invoke(channel, ...args);
 	const start = performance.now();
 	const result = await ipcRenderer.invoke(channel, ...args);
@@ -48,8 +51,7 @@ contextBridge.exposeInMainWorld("Ob", {
 	getScans: () => timedInvoke("ob:getScans"),
 	getRenderTree: (path: string, cursor: string[]) =>
 		timedInvoke("ob:getRenderTree", path, cursor),
-	getScanProgress: (path: string) =>
-		timedInvoke("ob:getScanProgress", path),
+	getScanProgress: (path: string) => timedInvoke("ob:getScanProgress", path),
 	deleteFiles: (paths: string[]) => timedInvoke("ob:deleteFiles", paths),
 	searchScan: (path: string, query: string) =>
 		timedInvoke("ob:searchScan", path, query),
@@ -59,16 +61,14 @@ contextBridge.exposeInMainWorld("Ob", {
 
 	onDrives: (cb: (drives: Ob.PhysicalDrive[]) => void) => {
 		const unsub = subscribe<Ob.PhysicalDrive[]>("ob:drives", cb);
-		void timedInvoke("ob:getDrives").then(
-			(drives) => cb(drives as Ob.PhysicalDrive[]),
+		void timedInvoke("ob:getDrives").then((drives) =>
+			cb(drives as Ob.PhysicalDrive[]),
 		);
 		return unsub;
 	},
 	onScans: (cb: (scans: Ob.ScanInfo[]) => void) => {
 		const unsub = subscribe<Ob.ScanInfo[]>("ob:scans", cb);
-		void timedInvoke("ob:getScans").then(
-			(scans) => cb(scans as Ob.ScanInfo[]),
-		);
+		void timedInvoke("ob:getScans").then((scans) => cb(scans as Ob.ScanInfo[]));
 		return unsub;
 	},
 	onSetInspecting: (cb: (path: string | null) => void) =>

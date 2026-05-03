@@ -16,7 +16,7 @@ export const MultiSelectBar = ({
 	onAddToCleanup,
 	onCancel,
 }: MultiSelectBarProps) => (
-	<div className="flex items-center gap-[12px] border-t border-line-soft bg-paper px-[14px] py-[8px]">
+	<div className="flex items-center gap-3 border-t border-line-soft bg-paper px-3 py-[8px]">
 		<div className="flex-1 text-[12px]">
 			<span className="font-medium">{count}</span>{" "}
 			<span className="text-muted">selected ·</span>{" "}

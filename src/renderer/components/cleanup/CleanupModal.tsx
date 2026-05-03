@@ -109,8 +109,8 @@ const ConfirmStage = ({
 				<span className="font-mono font-semibold text-ink">
 					{readableSize(totalSize)}
 				</span>{" "}
-				across {items.length} path{items.length === 1 ? "" : "s"} to your
-				system Trash. You can restore items from Trash until you empty it.
+				across {items.length} path{items.length === 1 ? "" : "s"} to your system
+				Trash. You can restore items from Trash until you empty it.
 			</div>
 			<div className="mb-[20px] rounded-card border border-line-soft bg-fill px-[12px] py-[10px] font-mono text-[11px] text-ink">
 				{preview.map((item) => (
@@ -118,9 +118,7 @@ const ConfirmStage = ({
 						{item.path}
 					</div>
 				))}
-				{overflow > 0 && (
-					<div className="text-muted">+ {overflow} more</div>
-				)}
+				{overflow > 0 && <div className="text-muted">+ {overflow} more</div>}
 			</div>
 			<div className="flex justify-end gap-[8px]">
 				<Button onClick={onCancel}>Cancel</Button>

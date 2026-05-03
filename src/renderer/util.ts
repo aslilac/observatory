@@ -23,7 +23,10 @@ const DAY = 24 * HOUR;
 // Compact human-friendly mtime label: "5m", "3h", "2d" for recent activity,
 // "Mar 5" for this year, "Mar 5, 2024" for older. Tuned to fit in a fixed-
 // width column next to the size readout.
-export function readableDate(epochMs: number, now: number = Date.now()): string {
+export function readableDate(
+	epochMs: number,
+	now: number = Date.now(),
+): string {
 	if (!epochMs || !Number.isFinite(epochMs)) return "—";
 	const delta = now - epochMs;
 	if (delta < 0) return "just now";

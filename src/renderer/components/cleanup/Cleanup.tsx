@@ -61,11 +61,7 @@ export const Cleanup = ({
 			{empty ? (
 				<EmptyState onBrowseFiles={onBrowseFiles} />
 			) : (
-				<QueueList
-					items={items}
-					totalSize={totalSize}
-					onRemove={onRemove}
-				/>
+				<QueueList items={items} totalSize={totalSize} onRemove={onRemove} />
 			)}
 		</>
 	);
@@ -80,8 +76,8 @@ const EmptyState = ({ onBrowseFiles }: { onBrowseFiles: () => void }) => (
 			Nothing queued for cleanup
 		</div>
 		<div className="max-w-[420px] text-center text-[12px] text-muted">
-			Open a scan and use the checkboxes to stage files or folders here.
-			Nothing is deleted until you confirm.
+			Open a scan and use the checkboxes to stage files or folders here. Nothing
+			is deleted until you confirm.
 		</div>
 		<Button onClick={onBrowseFiles}>Browse files</Button>
 	</div>
@@ -112,7 +108,7 @@ const QueueList = ({
 			{items.map((item, i) => (
 				<div
 					key={item.path}
-					className={`flex items-center gap-[10px] px-[14px] py-[8px] text-[12px] ${
+					className={`flex items-center gap-[10px] px-3 py-[8px] text-[12px] ${
 						i < items.length - 1 ? "border-b border-line-soft" : ""
 					}`}
 				>

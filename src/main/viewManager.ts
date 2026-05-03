@@ -15,11 +15,8 @@ export const windowSettings = (
 ): BrowserWindowConstructorOptions => ({
 	x: 100,
 	y: Math.floor(screen.getPrimaryDisplay().workArea.height / 8),
-	width: 1100,
 	minWidth: 880,
-	height: 720,
 	minHeight: 600,
-	show: false,
 	titleBarStyle: "hiddenInset",
 	autoHideMenuBar: true,
 	webPreferences: {

@@ -198,47 +198,43 @@ export const Inspect = ({
 					onNavigateUp={navigateUp}
 					onNavigateForward={navigateForward}
 				/>
-				<div className="flex min-h-0 flex-col py-[16px] pr-[18px] pl-[12px]">
-					<div className="min-h-0 flex-1 overflow-auto">
-						{searchActive ? (
-							<SearchResults
-								results={searchResults}
-								loading={searching}
-								query={query}
-								selection={selection}
-								onToggleSelect={toggleSelect}
-							/>
-						) : mode === "list" ? (
-							<LegendList
-								inspecting={inspecting}
-								cursor={cursor}
-								name={tree.name}
-								size={tree.size}
-								capacity={tree.capacity}
-								files={list.files}
-								selection={selection}
-								onForward={navigateForward}
-								onToggleSelect={toggleSelect}
-								sortMode={sortMode}
-								showAll={showAll}
-								onShowAll={() => setShowAll(true)}
-							/>
-						) : (
-							<FolderTree
-								inspecting={inspecting}
-								cursor={cursor}
-								rootName={
-									cursor.length > 0
-										? cursor[cursor.length - 1]!
-										: tree.name
-								}
-								files={treeChildren}
-								selection={selection}
-								onForward={navigateForward}
-								onToggleSelect={toggleSelect}
-							/>
-						)}
-					</div>
+				<div className="flex min-h-0 flex-col py-4 px-3 overflow-auto">
+					{searchActive ? (
+						<SearchResults
+							results={searchResults}
+							loading={searching}
+							query={query}
+							selection={selection}
+							onToggleSelect={toggleSelect}
+						/>
+					) : mode === "list" ? (
+						<LegendList
+							inspecting={inspecting}
+							cursor={cursor}
+							name={tree.name}
+							size={tree.size}
+							capacity={tree.capacity}
+							files={list.files}
+							selection={selection}
+							onForward={navigateForward}
+							onToggleSelect={toggleSelect}
+							sortMode={sortMode}
+							showAll={showAll}
+							onShowAll={() => setShowAll(true)}
+						/>
+					) : (
+						<FolderTree
+							inspecting={inspecting}
+							cursor={cursor}
+							rootName={
+								cursor.length > 0 ? cursor[cursor.length - 1]! : tree.name
+							}
+							files={treeChildren}
+							selection={selection}
+							onForward={navigateForward}
+							onToggleSelect={toggleSelect}
+						/>
+					)}
 				</div>
 			</div>
 			{selection.size > 0 ? (
@@ -249,7 +245,7 @@ export const Inspect = ({
 					onAddToCleanup={addSelectedToCleanup}
 				/>
 			) : (
-				<div className="flex h-[28px] items-center border-t border-line-soft px-[14px] font-mono text-[11px] text-muted">
+				<div className="flex h-[28px] items-center border-t border-line-soft px-3 font-mono text-[11px] text-muted">
 					{readableSize(tree.size)}
 					{tree.capacity !== tree.size && (
 						<>

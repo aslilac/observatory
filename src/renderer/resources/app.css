@@ -98,7 +98,8 @@ body {
    wedge so it's easy to track at a glance. Mirrors the layer-0↔layer-4
    shimmer the old canvas implementation animated frame by frame. */
 @keyframes sunburst-pulse {
-	0%, 100% {
+	0%,
+	100% {
 		filter: brightness(1) saturate(1);
 		opacity: 1;
 	}

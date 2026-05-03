@@ -281,9 +281,11 @@ export class VirtualFileSystem {
 						};
 
 		const sortAlpha = (files: Ob.VfsNode[]) =>
-			files.slice().sort((a, b) =>
-				a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
-			);
+			files
+				.slice()
+				.sort((a, b) =>
+					a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+				);
 
 		const root = this.root;
 

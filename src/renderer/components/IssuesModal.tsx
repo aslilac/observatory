@@ -48,8 +48,8 @@ export const IssuesModal = ({ errors, onClose }: IssuesModalProps) => {
 					<div>
 						<div className="text-[16px] font-semibold">Scan issues</div>
 						<div className="font-mono text-[11px] text-muted">
-							{errors.length} entr{errors.length === 1 ? "y" : "ies"} skipped
-							or unreadable
+							{errors.length} entr{errors.length === 1 ? "y" : "ies"} skipped or
+							unreadable
 						</div>
 					</div>
 					<button

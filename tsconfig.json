@@ -26,9 +26,9 @@
 		"sourceMap": true,
 		"strict": true,
 		"target": "esnext",
-		"types": ["react", "react-dom"],
+		"types": ["react", "react-dom", "vite/client"],
 		"useDefineForClassFields": true,
-		"verbatimModuleSyntax": false,
+		"verbatimModuleSyntax": false
 	},
-	"include": ["./src/**/*"],
+	"include": ["./src/**/*"]
 }

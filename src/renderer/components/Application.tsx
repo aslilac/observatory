@@ -101,8 +101,7 @@ export const Application = () => {
 	);
 
 	const setCursor = useCallback(
-		(next: string[]) =>
-			navigate({ view: "scan", inspecting, cursor: next }),
+		(next: string[]) => navigate({ view: "scan", inspecting, cursor: next }),
 		[navigate, inspecting],
 	);
 
@@ -388,11 +387,7 @@ export const Application = () => {
 			onDragLeave={handleDragLeave}
 			onDrop={handleDrop}
 		>
-			<TitleBar
-				title={titleSuffix}
-				theme={theme}
-				onToggleTheme={toggleTheme}
-			/>
+			<TitleBar title={titleSuffix} theme={theme} onToggleTheme={toggleTheme} />
 			<div className="flex min-h-0 flex-col overflow-hidden">
 				<ErrorBoundary key={`${view}-${inspecting ?? "menu"}`}>
 					<Profiler id="screen" onRender={handleProfilerRender}>
@@ -409,10 +404,7 @@ export const Application = () => {
 				/>
 			)}
 			{issuesOpen && (
-				<IssuesModal
-					errors={scanErrors}
-					onClose={() => setIssuesOpen(false)}
-				/>
+				<IssuesModal errors={scanErrors} onClose={() => setIssuesOpen(false)} />
 			)}
 			{pastePath && (
 				<PasteConfirm

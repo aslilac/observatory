@@ -44,10 +44,7 @@ export const Sunburst = ({
 		typeof document !== "undefined" &&
 		document.documentElement.classList.contains("dark");
 
-	const shards = useMemo(
-		() => buildShards(files, capacity),
-		[files, capacity],
-	);
+	const shards = useMemo(() => buildShards(files, capacity), [files, capacity]);
 
 	const clearHover = () => setHover(null);
 
@@ -60,11 +57,26 @@ export const Sunburst = ({
 			>
 				{shards.map((shard) => {
 					if (hover?.shard.id === shard.id) return null;
-					return renderShard(shard, false, dark, setHover, clearHover, onNavigateForward);
+					return renderShard(
+						shard,
+						false,
+						dark,
+						setHover,
+						clearHover,
+						onNavigateForward,
+					);
 				})}
 				{/* Render the hovered shard last so its pulse animation paints on
 				    top of neighboring strokes. */}
-				{hover && renderShard(hover.shard, true, dark, setHover, clearHover, onNavigateForward)}
+				{hover &&
+					renderShard(
+						hover.shard,
+						true,
+						dark,
+						setHover,
+						clearHover,
+						onNavigateForward,
+					)}
 
 				<circle
 					cx={0}
@@ -89,7 +101,9 @@ export const Sunburst = ({
 				</text>
 			</svg>
 
-			{hover && <Tooltip shard={hover.shard} x={hover.clientX} y={hover.clientY} />}
+			{hover && (
+				<Tooltip shard={hover.shard} x={hover.clientX} y={hover.clientY} />
+			)}
 		</div>
 	);
 };
@@ -149,7 +163,8 @@ const Tooltip = ({
 	x: number;
 	y: number;
 }) => {
-	const top = shard.file.type === "directory" ? shard.file.files.slice(0, 7) : [];
+	const top =
+		shard.file.type === "directory" ? shard.file.files.slice(0, 7) : [];
 	return (
 		<span
 			className="pointer-events-none fixed z-10 select-none rounded-card bg-ink px-[14px] py-[10px] text-[12px] text-paper [box-shadow:var(--shadow-menu)]"
@@ -178,10 +193,7 @@ const Tooltip = ({
 	);
 };
 
-function buildShards(
-	files: Ob.VfsNode[],
-	capacity: number,
-): ShardEntry[] {
+function buildShards(files: Ob.VfsNode[], capacity: number): ShardEntry[] {
 	const result: ShardEntry[] = [];
 	const minImaginary = 0.003;
 
@@ -238,7 +250,13 @@ function buildShards(
 	if (remainder > minImaginary) {
 		result.push({
 			id: "imaginary/0",
-			file: { type: "directory", name: "small items", size: 0, mtime: 0, files: [] },
+			file: {
+				type: "directory",
+				name: "small items",
+				size: 0,
+				mtime: 0,
+				files: [],
+			},
 			layer: 0,
 			position: totalEnd,
 			size: remainder,

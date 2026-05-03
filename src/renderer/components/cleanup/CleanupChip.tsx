@@ -8,7 +8,11 @@ type CleanupChipProps = {
 	onClick: () => void;
 };
 
-export const CleanupChip = ({ count, totalSize, onClick }: CleanupChipProps) => {
+export const CleanupChip = ({
+	count,
+	totalSize,
+	onClick,
+}: CleanupChipProps) => {
 	if (count === 0) {
 		return (
 			<button

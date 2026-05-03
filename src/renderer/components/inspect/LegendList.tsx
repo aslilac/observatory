@@ -130,9 +130,7 @@ export const LegendList = ({
 					className="mt-[6px] cursor-pointer rounded-[5px] px-[8px] py-[7px] text-left text-[12px] text-muted hover:bg-fill hover:text-ink"
 				>
 					Show all {sorted.length} items{" "}
-					<span className="font-mono text-faint">
-						({hiddenCount} more)
-					</span>
+					<span className="font-mono text-faint">({hiddenCount} more)</span>
 				</button>
 			)}
 
