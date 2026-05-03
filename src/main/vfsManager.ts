@@ -87,10 +87,20 @@ export function startScan(path: string) {
 
 	vfs.onComplete(() => {
 		const entry = scans.get(path);
-		if (!entry) return;
+		// `entry` may be missing if cancelScan ran while the scan was finishing
+		// up; the manager already broadcast the deletion, nothing to do here.
+		if (!entry || entry.vfs !== vfs) return;
 		entry.status = "complete";
 		emitter.emit("scans", getScans());
 	});
+}
+
+export function cancelScan(path: string) {
+	const entry = scans.get(path);
+	if (!entry) return;
+	entry.vfs.abort();
+	scans.delete(path);
+	emitter.emit("scans", getScans());
 }
 
 async function pollDrives() {

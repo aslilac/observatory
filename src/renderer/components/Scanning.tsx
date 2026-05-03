@@ -1,11 +1,13 @@
 import React from "react";
 
+import { Button } from "./Button";
 import { Toolbar } from "./Toolbar";
 
 type ScanningProps = {
 	root: string;
 	progress: Ob.ScanProgress | null;
 	onShowMenu: () => void;
+	onCancel: () => void;
 	canBack: boolean;
 	canForward: boolean;
 	onBack: () => void;
@@ -17,6 +19,7 @@ export const Scanning = ({
 	root,
 	progress,
 	onShowMenu,
+	onCancel,
 	canBack,
 	canForward,
 	onBack,
@@ -41,6 +44,11 @@ export const Scanning = ({
 				canForward={canForward}
 				onBack={onBack}
 				onForward={onForward}
+				right={
+					<Button size="small" onClick={onCancel}>
+						Cancel scan
+					</Button>
+				}
 				chips={chips}
 			/>
 			<div className="flex flex-1 items-center justify-center px-[28px]">

@@ -3,6 +3,7 @@ import * as fs from "node:fs/promises";
 
 import { deleteFiles } from "./cleanup";
 import {
+	cancelScan,
 	getDrives,
 	getRenderTree,
 	getScanErrors,
@@ -16,6 +17,7 @@ import {
 
 ipcMain.handle("ob:selectDirectory", selectDirectory);
 ipcMain.handle("ob:scanPath", (_event, path: string) => startScan(path));
+ipcMain.handle("ob:cancelScan", (_event, path: string) => cancelScan(path));
 ipcMain.handle("ob:getDrives", () => getDrives());
 ipcMain.handle("ob:getScans", () => getScans());
 ipcMain.handle("ob:getRenderTree", (_event, path: string, cursor: string[]) =>

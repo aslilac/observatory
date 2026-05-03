@@ -186,6 +186,12 @@ export const Application = () => {
 		[setInspecting],
 	);
 
+	const onCancelScan = useCallback(() => {
+		if (!inspecting) return;
+		void Ob.cancelScan(inspecting);
+		setInspecting(null);
+	}, [inspecting, setInspecting]);
+
 	const [dragOver, setDragOver] = useState(false);
 	const dragCounter = useRef(0);
 
@@ -338,6 +344,7 @@ export const Application = () => {
 				root={inspectingName}
 				progress={scanProgress}
 				onShowMenu={showMenu}
+				onCancel={onCancelScan}
 				chips={chips}
 				{...navProps}
 			/>

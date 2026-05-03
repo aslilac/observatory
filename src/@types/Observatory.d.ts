@@ -5,6 +5,7 @@ declare global {
 		// RPC (renderer -> main)
 		function selectDirectory(): Promise<void>;
 		function scanPath(path: string): Promise<void>;
+		function cancelScan(path: string): Promise<void>;
 		function getDrives(): Promise<PhysicalDrive[]>;
 		function getScans(): Promise<ScanInfo[]>;
 		function getRenderTree(

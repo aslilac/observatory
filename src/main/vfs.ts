@@ -27,6 +27,12 @@ export class VirtualFileSystem {
 
 	errors: Ob.ScanError[] = [];
 
+	// Set by `abort()` from the manager when the user cancels. Each `_scan`
+	// recursion bails early once this flips so the scan winds down without
+	// piling on new fs work; in-flight syscalls finish but their results
+	// are dropped.
+	private aborted = false;
+
 	// Device id of the scan root. Subdirectories on other devices are
 	// crossed-mount-point boundaries (procfs, sysfs, tmpfs, /Volumes,
 	// network shares, FUSE mounts, …) — none of which represent real
@@ -56,6 +62,14 @@ export class VirtualFileSystem {
 			return;
 		}
 		this.onCompleteCallbacks.push(cb);
+	}
+
+	abort() {
+		this.aborted = true;
+	}
+
+	get isAborted(): boolean {
+		return this.aborted;
 	}
 
 	startScan() {
@@ -105,20 +119,21 @@ export class VirtualFileSystem {
 	}
 
 	private async _scan(location: string): Promise<Ob.VfsDirectory> {
+		const state: Ob.VfsDirectory = {
+			type: "directory",
+			name: "MISSING_NO",
+			size: 0,
+			mtime: 0,
+			files: [],
+		};
+		if (this.aborted) return state;
 		this.currentPath = location;
 
 		const ownStats = await fs.lstat(location).catch((error: unknown) => {
 			this.recordError(location, error);
 			return undefined;
 		});
-
-		const state: Ob.VfsDirectory = {
-			type: "directory",
-			name: "MISSING_NO",
-			size: 0,
-			mtime: ownStats?.mtimeMs ?? 0,
-			files: [],
-		};
+		state.mtime = ownStats?.mtimeMs ?? 0;
 
 		const readdirStart = PERF ? performance.now() : 0;
 		const files = await fs.readdir(location).catch((error: unknown) => {
@@ -139,6 +154,7 @@ export class VirtualFileSystem {
 
 		await Promise.all(
 			files.map(async (name) => {
+				if (this.aborted) return;
 				const entity = path.join(location, name);
 				const stats = await fs.lstat(entity).catch((error: unknown) => {
 					this.recordError(entity, error);
