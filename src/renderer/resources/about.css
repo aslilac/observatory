@@ -8,9 +8,17 @@
 
 html,
 body {
-	@apply m-0 min-h-screen p-0 font-sans text-[1.45em] font-light leading-normal text-white;
+	margin: 0;
+	padding: 0;
+	min-height: 100vh;
+	font-family: var(--font-sans);
+	font-size: 1.45em;
+	font-weight: 300;
+	line-height: var(--leading-normal);
+	color: white;
 }
 
 body {
-	@apply select-none bg-[#12142d];
+	user-select: none;
+	background-color: #12142d;
 }
