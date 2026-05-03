@@ -20,8 +20,19 @@ export function rowActions({
 	type,
 	onAddToCleanup,
 }: RowActionsArgs): ContextMenuItem[] {
-	return [
-		{ kind: "item", label: "Open", onClick: () => void Ob.openPath(path) },
+	const items: ContextMenuItem[] = [];
+	// "Open" on a folder lands in Finder showing the folder's contents, which
+	// is identical to what "Reveal in Finder" does for the same folder — only
+	// emit it for files where "open with default app" is meaningfully
+	// different from "show in parent folder".
+	if (type === "file") {
+		items.push({
+			kind: "item",
+			label: "Open",
+			onClick: () => void Ob.openPath(path),
+		});
+	}
+	items.push(
 		{
 			kind: "item",
 			label: isMac ? "Reveal in Finder" : "Show in Folder",
@@ -40,5 +51,6 @@ export function rowActions({
 			label: type === "directory" ? "Add folder to cleanup" : "Add to cleanup",
 			onClick: () => onAddToCleanup({ path, name, size }),
 		},
-	];
+	);
+	return items;
 }
