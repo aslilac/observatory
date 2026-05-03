@@ -1,4 +1,4 @@
-import { BrowserWindow } from "electron";
+import { BrowserWindow, shell } from "electron";
 import * as path from "node:path";
 
 const RENDERER_DEV_URL = process.env["ELECTRON_RENDERER_URL"];
@@ -28,6 +28,19 @@ function showAboutWindow() {
 		} else {
 			void aboutWindow.loadFile(path.join(__dirname, "../renderer/about.html"));
 		}
+
+		// Route external links (target=_blank or otherwise) to the user's
+		// default browser instead of replacing the about page.
+		aboutWindow.webContents.setWindowOpenHandler(({ url }) => {
+			void shell.openExternal(url);
+			return { action: "deny" };
+		});
+		aboutWindow.webContents.on("will-navigate", (event, url) => {
+			if (url !== aboutWindow?.webContents.getURL()) {
+				event.preventDefault();
+				void shell.openExternal(url);
+			}
+		});
 
 		aboutWindow.on("closed", () => {
 			aboutWindow = null;
