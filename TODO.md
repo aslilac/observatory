@@ -1,10 +1,10 @@
-- [ ] Ensure all React components are `const` arrow-functions, use the `React.FC` type to specify their props, and that they have a proper `type =` props type definition, not an inline object type.
-- [ ] Use `for (const ... of ...)` instead of `.forEach`
-- [ ] The `Application` component currently has way too many responsibilities.
-	- [ ] All of the `handleDrag*` functions could easily be factored out into a `DragReceiver` that uses `useEffect` to register those events on the `window` or `document.body` or something. That removes a lot of logic by itself.
-- [ ] `@apply` is kind of a hack and we should not use it
-- [ ] It'd be nice to combine `onScan` and `onInspect`. I remember you mentioning that we add things to recent when we start the scan _and_ when the scan completes. I think we should only do that when we start.
-- [ ] A circle around the sunburst is supposed to basically be a rainbow, going all the way around the hue wheel. Current that's not at all how the colors work. Basically, every files color should be based on how many bytes into the overall scan size it is, ordered by size descending.
-- [ ] Drop the "paper" and "ink" terminology. Just `--color-background` and `--color-default` should be enough.
-- [ ] Add some comments to `arcPath` in Sunburst.tsx documenting the math.
-- [ ] `renderShard` and `buildShards` should just be replaced with a normal `Shard` component. We end up with elements in the virtual dom, and making this performant is exactly the job React is built to do. I'm pretty certain these are premature optimizations that we'd be better off without.
+- [x] Ensure all React components are `const` arrow-functions, use the `React.FC` type to specify their props, and that they have a proper `type =` props type definition, not an inline object type.
+- [x] Use `for (const ... of ...)` instead of `.forEach`
+- [x] The `Application` component currently has way too many responsibilities.
+	- [x] All of the `handleDrag*` functions could easily be factored out into a `DragReceiver` that uses `useEffect` to register those events on the `window` or `document.body` or something. That removes a lot of logic by itself.
+- [x] `@apply` is kind of a hack and we should not use it
+- [x] It'd be nice to combine `onScan` and `onInspect`. I remember you mentioning that we add things to recent when we start the scan _and_ when the scan completes. I think we should only do that when we start.
+- [x] A circle around the sunburst is supposed to basically be a rainbow, going all the way around the hue wheel. Current that's not at all how the colors work. Basically, every files color should be based on how many bytes into the overall scan size it is, ordered by size descending.
+- [x] Drop the "paper" and "ink" terminology. Just `--color-background` and `--color-default` should be enough.
+- [x] Add some comments to `arcPath` in Sunburst.tsx documenting the math.
+- [x] `renderShard` and `buildShards` should just be replaced with a normal `Shard` component. We end up with elements in the virtual dom, and making this performant is exactly the job React is built to do. I'm pretty certain these are premature optimizations that we'd be better off without.
