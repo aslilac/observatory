@@ -181,9 +181,14 @@ export const Application = () => {
 	const onScan = useCallback(
 		(path: string) => {
 			void Ob.scanPath(path);
+			// Land it in Recent up front so a one-off drag / paste / Volume
+			// click is reachable from the welcome menu while it's still
+			// scanning. The on-complete effect below bumps the timestamp once
+			// the scan actually finishes, but the entry is visible immediately.
+			pushRecent(path);
 			setInspecting(path);
 		},
-		[setInspecting],
+		[pushRecent, setInspecting],
 	);
 
 	const onCancelScan = useCallback(() => {
