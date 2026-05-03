@@ -21,6 +21,9 @@ declare global {
 		function getScanErrors(path: string): Promise<ScanError[]>;
 		function statPath(path: string): Promise<PathStat | null>;
 		function pathForFile(file: File): string;
+		function publishRecentScans(
+			recents: ReadonlyArray<{ path: string; scannedAt: number }>,
+		): Promise<void>;
 
 		// Push events (main -> renderer); each returns an unsubscribe.
 		function onDrives(cb: (drives: PhysicalDrive[]) => void): () => void;

@@ -214,6 +214,13 @@ export function useRecentScans(): {
 } {
 	const [recent, setRecent] = useState<RecentScan[]>(() => readRecentScans());
 
+	// Mirror the list to main so it can populate the File → Open Recent
+	// submenu. The renderer is still the source of truth (localStorage); main
+	// just rebuilds its menu around whatever we publish.
+	useEffect(() => {
+		void Ob.publishRecentScans(recent);
+	}, [recent]);
+
 	const push = useCallback((path: string) => {
 		setRecent((prev) => {
 			const next = [

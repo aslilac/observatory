@@ -58,6 +58,9 @@ contextBridge.exposeInMainWorld("Ob", {
 	getScanErrors: (path: string) => timedInvoke("ob:getScanErrors", path),
 	statPath: (path: string) => timedInvoke("ob:statPath", path),
 	pathForFile: (file: File) => webUtils.getPathForFile(file),
+	publishRecentScans: (
+		recents: ReadonlyArray<{ path: string; scannedAt: number }>,
+	) => timedInvoke("ob:publishRecentScans", recents),
 
 	onDrives: (cb: (drives: Ob.PhysicalDrive[]) => void) => {
 		const unsub = subscribe<Ob.PhysicalDrive[]>("ob:drives", cb);

@@ -2,6 +2,7 @@ import { app, dialog, ipcMain, webContents } from "electron";
 import * as fs from "node:fs/promises";
 
 import { deleteFiles } from "./cleanup";
+import { setRecentScans } from "./system/menu";
 import {
 	cancelScan,
 	getDrives,
@@ -45,6 +46,11 @@ ipcMain.handle(
 			return { exists: false, isDirectory: false };
 		}
 	},
+);
+ipcMain.handle(
+	"ob:publishRecentScans",
+	(_event, recents: Array<{ path: string; scannedAt: number }>) =>
+		setRecentScans(recents),
 );
 
 function broadcast(channel: string, payload: unknown) {
