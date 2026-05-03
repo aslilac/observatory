@@ -1,4 +1,3 @@
-// Fontsource ships side-effect-only CSS imports without type declarations,
-// which trips TS 6's noUncheckedSideEffectImports default.
-// declare module "@fontsource-variable/inter";
-// declare module "@fontsource/ibm-plex-mono/*.css";
+// Font source doesn't include it's own .d.ts files unfortunately.
+declare module "@fontsource-variable/inter";
+declare module "@fontsource-variable/ibm-plux-mono";

@@ -278,7 +278,7 @@ const Row = ({
 			title={expandable ? (expanded ? "Collapse" : "Expand") : undefined}
 			className="-mx-[2px] grid h-[22px] w-[22px] flex-shrink-0 cursor-pointer place-items-center rounded-button text-faint hover:bg-fill-strong hover:text-ink disabled:cursor-default disabled:opacity-0 disabled:hover:bg-transparent"
 		>
-			<Chevron rotated={expanded} />
+			<Chevron rotation={expanded ? "down" : "right"} />
 		</button>
 		{selectable && onToggleSelect ? (
 			<Checkbox checked={selected} onChange={onToggleSelect} />
@@ -300,7 +300,18 @@ const Row = ({
 	</div>
 );
 
-const Chevron = ({ rotated }: { rotated: boolean }) => (
+type ChevronProps = {
+	rotation: "left" | "up" | "right" | "down";
+};
+
+const rotations = {
+	left: "rotate-180",
+	up: "rotate-270",
+	right: "",
+	down: "rotate-90",
+};
+
+const Chevron: React.FC<ChevronProps> = ({ rotation = "right" }) => (
 	<svg
 		width="9"
 		height="9"
@@ -310,7 +321,7 @@ const Chevron = ({ rotated }: { rotated: boolean }) => (
 		strokeWidth="3"
 		strokeLinecap="round"
 		strokeLinejoin="round"
-		className={`transition-transform duration-100 ${rotated ? "rotate-90" : ""}`}
+		className={`transition-transform duration-100 ${rotations[rotation]}`}
 	>
 		<polyline points="9 6 15 12 9 18" />
 	</svg>

@@ -261,17 +261,18 @@ export const Application = () => {
 		return () => document.removeEventListener("paste", handler);
 	}, []);
 
-	const confirmPaste = useCallback(() => {
-		if (!pastePath) return;
+	const confirmPaste = () => {
+		if (!pastePath) {
+			return;
+		}
 		onScan(pastePath);
 		setPastePath(null);
 		setPasteStat(null);
-	}, [pastePath, onScan]);
+	};
 
-	const onInspect = useCallback(
-		(path: string) => setInspecting(path),
-		[setInspecting],
-	);
+	const onInspect = (path: string) => {
+		setInspecting(path);
+	};
 
 	const onTrashCleanup = useCallback(
 		async (items: typeof cleanup.items) => {
@@ -373,9 +374,7 @@ export const Application = () => {
 					cleanup.items.length === 0 ? "empty" : `${cleanup.items.length} items`
 				}`
 			: inspecting
-				? cursor.length > 0
-					? cursor[cursor.length - 1]!
-					: tree?.name || inspectingName || inspecting
+				? tree?.name
 				: "";
 
 	return (
@@ -422,17 +421,15 @@ export const Application = () => {
 	);
 };
 
-const TitleBar = ({
-	title,
-	theme,
-	onToggleTheme,
-}: {
-	title: string;
+type TitleBarProps = {
+	title?: string;
 	theme: "light" | "dark";
 	onToggleTheme: () => void;
-}) => (
-	<div className="relative flex h-[36px] items-center justify-center border-b border-line-soft bg-paper text-[12px] font-medium text-muted darwin:[-webkit-app-region:drag]">
-		Observatory{title ? ` — ${title}` : ""}
+};
+
+const TitleBar: React.FC<TitleBarProps> = ({ title, theme, onToggleTheme }) => (
+	<div className="relative flex h-[36px] items-center justify-center border-b border-line-soft text-[12px] font-medium text-muted darwin:[-webkit-app-region:drag]">
+		Observatory{title && ` — ${title}`}
 		<div className="absolute top-1/2 right-[10px] -translate-y-1/2">
 			<ThemeToggle theme={theme} onToggle={onToggleTheme} />
 		</div>
