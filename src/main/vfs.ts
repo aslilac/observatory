@@ -159,13 +159,7 @@ export class VirtualFileSystem {
 				} else if (stats.isDirectory()) {
 					this.counts.directories++;
 
-					// Refuse to cross device boundaries. Mount points (procfs,
-					// sysfs, tmpfs, autofs firmlinks, /Volumes children,
-					// network shares, FUSE mounts, …) all show up as a child
-					// directory whose `dev` differs from the scan root; their
-					// reported sizes are virtual and recursing into them is
-					// either misleading or actively dangerous (loops).
-					if (this.rootDev !== null && stats.dev !== this.rootDev) {
+					if (shouldSkipDirectory(entity, stats.dev, this.rootDev)) {
 						return;
 					}
 
@@ -301,4 +295,44 @@ export class VirtualFileSystem {
 			},
 		};
 	}
+}
+
+// macOS Catalina+ has firmlinks that make the read-only system volume and
+// the writable data volume appear as one tree at /. The kernel reports
+// stat("/") as the data volume's device, which means a naive cross-device
+// check ALSO matches /System/Volumes/Data — recursing into it duplicates
+// the entire user home tree under that path. The blocklist below covers
+// the firmlink shadow paths that don't exist on disk in any meaningful
+// sense and should never be descended into regardless of dev id.
+const DARWIN_SHADOW_PATHS: ReadonlySet<string> = new Set([
+	"/Volumes",
+	"/System/Volumes",
+	"/private/var/db/dyld",
+]);
+
+function shouldSkipDirectory(
+	entity: string,
+	dev: number,
+	rootDev: number | null,
+): boolean {
+	if (process.platform === "darwin") {
+		if (DARWIN_SHADOW_PATHS.has(entity)) return true;
+		// Skip /System/Volumes/* explicitly so we never recurse into Update,
+		// Preboot, Recovery, VM, Data, etc. — all duplicates of content
+		// reachable via the firmlinked root.
+		if (entity.startsWith("/System/Volumes/")) return true;
+	}
+
+	if (process.platform === "linux" && entity === "/proc") return true;
+
+	// Generic cross-device skip — catches procfs / sysfs / tmpfs / external
+	// drives / network shares / FUSE mounts on every platform. Skipped on
+	// macOS for non-shadow paths because firmlinks make this check
+	// unreliable: stat("/") returns the data volume, so legitimate user
+	// content like /Users would be filtered out by it.
+	if (process.platform !== "darwin" && rootDev !== null && dev !== rootDev) {
+		return true;
+	}
+
+	return false;
 }
