@@ -224,7 +224,7 @@ export const Application: React.FC = () => {
 
 	const titleSuffix =
 		view === "cleanup"
-			? `cleanup queue · ${
+			? `cleanup review · ${
 					cleanup.items.length === 0 ? "empty" : `${cleanup.items.length} items`
 				}`
 			: inspecting

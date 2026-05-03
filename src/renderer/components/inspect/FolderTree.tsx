@@ -177,7 +177,9 @@ const TreeChildren: React.FC<ChildrenProps> = ({
 						name={file.name}
 						size={file.size}
 						depth={depth}
-						hue={depth === 1 && isDir ? hueByName.get(file.name) ?? null : null}
+						hue={
+							depth === 1 && isDir ? (hueByName.get(file.name) ?? null) : null
+						}
 						expandable={expandable}
 						expanded={isOpen}
 						selected={selection.has(fullPath)}

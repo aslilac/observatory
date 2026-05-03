@@ -189,8 +189,7 @@ const ShardTree: React.FC<ShardTreeProps> = ({
 				/>,
 			);
 
-			const childrenSum =
-				file.files.reduce((s, f) => s + f.size, 0) / capacity;
+			const childrenSum = file.files.reduce((s, f) => s + f.size, 0) / capacity;
 			const remainder = sliceSize - childrenSum;
 			if (layer < 4 && remainder > MIN_IMAGINARY) {
 				const remainderId = `imaginary/${layer + 1}/${path.join("/")}`;

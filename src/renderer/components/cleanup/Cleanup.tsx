@@ -76,7 +76,11 @@ type QueueListProps = {
 	onRemove: (path: string) => void;
 };
 
-const QueueList: React.FC<QueueListProps> = ({ items, totalSize, onRemove }) => (
+const QueueList: React.FC<QueueListProps> = ({
+	items,
+	totalSize,
+	onRemove,
+}) => (
 	<div className="flex flex-1 flex-col overflow-hidden px-[28px] py-[20px]">
 		<div className="mb-[18px] flex items-end justify-between">
 			<div>

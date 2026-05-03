@@ -21,7 +21,10 @@ const KIND_ORDER: Array<Ob.ScanError["kind"]> = [
 	"other",
 ];
 
-export const IssuesModal: React.FC<IssuesModalProps> = ({ errors, onClose }) => {
+export const IssuesModal: React.FC<IssuesModalProps> = ({
+	errors,
+	onClose,
+}) => {
 	const grouped = useMemo(() => {
 		const buckets = new Map<Ob.ScanError["kind"], Ob.ScanError[]>();
 		for (const e of errors) {
