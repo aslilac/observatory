@@ -9,11 +9,6 @@ type CleanupProps = {
 	onRemove: (path: string) => void;
 	onClear: () => void;
 	onReview: () => void;
-	canBack: boolean;
-	canForward: boolean;
-	onBack: () => void;
-	onForward: () => void;
-	onShowMenu: () => void;
 	onBrowseFiles: () => void;
 	chips: React.ReactNode;
 };
@@ -24,11 +19,6 @@ export const Cleanup: React.FC<CleanupProps> = ({
 	onRemove,
 	onClear,
 	onReview,
-	canBack,
-	canForward,
-	onBack,
-	onForward,
-	onShowMenu,
 	onBrowseFiles,
 	chips,
 }) => {
@@ -37,11 +27,6 @@ export const Cleanup: React.FC<CleanupProps> = ({
 		<>
 			<Toolbar
 				view="Cleanup"
-				onShowMenu={onShowMenu}
-				canBack={canBack}
-				canForward={canForward}
-				onBack={onBack}
-				onForward={onForward}
 				right={
 					!empty && (
 						<div className="flex gap-[6px]">

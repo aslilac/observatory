@@ -1,16 +1,11 @@
 import { Fragment } from "react";
 
+import { useNavigation } from "../navigation";
+
 type ToolbarProps = {
 	root?: string;
-	cursor?: string[];
-	onShowMenu?: () => void;
-	onCursor?: (next: string[]) => void;
 	right?: React.ReactNode;
 	scanning?: boolean;
-	canBack?: boolean;
-	canForward?: boolean;
-	onBack?: () => void;
-	onForward?: () => void;
 	chips?: React.ReactNode;
 	// When set, render a "Disks and folders › <view>" breadcrumb pattern. The
 	// root crumb becomes inactive-clickable (hops home) and `view` is the
@@ -20,33 +15,28 @@ type ToolbarProps = {
 
 export const Toolbar: React.FC<ToolbarProps> = ({
 	root,
-	cursor = [],
-	onShowMenu,
-	onCursor,
 	right,
 	scanning,
-	canBack,
-	canForward,
-	onBack,
-	onForward,
 	chips,
 	view,
 }) => {
+	const { cursor, canBack, canForward, goBack, goForward, setCursor, showMenu } =
+		useNavigation();
 	const inAScan = Boolean(root);
 	const inView = Boolean(view);
 
 	return (
 		<div className="flex h-[44px] items-center gap-2 border-b border-line-soft px-3">
-			<IconButton onClick={onBack} disabled={!canBack} title="Back">
+			<IconButton onClick={goBack} disabled={!canBack} title="Back">
 				‹
 			</IconButton>
-			<IconButton onClick={onForward} disabled={!canForward} title="Forward">
+			<IconButton onClick={goForward} disabled={!canForward} title="Forward">
 				›
 			</IconButton>
 			<div className="mx-1 h-6 w-px bg-line" />
 			<Crumb
 				active={!inAScan && !inView}
-				onClick={inAScan || inView ? onShowMenu : undefined}
+				onClick={inAScan || inView ? showMenu : undefined}
 			>
 				Disks and folders
 			</Crumb>
@@ -61,7 +51,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 					<Chevron />
 					<Crumb
 						active={cursor.length === 0}
-						onClick={cursor.length > 0 ? () => onCursor?.([]) : undefined}
+						onClick={cursor.length > 0 ? () => setCursor([]) : undefined}
 					>
 						{root}
 					</Crumb>
@@ -74,7 +64,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 						active={i === cursor.length - 1}
 						onClick={
 							i < cursor.length - 1
-								? () => onCursor?.(cursor.slice(0, i + 1))
+								? () => setCursor(cursor.slice(0, i + 1))
 								: undefined
 						}
 					>

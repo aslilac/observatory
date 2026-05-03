@@ -4,24 +4,14 @@ import { Toolbar } from "./Toolbar";
 type ScanningProps = {
 	root: string;
 	progress: Ob.ScanProgress | null;
-	onShowMenu: () => void;
 	onCancel: () => void;
-	canBack: boolean;
-	canForward: boolean;
-	onBack: () => void;
-	onForward: () => void;
 	chips: React.ReactNode;
 };
 
 export const Scanning: React.FC<ScanningProps> = ({
 	root,
 	progress,
-	onShowMenu,
 	onCancel,
-	canBack,
-	canForward,
-	onBack,
-	onForward,
 	chips,
 }) => {
 	const counts = progress?.counts;
@@ -36,12 +26,7 @@ export const Scanning: React.FC<ScanningProps> = ({
 		<>
 			<Toolbar
 				root={root}
-				onShowMenu={onShowMenu}
 				scanning
-				canBack={canBack}
-				canForward={canForward}
-				onBack={onBack}
-				onForward={onForward}
 				right={
 					<Button size="small" onClick={onCancel}>
 						Cancel scan

@@ -8,10 +8,6 @@ type WelcomeProps = {
 	scans: Ob.ScanInfo[];
 	recent: RecentScan[];
 	onOpen: (path: string) => void;
-	canBack: boolean;
-	canForward: boolean;
-	onBack: () => void;
-	onForward: () => void;
 	chips: React.ReactNode;
 };
 
@@ -20,22 +16,12 @@ export const Welcome: React.FC<WelcomeProps> = ({
 	scans,
 	recent,
 	onOpen,
-	canBack,
-	canForward,
-	onBack,
-	onForward,
 	chips,
 }) => {
 	const scanByPath = new Map(scans.map((s) => [s.path, s]));
 	return (
 		<>
-			<Toolbar
-				canBack={canBack}
-				canForward={canForward}
-				onBack={onBack}
-				onForward={onForward}
-				chips={chips}
-			/>
+			<Toolbar chips={chips} />
 			<div className="flex flex-1 flex-col gap-6 overflow-auto px-8 py-6">
 				<div>
 					<div className="text-[22px] font-semibold tracking-[-0.2px]">

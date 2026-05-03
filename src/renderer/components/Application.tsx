@@ -1,4 +1,4 @@
-import React, {
+import {
 	Profiler,
 	useCallback,
 	useEffect,
@@ -7,7 +7,8 @@ import React, {
 	useState,
 } from "react";
 
-import { perfEnabled, perfLog, perfMark, perfMeasure } from "../perf";
+import { useNavigation } from "../navigation";
+import { perfEnabled, perfLog, perfMeasure } from "../perf";
 import {
 	useCleanupQueue,
 	useDrives,
@@ -31,22 +32,6 @@ import { Scanning } from "./Scanning";
 import { ThemeToggle } from "./ThemeToggle";
 import { Welcome } from "./welcome/Welcome";
 
-type NavView = "scan" | "cleanup";
-type NavEntry = {
-	view: NavView;
-	inspecting: string | null;
-	cursor: string[];
-};
-type NavState = { history: NavEntry[]; index: number };
-
-const sameCursor = (a: string[], b: string[]) =>
-	a.length === b.length && a.every((v, i) => v === b[i]);
-
-const sameEntry = (a: NavEntry, b: NavEntry) =>
-	a.view === b.view &&
-	a.inspecting === b.inspecting &&
-	sameCursor(a.cursor, b.cursor);
-
 export const Application: React.FC = () => {
 	const drives = useDrives();
 	const scans = useScans();
@@ -56,74 +41,8 @@ export const Application: React.FC = () => {
 	const [issuesOpen, setIssuesOpen] = useState(false);
 	const { theme, toggle: toggleTheme } = useTheme();
 
-	const [nav, setNav] = useState<NavState>({
-		history: [{ view: "scan", inspecting: null, cursor: [] }],
-		index: 0,
-	});
-	const current = nav.history[nav.index]!;
-	const { view, inspecting, cursor } = current;
-
-	const navigate = useCallback((entry: NavEntry) => {
-		perfMark("nav:start");
-		setNav((prev) => {
-			const truncated = prev.history.slice(0, prev.index + 1);
-			const last = truncated[truncated.length - 1]!;
-			if (sameEntry(last, entry)) return prev;
-			return {
-				history: [...truncated, entry],
-				index: truncated.length,
-			};
-		});
-	}, []);
-
-	const goBack = useCallback(() => {
-		setNav((prev) =>
-			prev.index > 0 ? { ...prev, index: prev.index - 1 } : prev,
-		);
-	}, []);
-
-	const goForward = useCallback(() => {
-		setNav((prev) =>
-			prev.index < prev.history.length - 1
-				? { ...prev, index: prev.index + 1 }
-				: prev,
-		);
-	}, []);
-
-	const canBack = nav.index > 0;
-	const canForward = nav.index < nav.history.length - 1;
-
-	const setInspecting = useCallback(
-		(path: string | null) =>
-			navigate({ view: "scan", inspecting: path, cursor: [] }),
-		[navigate],
-	);
-
-	const setCursor = useCallback(
-		(next: string[]) => navigate({ view: "scan", inspecting, cursor: next }),
-		[navigate, inspecting],
-	);
-
-	const showCleanup = useCallback(
-		() =>
-			navigate({
-				view: "cleanup",
-				inspecting,
-				cursor,
-			}),
-		[navigate, inspecting, cursor],
-	);
-
-	useEffect(() => Ob.onSetInspecting(setInspecting), [setInspecting]);
-
-	useEffect(
-		() =>
-			Ob.onNav((direction) => {
-				if (direction === "back") goBack();
-				else goForward();
-			}),
-		[goBack, goForward],
-	);
+	const { view, inspecting, cursor, setInspecting, showCleanup, showMenu } =
+		useNavigation();
 
 	const inspectingScan = useMemo(
 		() =>
@@ -167,8 +86,6 @@ export const Application: React.FC = () => {
 	);
 
 	const scanErrors = useScanErrors(inspecting, inspectingScan?.status ?? null);
-
-	const showMenu = useCallback(() => setInspecting(null), [setInspecting]);
 
 	// One entry point that covers both "scan this path" and "open this scan":
 	// Ob.scanPath is a no-op for paths already tracked by vfsManager, the
@@ -260,13 +177,6 @@ export const Application: React.FC = () => {
 		</>
 	);
 
-	const navProps = {
-		canBack,
-		canForward,
-		onBack: goBack,
-		onForward: goForward,
-	};
-
 	const inspectingName = inspecting ? displayName(inspecting, drives) : "";
 
 	let body: React.ReactNode;
@@ -278,10 +188,8 @@ export const Application: React.FC = () => {
 				onRemove={cleanup.remove}
 				onClear={cleanup.clear}
 				onReview={() => setConfirmCleanup(true)}
-				onShowMenu={showMenu}
 				onBrowseFiles={() => void Ob.selectDirectory()}
 				chips={chips}
-				{...navProps}
 			/>
 		);
 	} else if (inspecting && inspectingScan?.status === "complete" && tree) {
@@ -289,12 +197,8 @@ export const Application: React.FC = () => {
 			<Inspect
 				inspecting={inspecting}
 				tree={tree}
-				cursor={cursor}
-				setCursor={setCursor}
-				onShowMenu={showMenu}
 				chips={chips}
 				onAddToCleanup={cleanup.add}
-				{...navProps}
 			/>
 		);
 	} else if (inspecting) {
@@ -302,10 +206,8 @@ export const Application: React.FC = () => {
 			<Scanning
 				root={inspectingName}
 				progress={scanProgress}
-				onShowMenu={showMenu}
 				onCancel={onCancelScan}
 				chips={chips}
-				{...navProps}
 			/>
 		);
 	} else {
@@ -316,7 +218,6 @@ export const Application: React.FC = () => {
 				recent={recent}
 				onOpen={onOpen}
 				chips={chips}
-				{...navProps}
 			/>
 		);
 	}

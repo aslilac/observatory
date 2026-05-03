@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { huesByPosition } from "../../colors";
+import { useNavigation } from "../../navigation";
 import { type CleanupItem, useSearch } from "../../state";
 import { readableSize } from "../../util";
 import { Segmented, Toolbar } from "../Toolbar";
@@ -54,13 +55,6 @@ const TreeIcon: React.FC = () => (
 type InspectProps = {
 	inspecting: string;
 	tree: Ob.RenderTree;
-	cursor: string[];
-	setCursor: (cursor: string[]) => void;
-	onShowMenu: () => void;
-	canBack: boolean;
-	canForward: boolean;
-	onBack: () => void;
-	onForward: () => void;
 	chips: React.ReactNode;
 	onAddToCleanup: (items: Array<Omit<CleanupItem, "addedAt">>) => void;
 };
@@ -70,16 +64,10 @@ type ViewMode = "list" | "tree";
 export const Inspect: React.FC<InspectProps> = ({
 	inspecting,
 	tree,
-	cursor,
-	setCursor,
-	onShowMenu,
-	canBack,
-	canForward,
-	onBack,
-	onForward,
 	chips,
 	onAddToCleanup,
 }) => {
+	const { cursor, setCursor } = useNavigation();
 	const [mode, setMode] = useState<ViewMode>("list");
 	const [selection, setSelection] = useState<Map<string, SelectableItem>>(
 		() => new Map(),
@@ -164,13 +152,6 @@ export const Inspect: React.FC<InspectProps> = ({
 		<>
 			<Toolbar
 				root={tree.name}
-				cursor={cursor}
-				onShowMenu={onShowMenu}
-				onCursor={setCursor}
-				canBack={canBack}
-				canForward={canForward}
-				onBack={onBack}
-				onForward={onForward}
 				right={
 					<Segmented<ViewMode>
 						value={mode}
