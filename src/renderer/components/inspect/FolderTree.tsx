@@ -279,9 +279,9 @@ const Row = ({
 			}}
 			disabled={!expandable}
 			title={expandable ? (expanded ? "Collapse" : "Expand") : undefined}
-			className="-mx-[2px] grid h-[22px] w-[22px] flex-shrink-0 cursor-pointer place-items-center rounded-button text-[12px] text-faint hover:bg-fill-strong hover:text-ink disabled:cursor-default disabled:opacity-0 disabled:hover:bg-transparent"
+			className="-mx-[2px] grid h-[22px] w-[22px] flex-shrink-0 cursor-pointer place-items-center rounded-button text-faint hover:bg-fill-strong hover:text-ink disabled:cursor-default disabled:opacity-0 disabled:hover:bg-transparent"
 		>
-			{expanded ? "▾" : "▸"}
+			{expanded ? <ChevronDown /> : <ChevronRight />}
 		</button>
 		{selectable && onToggleSelect ? (
 			<Checkbox checked={selected} onChange={onToggleSelect} />
@@ -301,6 +301,36 @@ const Row = ({
 			{readableSize(size)}
 		</span>
 	</div>
+);
+
+const ChevronRight = () => (
+	<svg
+		width="9"
+		height="9"
+		viewBox="0 0 24 24"
+		fill="none"
+		stroke="currentColor"
+		strokeWidth="3"
+		strokeLinecap="round"
+		strokeLinejoin="round"
+	>
+		<polyline points="9 6 15 12 9 18" />
+	</svg>
+);
+
+const ChevronDown = () => (
+	<svg
+		width="9"
+		height="9"
+		viewBox="0 0 24 24"
+		fill="none"
+		stroke="currentColor"
+		strokeWidth="3"
+		strokeLinecap="round"
+		strokeLinejoin="round"
+	>
+		<polyline points="6 9 12 15 18 9" />
+	</svg>
 );
 
 const Checkbox = ({
