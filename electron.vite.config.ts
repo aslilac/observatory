@@ -1,6 +1,5 @@
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
-import { externalizeDepsPlugin } from "electron-vite";
 import { resolve } from "node:path";
 
 // One config to drive all three Electron processes. Outputs land under
@@ -12,20 +11,20 @@ import { resolve } from "node:path";
 //                           hashed assets
 export default {
 	main: {
-		plugins: [externalizeDepsPlugin()],
 		build: {
 			outDir: "build/main/",
 			emptyOutDir: true,
+			externalizeDeps: true,
 			rolldownOptions: {
 				input: { index: resolve(__dirname, "src/main/index.ts") },
 			},
 		},
 	},
 	preload: {
-		plugins: [externalizeDepsPlugin()],
 		build: {
 			outDir: "build/preload/",
 			emptyOutDir: true,
+			externalizeDeps: true,
 			rolldownOptions: {
 				input: { index: resolve(__dirname, "src/preload/index.ts") },
 			},
