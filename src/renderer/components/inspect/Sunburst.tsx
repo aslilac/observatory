@@ -3,10 +3,7 @@ import { useState } from "react";
 import { sunburstColor } from "../../colors";
 import { readableSize } from "../../util";
 
-// The sunburst is built around a 600-unit square viewBox so the inner
-// radii (70, 101, 132, …) can be reused as raw user-space numbers from
-// the original canvas implementation. SVG centers via preserveAspectRatio.
-const VIEW_HALF = 275;
+const VIEW_RADIUS = 275;
 const CENTER_R = 64;
 const BASE_ANGLE_TURNS = 5 / 8;
 const MIN_IMAGINARY = 0.003;
@@ -20,11 +17,30 @@ type HoverState = {
 };
 
 type SunburstProps = {
+	/**
+	 * The capacity in bytes of the storage device, if the root of the scan is a
+	 * drive.
+	 */
 	capacity: number;
-	files: Ob.VfsNode[];
-	size: number;
-	position: number;
+	/** The size in bytes of the root directory. */
 	rootSize: number;
+	/** The size of the current directory. */
+	size: number;
+	/** The contents of the current directory. */
+	files: Ob.VfsNode[];
+	/**
+	 * The starting position of the current directory in bytes, relative to
+	 * beginning of the scan, ordered by largest children first. ie. The largest
+	 * largest child of the scan root has a position of 0, the second largest
+	 * has a position equal to the size of the largest, the third largest has a
+	 * position equal to the size of the largest plus the second largest, and so
+	 * on. The largest child of subdirectories will be the same as the parent
+	 * directory.
+	 *
+	 * This is all just used for elaborate color math.
+	 */
+	position: number;
+
 	hueByName: Map<string, number>;
 	onNavigateUp: () => void;
 	onNavigateForward: (...into: string[]) => void;
@@ -40,6 +56,11 @@ export const Sunburst: React.FC<SunburstProps> = ({
 }) => {
 	const [hover, setHover] = useState<HoverState | null>(null);
 
+	const handleNavigateForward = (...into: string[]) => {
+		onNavigateForward(...into);
+		setHover(null);
+	};
+
 	const dark =
 		typeof document !== "undefined" &&
 		document.documentElement.classList.contains("dark");
@@ -50,7 +71,7 @@ export const Sunburst: React.FC<SunburstProps> = ({
 	return (
 		<div className="grow">
 			<svg
-				viewBox={`${-VIEW_HALF} ${-VIEW_HALF} ${VIEW_HALF * 2} ${VIEW_HALF * 2}`}
+				viewBox={`${-VIEW_RADIUS} ${-VIEW_RADIUS} ${VIEW_RADIUS * 2} ${VIEW_RADIUS * 2}`}
 				className="h-full w-full"
 				preserveAspectRatio="xMidYMid meet"
 			>
@@ -65,7 +86,7 @@ export const Sunburst: React.FC<SunburstProps> = ({
 					hover={hover}
 					setHover={setHover}
 					dark={dark}
-					onNavigateForward={onNavigateForward}
+					onNavigateForward={handleNavigateForward}
 				/>
 				{freeRemainder > MIN_IMAGINARY && (
 					<Shard
@@ -80,7 +101,7 @@ export const Sunburst: React.FC<SunburstProps> = ({
 						hovered={false}
 						dark={dark}
 						setHover={setHover}
-						onNavigateForward={onNavigateForward}
+						onNavigateForward={handleNavigateForward}
 					/>
 				)}
 				<circle
@@ -258,19 +279,17 @@ const Shard: React.FC<ShardProps> = ({
 			strokeWidth={1.2}
 			className={hovered ? "pulse" : undefined}
 			style={{ cursor: interactive ? "pointer" : "default" }}
-			onPointerEnter={(e) =>
+			onPointerOver={(e) =>
 				setHover({ id, file, clientX: e.clientX, clientY: e.clientY })
 			}
 			onPointerMove={(e) =>
-				setHover((prev) =>
-					prev?.id === id
-						? { ...prev, clientX: e.clientX, clientY: e.clientY }
-						: prev,
-				)
+				setHover({ id, file, clientX: e.clientX, clientY: e.clientY })
 			}
 			onPointerLeave={() => setHover((prev) => (prev?.id === id ? null : prev))}
 			onClick={() => {
-				if (type === "directory") onNavigateForward(...path);
+				if (type === "directory") {
+					onNavigateForward(...path);
+				}
 			}}
 		/>
 	);
