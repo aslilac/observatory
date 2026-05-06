@@ -52,6 +52,7 @@ contextBridge.exposeInMainWorld("Ob", {
 	getRenderTree: (path: string, cursor: string[]) =>
 		timedInvoke("ob:getRenderTree", path, cursor),
 	getScanProgress: (path: string) => timedInvoke("ob:getScanProgress", path),
+	getScanPerfTree: (path: string) => timedInvoke("ob:getScanPerfTree", path),
 	deleteFiles: (paths: string[]) => timedInvoke("ob:deleteFiles", paths),
 	searchScan: (path: string, query: string) =>
 		timedInvoke("ob:searchScan", path, query),

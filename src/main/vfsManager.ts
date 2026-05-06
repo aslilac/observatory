@@ -5,7 +5,7 @@ import { EventEmitter } from "node:events";
 import { timed, timedAsync } from "./perf";
 import { searchVfs, type SearchResults } from "./search";
 import { areMapsSimilar } from "./util";
-import { VirtualFileSystem } from "./vfs";
+import { type PerfNodeInternal, VirtualFileSystem } from "./vfs";
 
 type ScanEntry = {
 	status: Ob.ScanStatus;
@@ -69,17 +69,59 @@ export function searchScan(path: string, query: string): SearchResults | null {
 export function getScanProgress(path: string): Ob.ScanProgress | null {
 	const entry = scans.get(path);
 	if (!entry) return null;
-	const slowest = entry.vfs.slowestDirs;
+	const perfRoot = entry.vfs.perfRoot;
 	return {
 		path,
 		status: entry.status,
 		counts: { ...entry.vfs.counts },
 		currentPath: entry.vfs.currentPath,
-		// Cap the live payload at 50 — we keep 100 internally so the long
-		// tail can still bubble up if the leaders shift, but the renderer
-		// only ever shows ~20 anyway.
-		slowest: slowest.length > 0 ? slowest.slice(0, 50) : undefined,
+		perfTree: perfRoot ? serializePerfTree(perfRoot) : undefined,
 	};
+}
+
+export function getScanPerfTree(path: string): Ob.PerfNode | null {
+	const entry = scans.get(path);
+	if (!entry || !entry.vfs.perfRoot) return null;
+	return serializePerfTree(entry.vfs.perfRoot);
+}
+
+// Tree-shaping knobs for the IPC payload. Ten levels deep covers the long
+// tail without ballooning the JSON; 5ms drops the trivial leaves so the
+// flame graph isn't one giant column of slivers.
+const PERF_DEPTH_CAP = 10;
+const PERF_THRESHOLD_MS = 5;
+
+function serializePerfTree(root: PerfNodeInternal): Ob.PerfNode {
+	const snapshot = performance.now();
+	const visit = (node: PerfNodeInternal, depth: number): Ob.PerfNode => {
+		const elapsedMs = node.inProgress
+			? snapshot - node.startMs
+			: node.totalMs;
+		const childrenOut: Ob.PerfNode[] = [];
+		if (depth < PERF_DEPTH_CAP) {
+			for (const child of node.children) {
+				const childElapsed = child.inProgress
+					? snapshot - child.startMs
+					: child.totalMs;
+				if (childElapsed > PERF_THRESHOLD_MS) {
+					childrenOut.push(visit(child, depth + 1));
+				}
+			}
+		}
+		return {
+			name: node.name,
+			path: node.path,
+			totalMs: node.totalMs,
+			elapsedMs,
+			selfMs: node.selfMs,
+			readdirMs: node.readdirMs,
+			entryCount: node.entryCount,
+			depth: node.depth,
+			inProgress: node.inProgress,
+			children: childrenOut,
+		};
+	};
+	return visit(root, 0);
 }
 
 export function startScan(path: string) {

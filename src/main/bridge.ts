@@ -8,6 +8,7 @@ import {
 	getDrives,
 	getRenderTree,
 	getScanErrors,
+	getScanPerfTree,
 	getScans,
 	getScanProgress,
 	onDrivesChange,
@@ -26,6 +27,9 @@ ipcMain.handle("ob:getRenderTree", (_event, path: string, cursor: string[]) =>
 );
 ipcMain.handle("ob:getScanProgress", (_event, path: string) =>
 	getScanProgress(path),
+);
+ipcMain.handle("ob:getScanPerfTree", (_event, path: string) =>
+	getScanPerfTree(path),
 );
 ipcMain.handle("ob:deleteFiles", (_event, paths: string[]) =>
 	deleteFiles(paths),

@@ -15,6 +15,7 @@ import {
 	useRecentScans,
 	useRenderTree,
 	useScanErrors,
+	useScanPerfTree,
 	useScanProgress,
 	useScans,
 	useTheme,
@@ -28,6 +29,8 @@ import { Inspect } from "./inspect/Inspect";
 import { IssuesChip } from "./IssuesChip";
 import { IssuesModal } from "./IssuesModal";
 import { PasteConfirm } from "./PasteConfirm";
+import { PerfChip } from "./PerfChip";
+import { PerfModal } from "./PerfModal";
 import { Scanning } from "./Scanning";
 import { ThemeToggle } from "./ThemeToggle";
 import { Welcome } from "./welcome/Welcome";
@@ -39,6 +42,7 @@ export const Application: React.FC = () => {
 	const cleanup = useCleanupQueue();
 	const [confirmCleanup, setConfirmCleanup] = useState(false);
 	const [issuesOpen, setIssuesOpen] = useState(false);
+	const [perfOpen, setPerfOpen] = useState(false);
 	const { theme, toggle: toggleTheme } = useTheme();
 
 	const { view, inspecting, cursor, setInspecting, showCleanup, showMenu } =
@@ -87,6 +91,12 @@ export const Application: React.FC = () => {
 	);
 
 	const scanErrors = useScanErrors(inspecting, inspectingScan?.status ?? null);
+
+	const perfTree = useScanPerfTree(
+		inspecting,
+		inspectingScan?.status ?? null,
+		inspectingScan?.revision,
+	);
 
 	// One entry point that covers both "scan this path" and "open this scan":
 	// Ob.scanPath is a no-op for paths already tracked by vfsManager, the
@@ -169,6 +179,10 @@ export const Application: React.FC = () => {
 			<IssuesChip
 				count={scanErrors.length}
 				onClick={() => setIssuesOpen(true)}
+			/>
+			<PerfChip
+				available={perfTree !== null}
+				onClick={() => setPerfOpen(true)}
 			/>
 			<CleanupChip
 				count={cleanup.items.length}
@@ -255,6 +269,9 @@ export const Application: React.FC = () => {
 			)}
 			{issuesOpen && (
 				<IssuesModal errors={scanErrors} onClose={() => setIssuesOpen(false)} />
+			)}
+			{perfOpen && perfTree && (
+				<PerfModal tree={perfTree} onClose={() => setPerfOpen(false)} />
 			)}
 			{pastePath && (
 				<PasteConfirm

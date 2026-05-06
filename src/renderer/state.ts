@@ -40,6 +40,35 @@ export function useScanProgress(
 	return progress;
 }
 
+// One-shot fetch of the perf tree (the live version is delivered via
+// useScanProgress while the scan is building; this hook covers the
+// post-scan view, where polling would be wasteful). Refetches when the
+// scan completes or its revision bumps so cleanup-trash mutations don't
+// strand stale data.
+export function useScanPerfTree(
+	path: string | null,
+	status: Ob.ScanStatus | null,
+	revision: number | undefined,
+): Ob.PerfNode | null {
+	const [tree, setTree] = useState<Ob.PerfNode | null>(null);
+
+	useEffect(() => {
+		if (!path || status !== "complete") {
+			setTree(null);
+			return;
+		}
+		let active = true;
+		void Ob.getScanPerfTree(path).then((next) => {
+			if (active) setTree(next);
+		});
+		return () => {
+			active = false;
+		};
+	}, [path, status, revision]);
+
+	return tree;
+}
+
 export function useRenderTree(
 	path: string | null,
 	cursor: string[],

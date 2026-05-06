@@ -13,6 +13,7 @@ declare global {
 			cursor: string[],
 		): Promise<RenderTree | null>;
 		function getScanProgress(path: string): Promise<ScanProgress | null>;
+		function getScanPerfTree(path: string): Promise<PerfNode | null>;
 		function deleteFiles(paths: string[]): Promise<DeleteResult>;
 		function searchScan(
 			path: string,
@@ -91,21 +92,26 @@ declare global {
 				misc: number;
 			};
 			currentPath: string | null;
-			// Top-N slowest directories observed so far, ordered by self-time
-			// descending. Only populated when the main process is running with
-			// OB_PERF=1.
-			slowest?: DirectoryPerf[];
+			// Filtered, depth-capped snapshot of the perf tree. Only populated
+			// when the main process is running with OB_PERF=1.
+			perfTree?: PerfNode | null;
 		}
 
-		export interface DirectoryPerf {
+		export interface PerfNode {
+			name: string;
 			path: string;
 			// Wall time of the recursive _scan for this directory, including
-			// all descendants.
+			// all descendants. 0 while inProgress; use elapsedMs for the
+			// running estimate in that case.
 			totalMs: number;
+			// performance.now() at snapshot time minus the _scan start. Equal
+			// to totalMs once settled. Lets the renderer give in-progress
+			// nodes a non-zero width.
+			elapsedMs: number;
 			// totalMs minus the slowest immediate child's totalMs. Approximates
 			// "what would this _scan have cost if its children were free?" —
 			// useful for spotting individual heavy directories rather than
-			// just-large subtrees.
+			// just-large subtrees. 0 while inProgress.
 			selfMs: number;
 			// Time spent in the readdir() call alone.
 			readdirMs: number;
@@ -113,6 +119,8 @@ declare global {
 			entryCount: number;
 			// 0 = scan root.
 			depth: number;
+			inProgress: boolean;
+			children: PerfNode[];
 		}
 
 		export type NodeType =

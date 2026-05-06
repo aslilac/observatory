@@ -7,10 +7,22 @@ import { PERF, perfLog } from "./perf";
 // Per-directory work below this is too noisy to log individually.
 const DIR_LOG_THRESHOLD_MS = 50;
 
-// Cap on the live "slowest directories" list shipped to the renderer. The
-// poll interval is 250ms and each entry serializes to ~150B, so 100 keeps
-// IPC bandwidth trivial while still surfacing a useful long tail.
-const SLOWEST_LIMIT = 100;
+// Internal perf node — stored on the VFS as a parallel tree mirroring the
+// _scan call structure. Built top-down (so the renderer can render a live
+// flame graph during scanning) and finalized bottom-up as each _scan call
+// settles.
+export type PerfNodeInternal = {
+	name: string;
+	path: string;
+	startMs: number;
+	totalMs: number;
+	selfMs: number;
+	readdirMs: number;
+	entryCount: number;
+	depth: number;
+	inProgress: boolean;
+	children: PerfNodeInternal[];
+};
 
 export class VirtualFileSystem {
 	location: string;
@@ -32,9 +44,9 @@ export class VirtualFileSystem {
 
 	errors: Ob.ScanError[] = [];
 
-	// Sorted descending by selfMs, capped at SLOWEST_LIMIT. Only populated
-	// when PERF is on; the renderer reads this via getScanProgress.
-	slowestDirs: Ob.DirectoryPerf[] = [];
+	// Top-down perf tree. Set on first _scan call when PERF is on. Mutated
+	// in place as scans progress; serialized for IPC by vfsManager.
+	perfRoot: PerfNodeInternal | null = null;
 
 	// Set by `abort()` from the manager when the user cancels. Each `_scan`
 	// recursion bails early once this flips so the scan winds down without
@@ -110,8 +122,15 @@ export class VirtualFileSystem {
 			`[perf:scan] ${location} ${scanMs.toFixed(0)}ms · ${total.toLocaleString()} entries (${c.files} files, ${c.directories} dirs, ${c.symlinks} symlinks)`,
 		);
 
-		if (PERF && this.slowestDirs.length > 0) {
-			const top = this.slowestDirs.slice(0, 50);
+		if (PERF && this.perfRoot) {
+			const all: PerfNodeInternal[] = [];
+			const walk = (n: PerfNodeInternal) => {
+				all.push(n);
+				for (const c of n.children) walk(c);
+			};
+			walk(this.perfRoot);
+			all.sort((a, b) => b.selfMs - a.selfMs);
+			const top = all.slice(0, 50);
 			const lines = top
 				.map(
 					(e) =>
@@ -143,6 +162,7 @@ export class VirtualFileSystem {
 	private async _scan(
 		location: string,
 		depth = 0,
+		parentPerf?: PerfNodeInternal,
 	): Promise<Ob.VfsDirectory> {
 		const state: Ob.VfsDirectory = {
 			type: "directory",
@@ -151,127 +171,116 @@ export class VirtualFileSystem {
 			mtime: 0,
 			files: [],
 		};
-		if (this.aborted) return state;
-		this.currentPath = location;
 
-		const scanStart = PERF ? performance.now() : 0;
-
-		const ownStats = await fs.lstat(location).catch((error: unknown) => {
-			this.recordError(location, error);
-			return undefined;
-		});
-		state.mtime = ownStats?.mtimeMs ?? 0;
-
-		const readdirStart = PERF ? performance.now() : 0;
-		const files = await fs.readdir(location).catch((error: unknown) => {
-			this.recordError(location, error);
-			return undefined;
-		});
-		const readdirMs = PERF ? performance.now() - readdirStart : 0;
-		if (PERF && readdirMs > DIR_LOG_THRESHOLD_MS) {
-			perfLog(
-				"scan",
-				`readdir ${location} ${readdirMs.toFixed(0)}ms (${files?.length ?? 0} entries)`,
-			);
-		}
-
-		if (!files) return state;
-
-		// Tracked separately from `state.size` etc. so we can derive a
-		// self-time at the end. selfMs ≈ totalMs - max(child totalMs):
-		// "what would this _scan have cost if its slowest child were free?"
-		let maxChildTotalMs = 0;
-
-		await Promise.all(
-			files.map(async (name) => {
-				if (this.aborted) return;
-				const entity = path.join(location, name);
-				const stats = await fs.lstat(entity).catch((error: unknown) => {
-					this.recordError(entity, error);
-					return undefined;
-				});
-
-				if (!stats) return;
-				else if (stats.isFile()) {
-					this.counts.files++;
-					state.files.push({
-						type: "file",
-						name,
-						size: stats.size,
-						mtime: stats.mtimeMs,
-					});
-					state.size += stats.size;
-					if (stats.mtimeMs > state.mtime) state.mtime = stats.mtimeMs;
-				} else if (stats.isDirectory()) {
-					this.counts.directories++;
-
-					if (shouldSkipDirectory(entity, stats.dev, this.rootDev)) {
-						return;
-					}
-
-					const childStart = PERF ? performance.now() : 0;
-					const directory = await this._scan(entity, depth + 1);
-					if (PERF) {
-						const childTotalMs = performance.now() - childStart;
-						if (childTotalMs > maxChildTotalMs) {
-							maxChildTotalMs = childTotalMs;
-						}
-					}
-					state.files.push({
-						...directory,
-						name,
-					});
-					state.size += directory.size;
-					if (directory.mtime > state.mtime) state.mtime = directory.mtime;
-				} else if (stats.isSymbolicLink()) {
-					this.counts.symlinks++;
-				} else if (stats.isCharacterDevice() || stats.isBlockDevice()) {
-					this.counts.devices++;
-				} else {
-					this.counts.misc++;
-				}
-			}),
-		);
-
-		state.files.sort((a, b) => b.size - a.size);
-
+		// Create the perf node up front so it's visible in the live flame
+		// graph the moment we enter the directory. The timings stay zero
+		// (and inProgress=true) until the try/finally below settles.
+		let myPerf: PerfNodeInternal | undefined;
 		if (PERF) {
-			const totalMs = performance.now() - scanStart;
-			// Clamp because tiny scheduling noise could push selfMs slightly
-			// negative when a child dominates total time.
-			const selfMs = Math.max(0, totalMs - maxChildTotalMs);
-			this.recordPerf({
+			myPerf = {
+				name: depth === 0 ? location : path.basename(location) || location,
 				path: location,
-				totalMs,
-				selfMs,
-				readdirMs,
-				entryCount: files.length,
+				startMs: performance.now(),
+				totalMs: 0,
+				selfMs: 0,
+				readdirMs: 0,
+				entryCount: 0,
 				depth,
+				inProgress: true,
+				children: [],
+			};
+			if (parentPerf) parentPerf.children.push(myPerf);
+			else this.perfRoot = myPerf;
+		}
+
+		try {
+			if (this.aborted) return state;
+			this.currentPath = location;
+
+			const ownStats = await fs.lstat(location).catch((error: unknown) => {
+				this.recordError(location, error);
+				return undefined;
 			});
-		}
+			state.mtime = ownStats?.mtimeMs ?? 0;
 
-		return state;
-	}
+			const readdirStart = PERF ? performance.now() : 0;
+			const files = await fs.readdir(location).catch((error: unknown) => {
+				this.recordError(location, error);
+				return undefined;
+			});
+			if (PERF && myPerf) {
+				myPerf.readdirMs = performance.now() - readdirStart;
+				myPerf.entryCount = files?.length ?? 0;
+				if (myPerf.readdirMs > DIR_LOG_THRESHOLD_MS) {
+					perfLog(
+						"scan",
+						`readdir ${location} ${myPerf.readdirMs.toFixed(0)}ms (${files?.length ?? 0} entries)`,
+					);
+				}
+			}
 
-	// Insertion-sorted descending by selfMs. Caller is _scan; called once
-	// per directory after its recursion settles.
-	private recordPerf(entry: Ob.DirectoryPerf) {
-		const list = this.slowestDirs;
-		if (
-			list.length === SLOWEST_LIMIT &&
-			entry.selfMs <= list[list.length - 1]!.selfMs
-		) {
-			return;
+			if (!files) return state;
+
+			await Promise.all(
+				files.map(async (name) => {
+					if (this.aborted) return;
+					const entity = path.join(location, name);
+					const stats = await fs.lstat(entity).catch((error: unknown) => {
+						this.recordError(entity, error);
+						return undefined;
+					});
+
+					if (!stats) return;
+					else if (stats.isFile()) {
+						this.counts.files++;
+						state.files.push({
+							type: "file",
+							name,
+							size: stats.size,
+							mtime: stats.mtimeMs,
+						});
+						state.size += stats.size;
+						if (stats.mtimeMs > state.mtime) state.mtime = stats.mtimeMs;
+					} else if (stats.isDirectory()) {
+						this.counts.directories++;
+
+						if (shouldSkipDirectory(entity, stats.dev, this.rootDev)) {
+							return;
+						}
+
+						const directory = await this._scan(entity, depth + 1, myPerf);
+						state.files.push({
+							...directory,
+							name,
+						});
+						state.size += directory.size;
+						if (directory.mtime > state.mtime) state.mtime = directory.mtime;
+					} else if (stats.isSymbolicLink()) {
+						this.counts.symlinks++;
+					} else if (stats.isCharacterDevice() || stats.isBlockDevice()) {
+						this.counts.devices++;
+					} else {
+						this.counts.misc++;
+					}
+				}),
+			);
+
+			state.files.sort((a, b) => b.size - a.size);
+			return state;
+		} finally {
+			if (PERF && myPerf) {
+				const totalMs = performance.now() - myPerf.startMs;
+				let maxChildTotal = 0;
+				for (const c of myPerf.children) {
+					if (c.totalMs > maxChildTotal) maxChildTotal = c.totalMs;
+				}
+				myPerf.totalMs = totalMs;
+				// Clamp because tiny scheduling noise could push selfMs slightly
+				// negative when a child dominates total time.
+				myPerf.selfMs = Math.max(0, totalMs - maxChildTotal);
+				myPerf.inProgress = false;
+			}
 		}
-		let lo = 0;
-		let hi = list.length;
-		while (lo < hi) {
-			const mid = (lo + hi) >>> 1;
-			if (list[mid]!.selfMs > entry.selfMs) lo = mid + 1;
-			else hi = mid;
-		}
-		list.splice(lo, 0, entry);
-		if (list.length > SLOWEST_LIMIT) list.pop();
 	}
 
 	private recordError(targetPath: string, error: unknown) {
