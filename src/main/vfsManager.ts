@@ -69,11 +69,16 @@ export function searchScan(path: string, query: string): SearchResults | null {
 export function getScanProgress(path: string): Ob.ScanProgress | null {
 	const entry = scans.get(path);
 	if (!entry) return null;
+	const slowest = entry.vfs.slowestDirs;
 	return {
 		path,
 		status: entry.status,
 		counts: { ...entry.vfs.counts },
 		currentPath: entry.vfs.currentPath,
+		// Cap the live payload at 50 — we keep 100 internally so the long
+		// tail can still bubble up if the leaders shift, but the renderer
+		// only ever shows ~20 anyway.
+		slowest: slowest.length > 0 ? slowest.slice(0, 50) : undefined,
 	};
 }
 

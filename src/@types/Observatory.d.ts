@@ -91,6 +91,28 @@ declare global {
 				misc: number;
 			};
 			currentPath: string | null;
+			// Top-N slowest directories observed so far, ordered by self-time
+			// descending. Only populated when the main process is running with
+			// OB_PERF=1.
+			slowest?: DirectoryPerf[];
+		}
+
+		export interface DirectoryPerf {
+			path: string;
+			// Wall time of the recursive _scan for this directory, including
+			// all descendants.
+			totalMs: number;
+			// totalMs minus the slowest immediate child's totalMs. Approximates
+			// "what would this _scan have cost if its children were free?" —
+			// useful for spotting individual heavy directories rather than
+			// just-large subtrees.
+			selfMs: number;
+			// Time spent in the readdir() call alone.
+			readdirMs: number;
+			// Number of immediate entries (files + dirs + other).
+			entryCount: number;
+			// 0 = scan root.
+			depth: number;
 		}
 
 		export type NodeType =

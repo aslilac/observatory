@@ -7,6 +7,11 @@ import { PERF, perfLog } from "./perf";
 // Per-directory work below this is too noisy to log individually.
 const DIR_LOG_THRESHOLD_MS = 50;
 
+// Cap on the live "slowest directories" list shipped to the renderer. The
+// poll interval is 250ms and each entry serializes to ~150B, so 100 keeps
+// IPC bandwidth trivial while still surfacing a useful long tail.
+const SLOWEST_LIMIT = 100;
+
 export class VirtualFileSystem {
 	location: string;
 	root: Ob.VfsDirectory | null = null;
@@ -26,6 +31,10 @@ export class VirtualFileSystem {
 	currentPath: string | null = null;
 
 	errors: Ob.ScanError[] = [];
+
+	// Sorted descending by selfMs, capped at SLOWEST_LIMIT. Only populated
+	// when PERF is on; the renderer reads this via getScanProgress.
+	slowestDirs: Ob.DirectoryPerf[] = [];
 
 	// Set by `abort()` from the manager when the user cancels. Each `_scan`
 	// recursion bails early once this flips so the scan winds down without
@@ -101,6 +110,19 @@ export class VirtualFileSystem {
 			`[perf:scan] ${location} ${scanMs.toFixed(0)}ms · ${total.toLocaleString()} entries (${c.files} files, ${c.directories} dirs, ${c.symlinks} symlinks)`,
 		);
 
+		if (PERF && this.slowestDirs.length > 0) {
+			const top = this.slowestDirs.slice(0, 50);
+			const lines = top
+				.map(
+					(e) =>
+						`  ${e.selfMs.toFixed(0)}ms self · ${e.totalMs.toFixed(0)}ms total · ${e.readdirMs.toFixed(0)}ms readdir · ${e.entryCount.toLocaleString()} entries · d${e.depth} · ${e.path}`,
+				)
+				.join("\n");
+			console.log(
+				`[perf:scan] top ${top.length} slowest directories (by self-time):\n${lines}`,
+			);
+		}
+
 		// Set the name and capacity if it's a drive
 		const list = await drivelist.list();
 		list.some((device) =>
@@ -118,7 +140,10 @@ export class VirtualFileSystem {
 		for (const cb of callbacks) cb();
 	}
 
-	private async _scan(location: string): Promise<Ob.VfsDirectory> {
+	private async _scan(
+		location: string,
+		depth = 0,
+	): Promise<Ob.VfsDirectory> {
 		const state: Ob.VfsDirectory = {
 			type: "directory",
 			name: "MISSING_NO",
@@ -128,6 +153,8 @@ export class VirtualFileSystem {
 		};
 		if (this.aborted) return state;
 		this.currentPath = location;
+
+		const scanStart = PERF ? performance.now() : 0;
 
 		const ownStats = await fs.lstat(location).catch((error: unknown) => {
 			this.recordError(location, error);
@@ -140,17 +167,20 @@ export class VirtualFileSystem {
 			this.recordError(location, error);
 			return undefined;
 		});
-		if (PERF) {
-			const readdirMs = performance.now() - readdirStart;
-			if (readdirMs > DIR_LOG_THRESHOLD_MS) {
-				perfLog(
-					"scan",
-					`readdir ${location} ${readdirMs.toFixed(0)}ms (${files?.length ?? 0} entries)`,
-				);
-			}
+		const readdirMs = PERF ? performance.now() - readdirStart : 0;
+		if (PERF && readdirMs > DIR_LOG_THRESHOLD_MS) {
+			perfLog(
+				"scan",
+				`readdir ${location} ${readdirMs.toFixed(0)}ms (${files?.length ?? 0} entries)`,
+			);
 		}
 
 		if (!files) return state;
+
+		// Tracked separately from `state.size` etc. so we can derive a
+		// self-time at the end. selfMs ≈ totalMs - max(child totalMs):
+		// "what would this _scan have cost if its slowest child were free?"
+		let maxChildTotalMs = 0;
 
 		await Promise.all(
 			files.map(async (name) => {
@@ -179,7 +209,14 @@ export class VirtualFileSystem {
 						return;
 					}
 
-					const directory = await this._scan(entity);
+					const childStart = PERF ? performance.now() : 0;
+					const directory = await this._scan(entity, depth + 1);
+					if (PERF) {
+						const childTotalMs = performance.now() - childStart;
+						if (childTotalMs > maxChildTotalMs) {
+							maxChildTotalMs = childTotalMs;
+						}
+					}
 					state.files.push({
 						...directory,
 						name,
@@ -197,7 +234,44 @@ export class VirtualFileSystem {
 		);
 
 		state.files.sort((a, b) => b.size - a.size);
+
+		if (PERF) {
+			const totalMs = performance.now() - scanStart;
+			// Clamp because tiny scheduling noise could push selfMs slightly
+			// negative when a child dominates total time.
+			const selfMs = Math.max(0, totalMs - maxChildTotalMs);
+			this.recordPerf({
+				path: location,
+				totalMs,
+				selfMs,
+				readdirMs,
+				entryCount: files.length,
+				depth,
+			});
+		}
+
 		return state;
+	}
+
+	// Insertion-sorted descending by selfMs. Caller is _scan; called once
+	// per directory after its recursion settles.
+	private recordPerf(entry: Ob.DirectoryPerf) {
+		const list = this.slowestDirs;
+		if (
+			list.length === SLOWEST_LIMIT &&
+			entry.selfMs <= list[list.length - 1]!.selfMs
+		) {
+			return;
+		}
+		let lo = 0;
+		let hi = list.length;
+		while (lo < hi) {
+			const mid = (lo + hi) >>> 1;
+			if (list[mid]!.selfMs > entry.selfMs) lo = mid + 1;
+			else hi = mid;
+		}
+		list.splice(lo, 0, entry);
+		if (list.length > SLOWEST_LIMIT) list.pop();
 	}
 
 	private recordError(targetPath: string, error: unknown) {
