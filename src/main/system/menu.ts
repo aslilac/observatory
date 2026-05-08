@@ -83,13 +83,13 @@ function buildTemplate(): MenuItemConstructorOptions[] {
 				{
 					label: "Visit GitHub",
 					click: () =>
-						void shell.openExternal("https://github.com/partheseas/observatory"),
+						void shell.openExternal("https://github.com/aslilac/observatory"),
 				},
 				{
 					label: "Report an Issue",
 					click: () =>
 						void shell.openExternal(
-							"https://github.com/partheseas/observatory/issues",
+							"https://github.com/aslilac/observatory/issues",
 						),
 				},
 				...(isMac
