@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Observatory — a modern disk-usage analyzer</title>
+		<meta
+			name="description"
+			content="Observatory is a cross-platform disk-usage analyzer for macOS, Linux, and Windows. See where your storage went."
+		/>
+		<meta name="color-scheme" content="light dark" />
+		<link rel="icon" href="icon.svg" type="image/svg+xml" />
+		<link rel="apple-touch-icon" href="icon-512.png" />
+		<meta property="og:title" content="Observatory" />
+		<meta
+			property="og:description"
+			content="A modern, cross-platform disk-usage analyzer."
+		/>
+		<meta property="og:image" content="observatory.png" />
+		<meta property="og:type" content="website" />
+		<link rel="stylesheet" href="style.css" />
+	</head>
+	<body>
+		<header class="topbar">
+			<div class="wrap">
+				<a class="brand" href="/">
+					<img src="icon.svg" alt="" width="36" height="36" />
+					<span>Observatory</span>
+				</a>
+				<nav>
+					<a href="https://github.com/aslilac/observatory">Source</a>
+					<a href="https://github.com/aslilac/observatory/releases">Download</a>
+				</nav>
+			</div>
+		</header>
+
+		<main>
+			<section class="hero">
+				<div class="wrap">
+					<h1>See what's eating your disk.</h1>
+					<p class="lede">
+						Observatory is a modern, cross-platform disk-usage analyzer.
+						Point it at a drive, get back a readable picture of where every
+						gigabyte went — without the dated UI, the platform lock-in, or
+						the bewildering settings panel.
+					</p>
+					<div class="cta">
+						<a class="btn primary" href="https://github.com/aslilac/observatory/releases"
+							>Get the latest release</a
+						>
+						<a class="btn ghost" href="https://github.com/aslilac/observatory"
+							>View on GitHub</a
+						>
+					</div>
+					<p class="platforms">
+						<span>macOS</span>
+						<span>Linux</span>
+						<span>Windows</span>
+					</p>
+				</div>
+			</section>
+
+			<section class="screenshot">
+				<div class="wrap">
+					<figure>
+						<img
+							src="observatory.png"
+							alt="Observatory showing a sunburst chart of a 212 GB Macintosh HD scan, with the largest folders listed beside it."
+							width="1200"
+							loading="lazy"
+						/>
+					</figure>
+				</div>
+			</section>
+
+			<section class="features">
+				<div class="wrap">
+					<div class="grid">
+						<article>
+							<h2>A real interface</h2>
+							<p>
+								A sunburst that actually fits the data, a list view that
+								mirrors it, and a tree for when you want to dig. No squashed
+								treemaps, no labels stacked on labels.
+							</p>
+						</article>
+						<article>
+							<h2>Cross-platform</h2>
+							<p>
+								One app on macOS, Linux, and Windows. Same shortcuts, same
+								layout, same scans — wherever you keep the disks that fill
+								up.
+							</p>
+						</article>
+						<article>
+							<h2>Cleanup, deliberately</h2>
+							<p>
+								Queue up files and folders as you browse, review the list,
+								then send the lot to the trash in one pass. No accidental
+								deletes from a stray double-click.
+							</p>
+						</article>
+						<article>
+							<h2>Honest about scope</h2>
+							<p>
+								Observatory is open source and very much in motion — the
+								scanning engine is being rewritten in Rust to close the gap
+								with native tools. Speed today is "fine"; soon, "fast."
+							</p>
+						</article>
+					</div>
+				</div>
+			</section>
+
+			<section class="grab">
+				<div class="wrap">
+					<h2>Grab a build</h2>
+					<p>
+						Releases live on GitHub. Pick the artifact for your platform —
+						<code>.dmg</code> for macOS, <code>.exe</code> for Windows,
+						<code>.zip</code> for Linux. Or build from source with
+						<code>yarn forge</code>.
+					</p>
+					<p>
+						<a class="btn primary" href="https://github.com/aslilac/observatory/releases"
+							>Latest release →</a
+						>
+					</p>
+				</div>
+			</section>
+		</main>
+
+		<footer>
+			<div class="wrap">
+				<p>
+					MIT licensed · made by
+					<a href="https://github.com/aslilac">McKayla Washburn-Love</a>
+				</p>
+			</div>
+		</footer>
+	</body>
+</html>
