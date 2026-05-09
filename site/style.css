@@ -1,44 +1,27 @@
 /* Observatory landing page.
-   Tokens roughly track the app's `app.css` (warm off-white, dark ink, muted
+   Tokens roughly track the app's `app.css` (warm off-white, dark text, muted
    greys) plus the icon's blue accent. Edit the :root block to retheme. */
 
 :root {
-	--ink: #10131a;
-	--paper: #fafaf8;
-	--cream: #f1ede2;
-	--line: #e1ddd2;
-	--line-soft: #ece8de;
-	--muted: #6e6e68;
-	--faint: #9c9a92;
+	--text: #ededea;
+	--bg: #15151a;
+	--cream: #2a292455;
+	--line: #2f2d28;
+	--line-soft: #232220;
+	--muted: #a3a098;
+	--faint: #9a988f;
 	--accent: #3a6df0;
-	--accent-deep: #1a2d6b;
+	--accent-deep: #d4dcfb;
 
-	--radius-card: 10px;
-	--radius-pill: 999px;
-	--shadow-card: 0 1px 0 rgba(16, 19, 26, 0.04),
-		0 24px 60px -28px rgba(16, 19, 26, 0.22);
+	--midnight-sky: #0e1734;
+
+	--rounded-full: calc(infinity * 1px);
 
 	--sans:
-		"Inter", -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI",
-		Roboto, sans-serif;
+		"Inter", -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", Roboto,
+		sans-serif;
 	--mono:
 		"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-}
-
-@media (prefers-color-scheme: dark) {
-	:root {
-		--ink: #ededea;
-		--paper: #15151a;
-		--cream: #2a2924;
-		--line: #2f2d28;
-		--line-soft: #232220;
-		--muted: #a3a098;
-		--faint: #6a685f;
-		--accent: #7d99f2;
-		--accent-deep: #d4dcfb;
-		--shadow-card: 0 1px 0 rgba(0, 0, 0, 0.3),
-			0 24px 60px -28px rgba(0, 0, 0, 0.6);
-	}
 }
 
 * {
@@ -55,8 +38,12 @@ body {
 	font-family: var(--sans);
 	font-size: 16px;
 	line-height: 1.6;
-	color: var(--ink);
-	background: var(--paper);
+	color: var(--text);
+	background-image: linear-gradient(
+		to top,
+		var(--midnight-sky) 0,
+		var(--bg) 1000px
+	);
 	-webkit-font-smoothing: antialiased;
 	font-feature-settings: "ss01", "cv05", "cv11";
 }
@@ -68,8 +55,8 @@ a {
 	border-bottom-color: color-mix(in srgb, currentColor 30%, transparent);
 	transition: border-color 120ms ease;
 }
-a:hover {
-	border-bottom-color: currentColor;
+a:not(.btn):hover {
+	border-bottom-color: var(--accent);
 }
 
 code {
@@ -92,7 +79,7 @@ code {
 	position: sticky;
 	top: 0;
 	z-index: 10;
-	background: color-mix(in srgb, var(--paper) 88%, transparent);
+	background: color-mix(in srgb, var(--bg) 88%, transparent);
 	backdrop-filter: saturate(160%) blur(8px);
 	border-bottom: 1px solid var(--line-soft);
 }
@@ -159,7 +146,7 @@ nav {
 	padding: 10px 18px;
 	font-size: 14px;
 	font-weight: 500;
-	border-radius: var(--radius-pill);
+	border-radius: var(--rounded-full);
 	border: 1px solid transparent;
 	transition:
 		background-color 120ms ease,
@@ -167,15 +154,15 @@ nav {
 		color 120ms ease;
 }
 .btn.primary {
-	background: var(--ink);
-	color: var(--paper);
+	background: var(--text);
+	color: var(--bg);
 }
 .btn.primary:hover {
 	background: var(--accent-deep);
 }
 .btn.ghost {
 	border-color: var(--line);
-	color: var(--ink);
+	color: var(--text);
 }
 .btn.ghost:hover {
 	background: var(--cream);
@@ -213,17 +200,10 @@ nav {
 
 .screenshot figure {
 	margin: 0;
-	border-radius: var(--radius-card);
-	overflow: hidden;
-	border: 1px solid var(--line-soft);
-	background: var(--cream);
-	box-shadow: var(--shadow-card);
 }
 
 .screenshot img {
-	display: block;
-	width: 100%;
-	height: auto;
+	width: stretch;
 }
 
 /* --- features --- */
@@ -283,11 +263,11 @@ footer p {
 	margin: 0;
 	font-family: var(--mono);
 	font-size: 12px;
-	color: var(--faint);
+	color: var(--text);
 	text-align: center;
 }
 footer a {
-	color: var(--muted);
+	color: inherit;
 }
 
 /* --- responsive nudges --- */

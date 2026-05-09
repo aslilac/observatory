@@ -672,6 +672,46 @@
   resolved "https://registry.yarnpkg.com/@esbuild/win32-x64/-/win32-x64-0.25.12.tgz#9bdad8176be7811ad148d1f8772359041f46c6c5"
   integrity sha512-alJC0uCZpTFrSL0CCDjcgleBXPnCrEAhTBILpeAp7M/OFgoqtAetfBzX0xM00MUsVVPpVjlPuMbREqnZCXaTnA==
 
+"@fallow-cli/darwin-arm64@2.69.0":
+  version "2.69.0"
+  resolved "https://registry.yarnpkg.com/@fallow-cli/darwin-arm64/-/darwin-arm64-2.69.0.tgz#082fd198e3fa124253f1654694ca0a7cf42c40bb"
+  integrity sha512-8pp/AY4lNml/N9Bo0xbSzrmvyiiJg6lz5i8G9HCEptrH9W2YyFhQYm0XTbwoy3ATNnjw3aRDajiFTV5njahhSQ==
+
+"@fallow-cli/darwin-x64@2.69.0":
+  version "2.69.0"
+  resolved "https://registry.yarnpkg.com/@fallow-cli/darwin-x64/-/darwin-x64-2.69.0.tgz#453faf5de79700ae59b0ed68974a94831e667bcf"
+  integrity sha512-nCZwXCJC+MQpwDb0CS4aGHPbaNAnH5//eceotjGc/sSrvXYg3oINAP2ztVDwBAUwwiYwiOGU0W1npVIoQrYgVQ==
+
+"@fallow-cli/linux-arm64-gnu@2.69.0":
+  version "2.69.0"
+  resolved "https://registry.yarnpkg.com/@fallow-cli/linux-arm64-gnu/-/linux-arm64-gnu-2.69.0.tgz#75f6bf764947bb1291291d13ba4e365abf85c4ae"
+  integrity sha512-cfRKQHZMXd8/k8Arr2LlYr2eZDvqx/jZ6K30/8ji/iREXcGYkhfFB4Hk53t7CP8MxbtXGzJ05yyC7n+gf3MOaw==
+
+"@fallow-cli/linux-arm64-musl@2.69.0":
+  version "2.69.0"
+  resolved "https://registry.yarnpkg.com/@fallow-cli/linux-arm64-musl/-/linux-arm64-musl-2.69.0.tgz#2518a4265a1712f7e3c9f5466398e2b7e1c0d3db"
+  integrity sha512-SgOcAG0VMWJ1eOsMvOdIGYYjebUNsTzNHaOnUch2o8KFvaZkWuoLvfllLC7jI5UMbC4dET/+siOcruKprxPR5w==
+
+"@fallow-cli/linux-x64-gnu@2.69.0":
+  version "2.69.0"
+  resolved "https://registry.yarnpkg.com/@fallow-cli/linux-x64-gnu/-/linux-x64-gnu-2.69.0.tgz#b6aa80d96b610df50fa064542f2fa12f5adae574"
+  integrity sha512-mx9h6Fv7IpoFWJtilKlNFWtANbsxMSDDdHTatYN+VJh9WpsmgMgsoiyxI+K3lheLUe9albgMZjOa3EKlR8ry7w==
+
+"@fallow-cli/linux-x64-musl@2.69.0":
+  version "2.69.0"
+  resolved "https://registry.yarnpkg.com/@fallow-cli/linux-x64-musl/-/linux-x64-musl-2.69.0.tgz#e75d80e3b0e4772ecc26a1244f4af6a7a28f1a3e"
+  integrity sha512-H5oS1lge94bp6GoxCgJgi+wT36zD9nDW7rTxBfEG6gqXKpALYs3uIF4lbzzELNC8GZwGe4YQhMxxqGm5CXfCrg==
+
+"@fallow-cli/win32-arm64-msvc@2.69.0":
+  version "2.69.0"
+  resolved "https://registry.yarnpkg.com/@fallow-cli/win32-arm64-msvc/-/win32-arm64-msvc-2.69.0.tgz#83b6cd18ab74ef341a04dd454a8b509ae3544bcb"
+  integrity sha512-NEl4EnKzXw/lwrboUiAxWHrVx4tBO+cpNuPmvJoRsLS8wG5UIOxbyjHjD9Ux2FbwXNaRzZZ+vjLJAvGdOEU0Xw==
+
+"@fallow-cli/win32-x64-msvc@2.69.0":
+  version "2.69.0"
+  resolved "https://registry.yarnpkg.com/@fallow-cli/win32-x64-msvc/-/win32-x64-msvc-2.69.0.tgz#2f48922ec01a5e273c830bd874460e2f41d4b738"
+  integrity sha512-EeL+Bbdg9XOgMl7tG0k6DCKhCaXLS0EPiy3HWccKUaMYDgR+haUWDzAGa9nJqIBlR4GYz/lz6amSCJtV+XsMzA==
+
 "@fontsource-variable/inter@^5.2.8":
   version "5.2.8"
   resolved "https://registry.yarnpkg.com/@fontsource-variable/inter/-/inter-5.2.8.tgz#29b11476f5149f6a443b4df6516e26002d87941a"
@@ -2063,15 +2103,15 @@ depd@^2.0.0:
   resolved "https://registry.npmjs.org/depd/-/depd-2.0.0.tgz"
   integrity sha512-g7nH6P6dyDioJogAAGprGpCtVImJhpPk/roCzdb3fIh61/s/nPsfR6onyMwkCAR/OlC3yBC0lESvUoQEAssIrw==
 
+detect-libc@2.1.2, detect-libc@^2.0.3:
+  version "2.1.2"
+  resolved "https://registry.yarnpkg.com/detect-libc/-/detect-libc-2.1.2.tgz#689c5dcdc1900ef5583a4cb9f6d7b473742074ad"
+  integrity sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ==
+
 detect-libc@^2.0.0, detect-libc@^2.0.1:
   version "2.0.1"
   resolved "https://registry.npmjs.org/detect-libc/-/detect-libc-2.0.1.tgz"
   integrity sha512-463v3ZeIrcWtdgIg6vI6XUncguvr2TnGl4SzDXinkt9mSLpBJKXT3mW6xT3VQdDN11+WVs29pgvivTc4Lp8v+w==
-
-detect-libc@^2.0.3:
-  version "2.1.2"
-  resolved "https://registry.yarnpkg.com/detect-libc/-/detect-libc-2.1.2.tgz#689c5dcdc1900ef5583a4cb9f6d7b473742074ad"
-  integrity sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ==
 
 detect-node@^2.0.4:
   version "2.1.0"
@@ -2372,6 +2412,22 @@ extract-zip@^2.0.0, extract-zip@^2.0.1:
     yauzl "^2.10.0"
   optionalDependencies:
     "@types/yauzl" "^2.9.1"
+
+fallow@^2.69.0:
+  version "2.69.0"
+  resolved "https://registry.yarnpkg.com/fallow/-/fallow-2.69.0.tgz#b031a5048da75f389c48929dc3a1d9c1f26b61af"
+  integrity sha512-N3vPCjKSJ6mM919xoOtbImoksCgtTllC/y2xOe3aQfffK5AVJNvP4STgZ69xnqcMTfSB6CYQBFbHPnKgfOgrVg==
+  dependencies:
+    detect-libc "2.1.2"
+  optionalDependencies:
+    "@fallow-cli/darwin-arm64" "2.69.0"
+    "@fallow-cli/darwin-x64" "2.69.0"
+    "@fallow-cli/linux-arm64-gnu" "2.69.0"
+    "@fallow-cli/linux-arm64-musl" "2.69.0"
+    "@fallow-cli/linux-x64-gnu" "2.69.0"
+    "@fallow-cli/linux-x64-musl" "2.69.0"
+    "@fallow-cli/win32-arm64-msvc" "2.69.0"
+    "@fallow-cli/win32-x64-msvc" "2.69.0"
 
 fast-deep-equal@^3.1.3:
   version "3.1.3"
