@@ -4,7 +4,7 @@ export const PERF = process.env["OB_PERF"] === "1";
 
 function approxBytes(value: unknown): number {
 	try {
-		return JSON.stringify(value ?? null).length;
+		return JSON.stringify(value)?.length;
 	} catch {
 		return 0;
 	}

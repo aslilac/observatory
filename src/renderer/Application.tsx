@@ -31,9 +31,20 @@ import { IssuesModal } from "./components/IssuesModal";
 import { PasteConfirm } from "./components/PasteConfirm";
 import { PerfChip } from "./components/PerfChip";
 import { PerfModal } from "./components/PerfModal";
-import { Scanning } from "./components/Scanning";
+import { Scanning } from "./views/inspect/Scanning";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { Welcome } from "./views/welcome/Welcome";
+
+type AppState = {
+	cleanupQueue: unknown[];
+	theme: Theme;
+	currentView: AppViewState;
+};
+
+type AppViewState =
+	| { view: "welcome" }
+	| { view: "inspect" }
+	| { view: "cleanup" };
 
 export const Application: React.FC = () => {
 	const drives = useDrives();

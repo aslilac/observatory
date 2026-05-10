@@ -5,14 +5,13 @@ import {
 } from "electron";
 import * as path from "node:path";
 
-// electron-vite injects this in dev mode pointing at the Vite dev server
-// (e.g. http://localhost:5173). Empty in packaged builds — use the bundled
-// HTML on disk instead.
+// electron-vite sets this during development with the URL of the Vite dev
+// server. Empty in packaged builds — use the bundled HTML on disk instead.
 const RENDERER_DEV_URL = process.env["ELECTRON_RENDERER_URL"];
 
 export const windowSettings: BrowserWindowConstructorOptions = {
-	minWidth: 880,
-	minHeight: 600,
+	minWidth: 1080,
+	minHeight: 800,
 	show: false,
 	titleBarStyle: "hiddenInset",
 	autoHideMenuBar: true,
@@ -25,7 +24,6 @@ export const windowSettings: BrowserWindowConstructorOptions = {
 export function createWindow() {
 	// Create the browser window.
 	const view = new BrowserWindow(windowSettings);
-	view.maximize();
 
 	// Load the app — Vite dev server in dev, bundled HTML in prod.
 	if (RENDERER_DEV_URL) {
@@ -36,12 +34,10 @@ export function createWindow() {
 
 	// Prevent seeing an unpopulated screen.
 	view.on("ready-to-show", () => {
-		view!.show();
-		view!.webContents.openDevTools();
+		view.show();
 	});
 
 	const sendNav = (direction: "back" | "forward") => {
-		if (!view || view.isDestroyed()) return;
 		view.webContents.send("ob:nav", direction);
 	};
 

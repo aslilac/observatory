@@ -35,7 +35,7 @@ export const Welcome: React.FC<WelcomeProps> = ({
 				{drives.length > 0 && (
 					<div>
 						<div className="eyebrow mb-2">Disks</div>
-						<div className="grid grid-cols-2 gap-[10px]">
+						<div className="grid grid-cols-2 gap-3">
 							{drives.map((drive) => (
 								<VolumeCard
 									key={drive.mountPath}
@@ -50,7 +50,7 @@ export const Welcome: React.FC<WelcomeProps> = ({
 
 				<div>
 					<div className="eyebrow mb-2">Folders</div>
-					<div className="flex items-center gap-[14px] rounded-card border-[1.5px] border-dashed border-line px-[18px] py-[14px]">
+					<div className="flex items-center gap-4 rounded-card border-[1.5px] border-dashed border-line px-4 py-3">
 						<div className="flex-1">
 							<div className="text-[13px] font-semibold">
 								Drop a folder here to scan

@@ -1,10 +1,10 @@
-import { Button } from "./Button";
-import { FlameGraph } from "./FlameGraph";
-import { Toolbar } from "./Toolbar";
+import { Button } from "#/components/Button";
+import { FlameGraph } from "#/components/FlameGraph";
+import { Toolbar } from "#/components/Toolbar";
 
 type ScanningProps = {
 	root: string;
-	progress: Ob.ScanProgress | null;
+	progress: Ob.ScanProgress;
 	onCancel: () => void;
 	chips: React.ReactNode;
 };
@@ -38,17 +38,17 @@ export const Scanning: React.FC<ScanningProps> = ({
 				chips={chips}
 			/>
 			{perfTree ? (
-				<div className="flex min-h-0 flex-1 flex-col gap-[16px] px-[28px] py-[20px]">
+				<div className="flex min-h-0 flex-1 flex-col gap-4 px-7 py-5">
 					<ScanHeader root={root} total={total} progress={progress} />
 					<div className="flex min-h-0 flex-1 flex-col">
 						<FlameGraph tree={perfTree} />
 					</div>
 				</div>
 			) : (
-				<div className="flex flex-1 items-center justify-center px-[28px]">
+				<div className="flex flex-1 items-center justify-center px-7">
 					<div className="flex flex-col items-center gap-[18px]">
 						<Spinner total={total} />
-						<div className="flex flex-col items-center gap-[4px] text-center">
+						<div className="flex flex-col items-center gap-1 text-center">
 							<div className="text-[16px] font-semibold">{root}</div>
 							<CurrentPath progress={progress} />
 						</div>
@@ -62,12 +62,12 @@ export const Scanning: React.FC<ScanningProps> = ({
 type ScanHeaderProps = {
 	root: string;
 	total: number;
-	progress: Ob.ScanProgress | null;
+	progress: Ob.ScanProgress;
 };
 
 const ScanHeader: React.FC<ScanHeaderProps> = ({ root, total, progress }) => (
-	<div className="flex items-center gap-[16px]">
-		<div className="relative h-[44px] w-[44px] shrink-0">
+	<div className="flex items-center gap-4">
+		<div className="relative size-[44px] shrink-0">
 			<svg width="44" height="44" viewBox="0 0 44 44">
 				<circle
 					cx="22"
@@ -101,26 +101,21 @@ const ScanHeader: React.FC<ScanHeaderProps> = ({ root, total, progress }) => (
 	</div>
 );
 
-const CurrentPath: React.FC<{ progress: Ob.ScanProgress | null }> = ({
-	progress,
-}) => (
-	<div
-		className="max-w-[100%] truncate font-mono text-[11px] text-muted"
-		title={progress?.currentPath ?? undefined}
-	>
-		{progress?.currentPath ? (
-			<>
-				indexing&nbsp;
-				<span className="text-default">{progress.currentPath}</span>
-			</>
-		) : (
-			"hold tight — counting files"
-		)}
+type CurrentPathProps = { progress: Ob.ScanProgress };
+
+const CurrentPath: React.FC<CurrentPathProps> = ({ progress }) => (
+	<div className="max-w-full truncate font-mono text-[11px] text-muted">
+		indexing&nbsp;
+		<span className="text-default">{progress?.currentPath}</span>
 	</div>
 );
 
-const Spinner: React.FC<{ total: number }> = ({ total }) => (
-	<div className="relative h-[260px] w-[260px]">
+type SpinnerProps = {
+	total: number;
+};
+
+const Spinner: React.FC<SpinnerProps> = ({ total }) => (
+	<div className="relative size-[260px]">
 		<svg width="260" height="260" viewBox="0 0 260 260">
 			<circle
 				cx="130"

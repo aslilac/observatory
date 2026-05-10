@@ -20,8 +20,15 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 	chips,
 	view,
 }) => {
-	const { cursor, canBack, canForward, goBack, goForward, setCursor, showMenu } =
-		useNavigation();
+	const {
+		cursor,
+		canBack,
+		canForward,
+		goBack,
+		goForward,
+		setCursor,
+		showMenu,
+	} = useNavigation();
 	const inAScan = Boolean(root);
 	const inView = Boolean(view);
 
@@ -116,7 +123,6 @@ const Crumb: React.FC<CrumbProps> = ({ children, active, onClick }) => (
 type IconButtonProps = {
 	children: React.ReactNode;
 	onClick?: () => void;
-	active?: boolean;
 	disabled?: boolean;
 	title?: string;
 };
@@ -124,7 +130,6 @@ type IconButtonProps = {
 const IconButton: React.FC<IconButtonProps> = ({
 	children,
 	onClick,
-	active,
 	disabled,
 	title,
 }) => (
@@ -134,9 +139,9 @@ const IconButton: React.FC<IconButtonProps> = ({
 		disabled={disabled}
 		title={title}
 		className={`
-			inline-flex size-[26px] cursor-pointer items-center justify-center rounded-button border border-line bg-transparent p-0 text-[14px] text-default hover:bg-fill
-			${active ? "border-default bg-fill" : ""}
-			${disabled ? "cursor-default opacity-40" : ""}
+			inline-flex size-[26px] items-center justify-center rounded-button
+			border border-line bg-transparent p-0 text-[14px] text-default
+			${disabled ? "cursor-default opacity-40" : "hover:bg-fill"}
 		`}
 	>
 		{children}

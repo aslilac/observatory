@@ -1,7 +1,6 @@
 import { useState } from "react";
-
-import { sunburstColor } from "../../colors";
-import { readableSize } from "../../util";
+import { sunburstColor } from "#/colors";
+import { readableSize } from "#/util";
 
 const VIEW_RADIUS = 275;
 const CENTER_R = 64;
