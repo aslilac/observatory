@@ -6,10 +6,7 @@
 
 export function perfEnabled(): boolean {
 	try {
-		return (
-			typeof globalThis !== "undefined" &&
-			globalThis.localStorage?.getItem("observatory:perf") === "1"
-		);
+		return localStorage.getItem("observatory:perf") === "1";
 	} catch {
 		return false;
 	}

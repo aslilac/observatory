@@ -2,7 +2,7 @@ import React, { useState } from "react";
 
 import type { CleanupItem } from "../../state";
 import { readableSize } from "../../util";
-import { Button } from "../Button";
+import { Button } from "../../components/Button";
 
 type CleanupModalProps = {
 	items: CleanupItem[];

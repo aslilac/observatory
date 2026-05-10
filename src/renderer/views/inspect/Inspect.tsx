@@ -4,7 +4,7 @@ import { huesByPosition } from "../../colors";
 import { useNavigation } from "../../navigation";
 import { type CleanupItem, useSearch } from "../../state";
 import { readableSize } from "../../util";
-import { Segmented, Toolbar } from "../Toolbar";
+import { Segmented, Toolbar } from "../../components/Toolbar";
 import { FolderTree } from "./FolderTree";
 import { LegendList } from "./LegendList";
 import { MultiSelectBar } from "./MultiSelectBar";

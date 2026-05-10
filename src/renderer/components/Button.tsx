@@ -27,10 +27,12 @@ export const Button: React.FC<ButtonProps> = ({
 	className,
 	type = "button",
 	...rest
-}) => (
-	<button
-		type={type}
-		className={`${base} ${variants[variant]} ${sizes[size]} ${className ?? ""}`}
-		{...rest}
-	/>
-);
+}) => {
+	return (
+		<button
+			type={type}
+			className={`${base} ${variants[variant]} ${sizes[size]} ${className ?? ""}`}
+			{...rest}
+		/>
+	);
+};

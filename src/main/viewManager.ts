@@ -1,6 +1,6 @@
 import {
 	BrowserWindow,
-	BrowserWindowConstructorOptions,
+	type BrowserWindowConstructorOptions,
 	screen,
 } from "electron";
 import * as path from "node:path";
@@ -22,23 +22,9 @@ export const windowSettings: BrowserWindowConstructorOptions = {
 	},
 };
 
-let view: BrowserWindow | null = null;
-
-export function getCurrentView() {
-	if (!view) {
-		throw new Error("Attempting to read window object without an open window!");
-	}
-
-	return view;
-}
-
 export function createWindow() {
-	if (view) {
-		throw new Error("Attempting to open a new window when one already exists!");
-	}
-
 	// Create the browser window.
-	view = new BrowserWindow(windowSettings);
+	const view = new BrowserWindow(windowSettings);
 	view.maximize();
 
 	// Load the app — Vite dev server in dev, bundled HTML in prod.
@@ -52,12 +38,6 @@ export function createWindow() {
 	view.on("ready-to-show", () => {
 		view!.show();
 		view!.webContents.openDevTools();
-	});
-
-	// Emitted when the window is closed.
-	view.on("closed", () => {
-		// Dereference the window object, so that Electron can close gracefully
-		view = null;
 	});
 
 	const sendNav = (direction: "back" | "forward") => {

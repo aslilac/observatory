@@ -1,7 +1,7 @@
-import type { RecentScan } from "../../state";
-import { readableSize } from "../../util";
-import { Button } from "../Button";
-import { Toolbar } from "../Toolbar";
+import type { RecentScan } from "#/state";
+import { readableSize } from "#/util";
+import { Button } from "#/components/Button";
+import { Toolbar } from "#/components/Toolbar";
 
 type WelcomeProps = {
 	drives: Ob.PhysicalDrive[];

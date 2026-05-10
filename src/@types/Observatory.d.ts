@@ -1,5 +1,6 @@
 declare global {
 	namespace Ob {
+		const PERF: string | undefined;
 		const platform: "darwin" | "linux" | "win32";
 
 		// RPC (renderer -> main)

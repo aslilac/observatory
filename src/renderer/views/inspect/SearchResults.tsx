@@ -1,6 +1,6 @@
 import { rowActions } from "../../contextActions";
 import { readableSize } from "../../util";
-import { useContextMenu } from "../ContextMenu";
+import { useContextMenu } from "../../components/ContextMenu";
 
 type SelectableItem = { path: string; name: string; size: number };
 

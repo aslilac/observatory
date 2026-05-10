@@ -7,8 +7,8 @@ import {
 	useState,
 } from "react";
 
-import { useNavigation } from "../navigation";
-import { perfEnabled, perfLog, perfMeasure } from "../perf";
+import { useNavigation } from "./navigation";
+import { perfEnabled, perfLog, perfMeasure } from "./perf";
 import {
 	useCleanupQueue,
 	useDrives,
@@ -19,21 +19,21 @@ import {
 	useScanProgress,
 	useScans,
 	useTheme,
-} from "../state";
-import { Cleanup } from "./cleanup/Cleanup";
-import { CleanupChip } from "./cleanup/CleanupChip";
-import { CleanupModal } from "./cleanup/CleanupModal";
-import { DragReceiver } from "./DragReceiver";
-import { ErrorBoundary } from "./ErrorBoundary";
-import { Inspect } from "./inspect/Inspect";
-import { IssuesChip } from "./IssuesChip";
-import { IssuesModal } from "./IssuesModal";
-import { PasteConfirm } from "./PasteConfirm";
-import { PerfChip } from "./PerfChip";
-import { PerfModal } from "./PerfModal";
-import { Scanning } from "./Scanning";
-import { ThemeToggle } from "./ThemeToggle";
-import { Welcome } from "./welcome/Welcome";
+} from "./state";
+import { Cleanup } from "./views/cleanup/Cleanup";
+import { CleanupChip } from "./views/cleanup/CleanupChip";
+import { CleanupModal } from "./views/cleanup/CleanupModal";
+import { DragReceiver } from "./components/DragReceiver";
+import { ErrorBoundary } from "./components/ErrorBoundary";
+import { Inspect } from "./views/inspect/Inspect";
+import { IssuesChip } from "./components/IssuesChip";
+import { IssuesModal } from "./components/IssuesModal";
+import { PasteConfirm } from "./components/PasteConfirm";
+import { PerfChip } from "./components/PerfChip";
+import { PerfModal } from "./components/PerfModal";
+import { Scanning } from "./components/Scanning";
+import { ThemeToggle } from "./components/ThemeToggle";
+import { Welcome } from "./views/welcome/Welcome";
 
 export const Application: React.FC = () => {
 	const drives = useDrives();
@@ -45,7 +45,7 @@ export const Application: React.FC = () => {
 	const [perfOpen, setPerfOpen] = useState(false);
 	const { theme, toggle: toggleTheme } = useTheme();
 
-	const { view, inspecting, cursor, setInspecting, showCleanup, showMenu } =
+	const { view, inspecting, cursor, setInspecting, showCleanup } =
 		useNavigation();
 
 	const inspectingScan = useMemo(

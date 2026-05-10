@@ -4,7 +4,9 @@
 export const PERF = process.env["OB_PERF"] === "1";
 
 export function perfLog(tag: string, message: string): void {
-	if (!PERF) return;
+	if (!PERF) {
+		return;
+	}
 	console.log(`[perf:${tag}] ${message}`);
 }
 

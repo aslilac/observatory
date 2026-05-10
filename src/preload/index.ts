@@ -1,14 +1,6 @@
 import { contextBridge, ipcRenderer, webUtils } from "electron";
 
-// Same flag the renderer uses; preload runs in the same origin so
-// localStorage is shared. Read lazily so toggling at runtime takes effect.
-function perfEnabled(): boolean {
-	try {
-		return globalThis.localStorage?.getItem("observatory:perf") === "1";
-	} catch {
-		return false;
-	}
-}
+export const PERF = process.env["OB_PERF"] === "1";
 
 function approxBytes(value: unknown): number {
 	try {
@@ -22,7 +14,10 @@ async function timedInvoke(
 	channel: string,
 	...args: unknown[]
 ): Promise<unknown> {
-	if (!perfEnabled()) return ipcRenderer.invoke(channel, ...args);
+	if (!PERF) {
+		return ipcRenderer.invoke(channel, ...args);
+	}
+
 	const start = performance.now();
 	const result = await ipcRenderer.invoke(channel, ...args);
 	const elapsed = performance.now() - start;
@@ -42,6 +37,7 @@ const subscribe = <T>(channel: string, cb: (payload: T) => void) => {
 };
 
 contextBridge.exposeInMainWorld("Ob", {
+	PERF,
 	platform: process.platform,
 
 	selectDirectory: () => timedInvoke("ob:selectDirectory"),

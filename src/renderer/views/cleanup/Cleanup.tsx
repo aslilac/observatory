@@ -1,7 +1,7 @@
 import type { CleanupItem } from "../../state";
 import { readableSize } from "../../util";
-import { Button } from "../Button";
-import { Toolbar } from "../Toolbar";
+import { Button } from "../../components/Button";
+import { Toolbar } from "../../components/Toolbar";
 
 type CleanupProps = {
 	items: CleanupItem[];

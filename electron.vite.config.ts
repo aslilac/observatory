@@ -25,21 +25,17 @@ export default {
 	},
 	renderer: {
 		root: resolve(__dirname, "src/renderer/"),
-		plugins: [
-			react({
-				babel: {
-					plugins: [["babel-plugin-react-compiler", {}]],
-				},
-			}),
-			tailwindcss(),
-		],
+		plugins: [react(), tailwindcss()],
+		resolve: {
+			tsconfigPaths: true,
+		},
 		build: {
 			outDir: resolve(__dirname, "build/renderer/"),
 			emptyOutDir: true,
 			rolldownOptions: {
 				input: {
 					index: resolve(__dirname, "src/renderer/index.html"),
-					about: resolve(__dirname, "src/renderer/about.html"),
+					about: resolve(__dirname, "src/renderer/views/about/about.html"),
 				},
 			},
 		},

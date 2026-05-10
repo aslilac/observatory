@@ -1,5 +1,5 @@
 import { readableSize } from "../../util";
-import { Button } from "../Button";
+import { Button } from "../../components/Button";
 
 type MultiSelectBarProps = {
 	count: number;

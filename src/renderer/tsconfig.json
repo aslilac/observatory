@@ -1,0 +1,14 @@
+{
+	"extends": "../../tsconfig.json",
+	"compilerOptions": {
+		"composite": true,
+		"outDir": "../.build/renderer/",
+		"jsx": "react-jsx",
+		"lib": ["dom", "esnext"],
+		"types": ["react", "react-dom", "vite/client"],
+		"paths": {
+			"#/*": ["./*"],
+		},
+	},
+	"include": ["**/*", "../@types/**/*"],
+}
