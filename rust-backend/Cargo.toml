@@ -1,20 +1,23 @@
 [package]
-name = "observatory"
-version = "0.0.0"
-authors = ["McKayla Washburn <mckayla@hey.com>"]
-description = ""
-keywords = []
-license = "MIT"
-homepage = "https://github.com/aslilac/observatory"
-repository = "https://github.com/aslilac/observatory"
-documentation = "https://docs.rs/observatory"
+name = "observatory-scan"
+version = "0.1.0"
 edition = "2021"
+authors = ["McKayla Washburn <mckayla@hey.com>"]
+license = "MIT"
+publish = false
 
 [lib]
 path = "./lib.rs"
 
+[[bin]]
+name = "observatory-scan"
+path = "./main.rs"
+
 [dependencies]
-async-recursion = "1.0.4"
-futures = "0.3.28"
-tokio = { version = "1.28.2", features = ["full"] }
-tokio-stream = { version = "0.1.14", features = ["full"] }
+rayon = "1.10"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1

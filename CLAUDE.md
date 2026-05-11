@@ -72,4 +72,10 @@ Main → renderer "set inspecting" events still flow through `Ob.onSetInspecting
 
 ## Rust backend status
 
-`rust-backend/` contains four scan implementations (`v1.rs` through `v4.rs`, plus `v10.rs`) exploring sync vs. tokio approaches. Only `v4` is exercised by the test suite and only `v4` is exported in `lib.rs`. There is no FFI/N-API binding yet — this code does not run inside the Electron app.
+`rust-backend/` is a synchronous parallel scanner driven by `rayon`'s work-stealing pool — `read_dir` once per directory, then fan out per-entry `metadata` + recursion through a parallel iterator. No async, no tokio. The crate ships a library (`lib.rs`) and a CLI binary (`main.rs` → `observatory-scan`) that emits the `Ob.VfsDirectory`-shaped JSON to stdout and timing/counts to stderr.
+
+- `cd rust-backend && cargo build --release` → `rust-backend/build/release/observatory-scan`. Build output lives under `rust-backend/build/` per `.cargo/config.toml`.
+- `cd rust-backend && cargo test` runs the four unit tests in `lib.rs` against a tmp directory — no hardcoded paths.
+- `node rust-backend/bench-js.mjs <path>` is a standalone Node re-implementation of the JS scanner's algorithm (without the drivelist/perf deps) used purely for apples-to-apples timing comparisons against the Rust CLI.
+
+Not yet wired into the Electron app — no napi-rs binding or child-process bridge yet. The intended next step is to land the JS-scan-in-a-worker-thread refactor on the host side, then swap the worker's innards for `observatory-scan` (subprocess + JSON, or eventually napi-rs).
