@@ -1,3 +1,5 @@
+import { SearchIcon } from "lucide-react";
+
 type SearchBarProps = {
 	query: string;
 	onQueryChange: (next: string) => void;
@@ -15,7 +17,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 }) => (
 	<div className="flex items-center gap-2 border-b border-line-soft px-3 py-2">
 		<div className="flex flex-1 items-center gap-2 rounded-md border border-line bg-fill px-2.5 h-8">
-			<SearchIcon />
+			<SearchIcon size={12} strokeWidth={2} className="text-muted" />
 			<input
 				type="text"
 				value={query}
@@ -41,21 +43,4 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 		</div>
 		{right}
 	</div>
-);
-
-const SearchIcon: React.FC = () => (
-	<svg
-		width="12"
-		height="12"
-		viewBox="0 0 24 24"
-		fill="none"
-		stroke="currentColor"
-		strokeWidth="2"
-		strokeLinecap="round"
-		strokeLinejoin="round"
-		className="text-muted"
-	>
-		<circle cx="11" cy="11" r="7" />
-		<path d="M21 21l-4.35-4.35" />
-	</svg>
 );

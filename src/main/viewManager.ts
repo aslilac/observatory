@@ -1,7 +1,4 @@
-import {
-	BrowserWindow,
-	type BrowserWindowConstructorOptions,
-} from "electron";
+import { BrowserWindow, type BrowserWindowConstructorOptions } from "electron";
 import * as path from "node:path";
 
 // electron-vite sets this during development with the URL of the Vite dev

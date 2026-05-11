@@ -12,10 +12,12 @@
 		"forge": "forge.config.js"
 	},
 	"dependencies": {
+		"@base-ui/react": "^1.4.1",
 		"@fontsource-variable/inter": "^5.2.8",
 		"@fontsource/ibm-plex-mono": "^5.2.7",
 		"drivelist": "^12.0.2",
 		"electron-squirrel-startup": "^1.0.1",
+		"lucide-react": "^1.14.0",
 		"react": "^19.2.5",
 		"react-dom": "^19.2.5"
 	},

@@ -1,6 +1,7 @@
 import { rowActions } from "#/contextActions";
 import { readableSize } from "#/util";
-import { useContextMenu } from "#/components/ContextMenu";
+import { Checkbox } from "#/components/Checkbox";
+import { RowMenu } from "#/components/ContextMenu";
 
 type SelectableItem = { path: string; name: string; size: number };
 
@@ -21,7 +22,6 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
 	onToggleSelect,
 	onAddToCleanup,
 }) => {
-	const menu = useContextMenu();
 	if (!query.trim()) return null;
 
 	if (loading && !results) {
@@ -63,21 +63,16 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
 				};
 				const isSelected = selection.has(match.path);
 				return (
-					<div
+					<RowMenu
 						key={match.path}
 						onClick={() => onToggleSelect(item)}
-						onContextMenu={(e) =>
-							menu.open(
-								e,
-								rowActions({
-									path: match.path,
-									name: item.name,
-									size: match.size,
-									type: match.type,
-									onAddToCleanup,
-								}),
-							)
-						}
+						items={rowActions({
+							path: match.path,
+							name: item.name,
+							size: match.size,
+							type: match.type,
+							onAddToCleanup,
+						})}
 						className={`group flex cursor-pointer items-center gap-[8px] rounded-[5px] px-[8px] py-[7px] ${
 							isSelected ? "bg-fill" : "hover:bg-fill"
 						}`}
@@ -95,7 +90,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
 						<span className="ml-[8px] flex-shrink-0 font-mono text-[11px] text-muted">
 							{readableSize(match.size)}
 						</span>
-					</div>
+					</RowMenu>
 				);
 			})}
 			{results.truncated && (
@@ -104,7 +99,6 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
 					{results.totalCount.toLocaleString()} — refine the query to see more.
 				</div>
 			)}
-			{menu.render}
 		</div>
 	);
 };
@@ -114,36 +108,3 @@ function basename(p: string): string {
 	const slash = Math.max(trimmed.lastIndexOf("/"), trimmed.lastIndexOf("\\"));
 	return slash >= 0 ? trimmed.slice(slash + 1) || trimmed : trimmed;
 }
-
-type CheckboxProps = {
-	checked: boolean;
-	onChange: () => void;
-};
-
-const Checkbox: React.FC<CheckboxProps> = ({ checked, onChange }) => (
-	<span
-		role="checkbox"
-		aria-checked={checked}
-		onClick={(e) => {
-			e.stopPropagation();
-			onChange();
-		}}
-		className={`flex h-[14px] w-[14px] flex-shrink-0 cursor-pointer items-center justify-center rounded-[3px] border transition-opacity ${
-			checked
-				? "border-default bg-default text-background opacity-100"
-				: "border-line bg-background opacity-0 group-hover:opacity-100"
-		}`}
-	>
-		{checked && (
-			<svg width="9" height="9" viewBox="0 0 12 12" fill="none">
-				<path
-					d="M2 6.5 L5 9 L10 3.5"
-					stroke="currentColor"
-					strokeWidth="2"
-					strokeLinecap="round"
-					strokeLinejoin="round"
-				/>
-			</svg>
-		)}
-	</span>
-);

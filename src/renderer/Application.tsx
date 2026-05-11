@@ -81,12 +81,7 @@ export const Application: React.FC = () => {
 		);
 	} else {
 		body = (
-			<Welcome
-				drives={drives}
-				scans={scans}
-				recent={recent}
-				onOpen={onOpen}
-			/>
+			<Welcome drives={drives} scans={scans} recent={recent} onOpen={onOpen} />
 		);
 	}
 
@@ -110,14 +105,13 @@ export const Application: React.FC = () => {
 					</Profiler>
 				</ErrorBoundary>
 			</div>
-			{paste.pastePath && (
-				<PasteConfirm
-					path={paste.pastePath}
-					stat={paste.pasteStat}
-					onCancel={paste.cancel}
-					onConfirm={paste.confirm}
-				/>
-			)}
+			<PasteConfirm
+				open={paste.pastePath !== null}
+				path={paste.pastePath}
+				stat={paste.pasteStat}
+				onCancel={paste.cancel}
+				onConfirm={paste.confirm}
+			/>
 			<DragReceiver onDrop={onOpen} />
 		</div>
 	);

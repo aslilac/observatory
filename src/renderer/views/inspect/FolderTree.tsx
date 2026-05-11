@@ -1,10 +1,13 @@
 import React, { useCallback, useEffect, useState } from "react";
 
+import { ChevronRightIcon } from "lucide-react";
+
 import { oklchSwatch } from "#/colors";
 import { rowActions } from "#/contextActions";
 import { joinPath } from "#/state";
 import { readableSize } from "#/util";
-import { useContextMenu } from "#/components/ContextMenu";
+import { Checkbox } from "#/components/Checkbox";
+import { type ContextMenuItem, RowMenu } from "#/components/ContextMenu";
 
 type SelectableItem = { path: string; name: string; size: number };
 
@@ -33,7 +36,6 @@ export const FolderTree: React.FC<FolderTreeProps> = ({
 	onToggleSelect,
 	onAddToCleanup,
 }) => {
-	const menu = useContextMenu();
 	const [expanded, setExpanded] = useState<Set<string>>(() => new Set([""]));
 	const [cache, setCache] = useState<Map<string, CacheValue>>(new Map());
 
@@ -108,10 +110,8 @@ export const FolderTree: React.FC<FolderTreeProps> = ({
 					onForward={onForward}
 					onToggleSelect={onToggleSelect}
 					onAddToCleanup={onAddToCleanup}
-					openContextMenu={menu.open}
 				/>
 			)}
-			{menu.render}
 		</div>
 	);
 };
@@ -131,10 +131,6 @@ type ChildrenProps = {
 	onForward: (...names: string[]) => void;
 	onToggleSelect: (item: SelectableItem) => void;
 	onAddToCleanup: (item: SelectableItem) => void;
-	openContextMenu: (
-		e: React.MouseEvent,
-		items: ReturnType<typeof rowActions>,
-	) => void;
 };
 
 const TreeChildren: React.FC<ChildrenProps> = ({
@@ -152,7 +148,6 @@ const TreeChildren: React.FC<ChildrenProps> = ({
 	onForward,
 	onToggleSelect,
 	onAddToCleanup,
-	openContextMenu,
 }) => (
 	<>
 		{files.map((file) => {
@@ -206,18 +201,13 @@ const TreeChildren: React.FC<ChildrenProps> = ({
 								? () => onForward(...path, file.name)
 								: () => onToggleSelect(item)
 						}
-						onContextMenu={(e) =>
-							openContextMenu(
-								e,
-								rowActions({
-									path: fullPath,
-									name: file.name,
-									size: file.size,
-									type: isDir ? "directory" : "file",
-									onAddToCleanup,
-								}),
-							)
-						}
+						items={rowActions({
+							path: fullPath,
+							name: file.name,
+							size: file.size,
+							type: isDir ? "directory" : "file",
+							onAddToCleanup,
+						})}
 					/>
 					{isOpen && isDir && (
 						<>
@@ -246,7 +236,6 @@ const TreeChildren: React.FC<ChildrenProps> = ({
 									onForward={onForward}
 									onToggleSelect={onToggleSelect}
 									onAddToCleanup={onAddToCleanup}
-									openContextMenu={openContextMenu}
 								/>
 							)}
 						</>
@@ -282,7 +271,7 @@ type RowProps = {
 	onToggleExpand: () => void;
 	onToggleSelect: (() => void) | undefined;
 	onClick: (() => void) | undefined;
-	onContextMenu?: (e: React.MouseEvent) => void;
+	items?: ContextMenuItem[];
 };
 
 const Row: React.FC<RowProps> = ({
@@ -297,104 +286,62 @@ const Row: React.FC<RowProps> = ({
 	onToggleExpand,
 	onToggleSelect,
 	onClick,
-	onContextMenu,
-}) => (
-	<div
-		className={`group flex items-center gap-[6px] rounded-[5px] py-[5px] pr-[8px] pl-[8px] ${
-			selected ? "bg-fill" : "hover:bg-fill"
-		} ${onClick ? "cursor-pointer" : "cursor-default"}`}
-		onClick={onClick}
-		onContextMenu={onContextMenu}
-	>
-		<span style={{ width: depth * 14 }} className="flex-shrink-0" />
-		<button
-			type="button"
-			onClick={(e) => {
-				e.stopPropagation();
-				if (expandable) onToggleExpand();
-			}}
-			disabled={!expandable}
-			title={expandable ? (expanded ? "Collapse" : "Expand") : undefined}
-			className="-mx-[2px] grid h-[22px] w-[22px] flex-shrink-0 cursor-pointer place-items-center rounded-button text-faint hover:bg-fill-strong hover:text-default disabled:cursor-default disabled:opacity-0 disabled:hover:bg-transparent"
-		>
-			<Chevron rotation={expanded ? "down" : "right"} />
-		</button>
-		{selectable && onToggleSelect ? (
-			<Checkbox checked={selected} onChange={onToggleSelect} />
-		) : (
-			<span className="block h-[14px] w-[14px] flex-shrink-0" />
-		)}
-		{hue !== null ? (
-			<span
-				className="block h-[8px] w-[8px] flex-shrink-0 rounded-full"
-				style={{ background: oklchSwatch(hue) }}
-			/>
-		) : (
-			<span className="block h-[8px] w-[8px] flex-shrink-0" />
-		)}
-		<span className="flex-1 truncate">{name}</span>
-		<span className="font-mono text-[12px] text-muted">
-			{readableSize(size)}
-		</span>
-	</div>
-);
+	items,
+}) => {
+	const className = `group flex items-center gap-[6px] rounded-[5px] py-[5px] pr-[8px] pl-[8px] ${
+		selected ? "bg-fill" : "hover:bg-fill"
+	} ${onClick ? "cursor-pointer" : "cursor-default"}`;
 
-type ChevronProps = {
-	rotation: "left" | "up" | "right" | "down";
-};
-
-const rotations = {
-	left: "rotate-180",
-	up: "rotate-270",
-	right: "",
-	down: "rotate-90",
-};
-
-const Chevron: React.FC<ChevronProps> = ({ rotation = "right" }) => (
-	<svg
-		width="9"
-		height="9"
-		viewBox="0 0 24 24"
-		fill="none"
-		stroke="currentColor"
-		strokeWidth="3"
-		strokeLinecap="round"
-		strokeLinejoin="round"
-		className={`transition-transform duration-100 ${rotations[rotation]}`}
-	>
-		<polyline points="9 6 15 12 9 18" />
-	</svg>
-);
-
-type CheckboxProps = {
-	checked: boolean;
-	onChange: () => void;
-};
-
-const Checkbox: React.FC<CheckboxProps> = ({ checked, onChange }) => (
-	<span
-		role="checkbox"
-		aria-checked={checked}
-		onClick={(e) => {
-			e.stopPropagation();
-			onChange();
-		}}
-		className={`flex h-[14px] w-[14px] flex-shrink-0 cursor-pointer items-center justify-center rounded-[3px] border transition-opacity ${
-			checked
-				? "border-default bg-default text-background opacity-100"
-				: "border-line bg-background opacity-0 group-hover:opacity-100"
-		}`}
-	>
-		{checked && (
-			<svg width="9" height="9" viewBox="0 0 12 12" fill="none">
-				<path
-					d="M2 6.5 L5 9 L10 3.5"
-					stroke="currentColor"
-					strokeWidth="2"
-					strokeLinecap="round"
-					strokeLinejoin="round"
+	const content = (
+		<>
+			<span style={{ width: depth * 14 }} className="flex-shrink-0" />
+			<button
+				type="button"
+				onClick={(e) => {
+					e.stopPropagation();
+					if (expandable) onToggleExpand();
+				}}
+				disabled={!expandable}
+				title={expandable ? (expanded ? "Collapse" : "Expand") : undefined}
+				className="-mx-[2px] grid h-[22px] w-[22px] flex-shrink-0 cursor-pointer place-items-center rounded-button text-faint hover:bg-fill-strong hover:text-default disabled:cursor-default disabled:opacity-0 disabled:hover:bg-transparent"
+			>
+				<ChevronRightIcon
+					size={9}
+					strokeWidth={3}
+					className={`transition-transform duration-100 ${expanded ? "rotate-90" : ""}`}
 				/>
-			</svg>
-		)}
-	</span>
-);
+			</button>
+			{selectable && onToggleSelect ? (
+				<Checkbox checked={selected} onChange={onToggleSelect} />
+			) : (
+				<span className="block h-[14px] w-[14px] flex-shrink-0" />
+			)}
+			{hue !== null ? (
+				<span
+					className="block h-[8px] w-[8px] flex-shrink-0 rounded-full"
+					style={{ background: oklchSwatch(hue) }}
+				/>
+			) : (
+				<span className="block h-[8px] w-[8px] flex-shrink-0" />
+			)}
+			<span className="flex-1 truncate">{name}</span>
+			<span className="font-mono text-[12px] text-muted">
+				{readableSize(size)}
+			</span>
+		</>
+	);
+
+	if (items) {
+		return (
+			<RowMenu className={className} onClick={onClick} items={items}>
+				{content}
+			</RowMenu>
+		);
+	}
+
+	return (
+		<div className={className} onClick={onClick}>
+			{content}
+		</div>
+	);
+};

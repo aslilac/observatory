@@ -1,7 +1,7 @@
 - [x] Ensure all React components are `const` arrow-functions, use the `React.FC` type to specify their props, and that they have a proper `type =` props type definition, not an inline object type.
 - [x] Use `for (const ... of ...)` instead of `.forEach`
 - [x] The `Application` component currently has way too many responsibilities.
-	- [x] All of the `handleDrag*` functions could easily be factored out into a `DragReceiver` that uses `useEffect` to register those events on the `window` or `document.body` or something. That removes a lot of logic by itself.
+  - [x] All of the `handleDrag*` functions could easily be factored out into a `DragReceiver` that uses `useEffect` to register those events on the `window` or `document.body` or something. That removes a lot of logic by itself.
 - [x] `@apply` is kind of a hack and we should not use it
 - [x] It'd be nice to combine `onScan` and `onInspect`. I remember you mentioning that we add things to recent when we start the scan _and_ when the scan completes. I think we should only do that when we start.
 - [x] A circle around the sunburst is supposed to basically be a rainbow, going all the way around the hue wheel. Current that's not at all how the colors work. Basically, every files color should be based on how many bytes into the overall scan size it is, ordered by size descending.

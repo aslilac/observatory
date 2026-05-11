@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
+import { ListIcon, ListTreeIcon } from "lucide-react";
+
 import { huesByPosition } from "#/colors";
 import { useNavigation } from "#/navigation";
 import {
@@ -25,43 +27,6 @@ import { type SortMode, SortPicker } from "./SortPicker";
 import { Sunburst } from "./Sunburst";
 
 type SelectableItem = { path: string; name: string; size: number };
-
-const ListIcon: React.FC = () => (
-	<svg
-		width="12"
-		height="12"
-		viewBox="0 0 24 24"
-		fill="none"
-		stroke="currentColor"
-		strokeWidth="2"
-		strokeLinecap="round"
-		strokeLinejoin="round"
-	>
-		<line x1="8" y1="6" x2="21" y2="6" />
-		<line x1="8" y1="12" x2="21" y2="12" />
-		<line x1="8" y1="18" x2="21" y2="18" />
-		<line x1="3" y1="6" x2="3.01" y2="6" />
-		<line x1="3" y1="12" x2="3.01" y2="12" />
-		<line x1="3" y1="18" x2="3.01" y2="18" />
-	</svg>
-);
-
-const TreeIcon: React.FC = () => (
-	<svg
-		width="12"
-		height="12"
-		viewBox="0 0 24 24"
-		fill="none"
-		stroke="currentColor"
-		strokeWidth="2"
-		strokeLinecap="round"
-		strokeLinejoin="round"
-	>
-		<path d="M5 4v6a2 2 0 0 0 2 2h12" />
-		<path d="M9 12v6a2 2 0 0 0 2 2h8" />
-		<circle cx="5" cy="4" r="0.5" fill="currentColor" />
-	</svg>
-);
 
 type InspectProps = {
 	scan: Ob.ScanInfo;
@@ -191,8 +156,16 @@ export const Inspect: React.FC<InspectProps> = ({ scan }) => {
 					<Segmented<ViewMode>
 						value={mode}
 						options={[
-							{ value: "list", label: "List", icon: <ListIcon /> },
-							{ value: "tree", label: "Tree", icon: <TreeIcon /> },
+							{
+								value: "list",
+								label: "List",
+								icon: <ListIcon size={12} strokeWidth={2} />,
+							},
+							{
+								value: "tree",
+								label: "Tree",
+								icon: <ListTreeIcon size={12} strokeWidth={2} />,
+							},
 						]}
 						onChange={setMode}
 					/>
@@ -295,12 +268,16 @@ export const Inspect: React.FC<InspectProps> = ({ scan }) => {
 					)}
 				</div>
 			)}
-			{issuesOpen && (
-				<IssuesModal errors={scanErrors} onClose={() => setIssuesOpen(false)} />
-			)}
-			{perfOpen && perfTree && (
-				<PerfModal tree={perfTree} onClose={() => setPerfOpen(false)} />
-			)}
+			<IssuesModal
+				open={issuesOpen}
+				errors={scanErrors}
+				onClose={() => setIssuesOpen(false)}
+			/>
+			<PerfModal
+				open={perfOpen && perfTree !== null}
+				tree={perfTree}
+				onClose={() => setPerfOpen(false)}
+			/>
 		</>
 	);
 };

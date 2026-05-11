@@ -123,6 +123,11 @@
   dependencies:
     "@babel/helper-plugin-utils" "^7.27.1"
 
+"@babel/runtime@^7.29.2":
+  version "7.29.2"
+  resolved "https://registry.yarnpkg.com/@babel/runtime/-/runtime-7.29.2.tgz#9a6e2d05f4b6692e1801cd4fb176ad823930ed5e"
+  integrity sha512-JiDShH45zKHWyGe4ZNVRrCjBz8Nh9TMmZG1kh4QTK8hCBTWBi8Da+i7s1fJw7/lYpM4ccepSNfqzZ/QvABBi5g==
+
 "@babel/template@^7.28.6":
   version "7.28.6"
   resolved "https://registry.yarnpkg.com/@babel/template/-/template-7.28.6.tgz#0e7e56ecedb78aeef66ce7972b082fce76a23e57"
@@ -145,13 +150,34 @@
     "@babel/types" "^7.29.0"
     debug "^4.3.1"
 
-"@babel/types@^7.26.0", "@babel/types@^7.28.6", "@babel/types@^7.29.0":
+"@babel/types@^7.28.6", "@babel/types@^7.29.0":
   version "7.29.0"
   resolved "https://registry.yarnpkg.com/@babel/types/-/types-7.29.0.tgz#9f5b1e838c446e72cf3cd4b918152b8c605e37c7"
   integrity sha512-LwdZHpScM4Qz8Xw2iKSzS+cfglZzJGvofQICy7W7v4caru4EaAmyUuO6BGrbyQ2mYV11W0U8j5mBhd14dd3B0A==
   dependencies:
     "@babel/helper-string-parser" "^7.27.1"
     "@babel/helper-validator-identifier" "^7.28.5"
+
+"@base-ui/react@^1.4.1":
+  version "1.4.1"
+  resolved "https://registry.yarnpkg.com/@base-ui/react/-/react-1.4.1.tgz#42afd3733893bc26611f6ebb28efabc67e6866f1"
+  integrity sha512-Ab5/LIhcmL8BQcsBUYiOfkSDRdLpvgUBzMK30cu684JPcLclYlztharvCZyNNgzJtbAiREzI9q0pI5erHCMgCw==
+  dependencies:
+    "@babel/runtime" "^7.29.2"
+    "@base-ui/utils" "0.2.8"
+    "@floating-ui/react-dom" "^2.1.8"
+    "@floating-ui/utils" "^0.2.11"
+    use-sync-external-store "^1.6.0"
+
+"@base-ui/utils@0.2.8":
+  version "0.2.8"
+  resolved "https://registry.yarnpkg.com/@base-ui/utils/-/utils-0.2.8.tgz#76ceecb4948eca3b990c982e0152f38350ef42b4"
+  integrity sha512-jvOi+c+ftGlGotNcKnzPVg2IhCaDTB6/6R3JeqdjdXktuAJi3wKH9T7+svuaKh1mmfVU11UWzUZVH74JDfi/wQ==
+  dependencies:
+    "@babel/runtime" "^7.29.2"
+    "@floating-ui/utils" "^0.2.11"
+    reselect "^5.1.1"
+    use-sync-external-store "^1.6.0"
 
 "@electron-forge/cli@^7.11.1":
   version "7.11.1"
@@ -712,6 +738,33 @@
   resolved "https://registry.yarnpkg.com/@fallow-cli/win32-x64-msvc/-/win32-x64-msvc-2.69.0.tgz#2f48922ec01a5e273c830bd874460e2f41d4b738"
   integrity sha512-EeL+Bbdg9XOgMl7tG0k6DCKhCaXLS0EPiy3HWccKUaMYDgR+haUWDzAGa9nJqIBlR4GYz/lz6amSCJtV+XsMzA==
 
+"@floating-ui/core@^1.7.5":
+  version "1.7.5"
+  resolved "https://registry.yarnpkg.com/@floating-ui/core/-/core-1.7.5.tgz#d4af157a03330af5a60e69da7a4692507ada0622"
+  integrity sha512-1Ih4WTWyw0+lKyFMcBHGbb5U5FtuHJuujoyyr5zTaWS5EYMeT6Jb2AuDeftsCsEuchO+mM2ij5+q9crhydzLhQ==
+  dependencies:
+    "@floating-ui/utils" "^0.2.11"
+
+"@floating-ui/dom@^1.7.6":
+  version "1.7.6"
+  resolved "https://registry.yarnpkg.com/@floating-ui/dom/-/dom-1.7.6.tgz#f915bba5abbb177e1f227cacee1b4d0634b187bf"
+  integrity sha512-9gZSAI5XM36880PPMm//9dfiEngYoC6Am2izES1FF406YFsjvyBMmeJ2g4SAju3xWwtuynNRFL2s9hgxpLI5SQ==
+  dependencies:
+    "@floating-ui/core" "^1.7.5"
+    "@floating-ui/utils" "^0.2.11"
+
+"@floating-ui/react-dom@^2.1.8":
+  version "2.1.8"
+  resolved "https://registry.yarnpkg.com/@floating-ui/react-dom/-/react-dom-2.1.8.tgz#5fb5a20d10aafb9505f38c24f38d00c8e1598893"
+  integrity sha512-cC52bHwM/n/CxS87FH0yWdngEZrjdtLW/qVruo68qg+prK7ZQ4YGdut2GyDVpoGeAYe/h899rVeOVm6Oi40k2A==
+  dependencies:
+    "@floating-ui/dom" "^1.7.6"
+
+"@floating-ui/utils@^0.2.11":
+  version "0.2.11"
+  resolved "https://registry.yarnpkg.com/@floating-ui/utils/-/utils-0.2.11.tgz#a269e055e40e2f45873bae9d1a2fdccbd314ea3f"
+  integrity sha512-RiB/yIh78pcIxl6lLMG0CgBXAZ2Y0eVHqMPYugu+9U0AeT6YBeiJpf7lbdJNIugFP5SIjwNRgo4DhR1Qxi26Gg==
+
 "@fontsource-variable/inter@^5.2.8":
   version "5.2.8"
   resolved "https://registry.yarnpkg.com/@fontsource-variable/inter/-/inter-5.2.8.tgz#29b11476f5149f6a443b4df6516e26002d87941a"
@@ -1062,13 +1115,6 @@
   version "1.0.0-rc.17"
   resolved "https://registry.yarnpkg.com/@rolldown/binding-win32-x64-msvc/-/binding-win32-x64-msvc-1.0.0-rc.17.tgz#fc6b78e759a0bb2054b5c0a3489da12b2cae54b4"
   integrity sha512-3hkiolcUAvPB9FLb3UZdfjVVNWherN1f/skkGWJP/fgSQhYUZpSIRr0/I8ZK9TkF3F7kxvJAk0+IcKvPHk9qQg==
-
-"@rolldown/plugin-babel@^0.2.3":
-  version "0.2.3"
-  resolved "https://registry.yarnpkg.com/@rolldown/plugin-babel/-/plugin-babel-0.2.3.tgz#94f2c897285160aab1a7cfe827cbca1b7233e4f4"
-  integrity sha512-+zEk16yGlz1F9STiRr6uG9hmIXb6nprjLczV/htGptYuLoCuxb+itZ03RKCEeOhBpDDd1NU7qF6x1VLMUp62bw==
-  dependencies:
-    picomatch "^4.0.4"
 
 "@rolldown/pluginutils@1.0.0-rc.17":
   version "1.0.0-rc.17"
@@ -1694,13 +1740,6 @@ author-regex@^1.0.0:
   version "1.0.0"
   resolved "https://registry.npmjs.org/author-regex/-/author-regex-1.0.0.tgz"
   integrity sha512-KbWgR8wOYRAPekEmMXrYYdc7BRyhn2Ftk7KWfMUnQ43hFdojWEFRxhhRUm3/OFEdPa1r0KAvTTg9YQK57xTe0g==
-
-babel-plugin-react-compiler@^1.0.0:
-  version "1.0.0"
-  resolved "https://registry.yarnpkg.com/babel-plugin-react-compiler/-/babel-plugin-react-compiler-1.0.0.tgz#bdf7360a23a4d5ebfca090255da3893efd07425f"
-  integrity sha512-Ixm8tFfoKKIPYdCCKYTsqv+Fd4IJ0DQqMyEimo+pxUOMUR9cVPlwTrFt9Avu+3cb6Zp3mAzl+t1MrG2fxxKsxw==
-  dependencies:
-    "@babel/types" "^7.26.0"
 
 balanced-match@^1.0.0:
   version "1.0.0"
@@ -3239,6 +3278,11 @@ lru-cache@^7.7.1:
   resolved "https://registry.npmjs.org/lru-cache/-/lru-cache-7.18.3.tgz"
   integrity sha512-jumlc0BIUrS3qJGgIkWZsyfAM7NCWiBcCDhnd+3NNM5KbBmLTgHVfWBcg6W+rLUsIpzpERPsvwUP7CckAQSOoA==
 
+lucide-react@^1.14.0:
+  version "1.14.0"
+  resolved "https://registry.yarnpkg.com/lucide-react/-/lucide-react-1.14.0.tgz#3c3867749f5ff4eeb5a6f423557ec6a50521366f"
+  integrity sha512-+1mdWcfSJVUsaTIjN9zoezmUhfXo5l0vP7ekBMPo3jcS/aIkxHnXqAPsByszMZx/Y8oQBRJxJx5xg+RH3urzxA==
+
 macos-alias@~0.2.5:
   version "0.2.11"
   resolved "https://registry.npmjs.org/macos-alias/-/macos-alias-0.2.11.tgz"
@@ -3999,6 +4043,11 @@ resedit@^2.0.0:
   dependencies:
     pe-library "^1.0.1"
 
+reselect@^5.1.1:
+  version "5.1.1"
+  resolved "https://registry.yarnpkg.com/reselect/-/reselect-5.1.1.tgz#c766b1eb5d558291e5e550298adb0becc24bb72e"
+  integrity sha512-K/BG6eIky/SBpzfHZv/dd+9JBFiS4SWV7FIujVyJRux6e45+73RaUHXLmIR1f7WOMaQ0U1km6qwklRQxpJJY0w==
+
 resolve-alpn@^1.0.0:
   version "1.2.1"
   resolved "https://registry.npmjs.org/resolve-alpn/-/resolve-alpn-1.2.1.tgz"
@@ -4669,6 +4718,11 @@ update-browserslist-db@^1.2.3:
   dependencies:
     escalade "^3.2.0"
     picocolors "^1.1.1"
+
+use-sync-external-store@^1.6.0:
+  version "1.6.0"
+  resolved "https://registry.yarnpkg.com/use-sync-external-store/-/use-sync-external-store-1.6.0.tgz#b174bfa65cb2b526732d9f2ac0a408027876f32d"
+  integrity sha512-Pp6GSwGP/NrPIrxVFAIkOQeyw8lFenOHijQWkUTrDvrF4ALqylP2C/KCkeS9dpUM3KvYRQhna5vt7IL95+ZQ9w==
 
 username@^5.1.0:
   version "5.1.0"

@@ -94,9 +94,7 @@ const PERF_THRESHOLD_MS = 5;
 function serializePerfTree(root: PerfNodeInternal): Ob.PerfNode {
 	const snapshot = performance.now();
 	const visit = (node: PerfNodeInternal, depth: number): Ob.PerfNode => {
-		const elapsedMs = node.inProgress
-			? snapshot - node.startMs
-			: node.totalMs;
+		const elapsedMs = node.inProgress ? snapshot - node.startMs : node.totalMs;
 		const childrenOut: Ob.PerfNode[] = [];
 		if (depth < PERF_DEPTH_CAP) {
 			for (const child of node.children) {

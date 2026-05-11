@@ -7,8 +7,8 @@
 		"lib": ["dom", "esnext"],
 		"types": ["react", "react-dom", "vite/client"],
 		"paths": {
-			"#/*": ["./*"],
-		},
+			"#/*": ["./*"]
+		}
 	},
-	"include": ["**/*", "../@types/**/*"],
+	"include": ["**/*", "../@types/**/*"]
 }

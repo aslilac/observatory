@@ -1,10 +1,14 @@
 import React, { useState } from "react";
 
+import { AlertCircleIcon } from "lucide-react";
+
 import type { CleanupItem } from "#/state";
 import { readableSize } from "#/util";
 import { Button } from "#/components/Button";
+import { Modal } from "#/components/Modal";
 
 type CleanupModalProps = {
+	open: boolean;
 	items: CleanupItem[];
 	totalSize: number;
 	onClose: () => void;
@@ -24,6 +28,7 @@ type Stage =
 	  };
 
 export const CleanupModal: React.FC<CleanupModalProps> = ({
+	open,
 	items,
 	totalSize,
 	onClose,
@@ -46,40 +51,33 @@ export const CleanupModal: React.FC<CleanupModalProps> = ({
 		}
 	};
 
+	// Block dismissal while the trash request is in-flight; the rest of the
+	// stages defer to the standard backdrop/escape behavior from Modal.
+	const handleClose = () => {
+		if (stage.kind === "deleting") return;
+		onClose();
+	};
+
 	return (
-		<div
-			className="absolute inset-0 z-20 flex items-center justify-center bg-[rgba(0,0,0,0.32)]"
-			onClick={(e) => {
-				// Click backdrop to dismiss only when in the safe stages.
-				if (e.target === e.currentTarget && stage.kind !== "deleting") {
-					onClose();
-				}
-			}}
-		>
-			<div
-				className="w-[480px] rounded-modal bg-background p-[24px] [box-shadow:var(--shadow-modal)]"
-				role="dialog"
-				aria-modal="true"
-			>
-				{stage.kind === "confirm" && (
-					<ConfirmStage
-						items={snapshot.items}
-						totalSize={snapshot.totalSize}
-						onCancel={onClose}
-						onTrash={() => void handleTrash()}
-					/>
-				)}
-				{stage.kind === "deleting" && <DeletingStage />}
-				{stage.kind === "success" && (
-					<SuccessStage
-						deleted={stage.deleted}
-						reclaimed={stage.reclaimed}
-						failed={stage.failed}
-						onClose={onClose}
-					/>
-				)}
-			</div>
-		</div>
+		<Modal open={open} onClose={handleClose} className="w-[480px]">
+			{stage.kind === "confirm" && (
+				<ConfirmStage
+					items={snapshot.items}
+					totalSize={snapshot.totalSize}
+					onCancel={onClose}
+					onTrash={() => void handleTrash()}
+				/>
+			)}
+			{stage.kind === "deleting" && <DeletingStage />}
+			{stage.kind === "success" && (
+				<SuccessStage
+					deleted={stage.deleted}
+					reclaimed={stage.reclaimed}
+					failed={stage.failed}
+					onClose={onClose}
+				/>
+			)}
+		</Modal>
 	);
 };
 
@@ -101,7 +99,7 @@ const ConfirmStage: React.FC<ConfirmStageProps> = ({
 	return (
 		<>
 			<div className="mb-[12px] flex items-center gap-[8px]">
-				<AlertIcon />
+				<AlertCircleIcon size={18} strokeWidth={1.8} className="text-default" />
 				<div className="text-[16px] font-semibold">
 					Move {items.length} item{items.length === 1 ? "" : "s"} to Trash?
 				</div>
@@ -170,22 +168,4 @@ const SuccessStage: React.FC<SuccessStageProps> = ({
 			</Button>
 		</div>
 	</>
-);
-
-const AlertIcon: React.FC = () => (
-	<svg
-		width="18"
-		height="18"
-		viewBox="0 0 24 24"
-		fill="none"
-		stroke="currentColor"
-		strokeWidth="1.8"
-		strokeLinecap="round"
-		strokeLinejoin="round"
-		className="text-default"
-	>
-		<circle cx="12" cy="12" r="10" />
-		<path d="M12 8v4" />
-		<path d="M12 16h.01" />
-	</svg>
 );

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { ContextMenu as BaseContextMenu } from "@base-ui/react/context-menu";
 
 export type ContextMenuItem =
 	| {
@@ -9,105 +9,58 @@ export type ContextMenuItem =
 	  }
 	| { kind: "separator" };
 
-type State = {
-	x: number;
-	y: number;
+type RowMenuProps = {
 	items: ContextMenuItem[];
+	className?: string;
+	onClick?: (e: React.MouseEvent) => void;
+	title?: string;
+	children: React.ReactNode;
 };
 
-type ContextMenuHandle = {
-	open: (e: React.MouseEvent, items: ContextMenuItem[]) => void;
-	render: React.ReactNode;
-};
-
-// Light right-click menu matching the design's typography. Anchors at the
-// click position, flips left/up if it would overflow the viewport, closes on
-// outside click / scroll / Escape / window blur. Built on a hook so each
-// surface can manage its own items without prop-drilling.
-export function useContextMenu(): ContextMenuHandle {
-	const [state, setState] = useState<State | null>(null);
-	const ref = useRef<HTMLDivElement | null>(null);
-
-	const open = (e: React.MouseEvent, items: ContextMenuItem[]) => {
-		e.preventDefault();
-		e.stopPropagation();
-		setState({ x: e.clientX, y: e.clientY, items });
-	};
-
-	const close = () => setState(null);
-
-	useEffect(() => {
-		if (!state) return;
-		const onPointerDown = (event: PointerEvent) => {
-			if (
-				ref.current &&
-				event.target instanceof Node &&
-				ref.current.contains(event.target)
-			) {
-				return;
-			}
-			close();
-		};
-		const onKey = (event: KeyboardEvent) => {
-			if (event.key === "Escape") close();
-		};
-		document.addEventListener("pointerdown", onPointerDown, true);
-		document.addEventListener("keydown", onKey);
-		window.addEventListener("scroll", close, true);
-		window.addEventListener("blur", close);
-		return () => {
-			document.removeEventListener("pointerdown", onPointerDown, true);
-			document.removeEventListener("keydown", onKey);
-			window.removeEventListener("scroll", close, true);
-			window.removeEventListener("blur", close);
-		};
-	}, [state]);
-
-	// After mounting, nudge the menu inside the viewport if it overflows.
-	useEffect(() => {
-		if (!state || !ref.current) return;
-		const el = ref.current;
-		const rect = el.getBoundingClientRect();
-		const overflowX = rect.right - window.innerWidth;
-		const overflowY = rect.bottom - window.innerHeight;
-		if (overflowX > 0) {
-			el.style.left = `${Math.max(8, state.x - rect.width)}px`;
-		}
-		if (overflowY > 0) {
-			el.style.top = `${Math.max(8, state.y - rect.height)}px`;
-		}
-	}, [state]);
-
-	const render = state ? (
-		<div
-			ref={ref}
-			className="fixed z-50 min-w-[180px] rounded-card border border-line-soft bg-background py-1 text-[13px] [box-shadow:var(--shadow-menu)]"
-			style={{ left: state.x, top: state.y }}
+// Wraps a row element with a right-click context menu. The row itself becomes
+// the trigger, so the outer className/handlers stay on the same DOM node as
+// before — no extra wrapper.
+export const RowMenu: React.FC<RowMenuProps> = ({
+	items,
+	className,
+	onClick,
+	title,
+	children,
+}) => (
+	<BaseContextMenu.Root>
+		<BaseContextMenu.Trigger
+			className={className}
+			onClick={onClick}
+			title={title}
 		>
-			{state.items.map((item, i) =>
-				item.kind === "separator" ? (
-					<div
-						key={`sep-${i}`}
-						className="my-1 h-px bg-line-soft"
-						role="separator"
-					/>
-				) : (
-					<button
-						key={item.label}
-						type="button"
-						disabled={item.disabled}
-						onClick={() => {
-							close();
-							item.onClick();
-						}}
-						className="block w-full cursor-pointer px-3 py-1.5 text-left text-default hover:bg-fill disabled:cursor-default disabled:text-faint disabled:hover:bg-transparent"
-					>
-						{item.label}
-					</button>
-				),
-			)}
-		</div>
-	) : null;
+			{children}
+		</BaseContextMenu.Trigger>
+		<MenuPopup items={items} />
+	</BaseContextMenu.Root>
+);
 
-	return { open, render };
-}
+const MenuPopup: React.FC<{ items: ContextMenuItem[] }> = ({ items }) => (
+	<BaseContextMenu.Portal>
+		<BaseContextMenu.Positioner className="z-50 outline-none">
+			<BaseContextMenu.Popup className="min-w-[180px] rounded-card border border-line-soft bg-background py-1 text-[13px] outline-none [box-shadow:var(--shadow-menu)]">
+				{items.map((item, i) =>
+					item.kind === "separator" ? (
+						<BaseContextMenu.Separator
+							key={`sep-${i}`}
+							className="my-1 h-px bg-line-soft"
+						/>
+					) : (
+						<BaseContextMenu.Item
+							key={item.label}
+							disabled={item.disabled}
+							onClick={item.onClick}
+							className="block w-full cursor-pointer px-3 py-1.5 text-left text-default outline-none select-none data-[highlighted]:bg-fill data-[disabled]:cursor-default data-[disabled]:text-faint data-[disabled]:data-[highlighted]:bg-transparent"
+						>
+							{item.label}
+						</BaseContextMenu.Item>
+					),
+				)}
+			</BaseContextMenu.Popup>
+		</BaseContextMenu.Positioner>
+	</BaseContextMenu.Portal>
+);

@@ -1,5 +1,7 @@
 import { useCallback, useState } from "react";
 
+import { Trash2Icon } from "lucide-react";
+
 import { type CleanupItem, useCleanupQueue } from "#/state";
 import { readableSize } from "#/util";
 import { Button } from "#/components/Button";
@@ -57,14 +59,13 @@ export const Cleanup: React.FC = () => {
 			) : (
 				<QueueList items={items} totalSize={totalSize} onRemove={remove} />
 			)}
-			{confirmOpen && (
-				<CleanupModal
-					items={items}
-					totalSize={totalSize}
-					onClose={() => setConfirmOpen(false)}
-					onTrash={onTrash}
-				/>
-			)}
+			<CleanupModal
+				open={confirmOpen}
+				items={items}
+				totalSize={totalSize}
+				onClose={() => setConfirmOpen(false)}
+				onTrash={onTrash}
+			/>
 		</>
 	);
 };
@@ -76,7 +77,7 @@ type EmptyStateProps = {
 const EmptyState: React.FC<EmptyStateProps> = ({ onBrowseFiles }) => (
 	<div className="flex flex-1 flex-col items-center justify-center gap-[14px] px-[28px]">
 		<div className="grid h-[68px] w-[68px] place-items-center rounded-full border border-dashed border-line text-muted">
-			<TrashIcon />
+			<Trash2Icon size={22} strokeWidth={1.6} />
 		</div>
 		<div className="text-center text-[16px] font-semibold">
 			Nothing queued for cleanup
@@ -186,20 +187,3 @@ function kindLabel(item: CleanupItem): string {
 	if (ext === "pdf") return "pdf";
 	return "file";
 }
-
-const TrashIcon: React.FC = () => (
-	<svg
-		width="22"
-		height="22"
-		viewBox="0 0 24 24"
-		fill="none"
-		stroke="currentColor"
-		strokeWidth="1.6"
-		strokeLinecap="round"
-		strokeLinejoin="round"
-	>
-		<path d="M3 6h18" />
-		<path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-		<path d="M5 6l1 14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-14" />
-	</svg>
-);

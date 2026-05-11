@@ -22,12 +22,12 @@
 		"stableTypeOrdering": true,
 		"target": "esnext",
 		"useDefineForClassFields": true,
-		"verbatimModuleSyntax": true,
+		"verbatimModuleSyntax": true
 	},
 	"include": [],
 	"references": [
 		{ "path": "src/main/" },
 		{ "path": "src/preload/" },
-		{ "path": "src/renderer/" },
-	],
+		{ "path": "src/renderer/" }
+	]
 }

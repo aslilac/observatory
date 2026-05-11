@@ -1,10 +1,13 @@
 import React, { useMemo } from "react";
 
+import { FileIcon, FolderIcon } from "lucide-react";
+
 import { oklchSwatch } from "#/colors";
 import { rowActions } from "#/contextActions";
 import { joinPath } from "#/state";
 import { readableDate, readableSize } from "#/util";
-import { useContextMenu } from "#/components/ContextMenu";
+import { Checkbox } from "#/components/Checkbox";
+import { RowMenu } from "#/components/ContextMenu";
 import type { SortMode } from "./SortPicker";
 
 type SelectableItem = { path: string; name: string; size: number };
@@ -45,7 +48,6 @@ export const LegendList: React.FC<LegendListProps> = ({
 	onShowAll,
 }) => {
 	const free = capacity > size ? capacity - size : 0;
-	const menu = useContextMenu();
 
 	const sorted = useMemo(() => sortFiles(files, sortMode), [files, sortMode]);
 
@@ -77,7 +79,7 @@ export const LegendList: React.FC<LegendListProps> = ({
 				const hue = hueByName.get(file.name) ?? 0;
 
 				return (
-					<div
+					<RowMenu
 						key={file.name}
 						className={`group flex items-center gap-[8px] rounded-[5px] px-[8px] py-[7px] ${
 							isSelected ? "bg-fill" : "hover:bg-fill"
@@ -85,18 +87,13 @@ export const LegendList: React.FC<LegendListProps> = ({
 						onClick={() =>
 							isDir ? onForward(file.name) : onToggleSelect(item)
 						}
-						onContextMenu={(e) =>
-							menu.open(
-								e,
-								rowActions({
-									path: fullPath,
-									name: file.name,
-									size: file.size,
-									type: isDir ? "directory" : "file",
-									onAddToCleanup,
-								}),
-							)
-						}
+						items={rowActions({
+							path: fullPath,
+							name: file.name,
+							size: file.size,
+							type: isDir ? "directory" : "file",
+							onAddToCleanup,
+						})}
 					>
 						<Checkbox
 							checked={isSelected}
@@ -107,7 +104,11 @@ export const LegendList: React.FC<LegendListProps> = ({
 							style={{ background: oklchSwatch(hue) }}
 						/>
 						<span className="flex-shrink-0 text-faint">
-							{isDir ? <FolderIcon /> : <FileIcon />}
+							{isDir ? (
+								<FolderIcon size={13} strokeWidth={1.6} />
+							) : (
+								<FileIcon size={13} strokeWidth={1.6} />
+							)}
 						</span>
 						<span
 							className={`min-w-0 flex-1 truncate ${
@@ -128,7 +129,7 @@ export const LegendList: React.FC<LegendListProps> = ({
 						<span className="w-[68px] flex-shrink-0 text-right font-mono text-[12px] text-muted tabular-nums">
 							{readableSize(file.size)}
 						</span>
-					</div>
+					</RowMenu>
 				);
 			})}
 
@@ -152,7 +153,6 @@ export const LegendList: React.FC<LegendListProps> = ({
 					<span className="font-mono">{readableSize(free)}</span>
 				</div>
 			)}
-			{menu.render}
 		</div>
 	);
 };
@@ -172,67 +172,3 @@ function sortFiles(files: Ob.VfsNode[], mode: SortMode): Ob.VfsNode[] {
 			return files.toSorted((a, b) => a.mtime - b.mtime);
 	}
 }
-
-const FolderIcon: React.FC = () => (
-	<svg
-		width="13"
-		height="13"
-		viewBox="0 0 24 24"
-		fill="none"
-		stroke="currentColor"
-		strokeWidth="1.6"
-		strokeLinecap="round"
-		strokeLinejoin="round"
-	>
-		<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" />
-	</svg>
-);
-
-const FileIcon: React.FC = () => (
-	<svg
-		width="13"
-		height="13"
-		viewBox="0 0 24 24"
-		fill="none"
-		stroke="currentColor"
-		strokeWidth="1.6"
-		strokeLinecap="round"
-		strokeLinejoin="round"
-	>
-		<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
-		<path d="M14 3v6h6" />
-	</svg>
-);
-
-type CheckboxProps = {
-	checked: boolean;
-	onChange: () => void;
-};
-
-const Checkbox: React.FC<CheckboxProps> = ({ checked, onChange }) => (
-	<span
-		role="checkbox"
-		aria-checked={checked}
-		onClick={(e) => {
-			e.stopPropagation();
-			onChange();
-		}}
-		className={`flex h-[14px] w-[14px] flex-shrink-0 cursor-pointer items-center justify-center rounded-[3px] border transition-opacity ${
-			checked
-				? "border-default bg-default text-background opacity-100"
-				: "border-line bg-background opacity-0 group-hover:opacity-100"
-		}`}
-	>
-		{checked && (
-			<svg width="9" height="9" viewBox="0 0 12 12" fill="none">
-				<path
-					d="M2 6.5 L5 9 L10 3.5"
-					stroke="currentColor"
-					strokeWidth="2"
-					strokeLinecap="round"
-					strokeLinejoin="round"
-				/>
-			</svg>
-		)}
-	</span>
-);
