@@ -20,7 +20,21 @@ type ScanEntry = {
 	revision: number;
 };
 
-const drives = new Map<string, Ob.PhysicalDrive>();
+// Internal drive record. We expose only `{ mountPath, description }` over
+// IPC (the public `Ob.PhysicalDrive` shape), but the manager itself needs
+// the raw device size + mount label to decorate the root VfsDirectory
+// after a scan completes — that's where `capacity` (for the legend's free
+// space row, sunburst position math, etc.) and the friendly drive name
+// come from. drivelist re-querying these inside the scan happens in the
+// old JS scanner but the native scanner has no concept of drives.
+type DriveInfo = {
+	mountPath: string;
+	label: string | null;
+	size: number | null;
+	deviceDescription: string;
+};
+
+const drives = new Map<string, DriveInfo>();
 const scans = new Map<string, ScanEntry>();
 
 const emitter = new EventEmitter();
@@ -36,7 +50,10 @@ export function onScansChange(cb: (scans: Ob.ScanInfo[]) => void) {
 }
 
 export function getDrives(): Ob.PhysicalDrive[] {
-	return Array.from(drives.values());
+	return Array.from(drives.values()).map((d) => ({
+		mountPath: d.mountPath,
+		description: d.label || `${d.mountPath} (${d.deviceDescription})`,
+	}));
 }
 
 export function getScans(): Ob.ScanInfo[] {
@@ -169,6 +186,7 @@ export function startScan(path: string) {
 			if (!current || current !== entry) {
 				return;
 			}
+			decorateWithDriveInfo(result.root, path);
 			entry.root = result.root;
 			entry.errors = result.errors;
 			entry.perf = result.perf;
@@ -196,6 +214,23 @@ export function startScan(path: string) {
 			emitter.emit("scans", getScans());
 		},
 	);
+}
+
+// If the scan's root path matches a drivelist mountpoint, copy the drive's
+// total capacity and mount label onto the root VfsDirectory. The renderer
+// reads `root.capacity` for the legend's free-space row and to anchor
+// sunburst slice positions; `root.name` becomes the user-visible scan
+// label in the title bar. The native scanner is drive-agnostic by design,
+// so this glue lives here.
+function decorateWithDriveInfo(root: Ob.VfsDirectory, scanPath: string): void {
+	const drive = drives.get(scanPath);
+	if (!drive) {
+		return;
+	}
+	if (drive.size !== null) {
+		root.capacity = drive.size;
+	}
+	root.name = drive.label || `${drive.deviceDescription} (${drive.mountPath})`;
 }
 
 // Dev-only entry point: register a synthetic completed scan from a pre-built
@@ -318,7 +353,7 @@ export function cancelScan(path: string) {
 
 async function pollDrives() {
 	const driveList = await timedAsync("drivelist.list", () => drivelist.list());
-	const next = new Map<string, Ob.PhysicalDrive>();
+	const next = new Map<string, DriveInfo>();
 
 	for (const device of driveList) {
 		for (const mount of device.mountpoints) {
@@ -332,7 +367,9 @@ async function pollDrives() {
 			if (!next.has(mount.path)) {
 				next.set(mount.path, {
 					mountPath: mount.path,
-					description: mount.label || `${mount.path} (${device.description})`,
+					label: mount.label || null,
+					size: device.size ?? null,
+					deviceDescription: device.description,
 				});
 			}
 		}
