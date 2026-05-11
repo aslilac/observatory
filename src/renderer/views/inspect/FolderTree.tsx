@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useState } from "react";
 
 import { oklchSwatch } from "#/colors";
-import { rowActions } from "../../contextActions";
-import { joinPath } from "../../state";
-import { readableSize } from "../../util";
-import { useContextMenu } from "../../components/ContextMenu";
+import { rowActions } from "#/contextActions";
+import { joinPath } from "#/state";
+import { readableSize } from "#/util";
+import { useContextMenu } from "#/components/ContextMenu";
 
 type SelectableItem = { path: string; name: string; size: number };
 

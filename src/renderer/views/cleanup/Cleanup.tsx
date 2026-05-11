@@ -1,9 +1,9 @@
 import { useCallback, useState } from "react";
 
-import { type CleanupItem, useCleanupQueue } from "../../state";
-import { readableSize } from "../../util";
-import { Button } from "../../components/Button";
-import { Toolbar } from "../../components/Toolbar";
+import { type CleanupItem, useCleanupQueue } from "#/state";
+import { readableSize } from "#/util";
+import { Button } from "#/components/Button";
+import { Toolbar } from "#/components/Toolbar";
 import { CleanupChip } from "./CleanupChip";
 import { CleanupModal } from "./CleanupModal";
 

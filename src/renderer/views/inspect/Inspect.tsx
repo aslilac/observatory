@@ -1,20 +1,20 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
-import { huesByPosition } from "../../colors";
-import { useNavigation } from "../../navigation";
+import { huesByPosition } from "#/colors";
+import { useNavigation } from "#/navigation";
 import {
 	useCleanupQueue,
 	useRenderTree,
 	useScanErrors,
 	useScanPerfTree,
 	useSearch,
-} from "../../state";
-import { readableSize } from "../../util";
-import { IssuesChip } from "../../components/IssuesChip";
-import { IssuesModal } from "../../components/IssuesModal";
-import { PerfChip } from "../../components/PerfChip";
-import { PerfModal } from "../../components/PerfModal";
-import { Segmented, Toolbar } from "../../components/Toolbar";
+} from "#/state";
+import { readableSize } from "#/util";
+import { IssuesChip } from "#/components/IssuesChip";
+import { IssuesModal } from "#/components/IssuesModal";
+import { PerfChip } from "#/components/PerfChip";
+import { PerfModal } from "#/components/PerfModal";
+import { Segmented, Toolbar } from "#/components/Toolbar";
 import { CleanupChip } from "../cleanup/CleanupChip";
 import { FolderTree } from "./FolderTree";
 import { LegendList } from "./LegendList";

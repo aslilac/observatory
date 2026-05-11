@@ -1,10 +1,10 @@
 import React, { useMemo } from "react";
 
-import { oklchSwatch } from "../../colors";
-import { rowActions } from "../../contextActions";
-import { joinPath } from "../../state";
-import { readableDate, readableSize } from "../../util";
-import { useContextMenu } from "../../components/ContextMenu";
+import { oklchSwatch } from "#/colors";
+import { rowActions } from "#/contextActions";
+import { joinPath } from "#/state";
+import { readableDate, readableSize } from "#/util";
+import { useContextMenu } from "#/components/ContextMenu";
 import type { SortMode } from "./SortPicker";
 
 type SelectableItem = { path: string; name: string; size: number };

@@ -1,6 +1,6 @@
-import { useNavigation } from "../../navigation";
-import { useCleanupQueue } from "../../state";
-import { readableSize } from "../../util";
+import { useNavigation } from "#/navigation";
+import { useCleanupQueue } from "#/state";
+import { readableSize } from "#/util";
 
 export const CleanupChip: React.FC = () => {
 	const { items, totalSize } = useCleanupQueue();
