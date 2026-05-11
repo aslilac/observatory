@@ -12,4 +12,5 @@ out/
 target/
 *.log
 *.tsbuildinfo
+*.node
 .fallow/

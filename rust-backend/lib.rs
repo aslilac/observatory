@@ -24,7 +24,7 @@ use serde::Serialize;
 use std::fs;
 use std::path::Path;
 use std::sync::Mutex;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::{Instant, SystemTime};
 
 #[cfg(unix)]
@@ -142,11 +142,31 @@ pub struct ScanConfig {
 	pub perf: bool,
 }
 
-struct State {
-	counts: Counts,
-	errors: Mutex<Vec<ScanError>>,
-	root_dev: Option<u64>,
-	perf: bool,
+// Shared scan state. Lives in an `Arc` so the napi `Scan` handle can read
+// counts / currentPath / errors from the JS thread while the scan is still
+// running on a libuv worker. Counts are lockless (AtomicU64); the
+// short-lived locks on `current_path` and `errors` only contend for a few
+// µs at directory boundaries and won't stall progress polling.
+pub struct ScanState {
+	pub counts: Counts,
+	pub current_path: Mutex<Option<String>>,
+	pub errors: Mutex<Vec<ScanError>>,
+	pub aborted: AtomicBool,
+	pub root_dev: Option<u64>,
+	pub perf: bool,
+}
+
+impl ScanState {
+	pub fn new(perf: bool, root_dev: Option<u64>) -> Self {
+		Self {
+			counts: Counts::default(),
+			current_path: Mutex::new(None),
+			errors: Mutex::new(Vec::new()),
+			aborted: AtomicBool::new(false),
+			root_dev,
+			perf,
+		}
+	}
 }
 
 pub fn scan(path: &Path, config: ScanConfig) -> std::io::Result<ScanResult> {
@@ -156,30 +176,31 @@ pub fn scan(path: &Path, config: ScanConfig) -> std::io::Result<ScanResult> {
 	let root_meta = fs::metadata(path)?;
 	let root_dev = root_dev_id(&root_meta);
 
-	let state = State {
-		counts: Counts::default(),
-		errors: Mutex::new(Vec::new()),
-		root_dev,
-		perf: config.perf,
-	};
+	let state = ScanState::new(config.perf, root_dev);
+	run_scan(path, &state)
+}
 
-	let DirResult { node, perf } = scan_dir(path, 0, &state);
+// Internal entry point used by both the free `scan()` function and the
+// napi `Scan` class. Takes a borrowed ScanState so the class can pre-build
+// one, share it via Arc, and pull progress from the JS thread.
+pub fn run_scan(path: &Path, state: &ScanState) -> std::io::Result<ScanResult> {
+	let DirResult { node, perf } = scan_dir(path, 0, state);
 
 	Ok(ScanResult {
 		root: node,
 		counts: state.counts.snapshot(),
-		errors: state.errors.into_inner().unwrap_or_default(),
+		errors: state.errors.lock().map(|e| e.clone()).unwrap_or_default(),
 		perf,
 	})
 }
 
 #[cfg(unix)]
-fn root_dev_id(meta: &fs::Metadata) -> Option<u64> {
+pub fn root_dev_id(meta: &fs::Metadata) -> Option<u64> {
 	Some(meta.dev())
 }
 
 #[cfg(not(unix))]
-fn root_dev_id(_meta: &fs::Metadata) -> Option<u64> {
+pub fn root_dev_id(_meta: &fs::Metadata) -> Option<u64> {
 	None
 }
 
@@ -203,7 +224,7 @@ struct EntryResult {
 	perf: Option<PerfNode>,
 }
 
-fn scan_dir(path: &Path, depth: u64, state: &State) -> DirResult {
+fn scan_dir(path: &Path, depth: u64, state: &ScanState) -> DirResult {
 	let start = if state.perf { Some(Instant::now()) } else { None };
 
 	let display_name = path
@@ -211,6 +232,26 @@ fn scan_dir(path: &Path, depth: u64, state: &State) -> DirResult {
 		.map(|n| n.to_string_lossy().into_owned())
 		.unwrap_or_else(|| path.to_string_lossy().into_owned());
 	let display_path = path.to_string_lossy().into_owned();
+
+	// Update currentPath so the JS side polling `progress()` sees roughly
+	// where we are. Recursion is parallel via rayon, so this is "the most
+	// recently entered directory on any thread" rather than a precise BFS
+	// frontier — good enough for a status line, matches the JS behavior.
+	if let Ok(mut cp) = state.current_path.lock() {
+		*cp = Some(display_path.clone());
+	}
+
+	if state.aborted.load(Ordering::Relaxed) {
+		return DirResult {
+			node: VfsNode::Directory {
+				name: display_name,
+				size: 0,
+				mtime: 0,
+				files: vec![],
+			},
+			perf: None,
+		};
+	}
 
 	let readdir_start = if state.perf { Some(Instant::now()) } else { None };
 	let entries: Vec<_> = match fs::read_dir(path) {
@@ -288,7 +329,7 @@ fn scan_dir(path: &Path, depth: u64, state: &State) -> DirResult {
 // Stand up a perf node for an early-return (read_dir failed) directory, so
 // the flame graph still shows we tried.
 fn build_perf_node(
-	state: &State,
+	state: &ScanState,
 	name: &str,
 	path: &str,
 	depth: u64,
@@ -320,7 +361,10 @@ fn build_perf_node(
 
 // `DirEntry::metadata` does not follow symlinks (lstat semantics) — matches
 // what the JS scanner uses for entry-level decisions.
-fn classify(entry: fs::DirEntry, depth: u64, state: &State) -> Option<EntryResult> {
+fn classify(entry: fs::DirEntry, depth: u64, state: &ScanState) -> Option<EntryResult> {
+	if state.aborted.load(Ordering::Relaxed) {
+		return None;
+	}
 	let entry_path = entry.path();
 	let meta = match entry.metadata() {
 		Ok(m) => m,
@@ -440,7 +484,7 @@ fn should_skip_dir(path: &Path, _dev: Option<u64>, _root_dev: Option<u64>) -> bo
 	false
 }
 
-fn record_error(state: &State, target: &Path, err: &std::io::Error) {
+fn record_error(state: &ScanState, target: &Path, err: &std::io::Error) {
 	let (kind, code) = classify_error(err);
 	let scan_err = ScanError {
 		path: target.to_string_lossy().into_owned(),
@@ -490,6 +534,15 @@ fn errno_name(n: i32) -> Option<String> {
 fn errno_name(n: i32) -> Option<String> {
 	Some(format!("E{n}"))
 }
+
+// N-API bindings — gated behind the `napi` feature so the CLI / unit tests
+// can build without paying for the napi-rs link or its transitive deps.
+// Build with: cargo build --release --lib --features napi
+// Output is a cdylib (.so / .dylib / .dll) that becomes a .node when
+// renamed; the bindings module's #[napi] functions are the entry points
+// the wrapper JS sees.
+#[cfg(feature = "napi")]
+mod bindings;
 
 #[cfg(test)]
 mod tests {

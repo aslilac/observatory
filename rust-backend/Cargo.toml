@@ -8,18 +8,31 @@ publish = false
 
 [lib]
 path = "./lib.rs"
+crate-type = ["cdylib", "rlib"]
 
 [[bin]]
 name = "observatory-scan"
 path = "./main.rs"
 
+[features]
+default = []
+# Compile the `bindings` module that exports the scanner over N-API as a
+# Node-loadable `.node` module. Off by default so unit tests and the CLI
+# don't pay the napi-rs link cost.
+napi = ["dep:napi", "dep:napi-derive"]
+
 [dependencies]
 rayon = "1.10"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+napi = { version = "2", default-features = false, features = ["napi8"], optional = true }
+napi-derive = { version = "2", optional = true }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
+
+[build-dependencies]
+napi-build = "2"
 
 [profile.release]
 lto = "thin"
