@@ -116,6 +116,16 @@ export const Inspect: React.FC<InspectProps> = ({ scan }) => {
 		[selection],
 	);
 
+	// Single source of truth for top-level hues so the dot in the legend list,
+	// the depth-1 hint in the folder tree, and the wedge in the sunburst all
+	// agree. Built from the size-desc list so the rainbow lays itself out
+	// proportionally to byte share. Computed before the early-return below so
+	// the hook is always called.
+	const hueByName = useMemo(
+		() => huesByPosition(tree?.list.files ?? []),
+		[tree?.list.files],
+	);
+
 	if (!tree) {
 		return (
 			<Toolbar
@@ -142,11 +152,6 @@ export const Inspect: React.FC<InspectProps> = ({ scan }) => {
 
 	const { sunburst, list, tree: treeFiles, ...shared } = tree;
 	const treeChildren = treeFiles?.files ?? list.files;
-	// Single source of truth for top-level hues so the dot in the legend list,
-	// the depth-1 hint in the folder tree, and the wedge in the sunburst all
-	// agree. Built from the size-desc list so the rainbow lays itself out
-	// proportionally to byte share.
-	const hueByName = useMemo(() => huesByPosition(list.files), [list.files]);
 
 	return (
 		<>
