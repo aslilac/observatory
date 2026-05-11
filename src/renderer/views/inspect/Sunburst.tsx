@@ -60,9 +60,7 @@ export const Sunburst: React.FC<SunburstProps> = ({
 		setHover(null);
 	};
 
-	const dark =
-		typeof document !== "undefined" &&
-		document.documentElement.classList.contains("dark");
+	const dark = document.documentElement.classList.contains("dark");
 
 	const usedFraction = files.reduce((s, f) => s + f.size, 0) / capacity;
 	const freeRemainder = 1 - usedFraction;
