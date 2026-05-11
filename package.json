@@ -4,18 +4,20 @@
   "version": "1.0.0",
   "description": "A cross platform disk usage analyzer with a modern UI",
   "license": "MIT",
-  "author": "McKayla Washburn <mckayla@hey.com>",
+  "author": "McKayla Washburn-Love <mckayla@hey.com>",
   "repository": "https://github.com/aslilac/observatory",
   "scripts": {
     "configure": "electron-rebuild -f -w drivelist",
-    "build": "electron-vite build",
-    "dev": "electron-vite dev",
+    "check.health": "fallow",
+    "check.test": "vitest run",
+    "check.test.w": "vitest",
+    "check.types": "tsc -b .",
     "fmt": "oxfmt",
-    "forge": "yarn build && electron-forge make",
-    "preview": "electron-vite preview",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "type-check": "tsc -b ."
+    "test": "yarn check.test",
+    "build": "electron-vite build",
+    "build.forge": "yarn build && electron-forge make",
+    "dev": "electron-vite dev",
+    "preview": "electron-vite preview"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",
