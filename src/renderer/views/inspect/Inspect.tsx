@@ -2,9 +2,20 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { huesByPosition } from "../../colors";
 import { useNavigation } from "../../navigation";
-import { type CleanupItem, useSearch } from "../../state";
+import {
+	useCleanupQueue,
+	useRenderTree,
+	useScanErrors,
+	useScanPerfTree,
+	useSearch,
+} from "../../state";
 import { readableSize } from "../../util";
+import { IssuesChip } from "../../components/IssuesChip";
+import { IssuesModal } from "../../components/IssuesModal";
+import { PerfChip } from "../../components/PerfChip";
+import { PerfModal } from "../../components/PerfModal";
 import { Segmented, Toolbar } from "../../components/Toolbar";
+import { CleanupChip } from "../cleanup/CleanupChip";
 import { FolderTree } from "./FolderTree";
 import { LegendList } from "./LegendList";
 import { MultiSelectBar } from "./MultiSelectBar";
@@ -53,21 +64,20 @@ const TreeIcon: React.FC = () => (
 );
 
 type InspectProps = {
-	inspecting: string;
-	tree: Ob.RenderTree;
-	chips: React.ReactNode;
-	onAddToCleanup: (items: Array<Omit<CleanupItem, "addedAt">>) => void;
+	scan: Ob.ScanInfo;
 };
 
 type ViewMode = "list" | "tree";
 
-export const Inspect: React.FC<InspectProps> = ({
-	inspecting,
-	tree,
-	chips,
-	onAddToCleanup,
-}) => {
+export const Inspect: React.FC<InspectProps> = ({ scan }) => {
+	const inspecting = scan.path;
 	const { cursor, setCursor } = useNavigation();
+	const { add: addToCleanup } = useCleanupQueue();
+	const tree = useRenderTree(inspecting, cursor, scan.status, scan.revision);
+	const scanErrors = useScanErrors(inspecting, scan.status);
+	const perfTree = useScanPerfTree(inspecting, scan.status, scan.revision);
+	const [issuesOpen, setIssuesOpen] = useState(false);
+	const [perfOpen, setPerfOpen] = useState(false);
 	const [mode, setMode] = useState<ViewMode>("list");
 	const [selection, setSelection] = useState<Map<string, SelectableItem>>(
 		() => new Map(),
@@ -80,6 +90,11 @@ export const Inspect: React.FC<InspectProps> = ({
 		query,
 	);
 	const searchActive = query.trim().length > 0;
+
+	const onAddOne = useCallback(
+		(item: SelectableItem) => addToCleanup([item]),
+		[addToCleanup],
+	);
 
 	const onSortChange = useCallback((next: SortMode) => {
 		setSortMode(next);
@@ -127,14 +142,34 @@ export const Inspect: React.FC<InspectProps> = ({
 			name: i.name,
 			size: i.size,
 		}));
-		onAddToCleanup(items);
+		addToCleanup(items);
 		setSelection(new Map());
-	}, [selection, onAddToCleanup]);
+	}, [selection, addToCleanup]);
 
 	const selectionTotal = useMemo(
 		() => Array.from(selection.values()).reduce((s, i) => s + i.size, 0),
 		[selection],
 	);
+
+	if (!tree) {
+		return (
+			<Toolbar
+				chips={
+					<>
+						<IssuesChip
+							count={scanErrors.length}
+							onClick={() => setIssuesOpen(true)}
+						/>
+						<PerfChip
+							available={perfTree !== null}
+							onClick={() => setPerfOpen(true)}
+						/>
+						<CleanupChip />
+					</>
+				}
+			/>
+		);
+	}
 
 	const navigateForward = (...into: string[]) =>
 		setCursor([...cursor, ...into]);
@@ -162,7 +197,19 @@ export const Inspect: React.FC<InspectProps> = ({
 						onChange={setMode}
 					/>
 				}
-				chips={chips}
+				chips={
+					<>
+						<IssuesChip
+							count={scanErrors.length}
+							onClick={() => setIssuesOpen(true)}
+						/>
+						<PerfChip
+							available={perfTree !== null}
+							onClick={() => setPerfOpen(true)}
+						/>
+						<CleanupChip />
+					</>
+				}
 			/>
 			<SearchBar
 				query={query}
@@ -194,7 +241,7 @@ export const Inspect: React.FC<InspectProps> = ({
 							query={query}
 							selection={selection}
 							onToggleSelect={toggleSelect}
-							onAddToCleanup={(item) => onAddToCleanup([item])}
+							onAddToCleanup={onAddOne}
 						/>
 					) : mode === "list" ? (
 						<LegendList
@@ -208,7 +255,7 @@ export const Inspect: React.FC<InspectProps> = ({
 							selection={selection}
 							onForward={navigateForward}
 							onToggleSelect={toggleSelect}
-							onAddToCleanup={(item) => onAddToCleanup([item])}
+							onAddToCleanup={onAddOne}
 							sortMode={sortMode}
 							showAll={showAll}
 							onShowAll={() => setShowAll(true)}
@@ -225,7 +272,7 @@ export const Inspect: React.FC<InspectProps> = ({
 							selection={selection}
 							onForward={navigateForward}
 							onToggleSelect={toggleSelect}
-							onAddToCleanup={(item) => onAddToCleanup([item])}
+							onAddToCleanup={onAddOne}
 						/>
 					)}
 				</div>
@@ -247,6 +294,12 @@ export const Inspect: React.FC<InspectProps> = ({
 						</>
 					)}
 				</div>
+			)}
+			{issuesOpen && (
+				<IssuesModal errors={scanErrors} onClose={() => setIssuesOpen(false)} />
+			)}
+			{perfOpen && perfTree && (
+				<PerfModal tree={perfTree} onClose={() => setPerfOpen(false)} />
 			)}
 		</>
 	);

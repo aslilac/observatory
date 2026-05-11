@@ -2,13 +2,13 @@ import type { RecentScan } from "#/state";
 import { readableSize } from "#/util";
 import { Button } from "#/components/Button";
 import { Toolbar } from "#/components/Toolbar";
+import { CleanupChip } from "../cleanup/CleanupChip";
 
 type WelcomeProps = {
 	drives: Ob.PhysicalDrive[];
 	scans: Ob.ScanInfo[];
 	recent: RecentScan[];
 	onOpen: (path: string) => void;
-	chips: React.ReactNode;
 };
 
 export const Welcome: React.FC<WelcomeProps> = ({
@@ -16,12 +16,11 @@ export const Welcome: React.FC<WelcomeProps> = ({
 	scans,
 	recent,
 	onOpen,
-	chips,
 }) => {
 	const scanByPath = new Map(scans.map((s) => [s.path, s]));
 	return (
 		<>
-			<Toolbar chips={chips} />
+			<Toolbar chips={<CleanupChip />} />
 			<div className="flex flex-1 flex-col gap-6 overflow-auto px-8 py-6">
 				<div>
 					<div className="text-[22px] font-semibold tracking-[-0.2px]">

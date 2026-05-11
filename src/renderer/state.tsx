@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import {
+	createContext,
+	useCallback,
+	useContext,
+	useEffect,
+	useMemo,
+	useState,
+} from "react";
 
 export function useDrives(): Ob.PhysicalDrive[] {
 	const [drives, setDrives] = useState<Ob.PhysicalDrive[]>([]);
@@ -306,13 +313,22 @@ function writeCleanup(items: CleanupItem[]) {
 	}
 }
 
-export function useCleanupQueue(): {
+type CleanupQueue = {
 	items: CleanupItem[];
 	add: (next: Array<Omit<CleanupItem, "addedAt">>) => void;
 	remove: (path: string) => void;
 	clear: () => void;
 	totalSize: number;
-} {
+};
+
+const CleanupQueueContext = createContext<CleanupQueue | null>(null);
+
+// Cleanup queue lives in a provider so each view can subscribe independently:
+// the CleanupChip in any toolbar, the Inspect view's "add to cleanup", and
+// the Cleanup view itself all share one store without props plumbing.
+export const CleanupQueueProvider: React.FC<{ children: React.ReactNode }> = ({
+	children,
+}) => {
 	const [items, setItems] = useState<CleanupItem[]>(() => readCleanup());
 
 	const add = useCallback((next: Array<Omit<CleanupItem, "addedAt">>) => {
@@ -347,5 +363,76 @@ export function useCleanupQueue(): {
 
 	const totalSize = items.reduce((sum, i) => sum + i.size, 0);
 
-	return { items, add, remove, clear, totalSize };
+	const value = useMemo<CleanupQueue>(
+		() => ({ items, add, remove, clear, totalSize }),
+		[items, add, remove, clear, totalSize],
+	);
+
+	return (
+		<CleanupQueueContext.Provider value={value}>
+			{children}
+		</CleanupQueueContext.Provider>
+	);
+};
+
+export function useCleanupQueue(): CleanupQueue {
+	const ctx = useContext(CleanupQueueContext);
+	if (!ctx) {
+		throw new Error(
+			"useCleanupQueue must be used inside a CleanupQueueProvider",
+		);
+	}
+	return ctx;
+}
+
+// Listens for absolute-looking paths pasted anywhere outside of inputs.
+// Wrap the returned state into a <PasteConfirm> for the modal flow.
+export function usePasteToScan(onOpen: (path: string) => void): {
+	pastePath: string | null;
+	pasteStat: Ob.PathStat | null;
+	cancel: () => void;
+	confirm: () => void;
+} {
+	const [pastePath, setPastePath] = useState<string | null>(null);
+	const [pasteStat, setPasteStat] = useState<Ob.PathStat | null>(null);
+
+	useEffect(() => {
+		const handler = (e: ClipboardEvent) => {
+			const target = e.target as HTMLElement | null;
+			if (
+				target &&
+				(target.tagName === "INPUT" ||
+					target.tagName === "TEXTAREA" ||
+					target.isContentEditable)
+			) {
+				return;
+			}
+			const text = e.clipboardData?.getData("text/plain")?.trim();
+			if (!text) return;
+			// Heuristic: a pasted scan target should look like an absolute path.
+			// Anything else (URLs, snippets) gets ignored so the global handler
+			// stays out of the user's way.
+			if (!/^([/~]|[A-Za-z]:[\\/])/.test(text)) return;
+			e.preventDefault();
+			setPastePath(text);
+			setPasteStat(null);
+			void Ob.statPath(text).then(setPasteStat);
+		};
+		document.addEventListener("paste", handler);
+		return () => document.removeEventListener("paste", handler);
+	}, []);
+
+	const cancel = useCallback(() => {
+		setPastePath(null);
+		setPasteStat(null);
+	}, []);
+
+	const confirm = useCallback(() => {
+		if (!pastePath) return;
+		onOpen(pastePath);
+		setPastePath(null);
+		setPasteStat(null);
+	}, [pastePath, onOpen]);
+
+	return { pastePath, pasteStat, cancel, confirm };
 }

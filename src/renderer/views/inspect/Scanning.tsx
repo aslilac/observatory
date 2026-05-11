@@ -1,20 +1,26 @@
+import { useCallback } from "react";
+
+import { useNavigation } from "#/navigation";
+import { useScanProgress } from "#/state";
 import { Button } from "#/components/Button";
 import { FlameGraph } from "#/components/FlameGraph";
 import { Toolbar } from "#/components/Toolbar";
+import { CleanupChip } from "../cleanup/CleanupChip";
 
 type ScanningProps = {
+	scan: Ob.ScanInfo;
 	root: string;
-	progress: Ob.ScanProgress;
-	onCancel: () => void;
-	chips: React.ReactNode;
 };
 
-export const Scanning: React.FC<ScanningProps> = ({
-	root,
-	progress,
-	onCancel,
-	chips,
-}) => {
+export const Scanning: React.FC<ScanningProps> = ({ scan, root }) => {
+	const { setInspecting } = useNavigation();
+	const progress = useScanProgress(scan.path, scan.status === "building");
+
+	const onCancel = useCallback(() => {
+		void Ob.cancelScan(scan.path);
+		setInspecting(null);
+	}, [scan.path, setInspecting]);
+
 	const counts = progress?.counts;
 	const total =
 		(counts?.files ?? 0) +
@@ -35,7 +41,7 @@ export const Scanning: React.FC<ScanningProps> = ({
 						Cancel scan
 					</Button>
 				}
-				chips={chips}
+				chips={<CleanupChip />}
 			/>
 			{perfTree ? (
 				<div className="flex min-h-0 flex-1 flex-col gap-4 px-7 py-5">
@@ -62,7 +68,7 @@ export const Scanning: React.FC<ScanningProps> = ({
 type ScanHeaderProps = {
 	root: string;
 	total: number;
-	progress: Ob.ScanProgress;
+	progress: Ob.ScanProgress | null;
 };
 
 const ScanHeader: React.FC<ScanHeaderProps> = ({ root, total, progress }) => (
@@ -101,7 +107,7 @@ const ScanHeader: React.FC<ScanHeaderProps> = ({ root, total, progress }) => (
 	</div>
 );
 
-type CurrentPathProps = { progress: Ob.ScanProgress };
+type CurrentPathProps = { progress: Ob.ScanProgress | null };
 
 const CurrentPath: React.FC<CurrentPathProps> = ({ progress }) => (
 	<div className="max-w-full truncate font-mono text-[11px] text-muted">

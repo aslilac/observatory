@@ -1,7 +1,6 @@
 import {
 	BrowserWindow,
 	type BrowserWindowConstructorOptions,
-	screen,
 } from "electron";
 import * as path from "node:path";
 

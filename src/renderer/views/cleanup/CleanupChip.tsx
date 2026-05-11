@@ -1,21 +1,17 @@
+import { useNavigation } from "../../navigation";
+import { useCleanupQueue } from "../../state";
 import { readableSize } from "../../util";
 
-type CleanupChipProps = {
-	count: number;
-	totalSize: number;
-	onClick: () => void;
-};
+export const CleanupChip: React.FC = () => {
+	const { items, totalSize } = useCleanupQueue();
+	const { showCleanup } = useNavigation();
+	const count = items.length;
 
-export const CleanupChip: React.FC<CleanupChipProps> = ({
-	count,
-	totalSize,
-	onClick,
-}) => {
 	if (count === 0) {
 		return (
 			<button
 				type="button"
-				onClick={onClick}
+				onClick={showCleanup}
 				className="ml-[6px] inline-flex cursor-pointer items-center gap-[6px] rounded-full border border-dashed border-line bg-transparent px-[10px] py-[5px] font-sans text-[11px] text-muted hover:border-default hover:text-default"
 				title="Open cleanup queue"
 			>
@@ -28,7 +24,7 @@ export const CleanupChip: React.FC<CleanupChipProps> = ({
 	return (
 		<button
 			type="button"
-			onClick={onClick}
+			onClick={showCleanup}
 			className="ml-[6px] inline-flex cursor-pointer items-center gap-[8px] rounded-full border border-default bg-background py-[4px] pr-[4px] pl-[10px] font-sans text-[11px] text-default hover:bg-fill"
 			title="Open cleanup queue"
 		>

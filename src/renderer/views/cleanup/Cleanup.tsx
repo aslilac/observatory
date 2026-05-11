@@ -1,27 +1,34 @@
-import type { CleanupItem } from "../../state";
+import { useCallback, useState } from "react";
+
+import { type CleanupItem, useCleanupQueue } from "../../state";
 import { readableSize } from "../../util";
 import { Button } from "../../components/Button";
 import { Toolbar } from "../../components/Toolbar";
+import { CleanupChip } from "./CleanupChip";
+import { CleanupModal } from "./CleanupModal";
 
-type CleanupProps = {
-	items: CleanupItem[];
-	totalSize: number;
-	onRemove: (path: string) => void;
-	onClear: () => void;
-	onReview: () => void;
-	onBrowseFiles: () => void;
-	chips: React.ReactNode;
-};
+export const Cleanup: React.FC = () => {
+	const { items, totalSize, remove, clear } = useCleanupQueue();
+	const [confirmOpen, setConfirmOpen] = useState(false);
 
-export const Cleanup: React.FC<CleanupProps> = ({
-	items,
-	totalSize,
-	onRemove,
-	onClear,
-	onReview,
-	onBrowseFiles,
-	chips,
-}) => {
+	const onTrash = useCallback(
+		async (queued: CleanupItem[]) => {
+			const sizeByPath = new Map(queued.map((i) => [i.path, i.size]));
+			const result = await Ob.deleteFiles(queued.map((i) => i.path));
+			const reclaimed = result.deleted.reduce(
+				(sum, p) => sum + (sizeByPath.get(p) ?? 0),
+				0,
+			);
+			for (const p of result.deleted) remove(p);
+			return {
+				deleted: result.deleted.length,
+				reclaimed,
+				failed: result.failed.length,
+			};
+		},
+		[remove],
+	);
+
 	const empty = items.length === 0;
 	return (
 		<>
@@ -30,21 +37,33 @@ export const Cleanup: React.FC<CleanupProps> = ({
 				right={
 					!empty && (
 						<div className="flex gap-[6px]">
-							<Button size="small" onClick={onClear}>
+							<Button size="small" onClick={clear}>
 								Clear queue
 							</Button>
-							<Button size="small" variant="primary" onClick={onReview}>
+							<Button
+								size="small"
+								variant="primary"
+								onClick={() => setConfirmOpen(true)}
+							>
 								Review &amp; delete
 							</Button>
 						</div>
 					)
 				}
-				chips={chips}
+				chips={<CleanupChip />}
 			/>
 			{empty ? (
-				<EmptyState onBrowseFiles={onBrowseFiles} />
+				<EmptyState onBrowseFiles={() => void Ob.selectDirectory()} />
 			) : (
-				<QueueList items={items} totalSize={totalSize} onRemove={onRemove} />
+				<QueueList items={items} totalSize={totalSize} onRemove={remove} />
+			)}
+			{confirmOpen && (
+				<CleanupModal
+					items={items}
+					totalSize={totalSize}
+					onClose={() => setConfirmOpen(false)}
+					onTrash={onTrash}
+				/>
 			)}
 		</>
 	);

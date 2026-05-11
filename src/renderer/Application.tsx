@@ -1,86 +1,60 @@
-import {
-	Profiler,
-	useCallback,
-	useEffect,
-	useLayoutEffect,
-	useMemo,
-	useState,
-} from "react";
+import { Profiler, useCallback, useLayoutEffect, useMemo } from "react";
 
 import { useNavigation } from "./navigation";
 import { perfEnabled, perfLog, perfMeasure } from "./perf";
 import {
-	useCleanupQueue,
 	useDrives,
+	usePasteToScan,
 	useRecentScans,
-	useRenderTree,
-	useScanErrors,
-	useScanPerfTree,
-	useScanProgress,
 	useScans,
 	useTheme,
 } from "./state";
 import { Cleanup } from "./views/cleanup/Cleanup";
-import { CleanupChip } from "./views/cleanup/CleanupChip";
-import { CleanupModal } from "./views/cleanup/CleanupModal";
 import { DragReceiver } from "./components/DragReceiver";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { Inspect } from "./views/inspect/Inspect";
-import { IssuesChip } from "./components/IssuesChip";
-import { IssuesModal } from "./components/IssuesModal";
 import { PasteConfirm } from "./components/PasteConfirm";
-import { PerfChip } from "./components/PerfChip";
-import { PerfModal } from "./components/PerfModal";
 import { Scanning } from "./views/inspect/Scanning";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { Welcome } from "./views/welcome/Welcome";
-
-type AppState = {
-	cleanupQueue: unknown[];
-	theme: Theme;
-	currentView: AppViewState;
-};
-
-type AppViewState =
-	| { view: "welcome" }
-	| { view: "inspect" }
-	| { view: "cleanup" };
 
 export const Application: React.FC = () => {
 	const drives = useDrives();
 	const scans = useScans();
 	const { recent, push: pushRecent } = useRecentScans();
-	const cleanup = useCleanupQueue();
-	const [confirmCleanup, setConfirmCleanup] = useState(false);
-	const [issuesOpen, setIssuesOpen] = useState(false);
-	const [perfOpen, setPerfOpen] = useState(false);
 	const { theme, toggle: toggleTheme } = useTheme();
-
-	const { view, inspecting, cursor, setInspecting, showCleanup } =
-		useNavigation();
-
+	const { view, inspecting, cursor, setInspecting } = useNavigation();
 	const inspectingScan = useMemo(
 		() =>
 			inspecting ? (scans.find((s) => s.path === inspecting) ?? null) : null,
 		[inspecting, scans],
 	);
 
-	const tree = useRenderTree(
-		inspecting,
-		cursor,
-		inspectingScan?.status ?? null,
-		inspectingScan?.revision,
+	// One entry point that covers both "scan this path" and "open this scan":
+	// Ob.scanPath is a no-op for paths already tracked by vfsManager, the
+	// recent entry is the same in either case, and the body below picks
+	// Scanning vs Inspect based on the live scan status. Recent gets a single
+	// stamp at start — no second push when the scan completes.
+	const onOpen = useCallback(
+		(path: string) => {
+			void Ob.scanPath(path);
+			pushRecent(path);
+			setInspecting(path);
+		},
+		[pushRecent, setInspecting],
 	);
 
+	const paste = usePasteToScan(onOpen);
+
 	// Measure click → painted: nav:start is set inside `navigate`, and we
-	// resolve once React has actually committed the new view. rAF runs after
-	// layout so the user-perceived navigation includes paint.
+	// resolve once React has committed the new view. rAF runs after layout
+	// so the user-perceived navigation includes paint.
 	const cursorKey = cursor.join("/");
 	useLayoutEffect(() => {
 		if (!perfEnabled()) return;
 		const id = requestAnimationFrame(() => perfMeasure("nav", "nav:start"));
 		return () => cancelAnimationFrame(id);
-	}, [tree, view, inspecting, cursorKey]);
+	}, [view, inspecting, cursorKey]);
 
 	const handleProfilerRender = useCallback(
 		(
@@ -96,145 +70,14 @@ export const Application: React.FC = () => {
 		[],
 	);
 
-	const scanProgress = useScanProgress(
-		inspecting,
-		inspectingScan?.status === "building",
-	);
-
-	const scanErrors = useScanErrors(inspecting, inspectingScan?.status ?? null);
-
-	const perfTree = useScanPerfTree(
-		inspecting,
-		inspectingScan?.status ?? null,
-		inspectingScan?.revision,
-	);
-
-	// One entry point that covers both "scan this path" and "open this scan":
-	// Ob.scanPath is a no-op for paths already tracked by vfsManager, the
-	// recent entry is the same in either case, and Application's body picks
-	// Scanning vs Inspect based on the live scan status. Recent gets a single
-	// stamp at start — no second push when the scan completes.
-	const onOpen = useCallback(
-		(path: string) => {
-			void Ob.scanPath(path);
-			pushRecent(path);
-			setInspecting(path);
-		},
-		[pushRecent, setInspecting],
-	);
-
-	const onCancelScan = useCallback(() => {
-		if (!inspecting) return;
-		void Ob.cancelScan(inspecting);
-		setInspecting(null);
-	}, [inspecting, setInspecting]);
-
-	const [pastePath, setPastePath] = useState<string | null>(null);
-	const [pasteStat, setPasteStat] = useState<Ob.PathStat | null>(null);
-
-	useEffect(() => {
-		const handler = (e: ClipboardEvent) => {
-			const target = e.target as HTMLElement | null;
-			if (
-				target &&
-				(target.tagName === "INPUT" ||
-					target.tagName === "TEXTAREA" ||
-					target.isContentEditable)
-			) {
-				return;
-			}
-			const text = e.clipboardData?.getData("text/plain")?.trim();
-			if (!text) return;
-			// Heuristic: a pasted scan target should look like an absolute path.
-			// Anything else (URLs, snippets) gets ignored so the global handler
-			// stays out of the user's way.
-			if (!/^([/~]|[A-Za-z]:[\\/])/.test(text)) return;
-			e.preventDefault();
-			setPastePath(text);
-			setPasteStat(null);
-			void Ob.statPath(text).then(setPasteStat);
-		};
-		document.addEventListener("paste", handler);
-		return () => document.removeEventListener("paste", handler);
-	}, []);
-
-	const confirmPaste = () => {
-		if (!pastePath) {
-			return;
-		}
-		onOpen(pastePath);
-		setPastePath(null);
-		setPasteStat(null);
-	};
-
-	const onTrashCleanup = useCallback(
-		async (items: typeof cleanup.items) => {
-			const sizeByPath = new Map(items.map((i) => [i.path, i.size]));
-			const result = await Ob.deleteFiles(items.map((i) => i.path));
-			const reclaimed = result.deleted.reduce(
-				(sum, p) => sum + (sizeByPath.get(p) ?? 0),
-				0,
-			);
-			for (const p of result.deleted) cleanup.remove(p);
-			return {
-				deleted: result.deleted.length,
-				reclaimed,
-				failed: result.failed.length,
-			};
-		},
-		[cleanup],
-	);
-
-	const chips = (
-		<>
-			<IssuesChip
-				count={scanErrors.length}
-				onClick={() => setIssuesOpen(true)}
-			/>
-			<PerfChip
-				available={perfTree !== null}
-				onClick={() => setPerfOpen(true)}
-			/>
-			<CleanupChip
-				count={cleanup.items.length}
-				totalSize={cleanup.totalSize}
-				onClick={showCleanup}
-			/>
-		</>
-	);
-
-	const inspectingName = inspecting ? displayName(inspecting, drives) : "";
-
 	let body: React.ReactNode;
 	if (view === "cleanup") {
+		body = <Cleanup />;
+	} else if (inspecting && inspectingScan?.status === "complete") {
+		body = <Inspect scan={inspectingScan} />;
+	} else if (inspecting && inspectingScan) {
 		body = (
-			<Cleanup
-				items={cleanup.items}
-				totalSize={cleanup.totalSize}
-				onRemove={cleanup.remove}
-				onClear={cleanup.clear}
-				onReview={() => setConfirmCleanup(true)}
-				onBrowseFiles={() => void Ob.selectDirectory()}
-				chips={chips}
-			/>
-		);
-	} else if (inspecting && inspectingScan?.status === "complete" && tree) {
-		body = (
-			<Inspect
-				inspecting={inspecting}
-				tree={tree}
-				chips={chips}
-				onAddToCleanup={cleanup.add}
-			/>
-		);
-	} else if (inspecting) {
-		body = (
-			<Scanning
-				root={inspectingName}
-				progress={scanProgress}
-				onCancel={onCancelScan}
-				chips={chips}
-			/>
+			<Scanning scan={inspectingScan} root={displayName(inspecting, drives)} />
 		);
 	} else {
 		body = (
@@ -243,18 +86,15 @@ export const Application: React.FC = () => {
 				scans={scans}
 				recent={recent}
 				onOpen={onOpen}
-				chips={chips}
 			/>
 		);
 	}
 
 	const titleSuffix =
 		view === "cleanup"
-			? `cleanup review · ${
-					cleanup.items.length === 0 ? "empty" : `${cleanup.items.length} items`
-				}`
+			? "cleanup review"
 			: inspecting
-				? tree?.name
+				? displayName(inspecting, drives)
 				: "";
 
 	return (
@@ -270,29 +110,12 @@ export const Application: React.FC = () => {
 					</Profiler>
 				</ErrorBoundary>
 			</div>
-			{confirmCleanup && (
-				<CleanupModal
-					items={cleanup.items}
-					totalSize={cleanup.totalSize}
-					onClose={() => setConfirmCleanup(false)}
-					onTrash={onTrashCleanup}
-				/>
-			)}
-			{issuesOpen && (
-				<IssuesModal errors={scanErrors} onClose={() => setIssuesOpen(false)} />
-			)}
-			{perfOpen && perfTree && (
-				<PerfModal tree={perfTree} onClose={() => setPerfOpen(false)} />
-			)}
-			{pastePath && (
+			{paste.pastePath && (
 				<PasteConfirm
-					path={pastePath}
-					stat={pasteStat}
-					onCancel={() => {
-						setPastePath(null);
-						setPasteStat(null);
-					}}
-					onConfirm={confirmPaste}
+					path={paste.pastePath}
+					stat={paste.pasteStat}
+					onCancel={paste.cancel}
+					onConfirm={paste.confirm}
 				/>
 			)}
 			<DragReceiver onDrop={onOpen} />
