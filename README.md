@@ -1,18 +1,13 @@
 # Observatory
 
-![screenshot](/media/observatory.png)
-
 Observatory was made out of a desire for a high quality and modern disk usage analysis tool that can be used on all the most popular desktop operating systems. Other alternatives out there are either old, ugly, confusing, platform specific, or some combination of all of these.
 
 Observatory checks all the boxes that no one else does.
 
-- Pretty ✔
-- Modern ✔
-- Cross platform ✔
-- Fast ✔ (sort of)
-- Memory efficient ✔ (sort of)
-
-The last two are both things that are kind of work-in-progress. The current scanning implementation is in TypeScript, which comes with some performance and memory usage concerns. On a reasonably powerful laptop it's fine, but on some lower end machines it may cause issues.
+- [x] Pretty
+- [x] Modern
+- [x] Cross platform
+- [x] Fast
 
 ## Build
 
@@ -22,6 +17,7 @@ Install dependencies:
 
 ```shell
 yarn
+yarn configure
 ```
 
 To run in development:
@@ -30,19 +26,25 @@ To run in development:
 yarn dev
 ```
 
+Test a production build:
+
+```shell
+yarn preview
+```
+
 Build an installer:
 
 ```shell
 yarn forge
 ```
 
-## Performance
+## Performance comparisons
 
-- DaisyDisk: 13.20s
-- Observatory: 77.896s
+> [!NOTE] Last updated 2026 May 11
 
-DaisyDisk will probably always be faster since it can optimize specifically for macOS and runs directly on hardware instead of inside of V8. I'm currently attempting to rewrite the disk analysis in Rust, which could potentially see a huge improvement in performance, but that's yet to be proven.
+### macOS 26
 
-### Goals
+Comparisons run on an MacBook Pro, M1 Max, 64GB memory, 2TB SSD. Scan includes over 5 million files, totaling about 1TB of disk usage.
 
-Full scan _should_ take less than 20 seconds on a recent/decent MacBook Pro. It currently takes much longer.
+1. DaisyDisk: 29.1s
+2. Observatory: 35.2s
