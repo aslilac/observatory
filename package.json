@@ -17,7 +17,7 @@
 		"test": "yarn check.test",
 		"build": "electron-vite build",
 		"build.native": "node scripts/build-native.mjs",
-		"build.forge": "yarn build && electron-forge make",
+		"build.forge": "yarn build.native && yarn build && electron-forge make",
 		"dev": "electron-vite dev",
 		"preview": "electron-vite preview"
 	},
