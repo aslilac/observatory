@@ -47,4 +47,4 @@ yarn forge
 Comparisons run on an MacBook Pro, M1 Max, 64GB memory, 2TB SSD. Scan includes over 5 million files, totaling about 1TB of disk usage.
 
 1. DaisyDisk: 29.1s
-2. Observatory: 35.2s
+2. Observatory: 33.2s
