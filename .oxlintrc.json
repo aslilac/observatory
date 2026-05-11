@@ -1,6 +1,9 @@
 {
 	"$schema": "./node_modules/oxlint/configuration_schema.json",
 	"rules": {
-		"curly": "error"
+		"curly": "error",
+		"no-unneeded-ternary": "error",
+		"react/exhaustive-deps": "error",
+		"react/jsx-key": "error"
 	}
 }
