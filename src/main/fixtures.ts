@@ -2,9 +2,9 @@
 // Welcome screen. Sidesteps the multi-minute wait to scan a real disk by
 // inserting a ready-made root straight into vfsManager.
 
-const KB = 1024;
-const MB = 1024 * KB;
-const GB = 1024 * MB;
+const KB = 1000;
+const MB = 1000 * KB;
+const GB = 1000 * MB;
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -132,6 +132,6 @@ export function buildFakeDisk(): Ob.VfsDirectory {
 	]);
 
 	// Pretend this is a 500 GB drive so the inspect view shows free capacity.
-	tree.capacity = 500 * GB;
+	tree.capacity = 256 * GB;
 	return tree;
 }

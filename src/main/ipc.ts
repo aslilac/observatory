@@ -2,7 +2,7 @@ import { app, type IpcMainInvokeEvent, ipcMain, shell } from "electron";
 import * as fs from "node:fs/promises";
 import { broadcast } from "./broadcast";
 import { deleteFiles } from "./cleanup";
-import { buildFakeDisk } from "./devFixtures";
+import { buildFakeDisk } from "./fixtures";
 import { selectDirectory } from "./dialog";
 import { setRecentScans } from "./menu";
 import {
