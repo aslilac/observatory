@@ -152,6 +152,20 @@ export function startScan(path: string) {
 	});
 }
 
+// Dev-only entry point: register a synthetic completed scan from a pre-built
+// VFS root. Used by the "Load fake disk" button so the inspect view can be
+// exercised without waiting on a real multi-minute disk scan.
+export function startFakeScan(name: string, root: Ob.VfsDirectory): string {
+	const path = `fake://${name}`;
+	if (scans.has(path)) {
+		return path;
+	}
+	const vfs = new VirtualFileSystem(path, root);
+	scans.set(path, { status: "complete", vfs, revision: 1 });
+	emitter.emit("scans", getScans());
+	return path;
+}
+
 // Drop a path from the appropriate scan's VFS in place, propagating the
 // removed size up through every ancestor. Used after the cleanup queue
 // trashes things so subsequent browsing doesn't keep showing them.

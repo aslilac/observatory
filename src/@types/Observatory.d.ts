@@ -28,6 +28,10 @@ declare global {
 		): Promise<void>;
 		function revealInFinder(path: string): Promise<void>;
 		function openPath(path: string): Promise<string>;
+		// Dev-only. Resolves to the synthetic scan path so the renderer can
+		// onOpen() it; rejects in packaged builds where the handler isn't
+		// registered.
+		function devLoadFakeDisk(): Promise<string>;
 
 		// Push events (main -> renderer); each returns an unsubscribe.
 		function onDrives(cb: (drives: PhysicalDrive[]) => void): () => void;

@@ -2,6 +2,7 @@ import { app, type IpcMainInvokeEvent, ipcMain, shell } from "electron";
 import * as fs from "node:fs/promises";
 import { broadcast } from "./broadcast";
 import { deleteFiles } from "./cleanup";
+import { buildFakeDisk } from "./devFixtures";
 import { selectDirectory } from "./dialog";
 import { setRecentScans } from "./menu";
 import {
@@ -15,6 +16,7 @@ import {
 	onDrivesChange,
 	onScansChange,
 	searchScan,
+	startFakeScan,
 	startScan,
 } from "./vfsManager";
 
@@ -49,6 +51,15 @@ ipcMain.handle(
 		}
 	}),
 );
+
+// Dev-only IPC for the "Load fake disk" button on Welcome. Registered only
+// in unpackaged builds so production simply doesn't have a handler — if the
+// renderer button somehow leaks past its own dev gate, the invoke rejects.
+if (!app.isPackaged) {
+	ipcMain.handle("Ob.devLoadFakeDisk", () =>
+		startFakeScan("demo-disk", buildFakeDisk()),
+	);
+}
 
 app.on("ready", () => {
 	onDrivesChange((drives) => broadcast("Ob.drives", drives));

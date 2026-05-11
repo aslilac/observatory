@@ -1,4 +1,5 @@
 import { XIcon } from "lucide-react";
+import { useState } from "react";
 import type { RecentScan } from "#/state";
 import { readableSize } from "#/util";
 import { Button } from "#/components/Button";
@@ -125,8 +126,53 @@ export const Welcome: React.FC<WelcomeProps> = ({
 						</div>
 					</div>
 				)}
+
+				{import.meta.env.DEV && (
+					<DevTools onOpen={onOpen} />
+				)}
 			</div>
 		</>
+	);
+};
+
+// Dev-only escape hatches for states that are slow or annoying to reach
+// naturally: a one-shot "throw from render" to trip the ErrorBoundary, and
+// a button that loads a pre-built fake disk so the inspect view can be
+// exercised without waiting on a real multi-minute scan. Tree-shaken from
+// production builds via the `import.meta.env.DEV` gate at the call site.
+const DevTools: React.FC<{ onOpen: (path: string) => void }> = ({ onOpen }) => {
+	return (
+		<div>
+			<div className="mb-2 eyebrow">Dev</div>
+			<div className="flex gap-2">
+				<Button
+					onClick={() => {
+						void Ob.devLoadFakeDisk().then(onOpen);
+					}}
+				>
+					Load fake disk
+				</Button>
+				<ThrowOnClickButton />
+			</div>
+		</div>
+	);
+};
+
+// React only catches errors thrown during render, not in event handlers.
+// `setState(() => { throw … })` runs the updater during the next render so
+// the ErrorBoundary in Application.tsx catches it.
+const ThrowOnClickButton: React.FC = () => {
+	const [, setBoom] = useState(0);
+	return (
+		<Button
+			onClick={() => {
+				setBoom(() => {
+					throw new Error("Dev: intentional render error");
+				});
+			}}
+		>
+			Throw render error
+		</Button>
 	);
 };
 

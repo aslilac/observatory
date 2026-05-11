@@ -63,7 +63,7 @@ export class VirtualFileSystem {
 
 	#onCompleteCallbacks: Array<() => void> = [];
 
-	constructor(location: string) {
+	constructor(location: string, initialRoot?: Ob.VfsDirectory) {
 		this.location = path.normalize(location);
 
 		this.counts = {
@@ -73,6 +73,14 @@ export class VirtualFileSystem {
 			devices: 0,
 			misc: 0,
 		};
+
+		// Dev fixtures hand us a fully-built root; skip the real scan and pretend
+		// the (already-completed) scan promise has resolved.
+		if (initialRoot) {
+			this.root = initialRoot;
+			this.scan = Promise.resolve();
+			return;
+		}
 
 		this.startScan();
 	}
