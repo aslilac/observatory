@@ -16,8 +16,13 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 	right,
 }) => (
 	<div className="flex items-center gap-2 border-b border-line-soft px-3 py-2">
+<<<<<<< HEAD
 		<div className="flex flex-1 items-center gap-2 rounded-md border border-line bg-fill px-2.5 h-8">
 			<SearchIcon size={12} strokeWidth={2} className="text-muted" />
+=======
+		<div className="flex h-8 flex-1 items-center gap-2 rounded-md border border-line bg-fill px-2.5">
+			<SearchIcon />
+>>>>>>> d08ea6b (enable tailwind sorting)
 			<input
 				type="text"
 				value={query}

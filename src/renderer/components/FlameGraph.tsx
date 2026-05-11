@@ -94,7 +94,7 @@ export const FlameGraph: React.FC<FlameGraphProps> = ({ tree }) => {
 
 	return (
 		<div className="flex min-h-0 flex-1 flex-col gap-[6px]">
-			<div className="flex items-center gap-[6px] overflow-x-auto whitespace-nowrap font-mono text-[10px] text-muted">
+			<div className="flex items-center gap-[6px] overflow-x-auto font-mono text-[10px] whitespace-nowrap text-muted">
 				{crumbs.map((node, i) => (
 					<span key={node.path} className="flex items-center gap-[6px]">
 						{i > 0 && <span className="text-faint">›</span>}

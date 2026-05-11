@@ -4,5 +4,9 @@
 	"quoteProps": "consistent",
 	"tabWidth": 2,
 	"useTabs": true,
-	"printWidth": 80
+	"printWidth": 80,
+	"sortPackageJson": false,
+	"sortTailwindcss": {
+		"stylesheet": "./src/renderer/index.css"
+	}
 }

@@ -195,7 +195,7 @@ export const Inspect: React.FC<InspectProps> = ({ scan }) => {
 					) : null
 				}
 			/>
-			<div className="flex flex-1 overflow-hidden justify-items-stretch">
+			<div className="flex flex-1 justify-items-stretch overflow-hidden">
 				<Sunburst
 					files={sunburst.files}
 					capacity={shared.capacity}
@@ -206,7 +206,7 @@ export const Inspect: React.FC<InspectProps> = ({ scan }) => {
 					onNavigateUp={navigateUp}
 					onNavigateForward={navigateForward}
 				/>
-				<div className="flex w-1/3 max-w-[600px] flex-col p-4 overflow-auto">
+				<div className="flex w-1/3 max-w-[600px] flex-col overflow-auto p-4">
 					{searchActive ? (
 						<SearchResults
 							results={searchResults}

@@ -33,7 +33,7 @@ export const Welcome: React.FC<WelcomeProps> = ({
 
 				{drives.length > 0 && (
 					<div>
-						<div className="eyebrow mb-2">Disks</div>
+						<div className="mb-2 eyebrow">Disks</div>
 						<div className="grid grid-cols-2 gap-3">
 							{drives.map((drive) => (
 								<VolumeCard
@@ -48,7 +48,7 @@ export const Welcome: React.FC<WelcomeProps> = ({
 				)}
 
 				<div>
-					<div className="eyebrow mb-2">Folders</div>
+					<div className="mb-2 eyebrow">Folders</div>
 					<div className="flex items-center gap-4 rounded-card border-[1.5px] border-dashed border-line px-4 py-3">
 						<div className="flex-1">
 							<div className="text-[13px] font-semibold">
@@ -66,7 +66,7 @@ export const Welcome: React.FC<WelcomeProps> = ({
 
 				{recent.length > 0 && (
 					<div>
-						<div className="eyebrow mb-2">Recent</div>
+						<div className="mb-2 eyebrow">Recent</div>
 						<div className="overflow-hidden rounded-card border border-line-soft">
 							{recent.map((entry, i) => {
 								const scan = scanByPath.get(entry.path);
@@ -119,10 +119,7 @@ const VolumeCard: React.FC<VolumeCardProps> = ({ drive, scan, onOpen }) => {
 		<button
 			type="button"
 			onClick={onOpen}
-			className={`
-				flex items-center gap-3 p-3 rounded-card
-				border border-line text-left transition-shadow hover:shadow-window
-			`}
+			className={`flex items-center gap-3 rounded-card border border-line p-3 text-left transition-shadow hover:shadow-window`}
 		>
 			<div className="grid h-[36px] w-[36px] flex-shrink-0 place-items-center rounded-button border border-line">
 				<div className="h-[16px] w-[12px] rounded-[1px] border-[1.25px] border-default" />

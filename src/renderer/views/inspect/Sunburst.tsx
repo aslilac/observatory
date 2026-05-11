@@ -303,7 +303,7 @@ const Tooltip: React.FC<TooltipProps> = ({ file, x, y }) => {
 	return (
 		<div
 			role="tooltip"
-			className="pointer-events-none fixed min-w-[180px] z-10 rounded-card bg-default px-4 py-3 text-[12px] text-background shadow-menu"
+			className="pointer-events-none fixed z-10 min-w-[180px] rounded-card bg-default px-4 py-3 text-[12px] text-background shadow-menu"
 			style={{ left: x + 15, top: y + 5 }}
 		>
 			<div className="flex justify-between gap-3">

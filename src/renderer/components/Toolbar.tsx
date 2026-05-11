@@ -138,11 +138,7 @@ const IconButton: React.FC<IconButtonProps> = ({
 		onClick={onClick}
 		disabled={disabled}
 		title={title}
-		className={`
-			inline-flex size-[26px] items-center justify-center rounded-button
-			border border-line bg-transparent p-0 text-[14px] text-default
-			${disabled ? "cursor-default opacity-40" : "hover:bg-fill"}
-		`}
+		className={`inline-flex size-[26px] items-center justify-center rounded-button border border-line bg-transparent p-0 text-[14px] text-default ${disabled ? "cursor-default opacity-40" : "hover:bg-fill"} `}
 	>
 		{children}
 	</button>
