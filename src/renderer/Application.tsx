@@ -34,14 +34,20 @@ export const Application: React.FC = () => {
 	// Ob.scanPath is a no-op for paths already tracked by vfsManager, the
 	// recent entry is the same in either case, and the body below picks
 	// Scanning vs Inspect based on the live scan status. Recent gets a single
-	// stamp at start — no second push when the scan completes.
+	// stamp at start — no second push when the scan completes. Disks (real
+	// or the dev fake) are skipped because they're already pinned to the
+	// Disks section above; only ad-hoc folder picks belong in Recent.
 	const onOpen = useCallback(
 		(path: string) => {
 			void Ob.scanPath(path);
-			pushRecent(path);
+			const isDisk =
+				path.startsWith("fake://") || drives.some((d) => d.mountPath === path);
+			if (!isDisk) {
+				pushRecent(path);
+			}
 			setInspecting(path);
 		},
-		[pushRecent, setInspecting],
+		[drives, pushRecent, setInspecting],
 	);
 
 	const paste = usePasteToScan(onOpen);
