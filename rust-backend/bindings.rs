@@ -12,11 +12,10 @@
 // Observatory.d.ts.
 
 use crate::{
-	CountsSnapshot, PerfNode, ScanError, ScanErrorKind, ScanResult, ScanState,
-	VfsNode, root_dev_id, run_scan, snapshot_perf,
+	CountsSnapshot, PerfNode, ScanState, root_dev_id, run_scan, snapshot_perf,
 };
 use napi::bindgen_prelude::*;
-use napi::{Env, JsObject, Task};
+use napi::{Env, JsObject, JsString, Task};
 use napi_derive::napi;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -120,67 +119,39 @@ impl Scan {
 	}
 }
 
+// The final ScanResult is shipped to JS as a JSON string. Serialization
+// runs on the libuv worker thread (inside `compute`); the JS side does
+// `JSON.parse` on the result. Counter-intuitively this is faster than
+// building V8 objects via the N-API one set_named_property at a time —
+// V8's JSON parser runs in optimized C++ once it owns the buffer, while
+// per-property napi calls round-trip through the binding boundary each
+// time. For a 170K-entry scan the napi-walk approach blocked the JS
+// thread for ~115ms at resolve time; the JSON path moves most of that
+// work onto the worker.
 pub struct ScanTask {
 	path: PathBuf,
 	state: Arc<ScanState>,
 }
 
 impl Task for ScanTask {
-	type Output = ScanResult;
-	type JsValue = JsObject;
+	type Output = String;
+	type JsValue = JsString;
 
 	fn compute(&mut self) -> Result<Self::Output> {
-		run_scan(&self.path, &self.state)
-			.map_err(|e| Error::from_reason(format!("scan failed: {e}")))
+		let result = run_scan(&self.path, &self.state)
+			.map_err(|e| Error::from_reason(format!("scan failed: {e}")))?;
+		serde_json::to_string(&result)
+			.map_err(|e| Error::from_reason(format!("serialize failed: {e}")))
 	}
 
 	fn resolve(&mut self, env: Env, output: Self::Output) -> Result<Self::JsValue> {
-		scan_result_to_js(&env, &output)
+		env.create_string(&output)
 	}
 }
 
-fn scan_result_to_js(env: &Env, result: &ScanResult) -> Result<JsObject> {
-	let mut obj = env.create_object()?;
-	obj.set_named_property("root", vfs_node_to_js(env, &result.root)?)?;
-	obj.set_named_property("counts", counts_to_js(env, &result.counts)?)?;
-	obj.set_named_property("errors", errors_to_js(env, &result.errors)?)?;
-	if let Some(perf) = &result.perf {
-		obj.set_named_property("perf", perf_node_to_js(env, perf)?)?;
-	} else {
-		obj.set_named_property("perf", env.get_null()?)?;
-	}
-	Ok(obj)
-}
-
-fn vfs_node_to_js(env: &Env, node: &VfsNode) -> Result<JsObject> {
-	let mut obj = env.create_object()?;
-	match node {
-		VfsNode::Directory {
-			name,
-			size,
-			mtime,
-			files,
-		} => {
-			obj.set_named_property("type", env.create_string("directory")?)?;
-			obj.set_named_property("name", env.create_string(name)?)?;
-			obj.set_named_property("size", env.create_int64(*size as i64)?)?;
-			obj.set_named_property("mtime", env.create_int64(*mtime as i64)?)?;
-			let mut arr = env.create_array_with_length(files.len())?;
-			for (i, child) in files.iter().enumerate() {
-				arr.set_element(i as u32, vfs_node_to_js(env, child)?)?;
-			}
-			obj.set_named_property("files", arr)?;
-		}
-		VfsNode::File { name, size, mtime } => {
-			obj.set_named_property("type", env.create_string("file")?)?;
-			obj.set_named_property("name", env.create_string(name)?)?;
-			obj.set_named_property("size", env.create_int64(*size as i64)?)?;
-			obj.set_named_property("mtime", env.create_int64(*mtime as i64)?)?;
-		}
-	}
-	Ok(obj)
-}
-
+// Used by Scan::progress(). The progress payload is tiny (counts + a
+// path + a bool + a perf snapshot when enabled) so building it as a JS
+// object directly is faster than round-tripping through JSON.parse.
 fn counts_to_js(env: &Env, c: &CountsSnapshot) -> Result<JsObject> {
 	let mut obj = env.create_object()?;
 	obj.set_named_property("files", env.create_int64(c.files as i64)?)?;
@@ -189,30 +160,6 @@ fn counts_to_js(env: &Env, c: &CountsSnapshot) -> Result<JsObject> {
 	obj.set_named_property("devices", env.create_int64(c.devices as i64)?)?;
 	obj.set_named_property("misc", env.create_int64(c.misc as i64)?)?;
 	Ok(obj)
-}
-
-fn errors_to_js(env: &Env, errors: &[ScanError]) -> Result<JsObject> {
-	let mut arr = env.create_array_with_length(errors.len())?;
-	for (i, err) in errors.iter().enumerate() {
-		let mut obj = env.create_object()?;
-		obj.set_named_property("path", env.create_string(&err.path)?)?;
-		obj.set_named_property(
-			"kind",
-			env.create_string(match err.kind {
-				ScanErrorKind::Permission => "permission",
-				ScanErrorKind::Missing => "missing",
-				ScanErrorKind::Loop => "loop",
-				ScanErrorKind::Other => "other",
-			})?,
-		)?;
-		match &err.code {
-			Some(c) => obj.set_named_property("code", env.create_string(c)?)?,
-			None => obj.set_named_property("code", env.get_null()?)?,
-		};
-		obj.set_named_property("message", env.create_string(&err.message)?)?;
-		arr.set_element(i as u32, obj)?;
-	}
-	Ok(arr)
 }
 
 fn perf_node_to_js(env: &Env, perf: &PerfNode) -> Result<JsObject> {

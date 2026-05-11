@@ -223,7 +223,9 @@ pub struct ScanResult {
 	pub root: VfsNode,
 	pub counts: CountsSnapshot,
 	pub errors: Vec<ScanError>,
-	#[serde(skip_serializing_if = "Option::is_none")]
+	// Serialized as `null` when perf isn't enabled — matches the
+	// `Ob.PerfNode | null` shape on the JS side and keeps the JSON
+	// schema stable regardless of OB_PERF.
 	pub perf: Option<PerfNode>,
 }
 
