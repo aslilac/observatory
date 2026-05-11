@@ -62,9 +62,6 @@ export const Sunburst: React.FC<SunburstProps> = ({
 
 	const dark = document.documentElement.classList.contains("dark");
 
-	const usedFraction = files.reduce((s, f) => s + f.size, 0) / capacity;
-	const freeRemainder = 1 - usedFraction;
-
 	return (
 		<div className="grow">
 			<svg
@@ -85,22 +82,6 @@ export const Sunburst: React.FC<SunburstProps> = ({
 					dark={dark}
 					onNavigateForward={handleNavigateForward}
 				/>
-				{freeRemainder > MIN_IMAGINARY && (
-					<Shard
-						id="imaginary/0"
-						file={IMAGINARY_FILE}
-						layer={0}
-						position={usedFraction}
-						size={freeRemainder}
-						hue={0}
-						type="imaginary"
-						path={[]}
-						hovered={false}
-						dark={dark}
-						setHover={setHover}
-						onNavigateForward={handleNavigateForward}
-					/>
-				)}
 				<circle
 					cx={0}
 					cy={0}
@@ -329,14 +310,6 @@ const Tooltip: React.FC<TooltipProps> = ({ file, x, y }) => {
 			)}
 		</div>
 	);
-};
-
-const IMAGINARY_FILE: Ob.VfsDirectory = {
-	type: "directory",
-	name: "small items",
-	size: 0,
-	mtime: 0,
-	files: [],
 };
 
 // Layer ring geometry mirrors the original canvas widths: five 31-unit
