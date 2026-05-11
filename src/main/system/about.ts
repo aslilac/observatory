@@ -24,9 +24,11 @@ function showAboutWindow() {
 
 		// Load the about page — Vite dev server in dev, bundled HTML in prod.
 		if (RENDERER_DEV_URL) {
-			void aboutWindow.loadURL(`${RENDERER_DEV_URL}/about.html`);
+			void aboutWindow.loadURL(`${RENDERER_DEV_URL}/views/about/about.html`);
 		} else {
-			void aboutWindow.loadFile(path.join(__dirname, "../renderer/about.html"));
+			void aboutWindow.loadFile(
+				path.join(__dirname, "../renderer/views/about/about.html"),
+			);
 		}
 
 		// Route external links (target=_blank or otherwise) to the user's

@@ -1,5 +1,12 @@
 {
 	"$schema": "./node_modules/fallow/schema.json",
+	"entry": [
+		"site/index.html",
+		"src/main/index.ts",
+		"src/preload/index.ts",
+		"src/renderer/index.html",
+		"src/renderer/views/about/about.html"
+	],
 	"duplicates": {
 		"mode": "semantic",
 		"ignoreImports": true,
@@ -9,10 +16,5 @@
 		"maxCyclomatic": 20,
 		"maxCognitive": 20,
 		"maxCrap": 1000
-	},
-	"dynamicallyLoaded": [
-		"site/style.css",
-		"src/renderer/index.css",
-		"src/renderer/views/about/about.css"
-	]
+	}
 }
