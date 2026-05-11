@@ -479,6 +479,8 @@ const DARWIN_SHADOW_PATHS: ReadonlySet<string> = new Set([
 	"/private/var/db/dyld",
 ]);
 
+const LINUX_NOPE_PATHS: ReadonlySet<string> = new Set(["/dev", "/proc"]);
+
 function shouldSkipDirectory(
 	entity: string,
 	dev: number,
@@ -496,8 +498,10 @@ function shouldSkipDirectory(
 		}
 	}
 
-	if (process.platform === "linux" && entity === "/proc") {
-		return true;
+	if (process.platform === "linux") {
+		if (LINUX_NOPE_PATHS.has(entity)) {
+			return true;
+		}
 	}
 
 	// Generic cross-device skip — catches procfs / sysfs / tmpfs / external
