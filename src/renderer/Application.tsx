@@ -21,7 +21,7 @@ import { Welcome } from "./views/welcome/Welcome";
 export const Application: React.FC = () => {
 	const drives = useDrives();
 	const scans = useScans();
-	const { recent, push: pushRecent } = useRecentScans();
+	const { recent, push: pushRecent, remove: removeRecent } = useRecentScans();
 	const { theme, toggle: toggleTheme } = useTheme();
 	const { view, inspecting, cursor, setInspecting } = useNavigation();
 	const inspectingScan = useMemo(
@@ -98,6 +98,7 @@ export const Application: React.FC = () => {
 							scans={scans}
 							recent={recent}
 							onOpen={onOpen}
+							onRemoveRecent={removeRecent}
 						/>
 					</Profiler>
 				</ErrorBoundary>
@@ -122,6 +123,7 @@ type BodyProps = {
 	scans: Ob.ScanInfo[];
 	recent: ReturnType<typeof useRecentScans>["recent"];
 	onOpen: (path: string) => void;
+	onRemoveRecent: (path: string) => void;
 };
 
 const Body: React.FC<BodyProps> = ({
@@ -132,6 +134,7 @@ const Body: React.FC<BodyProps> = ({
 	scans,
 	recent,
 	onOpen,
+	onRemoveRecent,
 }) => {
 	if (view === "cleanup") {
 		return <Cleanup onOpen={onOpen} />;
@@ -145,7 +148,13 @@ const Body: React.FC<BodyProps> = ({
 		);
 	}
 	return (
-		<Welcome drives={drives} scans={scans} recent={recent} onOpen={onOpen} />
+		<Welcome
+			drives={drives}
+			scans={scans}
+			recent={recent}
+			onOpen={onOpen}
+			onRemoveRecent={onRemoveRecent}
+		/>
 	);
 };
 

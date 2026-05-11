@@ -286,6 +286,7 @@ function readJsonArray<T>(key: string, isItem: (v: unknown) => v is T): T[] {
 export function useRecentScans(): {
 	recent: RecentScan[];
 	push: (path: string) => void;
+	remove: (path: string) => void;
 } {
 	const [recent, setRecent] = useState<RecentScan[]>(() => readRecentScans());
 
@@ -311,7 +312,19 @@ export function useRecentScans(): {
 		});
 	}, []);
 
-	return { recent, push };
+	const remove = useCallback((path: string) => {
+		setRecent((prev) => {
+			const next = prev.filter((entry) => entry.path !== path);
+			try {
+				localStorage.setItem(RECENT_SCANS_KEY, JSON.stringify(next));
+			} catch {
+				// localStorage full / unavailable — silently ignore
+			}
+			return next;
+		});
+	}, []);
+
+	return { recent, push, remove };
 }
 
 export type CleanupItem = {

@@ -1,3 +1,4 @@
+import { XIcon } from "lucide-react";
 import type { RecentScan } from "#/state";
 import { readableSize } from "#/util";
 import { Button } from "#/components/Button";
@@ -9,6 +10,7 @@ type WelcomeProps = {
 	scans: Ob.ScanInfo[];
 	recent: RecentScan[];
 	onOpen: (path: string) => void;
+	onRemoveRecent: (path: string) => void;
 };
 
 export const Welcome: React.FC<WelcomeProps> = ({
@@ -16,6 +18,7 @@ export const Welcome: React.FC<WelcomeProps> = ({
 	scans,
 	recent,
 	onOpen,
+	onRemoveRecent,
 }) => {
 	const scanByPath = new Map(scans.map((s) => [s.path, s]));
 	return (
@@ -79,32 +82,44 @@ export const Welcome: React.FC<WelcomeProps> = ({
 							{recent.map((entry, i) => {
 								const scan = scanByPath.get(entry.path);
 								return (
-									<button
+									<div
 										key={entry.path}
-										type="button"
-										onClick={() => onOpen(entry.path)}
-										className={`flex w-full items-center px-[12px] py-[9px] text-left text-[12px] ${
+										className={`group relative flex w-full items-center text-[12px] hover:bg-fill ${
 											i < recent.length - 1 ? "border-b border-line-soft" : ""
-										} hover:bg-fill`}
+										}`}
 									>
-										<span className="flex-1 truncate">{entry.path}</span>
-										<span className="mr-[14px] text-muted">
-											{formatDate(entry.scannedAt)}
-										</span>
-										<span className="w-[100px] text-right font-mono">
-											{scan?.status === "complete" ? (
-												<span className="text-default">
-													{scan.size !== undefined
-														? readableSize(scan.size)
-														: "scanned"}
-												</span>
-											) : scan?.status === "building" ? (
-												<span className="text-muted">scanning</span>
-											) : (
-												<span className="text-muted">—</span>
-											)}
-										</span>
-									</button>
+										<button
+											type="button"
+											onClick={() => onOpen(entry.path)}
+											className="flex flex-1 items-center px-[12px] py-[9px] pr-[36px] text-left"
+										>
+											<span className="flex-1 truncate">{entry.path}</span>
+											<span className="mr-[14px] text-muted">
+												{formatDate(entry.scannedAt)}
+											</span>
+											<span className="w-[100px] text-right font-mono">
+												{scan?.status === "complete" ? (
+													<span className="text-default">
+														{scan.size !== undefined
+															? readableSize(scan.size)
+															: "scanned"}
+													</span>
+												) : scan?.status === "building" ? (
+													<span className="text-muted">scanning</span>
+												) : (
+													<span className="text-muted">—</span>
+												)}
+											</span>
+										</button>
+										<button
+											type="button"
+											onClick={() => onRemoveRecent(entry.path)}
+											aria-label="Remove from recents"
+											className="absolute top-1/2 right-[8px] -translate-y-1/2 grid h-[20px] w-[20px] place-items-center rounded text-faint opacity-0 group-hover:opacity-100 hover:bg-fill-strong hover:text-default"
+										>
+											<XIcon size={12} />
+										</button>
+									</div>
 								);
 							})}
 						</div>
