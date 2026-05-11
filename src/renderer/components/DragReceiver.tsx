@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-
 import { FolderIcon } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 type DragReceiverProps = {
 	onDrop: (path: string) => void;
@@ -74,7 +73,7 @@ export const DragReceiver: React.FC<DragReceiverProps> = ({ onDrop }) => {
 const DropOverlay: React.FC = () => (
 	<div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center bg-[rgba(26,26,26,0.6)] p-6">
 		<div className="flex min-h-[60%] w-full flex-col items-center justify-center gap-3 rounded-modal border-[2.5px] border-dashed border-[#fafaf8] bg-[rgba(250,250,248,0.08)] p-[40px] text-[#fafaf8]">
-			<FolderIcon size={64} strokeWidth={1.4} />
+			<FolderIcon size={64} strokeWidth={1} />
 			<div className="text-[20px] font-semibold">Drop folder to scan</div>
 			<div className="font-mono text-[12px] opacity-80">
 				Anything you drop here will start a fresh scan.

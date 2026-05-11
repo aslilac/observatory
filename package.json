@@ -9,6 +9,7 @@
 	"scripts": {
 		"configure": "electron-rebuild -f -w drivelist",
 		"check.health": "fallow",
+		"check.lint": "oxlint --fix",
 		"check.test": "vitest run",
 		"check.test.w": "vitest",
 		"check.types": "tsc -b .",

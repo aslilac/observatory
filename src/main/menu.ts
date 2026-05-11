@@ -24,8 +24,7 @@ function recentItems(): MenuItemConstructorOptions[] {
 	if (recentScans.length === 0) {
 		return [{ label: "(no recent scans)", enabled: false }];
 	}
-	return [
-		...recentScans.map((scan) => ({
+	return recentScans.map((scan) => ({
 			label: recentLabel(scan.path),
 			sublabel: scan.path,
 			toolTip: scan.path,
@@ -33,8 +32,7 @@ function recentItems(): MenuItemConstructorOptions[] {
 				startScan(scan.path);
 				setInspecting(scan.path);
 			},
-		})),
-	];
+		}));
 }
 
 function buildTemplate(): MenuItemConstructorOptions[] {
