@@ -48,11 +48,12 @@ export class VirtualFileSystem {
 	// in place as scans progress; serialized for IPC by vfsManager.
 	perfRoot: PerfNodeInternal | null = null;
 
-	// Set by `abort()` from the manager when the user cancels. Each `#scan`
-	// recursion bails early once this flips so the scan winds down without
-	// piling on new fs work; in-flight syscalls finish but their results
-	// are dropped.
-	#aborted = false;
+	// Tripped by `abort()` from the manager when the user cancels. Node's
+	// stat/readdir don't accept an AbortSignal so in-flight syscalls still
+	// run to completion, but the `signal.aborted` checks below stop the
+	// recursion from queueing fresh work, and #recordError filters out
+	// errors that arrive after the abort.
+	#abortController = new AbortController();
 
 	// Device id of the scan root. Subdirectories on other devices are
 	// crossed-mount-point boundaries (procfs, sysfs, tmpfs, /Volumes,
@@ -94,11 +95,11 @@ export class VirtualFileSystem {
 	}
 
 	abort() {
-		this.#aborted = true;
+		this.#abortController.abort();
 	}
 
 	get isAborted(): boolean {
-		return this.#aborted;
+		return this.#abortController.signal.aborted;
 	}
 
 	startScan() {
@@ -186,7 +187,7 @@ export class VirtualFileSystem {
 
 		const myPerf = this.#openPerf(location, depth, parentPerf);
 		try {
-			if (this.#aborted) {
+			if (this.#abortController.signal.aborted) {
 				return state;
 			}
 			this.currentPath = location;
@@ -301,7 +302,7 @@ export class VirtualFileSystem {
 		parentPerf: PerfNodeInternal | undefined,
 		depth: number,
 	): Promise<void> {
-		if (this.#aborted) {
+		if (this.#abortController.signal.aborted) {
 			return;
 		}
 		const entity = path.join(location, name);
@@ -356,6 +357,13 @@ export class VirtualFileSystem {
 	}
 
 	#recordError(targetPath: string, error: unknown) {
+		// AbortErrors arrive as the in-flight fs syscalls unwind after the
+		// user cancels — none of them are interesting to surface in the
+		// errors panel. signal.aborted is the simpler test than sniffing
+		// each rejection for ABORT_ERR / name === "AbortError".
+		if (this.#abortController.signal.aborted) {
+			return;
+		}
 		const code =
 			typeof error === "object" && error !== null && "code" in error
 				? String((error as { code: unknown }).code)

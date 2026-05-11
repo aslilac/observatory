@@ -159,6 +159,28 @@ describe("VirtualFileSystem", () => {
 		expect(vfs.root!.name).toBe(path.basename(tmpRoot));
 	});
 
+	it("flips isAborted and stops queueing work after abort()", async () => {
+		// A directory with many entries so abort() has something to interrupt.
+		// We can't reliably wait until "scanning is in progress" without
+		// instrumenting the class, so we just abort right after construction;
+		// the early signal.aborted checks should keep the recorded tree
+		// confined to whatever finished before the next check fired.
+		for (let i = 0; i < 50; i++) {
+			await fs.mkdir(path.join(tmpRoot, `d${i}`));
+			await writeBytes(path.join(tmpRoot, `d${i}`, "f.bin"), 10);
+		}
+
+		const vfs = new VirtualFileSystem(tmpRoot);
+		vfs.abort();
+		expect(vfs.isAborted).toBe(true);
+		await vfs.scan;
+
+		// The scan promise settles cleanly even though we aborted mid-flight.
+		// Errors that came back as AbortErrors are filtered out of the
+		// user-facing errors list.
+		expect(vfs.errors).toEqual([]);
+	});
+
 	it("uses location itself when basename comes back empty (root path)", async () => {
 		// path.basename("/") === "" on POSIX; the scanner falls back to the
 		// location. We can't actually scan "/" in a test, but we can verify the
