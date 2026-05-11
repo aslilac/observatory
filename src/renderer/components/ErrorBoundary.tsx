@@ -45,9 +45,7 @@ export class ErrorBoundary extends Component<
 					{error.message || String(error)}
 				</div>
 				{error.stack && (
-					<pre
-						className="max-h-[200px] max-w-[640px] overflow-auto rounded-card border border-line-soft bg-fill px-3 py-2.5 text-left font-mono text-[10px] text-muted select-text"
-					>
+					<pre className="max-h-[200px] max-w-[640px] overflow-auto rounded-card border border-line-soft bg-fill px-3 py-2.5 text-left font-mono text-[10px] text-muted select-text">
 						{error.stack}
 					</pre>
 				)}

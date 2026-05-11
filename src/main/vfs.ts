@@ -8,8 +8,8 @@ import { PERF, perfLog } from "./perf";
 const DIR_LOG_THRESHOLD_MS = 50;
 
 // Internal perf node — stored on the VFS as a parallel tree mirroring the
-// _scan call structure. Built top-down (so the renderer can render a live
-// flame graph during scanning) and finalized bottom-up as each _scan call
+// #scan call structure. Built top-down (so the renderer can render a live
+// flame graph during scanning) and finalized bottom-up as each #scan call
 // settles.
 export type PerfNodeInternal = {
 	name: string;
@@ -37,31 +37,31 @@ export class VirtualFileSystem {
 		misc: number;
 	};
 
-	// Most recent directory entered by `_scan`. The recursion is parallel via
+	// Most recent directory entered by `#scan`. The recursion is parallel via
 	// Promise.all, so this is an arbitrary "we're somewhere here" indicator
 	// rather than a precise breadth-first tip — good enough for a status line.
 	currentPath: string | null = null;
 
 	errors: Ob.ScanError[] = [];
 
-	// Top-down perf tree. Set on first _scan call when PERF is on. Mutated
+	// Top-down perf tree. Set on first #scan call when PERF is on. Mutated
 	// in place as scans progress; serialized for IPC by vfsManager.
 	perfRoot: PerfNodeInternal | null = null;
 
-	// Set by `abort()` from the manager when the user cancels. Each `_scan`
+	// Set by `abort()` from the manager when the user cancels. Each `#scan`
 	// recursion bails early once this flips so the scan winds down without
 	// piling on new fs work; in-flight syscalls finish but their results
 	// are dropped.
-	private aborted = false;
+	#aborted = false;
 
 	// Device id of the scan root. Subdirectories on other devices are
 	// crossed-mount-point boundaries (procfs, sysfs, tmpfs, /Volumes,
 	// network shares, FUSE mounts, …) — none of which represent real
 	// disk usage on the device the user actually wants to inspect, so
 	// we refuse to descend past them.
-	private rootDev: number | null = null;
+	#rootDev: number | null = null;
 
-	private onCompleteCallbacks: Array<() => void> = [];
+	#onCompleteCallbacks: Array<() => void> = [];
 
 	constructor(location: string) {
 		this.location = path.normalize(location);
@@ -82,35 +82,35 @@ export class VirtualFileSystem {
 			cb();
 			return;
 		}
-		this.onCompleteCallbacks.push(cb);
+		this.#onCompleteCallbacks.push(cb);
 	}
 
 	abort() {
-		this.aborted = true;
+		this.#aborted = true;
 	}
 
 	get isAborted(): boolean {
-		return this.aborted;
+		return this.#aborted;
 	}
 
 	startScan() {
 		if (!this.scan) {
-			this.scan = this.performScan();
+			this.scan = this.#performScan();
 		}
 		return this.scan;
 	}
 
-	private async performScan() {
+	async #performScan() {
 		const location = this.location;
 
 		// TODO: We should probably check that it's a directory, and handle errors
 		// if it doesn't exist
 		const rootStats = await fs.stat(location);
-		this.rootDev = rootStats.dev;
+		this.#rootDev = rootStats.dev;
 
 		const scanStart = performance.now();
 
-		const vfs = await this._scan(location);
+		const vfs = await this.#scan(location);
 		// path.basename("/") returns "" — fall back to the location itself so
 		// the renderer never gets an empty name to display.
 		vfs.name = path.basename(location) || location;
@@ -154,12 +154,12 @@ export class VirtualFileSystem {
 		);
 
 		this.root = vfs;
-		const callbacks = this.onCompleteCallbacks;
-		this.onCompleteCallbacks = [];
+		const callbacks = this.#onCompleteCallbacks;
+		this.#onCompleteCallbacks = [];
 		for (const cb of callbacks) cb();
 	}
 
-	private async _scan(
+	async #scan(
 		location: string,
 		depth = 0,
 		parentPerf?: PerfNodeInternal,
@@ -172,37 +172,37 @@ export class VirtualFileSystem {
 			files: [],
 		};
 
-		const myPerf = this.openPerf(location, depth, parentPerf);
+		const myPerf = this.#openPerf(location, depth, parentPerf);
 		try {
-			if (this.aborted) return state;
+			if (this.#aborted) return state;
 			this.currentPath = location;
 
 			const ownStats = await fs.lstat(location).catch((error: unknown) => {
-				this.recordError(location, error);
+				this.#recordError(location, error);
 				return undefined;
 			});
 			state.mtime = ownStats?.mtimeMs ?? 0;
 
-			const files = await this.readdirTimed(location, myPerf);
+			const files = await this.#readdirTimed(location, myPerf);
 			if (!files) return state;
 
 			await Promise.all(
 				files.map((name) =>
-					this.processEntry(location, name, state, myPerf, depth),
+					this.#processEntry(location, name, state, myPerf, depth),
 				),
 			);
 
 			state.files.sort((a, b) => b.size - a.size);
 			return state;
 		} finally {
-			this.closePerf(myPerf);
+			this.#closePerf(myPerf);
 		}
 	}
 
 	// Stand up a perf node for `location` so the live flame graph shows the
 	// directory the moment we enter it. Timings stay zero (and inProgress=true)
-	// until closePerf settles them in the finally block.
-	private openPerf(
+	// until #closePerf settles them in the finally block.
+	#openPerf(
 		location: string,
 		depth: number,
 		parentPerf: PerfNodeInternal | undefined,
@@ -227,7 +227,7 @@ export class VirtualFileSystem {
 
 	// Settle the perf node's totals. selfMs is clamped at zero because tiny
 	// scheduling noise can push it negative when a child dominates wall time.
-	private closePerf(myPerf: PerfNodeInternal | undefined): void {
+	#closePerf(myPerf: PerfNodeInternal | undefined): void {
 		if (!myPerf) return;
 		const totalMs = performance.now() - myPerf.startMs;
 		let maxChildTotal = 0;
@@ -240,15 +240,15 @@ export class VirtualFileSystem {
 	}
 
 	// readdir + record the timing on `myPerf`. Returns undefined when readdir
-	// fails (the error is funneled into recordError so a bad directory just
+	// fails (the error is funneled into #recordError so a bad directory just
 	// becomes an empty branch in the tree instead of aborting the scan).
-	private async readdirTimed(
+	async #readdirTimed(
 		location: string,
 		myPerf: PerfNodeInternal | undefined,
 	): Promise<string[] | undefined> {
 		const start = PERF ? performance.now() : 0;
 		const files = await fs.readdir(location).catch((error: unknown) => {
-			this.recordError(location, error);
+			this.#recordError(location, error);
 			return undefined;
 		});
 		if (myPerf) {
@@ -267,19 +267,19 @@ export class VirtualFileSystem {
 	// One entry under `location`. Stats it, classifies it, and either pushes
 	// a file row, recurses into a directory, or just bumps the per-kind
 	// counter for things we don't include in the tree (symlinks, devices,
-	// "other"). Errors are swallowed into recordError so a single bad entry
+	// "other"). Errors are swallowed into #recordError so a single bad entry
 	// can't abort the whole scan.
-	private async processEntry(
+	async #processEntry(
 		location: string,
 		name: string,
 		state: Ob.VfsDirectory,
 		parentPerf: PerfNodeInternal | undefined,
 		depth: number,
 	): Promise<void> {
-		if (this.aborted) return;
+		if (this.#aborted) return;
 		const entity = path.join(location, name);
 		const stats = await fs.lstat(entity).catch((error: unknown) => {
-			this.recordError(entity, error);
+			this.#recordError(entity, error);
 			return undefined;
 		});
 		if (!stats) return;
@@ -299,8 +299,8 @@ export class VirtualFileSystem {
 
 		if (stats.isDirectory()) {
 			this.counts.directories++;
-			if (shouldSkipDirectory(entity, stats.dev, this.rootDev)) return;
-			const directory = await this._scan(entity, depth + 1, parentPerf);
+			if (shouldSkipDirectory(entity, stats.dev, this.#rootDev)) return;
+			const directory = await this.#scan(entity, depth + 1, parentPerf);
 			state.files.push({ ...directory, name });
 			state.size += directory.size;
 			if (directory.mtime > state.mtime) state.mtime = directory.mtime;
@@ -320,7 +320,7 @@ export class VirtualFileSystem {
 		this.counts.misc++;
 	}
 
-	private recordError(targetPath: string, error: unknown) {
+	#recordError(targetPath: string, error: unknown) {
 		const code =
 			typeof error === "object" && error !== null && "code" in error
 				? String((error as { code: unknown }).code)
@@ -337,7 +337,7 @@ export class VirtualFileSystem {
 		this.errors.push({ path: targetPath, kind, code, message });
 	}
 
-	private getDirectory(cursor: string[]) {
+	#getDirectory(cursor: string[]) {
 		if (!this.root) {
 			throw new TypeError(
 				`Trying to read directory "./${cursor.join(
@@ -372,7 +372,7 @@ export class VirtualFileSystem {
 	getRenderTree(cursor: string[] = []): Ob.RenderTree | null {
 		if (!this.root) return null;
 
-		const directory = this.getDirectory(cursor);
+		const directory = this.#getDirectory(cursor);
 		if (!directory) return null;
 
 		const isLargeEnough = (file: Ob.VfsNode) =>
