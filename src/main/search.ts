@@ -41,7 +41,9 @@ export function searchVfs(
 			matches.push({ path: full, size: node.size, type: node.type });
 		}
 		if (node.type === "directory") {
-			for (const child of node.files) walk(child, full);
+			for (const child of node.files) {
+				walk(child, full);
+			}
 		}
 	};
 

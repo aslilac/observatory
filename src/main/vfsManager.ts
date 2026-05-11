@@ -44,7 +44,9 @@ export function getRenderTree(
 	cursor: string[],
 ): Ob.RenderTree | null {
 	const entry = scans.get(path);
-	if (!entry || entry.status !== "complete") return null;
+	if (!entry || entry.status !== "complete") {
+		return null;
+	}
 	return timed(`getRenderTree(${cursor.length} deep)`, () =>
 		entry.vfs.getRenderTree(cursor),
 	);
@@ -52,13 +54,17 @@ export function getRenderTree(
 
 export function getScanErrors(path: string): Ob.ScanError[] {
 	const entry = scans.get(path);
-	if (!entry) return [];
+	if (!entry) {
+		return [];
+	}
 	return entry.vfs.errors;
 }
 
 export function searchScan(path: string, query: string): SearchResults | null {
 	const entry = scans.get(path);
-	if (!entry || entry.status !== "complete" || !entry.vfs.root) return null;
+	if (!entry || entry.status !== "complete" || !entry.vfs.root) {
+		return null;
+	}
 	return timed(`searchScan("${query}")`, () =>
 		searchVfs(entry.vfs.root!, path, query),
 	);
@@ -66,7 +72,9 @@ export function searchScan(path: string, query: string): SearchResults | null {
 
 export function getScanProgress(path: string): Ob.ScanProgress | null {
 	const entry = scans.get(path);
-	if (!entry) return null;
+	if (!entry) {
+		return null;
+	}
 	const perfRoot = entry.vfs.perfRoot;
 	return {
 		path,
@@ -79,7 +87,9 @@ export function getScanProgress(path: string): Ob.ScanProgress | null {
 
 export function getScanPerfTree(path: string): Ob.PerfNode | null {
 	const entry = scans.get(path);
-	if (!entry || !entry.vfs.perfRoot) return null;
+	if (!entry || !entry.vfs.perfRoot) {
+		return null;
+	}
 	return serializePerfTree(entry.vfs.perfRoot);
 }
 
@@ -121,7 +131,9 @@ function serializePerfTree(root: PerfNodeInternal): Ob.PerfNode {
 }
 
 export function startScan(path: string) {
-	if (scans.has(path)) return;
+	if (scans.has(path)) {
+		return;
+	}
 
 	const vfs = new VirtualFileSystem(path);
 	scans.set(path, { status: "building", vfs, revision: 0 });
@@ -131,7 +143,9 @@ export function startScan(path: string) {
 		const entry = scans.get(path);
 		// `entry` may be missing if cancelScan ran while the scan was finishing
 		// up; the manager already broadcast the deletion, nothing to do here.
-		if (!entry || entry.vfs !== vfs) return;
+		if (!entry || entry.vfs !== vfs) {
+			return;
+		}
 		entry.status = "complete";
 		entry.revision++;
 		emitter.emit("scans", getScans());
@@ -143,24 +157,34 @@ export function startScan(path: string) {
 // trashes things so subsequent browsing doesn't keep showing them.
 export function removePath(target: string) {
 	const owner = findOwningScan(target);
-	if (!owner) return;
+	if (!owner) {
+		return;
+	}
 	const { root, entry } = owner;
 
 	const relative = target.slice(root.length).replace(/^[/\\]+/, "");
-	if (!relative) return; // can't remove the scan root itself
+	if (!relative) {
+		return;
+	} // can't remove the scan root itself
 	const parts = relative.split(/[/\\]+/);
 
 	const walk = walkToParent(entry.vfs.root!, parts);
-	if (!walk) return;
+	if (!walk) {
+		return;
+	}
 	const { current, ancestors } = walk;
 
 	const lastPart = parts[parts.length - 1]!;
 	const idx = current.files.findIndex((f) => f.name === lastPart);
-	if (idx < 0) return;
+	if (idx < 0) {
+		return;
+	}
 
 	const removedSize = current.files[idx]!.size;
 	current.files.splice(idx, 1);
-	for (const ancestor of ancestors) ancestor.size -= removedSize;
+	for (const ancestor of ancestors) {
+		ancestor.size -= removedSize;
+	}
 
 	entry.revision++;
 	emitter.emit("scans", getScans());
@@ -178,9 +202,15 @@ function findOwningScan(
 			target === root ||
 			target.startsWith(`${root}/`) ||
 			target.startsWith(`${root}\\`);
-		if (!inside) continue;
-		if (!entry.vfs.root) continue;
-		if (!best || root.length > best.root.length) best = { root, entry };
+		if (!inside) {
+			continue;
+		}
+		if (!entry.vfs.root) {
+			continue;
+		}
+		if (!best || root.length > best.root.length) {
+			best = { root, entry };
+		}
 	}
 	return best;
 }
@@ -198,7 +228,9 @@ function walkToParent(
 		const child = current.files.find(
 			(f) => f.name === parts[i] && f.type === "directory",
 		);
-		if (!child) return undefined;
+		if (!child) {
+			return undefined;
+		}
 		current = child as Ob.VfsDirectory;
 		ancestors.push(current);
 	}
@@ -207,7 +239,9 @@ function walkToParent(
 
 export function cancelScan(path: string) {
 	const entry = scans.get(path);
-	if (!entry) return;
+	if (!entry) {
+		return;
+	}
 	entry.vfs.abort();
 	scans.delete(path);
 	emitter.emit("scans", getScans());
@@ -237,7 +271,9 @@ async function pollDrives() {
 
 	if (!areMapsSimilar(drives, next)) {
 		drives.clear();
-		for (const [key, value] of next) drives.set(key, value);
+		for (const [key, value] of next) {
+			drives.set(key, value);
+		}
 		emitter.emit("drives", getDrives());
 	}
 }
@@ -248,7 +284,9 @@ app.on("ready", () => {
 });
 
 function areMapsSimilar<K = unknown, V = unknown>(a: Map<K, V>, b: Map<K, V>) {
-	if (a.size !== b.size) return false;
+	if (a.size !== b.size) {
+		return false;
+	}
 
 	const keysA = Array.from(a.keys());
 	const keysB = Array.from(b.keys());

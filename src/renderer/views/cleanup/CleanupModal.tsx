@@ -54,7 +54,9 @@ export const CleanupModal: React.FC<CleanupModalProps> = ({
 	// Block dismissal while the trash request is in-flight; the rest of the
 	// stages defer to the standard backdrop/escape behavior from Modal.
 	const handleClose = () => {
-		if (stage.kind === "deleting") return;
+		if (stage.kind === "deleting") {
+			return;
+		}
 		onClose();
 	};
 

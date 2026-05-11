@@ -24,10 +24,14 @@ type LaidOut = {
 };
 
 function findNode(root: Ob.PerfNode, path: string): Ob.PerfNode | null {
-	if (root.path === path) return root;
+	if (root.path === path) {
+		return root;
+	}
 	for (const c of root.children) {
 		const found = findNode(c, path);
-		if (found) return found;
+		if (found) {
+			return found;
+		}
 	}
 	return null;
 }
@@ -39,9 +43,13 @@ function pathTo(root: Ob.PerfNode, path: string): Ob.PerfNode[] {
 	const chain: Ob.PerfNode[] = [];
 	const walk = (node: Ob.PerfNode): boolean => {
 		chain.push(node);
-		if (node.path === path) return true;
+		if (node.path === path) {
+			return true;
+		}
 		for (const c of node.children) {
-			if (walk(c)) return true;
+			if (walk(c)) {
+				return true;
+			}
 		}
 		chain.pop();
 		return false;
@@ -59,11 +67,19 @@ function layout(root: Ob.PerfNode): LaidOut[] {
 	const baseDepth = root.depth;
 	const visit = (node: Ob.PerfNode, x: number, width: number) => {
 		items.push({ node, x, width, depth: node.depth - baseDepth });
-		if (width < MIN_VISIBLE_WIDTH_PCT) return;
-		if (node.children.length === 0) return;
+		if (width < MIN_VISIBLE_WIDTH_PCT) {
+			return;
+		}
+		if (node.children.length === 0) {
+			return;
+		}
 		let total = 0;
-		for (const c of node.children) total += Math.max(c.elapsedMs, 0);
-		if (total === 0) return;
+		for (const c of node.children) {
+			total += Math.max(c.elapsedMs, 0);
+		}
+		if (total === 0) {
+			return;
+		}
 		let childX = x;
 		for (const child of node.children) {
 			const t = Math.max(child.elapsedMs, 0);
@@ -80,7 +96,9 @@ export const FlameGraph: React.FC<FlameGraphProps> = ({ tree }) => {
 	const [zoomPath, setZoomPath] = useState<string | null>(null);
 
 	const focused = useMemo(() => {
-		if (!zoomPath) return tree;
+		if (!zoomPath) {
+			return tree;
+		}
 		return findNode(tree, zoomPath) ?? tree;
 	}, [tree, zoomPath]);
 

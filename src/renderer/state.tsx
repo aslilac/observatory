@@ -33,7 +33,9 @@ export function useScanProgress(
 		let cancelled = false;
 		const tick = () => {
 			void Ob.getScanProgress(path).then((next) => {
-				if (!cancelled) setProgress(next);
+				if (!cancelled) {
+					setProgress(next);
+				}
 			});
 		};
 		tick();
@@ -86,7 +88,9 @@ function useScanArtifact<T>(
 		}
 		let active = true;
 		void fetcher(path).then((next) => {
-			if (active) setValue(next);
+			if (active) {
+				setValue(next);
+			}
 		});
 		return () => {
 			active = false;
@@ -113,7 +117,9 @@ export function useRenderTree(
 		}
 		let active = true;
 		void Ob.getRenderTree(path, cursor).then((next) => {
-			if (active) setTree(next);
+			if (active) {
+				setTree(next);
+			}
 		});
 		return () => {
 			active = false;
@@ -133,7 +139,9 @@ export function joinPath(base: string, ...rest: string[]): string {
 		.map((p) => p.replace(/^\/+|\/+$/g, ""))
 		.filter((p) => p.length > 0)
 		.join("/");
-	if (!tail) return base;
+	if (!tail) {
+		return base;
+	}
 	return `${trimmedBase}/${tail}`;
 }
 
@@ -144,7 +152,9 @@ const THEME_KEY = "observatory:theme";
 function readInitialTheme(): Theme {
 	try {
 		const stored = localStorage.getItem(THEME_KEY);
-		if (stored === "light" || stored === "dark") return stored;
+		if (stored === "light" || stored === "dark") {
+			return stored;
+		}
 	} catch {
 		// localStorage unavailable
 	}
@@ -158,7 +168,9 @@ function readInitialTheme(): Theme {
 }
 
 function applyTheme(theme: Theme) {
-	if (typeof document === "undefined") return;
+	if (typeof document === "undefined") {
+		return;
+	}
 	document.documentElement.classList.toggle("dark", theme === "dark");
 }
 
@@ -216,7 +228,9 @@ export function useSearch(
 		setLoading(true);
 		const id = setTimeout(() => {
 			void Ob.searchScan(path, trimmed).then((next) => {
-				if (cancelled) return;
+				if (cancelled) {
+					return;
+				}
 				setResults(next);
 				setLoading(false);
 			});
@@ -256,9 +270,13 @@ function readRecentScans(): RecentScan[] {
 function readJsonArray<T>(key: string, isItem: (v: unknown) => v is T): T[] {
 	try {
 		const raw = localStorage.getItem(key);
-		if (!raw) return [];
+		if (!raw) {
+			return [];
+		}
 		const parsed: unknown = JSON.parse(raw);
-		if (!Array.isArray(parsed)) return [];
+		if (!Array.isArray(parsed)) {
+			return [];
+		}
 		return parsed.filter(isItem);
 	} catch {
 		return [];
@@ -350,7 +368,9 @@ export const CleanupQueueProvider: React.FC<{ children: React.ReactNode }> = ({
 			const additions = next
 				.filter((i) => !seen.has(i.path))
 				.map((i) => ({ ...i, addedAt: Date.now() }));
-			if (additions.length === 0) return prev;
+			if (additions.length === 0) {
+				return prev;
+			}
 			const merged = [...prev, ...additions];
 			writeCleanup(merged);
 			return merged;
@@ -360,7 +380,9 @@ export const CleanupQueueProvider: React.FC<{ children: React.ReactNode }> = ({
 	const remove = useCallback((path: string) => {
 		setItems((prev) => {
 			const next = prev.filter((i) => i.path !== path);
-			if (next.length === prev.length) return prev;
+			if (next.length === prev.length) {
+				return prev;
+			}
 			writeCleanup(next);
 			return next;
 		});
@@ -368,7 +390,9 @@ export const CleanupQueueProvider: React.FC<{ children: React.ReactNode }> = ({
 
 	const clear = useCallback(() => {
 		setItems((prev) => {
-			if (prev.length === 0) return prev;
+			if (prev.length === 0) {
+				return prev;
+			}
 			writeCleanup([]);
 			return [];
 		});
@@ -421,11 +445,15 @@ export function usePasteToScan(onOpen: (path: string) => void): {
 				return;
 			}
 			const text = e.clipboardData?.getData("text/plain")?.trim();
-			if (!text) return;
+			if (!text) {
+				return;
+			}
 			// Heuristic: a pasted scan target should look like an absolute path.
 			// Anything else (URLs, snippets) gets ignored so the global handler
 			// stays out of the user's way.
-			if (!/^([/~]|[A-Za-z]:[\\/])/.test(text)) return;
+			if (!/^([/~]|[A-Za-z]:[\\/])/.test(text)) {
+				return;
+			}
 			e.preventDefault();
 			setPastePath(text);
 			setPasteStat(null);
@@ -441,7 +469,9 @@ export function usePasteToScan(onOpen: (path: string) => void): {
 	}, []);
 
 	const confirm = useCallback(() => {
-		if (!pastePath) return;
+		if (!pastePath) {
+			return;
+		}
 		onOpen(pastePath);
 		setPastePath(null);
 		setPasteStat(null);

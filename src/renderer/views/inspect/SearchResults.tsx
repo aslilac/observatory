@@ -21,7 +21,9 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
 	onToggleSelect,
 	onAddToCleanup,
 }) => {
-	if (!query.trim()) return null;
+	if (!query.trim()) {
+		return null;
+	}
 
 	if (loading && !results) {
 		return (

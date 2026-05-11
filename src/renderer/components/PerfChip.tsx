@@ -6,7 +6,9 @@ type PerfChipProps = {
 };
 
 export const PerfChip: React.FC<PerfChipProps> = ({ available, onClick }) => {
-	if (!available) return null;
+	if (!available) {
+		return null;
+	}
 	return (
 		<button
 			type="button"

@@ -126,7 +126,9 @@ export class VirtualFileSystem {
 			const all: PerfNodeInternal[] = [];
 			const walk = (n: PerfNodeInternal) => {
 				all.push(n);
-				for (const c of n.children) walk(c);
+				for (const c of n.children) {
+					walk(c);
+				}
 			};
 			walk(this.perfRoot);
 			all.sort((a, b) => b.selfMs - a.selfMs);
@@ -156,7 +158,9 @@ export class VirtualFileSystem {
 		this.root = vfs;
 		const callbacks = this.#onCompleteCallbacks;
 		this.#onCompleteCallbacks = [];
-		for (const cb of callbacks) cb();
+		for (const cb of callbacks) {
+			cb();
+		}
 	}
 
 	async #scan(
@@ -174,7 +178,9 @@ export class VirtualFileSystem {
 
 		const myPerf = this.#openPerf(location, depth, parentPerf);
 		try {
-			if (this.#aborted) return state;
+			if (this.#aborted) {
+				return state;
+			}
 			this.currentPath = location;
 
 			const ownStats = await fs.lstat(location).catch((error: unknown) => {
@@ -184,7 +190,9 @@ export class VirtualFileSystem {
 			state.mtime = ownStats?.mtimeMs ?? 0;
 
 			const files = await this.#readdirTimed(location, myPerf);
-			if (!files) return state;
+			if (!files) {
+				return state;
+			}
 
 			await Promise.all(
 				files.map((name) =>
@@ -207,7 +215,9 @@ export class VirtualFileSystem {
 		depth: number,
 		parentPerf: PerfNodeInternal | undefined,
 	): PerfNodeInternal | undefined {
-		if (!PERF) return undefined;
+		if (!PERF) {
+			return undefined;
+		}
 		const myPerf: PerfNodeInternal = {
 			name: depth === 0 ? location : path.basename(location) || location,
 			path: location,
@@ -220,19 +230,26 @@ export class VirtualFileSystem {
 			inProgress: true,
 			children: [],
 		};
-		if (parentPerf) parentPerf.children.push(myPerf);
-		else this.perfRoot = myPerf;
+		if (parentPerf) {
+			parentPerf.children.push(myPerf);
+		} else {
+			this.perfRoot = myPerf;
+		}
 		return myPerf;
 	}
 
 	// Settle the perf node's totals. selfMs is clamped at zero because tiny
 	// scheduling noise can push it negative when a child dominates wall time.
 	#closePerf(myPerf: PerfNodeInternal | undefined): void {
-		if (!myPerf) return;
+		if (!myPerf) {
+			return;
+		}
 		const totalMs = performance.now() - myPerf.startMs;
 		let maxChildTotal = 0;
 		for (const c of myPerf.children) {
-			if (c.totalMs > maxChildTotal) maxChildTotal = c.totalMs;
+			if (c.totalMs > maxChildTotal) {
+				maxChildTotal = c.totalMs;
+			}
 		}
 		myPerf.totalMs = totalMs;
 		myPerf.selfMs = Math.max(0, totalMs - maxChildTotal);
@@ -276,13 +293,17 @@ export class VirtualFileSystem {
 		parentPerf: PerfNodeInternal | undefined,
 		depth: number,
 	): Promise<void> {
-		if (this.#aborted) return;
+		if (this.#aborted) {
+			return;
+		}
 		const entity = path.join(location, name);
 		const stats = await fs.lstat(entity).catch((error: unknown) => {
 			this.#recordError(entity, error);
 			return undefined;
 		});
-		if (!stats) return;
+		if (!stats) {
+			return;
+		}
 
 		if (stats.isFile()) {
 			this.counts.files++;
@@ -293,17 +314,23 @@ export class VirtualFileSystem {
 				mtime: stats.mtimeMs,
 			});
 			state.size += stats.size;
-			if (stats.mtimeMs > state.mtime) state.mtime = stats.mtimeMs;
+			if (stats.mtimeMs > state.mtime) {
+				state.mtime = stats.mtimeMs;
+			}
 			return;
 		}
 
 		if (stats.isDirectory()) {
 			this.counts.directories++;
-			if (shouldSkipDirectory(entity, stats.dev, this.#rootDev)) return;
+			if (shouldSkipDirectory(entity, stats.dev, this.#rootDev)) {
+				return;
+			}
 			const directory = await this.#scan(entity, depth + 1, parentPerf);
 			state.files.push({ ...directory, name });
 			state.size += directory.size;
-			if (directory.mtime > state.mtime) state.mtime = directory.mtime;
+			if (directory.mtime > state.mtime) {
+				state.mtime = directory.mtime;
+			}
 			return;
 		}
 
@@ -370,10 +397,14 @@ export class VirtualFileSystem {
 	}
 
 	getRenderTree(cursor: string[] = []): Ob.RenderTree | null {
-		if (!this.root) return null;
+		if (!this.root) {
+			return null;
+		}
 
 		const directory = this.#getDirectory(cursor);
-		if (!directory) return null;
+		if (!directory) {
+			return null;
+		}
 
 		const isLargeEnough = (file: Ob.VfsNode) =>
 			file.size > directory.size * 0.003;
@@ -454,14 +485,20 @@ function shouldSkipDirectory(
 	rootDev: number | null,
 ): boolean {
 	if (process.platform === "darwin") {
-		if (DARWIN_SHADOW_PATHS.has(entity)) return true;
+		if (DARWIN_SHADOW_PATHS.has(entity)) {
+			return true;
+		}
 		// Skip /System/Volumes/* explicitly so we never recurse into Update,
 		// Preboot, Recovery, VM, Data, etc. — all duplicates of content
 		// reachable via the firmlinked root.
-		if (entity.startsWith("/System/Volumes/")) return true;
+		if (entity.startsWith("/System/Volumes/")) {
+			return true;
+		}
 	}
 
-	if (process.platform === "linux" && entity === "/proc") return true;
+	if (process.platform === "linux" && entity === "/proc") {
+		return true;
+	}
 
 	// Generic cross-device skip — catches procfs / sysfs / tmpfs / external
 	// drives / network shares / FUSE mounts on every platform. Skipped on

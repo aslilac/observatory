@@ -27,13 +27,25 @@ export function readableDate(
 	epochMs: number,
 	now: number = Date.now(),
 ): string {
-	if (!epochMs || !Number.isFinite(epochMs)) return "—";
+	if (!epochMs || !Number.isFinite(epochMs)) {
+		return "—";
+	}
 	const delta = now - epochMs;
-	if (delta < 0) return "just now";
-	if (delta < MINUTE) return "just now";
-	if (delta < HOUR) return `${Math.floor(delta / MINUTE)}m ago`;
-	if (delta < DAY) return `${Math.floor(delta / HOUR)}h ago`;
-	if (delta < 14 * DAY) return `${Math.floor(delta / DAY)}d ago`;
+	if (delta < 0) {
+		return "just now";
+	}
+	if (delta < MINUTE) {
+		return "just now";
+	}
+	if (delta < HOUR) {
+		return `${Math.floor(delta / MINUTE)}m ago`;
+	}
+	if (delta < DAY) {
+		return `${Math.floor(delta / HOUR)}h ago`;
+	}
+	if (delta < 14 * DAY) {
+		return `${Math.floor(delta / DAY)}d ago`;
+	}
 	const d = new Date(epochMs);
 	const month = d.toLocaleString("en-US", { month: "short" });
 	const thisYear = new Date(now).getFullYear();

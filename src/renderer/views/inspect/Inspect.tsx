@@ -92,8 +92,11 @@ export const Inspect: React.FC<InspectProps> = ({ scan }) => {
 	const toggleSelect = useCallback((item: SelectableItem) => {
 		setSelection((prev) => {
 			const next = new Map(prev);
-			if (next.has(item.path)) next.delete(item.path);
-			else next.set(item.path, item);
+			if (next.has(item.path)) {
+				next.delete(item.path);
+			} else {
+				next.set(item.path, item);
+			}
 			return next;
 		});
 	}, []);

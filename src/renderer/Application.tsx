@@ -51,7 +51,9 @@ export const Application: React.FC = () => {
 	// so the user-perceived navigation includes paint.
 	const cursorKey = cursor.join("/");
 	useLayoutEffect(() => {
-		if (!perfEnabled()) return;
+		if (!perfEnabled()) {
+			return;
+		}
 		const id = requestAnimationFrame(() => perfMeasure("nav", "nav:start"));
 		return () => cancelAnimationFrame(id);
 	}, [view, inspecting, cursorKey]);
@@ -62,7 +64,9 @@ export const Application: React.FC = () => {
 			phase: "mount" | "update" | "nested-update",
 			actualDuration: number,
 		) => {
-			if (!perfEnabled()) return;
+			if (!perfEnabled()) {
+				return;
+			}
 			if (phase === "mount" || actualDuration > 5) {
 				perfLog("react", `${id} ${phase} ${actualDuration.toFixed(1)}ms`);
 			}
@@ -129,7 +133,9 @@ const Body: React.FC<BodyProps> = ({
 	recent,
 	onOpen,
 }) => {
-	if (view === "cleanup") return <Cleanup onOpen={onOpen} />;
+	if (view === "cleanup") {
+		return <Cleanup onOpen={onOpen} />;
+	}
 	if (inspecting && inspectingScan?.status === "complete") {
 		return <Inspect scan={inspectingScan} />;
 	}
@@ -163,7 +169,9 @@ const TitleBar: React.FC<TitleBarProps> = ({ title, theme, onToggleTheme }) => (
 // path).
 function displayName(p: string, drives: Ob.PhysicalDrive[]): string {
 	const drive = drives.find((d) => d.mountPath === p);
-	if (drive) return drive.description;
+	if (drive) {
+		return drive.description;
+	}
 	const trimmed = p.replace(/[/\\]+$/, "") || p;
 	const slash = Math.max(trimmed.lastIndexOf("/"), trimmed.lastIndexOf("\\"));
 	return slash >= 0 ? trimmed.slice(slash + 1) || trimmed : trimmed;

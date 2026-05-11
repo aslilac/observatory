@@ -61,7 +61,9 @@ export const Welcome: React.FC<WelcomeProps> = ({
 						<Button
 							onClick={() => {
 								void Ob.selectDirectory().then((picked) => {
-									if (picked) onOpen(picked);
+									if (picked) {
+										onOpen(picked);
+									}
 								});
 							}}
 						>

@@ -43,14 +43,20 @@ export function createWindow() {
 
 	// Mouse back/forward buttons.
 	view.on("app-command", (_event, command) => {
-		if (command === "browser-backward") sendNav("back");
-		else if (command === "browser-forward") sendNav("forward");
+		if (command === "browser-backward") {
+			sendNav("back");
+		} else if (command === "browser-forward") {
+			sendNav("forward");
+		}
 	});
 
 	// Two-finger swipe on macOS.
 	view.on("swipe", (_event, direction) => {
-		if (direction === "left") sendNav("back");
-		else if (direction === "right") sendNav("forward");
+		if (direction === "left") {
+			sendNav("back");
+		} else if (direction === "right") {
+			sendNav("forward");
+		}
 	});
 }
 

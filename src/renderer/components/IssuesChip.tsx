@@ -6,7 +6,9 @@ type IssuesChipProps = {
 };
 
 export const IssuesChip: React.FC<IssuesChipProps> = ({ count, onClick }) => {
-	if (count === 0) return null;
+	if (count === 0) {
+		return null;
+	}
 	return (
 		<button
 			type="button"

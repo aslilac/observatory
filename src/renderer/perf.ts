@@ -13,13 +13,17 @@ export function perfEnabled(): boolean {
 }
 
 export function perfLog(tag: string, message: string): void {
-	if (!perfEnabled()) return;
+	if (!perfEnabled()) {
+		return;
+	}
 	// eslint-disable-next-line no-console
 	console.log(`[perf:${tag}] ${message}`);
 }
 
 export function perfMark(name: string): void {
-	if (!perfEnabled()) return;
+	if (!perfEnabled()) {
+		return;
+	}
 	try {
 		performance.mark(name);
 	} catch {
@@ -30,7 +34,9 @@ export function perfMark(name: string): void {
 // Measures from the most recent `start` mark to now and logs the duration
 // under `tag`. Resilient to a missing start mark (e.g. first navigation).
 export function perfMeasure(tag: string, start: string): void {
-	if (!perfEnabled()) return;
+	if (!perfEnabled()) {
+		return;
+	}
 	try {
 		const m = performance.measure(`measure:${tag}`, start);
 		// eslint-disable-next-line no-console

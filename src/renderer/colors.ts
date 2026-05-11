@@ -7,7 +7,9 @@
 export function huesByPosition(files: Ob.VfsNode[]): Map<string, number> {
 	const map = new Map<string, number>();
 	const total = files.reduce((s, f) => s + f.size, 0);
-	if (total === 0) return map;
+	if (total === 0) {
+		return map;
+	}
 	let bytes = 0;
 	for (const file of files) {
 		map.set(file.name, ((bytes + file.size / 2) / total) * 360);

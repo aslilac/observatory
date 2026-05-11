@@ -25,14 +25,14 @@ function recentItems(): MenuItemConstructorOptions[] {
 		return [{ label: "(no recent scans)", enabled: false }];
 	}
 	return recentScans.map((scan) => ({
-			label: recentLabel(scan.path),
-			sublabel: scan.path,
-			toolTip: scan.path,
-			click: () => {
-				startScan(scan.path);
-				setInspecting(scan.path);
-			},
-		}));
+		label: recentLabel(scan.path),
+		sublabel: scan.path,
+		toolTip: scan.path,
+		click: () => {
+			startScan(scan.path);
+			setInspecting(scan.path);
+		},
+	}));
 }
 
 function buildTemplate(): MenuItemConstructorOptions[] {
@@ -67,7 +67,9 @@ function buildTemplate(): MenuItemConstructorOptions[] {
 					accelerator: "CmdOrCtrl+O",
 					click: () => {
 						void selectDirectory().then((picked) => {
-							if (!picked) return;
+							if (!picked) {
+								return;
+							}
 							startScan(picked);
 							setInspecting(picked);
 						});

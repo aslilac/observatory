@@ -63,7 +63,9 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({
 		setNav((prev) => {
 			const truncated = prev.history.slice(0, prev.index + 1);
 			const last = truncated[truncated.length - 1]!;
-			if (sameEntry(last, entry)) return prev;
+			if (sameEntry(last, entry)) {
+				return prev;
+			}
 			return {
 				history: [...truncated, entry],
 				index: truncated.length,
@@ -111,8 +113,11 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({
 	useEffect(
 		() =>
 			Ob.onNav((direction) => {
-				if (direction === "back") goBack();
-				else goForward();
+				if (direction === "back") {
+					goBack();
+				} else {
+					goForward();
+				}
 			}),
 		[goBack, goForward],
 	);

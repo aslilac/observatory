@@ -6,7 +6,9 @@ import { webContents } from "electron";
 // has to import the other.
 export function broadcast(channel: string, payload: unknown) {
 	for (const view of webContents.getAllWebContents()) {
-		if (!view.isDestroyed()) view.send(channel, payload);
+		if (!view.isDestroyed()) {
+			view.send(channel, payload);
+		}
 	}
 }
 

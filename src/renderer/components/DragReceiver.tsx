@@ -22,33 +22,49 @@ export const DragReceiver: React.FC<DragReceiverProps> = ({ onDrop }) => {
 			Boolean(e.dataTransfer?.types.includes("Files"));
 
 		const handleEnter = (e: DragEvent) => {
-			if (!isFileDrag(e)) return;
+			if (!isFileDrag(e)) {
+				return;
+			}
 			e.preventDefault();
 			counter.current += 1;
 			setDragOver(true);
 		};
 
 		const handleOver = (e: DragEvent) => {
-			if (!isFileDrag(e)) return;
+			if (!isFileDrag(e)) {
+				return;
+			}
 			e.preventDefault();
-			if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
+			if (e.dataTransfer) {
+				e.dataTransfer.dropEffect = "copy";
+			}
 		};
 
 		const handleLeave = (e: DragEvent) => {
-			if (!isFileDrag(e)) return;
+			if (!isFileDrag(e)) {
+				return;
+			}
 			counter.current = Math.max(0, counter.current - 1);
-			if (counter.current === 0) setDragOver(false);
+			if (counter.current === 0) {
+				setDragOver(false);
+			}
 		};
 
 		const handleDrop = (e: DragEvent) => {
-			if (!isFileDrag(e)) return;
+			if (!isFileDrag(e)) {
+				return;
+			}
 			e.preventDefault();
 			counter.current = 0;
 			setDragOver(false);
 			const file = e.dataTransfer?.files[0];
-			if (!file) return;
+			if (!file) {
+				return;
+			}
 			const path = Ob.pathForFile(file);
-			if (path) onDrop(path);
+			if (path) {
+				onDrop(path);
+			}
 		};
 
 		document.addEventListener("dragenter", handleEnter);

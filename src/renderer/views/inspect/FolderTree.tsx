@@ -44,8 +44,11 @@ export const FolderTree: React.FC<FolderTreeProps> = ({
 	const toggleExpand = useCallback((key: string) => {
 		setExpanded((prev) => {
 			const next = new Set(prev);
-			if (next.has(key)) next.delete(key);
-			else next.add(key);
+			if (next.has(key)) {
+				next.delete(key);
+			} else {
+				next.add(key);
+			}
 			return next;
 		});
 	}, []);
@@ -57,7 +60,9 @@ export const FolderTree: React.FC<FolderTreeProps> = ({
 	const requestChildren = useCallback(
 		(key: string, subCursor: string[]) => {
 			setCache((prev) => {
-				if (prev.has(key)) return prev;
+				if (prev.has(key)) {
+					return prev;
+				}
 				const next = new Map(prev);
 				next.set(key, "loading");
 				return next;
@@ -293,7 +298,9 @@ const Row: React.FC<RowProps> = ({
 				type="button"
 				onClick={(e) => {
 					e.stopPropagation();
-					if (expandable) onToggleExpand();
+					if (expandable) {
+						onToggleExpand();
+					}
 				}}
 				disabled={!expandable}
 				title={expandable ? (expanded ? "Collapse" : "Expand") : undefined}

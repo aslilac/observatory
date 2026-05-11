@@ -19,7 +19,9 @@ export const Cleanup: React.FC<CleanupProps> = ({ onOpen }) => {
 
 	const onBrowse = useCallback(() => {
 		void Ob.selectDirectory().then((picked) => {
-			if (picked) onOpen(picked);
+			if (picked) {
+				onOpen(picked);
+			}
 		});
 	}, [onOpen]);
 
@@ -31,7 +33,9 @@ export const Cleanup: React.FC<CleanupProps> = ({ onOpen }) => {
 				(sum, p) => sum + (sizeByPath.get(p) ?? 0),
 				0,
 			);
-			for (const p of result.deleted) remove(p);
+			for (const p of result.deleted) {
+				remove(p);
+			}
 			return {
 				deleted: result.deleted.length,
 				reclaimed,
@@ -188,7 +192,9 @@ const KIND_BY_EXT: Record<string, string> = {
 
 function kindLabel(item: CleanupItem): string {
 	const name = item.name.toLowerCase();
-	if (!name.includes(".")) return "folder";
+	if (!name.includes(".")) {
+		return "folder";
+	}
 	const ext = name.slice(name.lastIndexOf(".") + 1);
 	return KIND_BY_EXT[ext] ?? "file";
 }
