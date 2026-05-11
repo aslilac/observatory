@@ -14,7 +14,7 @@ export const Checkbox: React.FC<CheckboxProps> = ({ checked, onChange }) => (
 		checked={checked}
 		onCheckedChange={() => onChange()}
 		onClick={(e) => e.stopPropagation()}
-		className={`flex h-[14px] w-[14px] flex-shrink-0 cursor-pointer items-center justify-center rounded-[3px] border outline-none transition-opacity ${
+		className={`flex h-[14px] w-[14px] flex-shrink-0 cursor-pointer items-center justify-center rounded-[3px] border transition-opacity outline-none ${
 			checked
 				? "border-default bg-default text-background opacity-100"
 				: "border-line bg-background opacity-0 group-hover:opacity-100"

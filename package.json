@@ -1,13 +1,11 @@
 {
+  "private": true,
   "name": "observatory",
   "version": "1.0.0",
-  "private": true,
   "description": "A cross platform disk usage analyzer with a modern UI",
-  "bugs": "https://github.com/aslilac/observatory/issues",
   "license": "MIT",
   "author": "McKayla Washburn <mckayla@hey.com>",
   "repository": "https://github.com/aslilac/observatory",
-  "main": "./build/main/index.js",
   "scripts": {
     "configure": "electron-rebuild -f -w drivelist",
     "build": "electron-vite build",
@@ -48,6 +46,7 @@
     "vite": "^8.0.10",
     "vitest": "^4.1.5"
   },
+  "main": "./build/main/index.js",
   "config": {
     "forge": "forge.config.js"
   },

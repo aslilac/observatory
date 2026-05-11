@@ -29,7 +29,7 @@ export const PasteConfirm: React.FC<PasteConfirmProps> = ({
 		>
 			<AlertDialog.Portal>
 				<AlertDialog.Backdrop className="fixed inset-0 z-30 bg-[rgba(0,0,0,0.32)]" />
-				<AlertDialog.Popup className="fixed top-1/2 left-1/2 z-30 w-[480px] -translate-x-1/2 -translate-y-1/2 rounded-modal bg-background p-6 outline-none [box-shadow:var(--shadow-modal)]">
+				<AlertDialog.Popup className="fixed top-1/2 left-1/2 z-30 w-[480px] -translate-x-1/2 -translate-y-1/2 rounded-modal bg-background p-6 [box-shadow:var(--shadow-modal)] outline-none">
 					<AlertDialog.Title className="mb-[12px] text-[16px] font-semibold">
 						Scan this folder?
 					</AlertDialog.Title>

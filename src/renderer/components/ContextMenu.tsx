@@ -42,7 +42,7 @@ export const RowMenu: React.FC<RowMenuProps> = ({
 const MenuPopup: React.FC<{ items: ContextMenuItem[] }> = ({ items }) => (
 	<BaseContextMenu.Portal>
 		<BaseContextMenu.Positioner className="z-50 outline-none">
-			<BaseContextMenu.Popup className="min-w-[180px] rounded-card border border-line-soft bg-background py-1 text-[13px] outline-none [box-shadow:var(--shadow-menu)]">
+			<BaseContextMenu.Popup className="min-w-[180px] rounded-card border border-line-soft bg-background py-1 text-[13px] [box-shadow:var(--shadow-menu)] outline-none">
 				{items.map((item, i) =>
 					item.kind === "separator" ? (
 						<BaseContextMenu.Separator
@@ -54,7 +54,7 @@ const MenuPopup: React.FC<{ items: ContextMenuItem[] }> = ({ items }) => (
 							key={item.label}
 							disabled={item.disabled}
 							onClick={item.onClick}
-							className="block w-full cursor-pointer px-3 py-1.5 text-left text-default outline-none select-none data-[highlighted]:bg-fill data-[disabled]:cursor-default data-[disabled]:text-faint data-[disabled]:data-[highlighted]:bg-transparent"
+							className="block w-full cursor-pointer px-3 py-1.5 text-left text-default outline-none select-none data-[disabled]:cursor-default data-[disabled]:text-faint data-[highlighted]:bg-fill data-[disabled]:data-[highlighted]:bg-transparent"
 						>
 							{item.label}
 						</BaseContextMenu.Item>
