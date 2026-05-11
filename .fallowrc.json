@@ -1,6 +1,18 @@
 {
 	"$schema": "./node_modules/fallow/schema.json",
 	"duplicates": {
-		"mode": "semantic"
-	}
+		"mode": "semantic",
+		"ignoreImports": true,
+		"threshold": 1.5
+	},
+	"health": {
+		"maxCyclomatic": 20,
+		"maxCognitive": 20,
+		"maxCrap": 1000
+	},
+	"dynamicallyLoaded": [
+		"site/style.css",
+		"src/renderer/index.css",
+		"src/renderer/views/about/about.css"
+	]
 }

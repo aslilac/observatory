@@ -8,8 +8,8 @@ import {
 
 import { perfMark } from "./perf";
 
-export type NavView = "scan" | "cleanup";
-export type NavEntry = {
+type NavView = "scan" | "cleanup";
+type NavEntry = {
 	view: NavView;
 	inspecting: string | null;
 	cursor: string[];

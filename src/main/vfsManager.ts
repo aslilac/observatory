@@ -144,35 +144,17 @@ export function startScan(path: string) {
 // removed size up through every ancestor. Used after the cleanup queue
 // trashes things so subsequent browsing doesn't keep showing them.
 export function removePath(target: string) {
-	let bestRoot: string | undefined;
-	let bestEntry: ScanEntry | undefined;
-	for (const [root, entry] of scans) {
-		const inside =
-			target === root ||
-			target.startsWith(`${root}/`) ||
-			target.startsWith(`${root}\\`);
-		if (!inside) continue;
-		if (!bestRoot || root.length > bestRoot.length) {
-			bestRoot = root;
-			bestEntry = entry;
-		}
-	}
-	if (!bestRoot || !bestEntry?.vfs.root) return;
+	const owner = findOwningScan(target);
+	if (!owner) return;
+	const { root, entry } = owner;
 
-	const relative = target.slice(bestRoot.length).replace(/^[/\\]+/, "");
+	const relative = target.slice(root.length).replace(/^[/\\]+/, "");
 	if (!relative) return; // can't remove the scan root itself
 	const parts = relative.split(/[/\\]+/);
 
-	let current: Ob.VfsDirectory = bestEntry.vfs.root;
-	const ancestors: Ob.VfsDirectory[] = [current];
-	for (let i = 0; i < parts.length - 1; i++) {
-		const child = current.files.find(
-			(f) => f.name === parts[i] && f.type === "directory",
-		);
-		if (!child) return;
-		current = child as Ob.VfsDirectory;
-		ancestors.push(current);
-	}
+	const walk = walkToParent(entry.vfs.root!, parts);
+	if (!walk) return;
+	const { current, ancestors } = walk;
 
 	const lastPart = parts[parts.length - 1]!;
 	const idx = current.files.findIndex((f) => f.name === lastPart);
@@ -182,8 +164,47 @@ export function removePath(target: string) {
 	current.files.splice(idx, 1);
 	for (const ancestor of ancestors) ancestor.size -= removedSize;
 
-	bestEntry.revision++;
+	entry.revision++;
 	emitter.emit("scans", getScans());
+}
+
+// Pick the scan whose root is the longest prefix of `target` — handles the
+// case where someone scanned both /Users/alice and /Users/alice/Movies and
+// we delete something in the latter. Both match; we want the deeper one.
+function findOwningScan(
+	target: string,
+): { root: string; entry: ScanEntry } | undefined {
+	let best: { root: string; entry: ScanEntry } | undefined;
+	for (const [root, entry] of scans) {
+		const inside =
+			target === root ||
+			target.startsWith(`${root}/`) ||
+			target.startsWith(`${root}\\`);
+		if (!inside) continue;
+		if (!entry.vfs.root) continue;
+		if (!best || root.length > best.root.length) best = { root, entry };
+	}
+	return best;
+}
+
+// Walk `parts[0..-2]` from `start`, returning the parent directory of the
+// final path segment plus every ancestor we passed through (so the caller
+// can subtract the removed size from each).
+function walkToParent(
+	start: Ob.VfsDirectory,
+	parts: string[],
+): { current: Ob.VfsDirectory; ancestors: Ob.VfsDirectory[] } | undefined {
+	let current = start;
+	const ancestors: Ob.VfsDirectory[] = [current];
+	for (let i = 0; i < parts.length - 1; i++) {
+		const child = current.files.find(
+			(f) => f.name === parts[i] && f.type === "directory",
+		);
+		if (!child) return undefined;
+		current = child as Ob.VfsDirectory;
+		ancestors.push(current);
+	}
+	return { current, ancestors };
 }
 
 export function cancelScan(path: string) {

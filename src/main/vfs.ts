@@ -172,27 +172,7 @@ export class VirtualFileSystem {
 			files: [],
 		};
 
-		// Create the perf node up front so it's visible in the live flame
-		// graph the moment we enter the directory. The timings stay zero
-		// (and inProgress=true) until the try/finally below settles.
-		let myPerf: PerfNodeInternal | undefined;
-		if (PERF) {
-			myPerf = {
-				name: depth === 0 ? location : path.basename(location) || location,
-				path: location,
-				startMs: performance.now(),
-				totalMs: 0,
-				selfMs: 0,
-				readdirMs: 0,
-				entryCount: 0,
-				depth,
-				inProgress: true,
-				children: [],
-			};
-			if (parentPerf) parentPerf.children.push(myPerf);
-			else this.perfRoot = myPerf;
-		}
-
+		const myPerf = this.openPerf(location, depth, parentPerf);
 		try {
 			if (this.aborted) return state;
 			this.currentPath = location;
@@ -203,84 +183,141 @@ export class VirtualFileSystem {
 			});
 			state.mtime = ownStats?.mtimeMs ?? 0;
 
-			const readdirStart = PERF ? performance.now() : 0;
-			const files = await fs.readdir(location).catch((error: unknown) => {
-				this.recordError(location, error);
-				return undefined;
-			});
-			if (PERF && myPerf) {
-				myPerf.readdirMs = performance.now() - readdirStart;
-				myPerf.entryCount = files?.length ?? 0;
-				if (myPerf.readdirMs > DIR_LOG_THRESHOLD_MS) {
-					perfLog(
-						"scan",
-						`readdir ${location} ${myPerf.readdirMs.toFixed(0)}ms (${files?.length ?? 0} entries)`,
-					);
-				}
-			}
-
+			const files = await this.readdirTimed(location, myPerf);
 			if (!files) return state;
 
 			await Promise.all(
-				files.map(async (name) => {
-					if (this.aborted) return;
-					const entity = path.join(location, name);
-					const stats = await fs.lstat(entity).catch((error: unknown) => {
-						this.recordError(entity, error);
-						return undefined;
-					});
-
-					if (!stats) return;
-					else if (stats.isFile()) {
-						this.counts.files++;
-						state.files.push({
-							type: "file",
-							name,
-							size: stats.size,
-							mtime: stats.mtimeMs,
-						});
-						state.size += stats.size;
-						if (stats.mtimeMs > state.mtime) state.mtime = stats.mtimeMs;
-					} else if (stats.isDirectory()) {
-						this.counts.directories++;
-
-						if (shouldSkipDirectory(entity, stats.dev, this.rootDev)) {
-							return;
-						}
-
-						const directory = await this._scan(entity, depth + 1, myPerf);
-						state.files.push({
-							...directory,
-							name,
-						});
-						state.size += directory.size;
-						if (directory.mtime > state.mtime) state.mtime = directory.mtime;
-					} else if (stats.isSymbolicLink()) {
-						this.counts.symlinks++;
-					} else if (stats.isCharacterDevice() || stats.isBlockDevice()) {
-						this.counts.devices++;
-					} else {
-						this.counts.misc++;
-					}
-				}),
+				files.map((name) =>
+					this.processEntry(location, name, state, myPerf, depth),
+				),
 			);
 
 			state.files.sort((a, b) => b.size - a.size);
 			return state;
 		} finally {
-			if (PERF && myPerf) {
-				const totalMs = performance.now() - myPerf.startMs;
-				let maxChildTotal = 0;
-				for (const c of myPerf.children) {
-					if (c.totalMs > maxChildTotal) maxChildTotal = c.totalMs;
-				}
-				myPerf.totalMs = totalMs;
-				// Clamp because tiny scheduling noise could push selfMs slightly
-				// negative when a child dominates total time.
-				myPerf.selfMs = Math.max(0, totalMs - maxChildTotal);
-				myPerf.inProgress = false;
+			this.closePerf(myPerf);
+		}
+	}
+
+	// Stand up a perf node for `location` so the live flame graph shows the
+	// directory the moment we enter it. Timings stay zero (and inProgress=true)
+	// until closePerf settles them in the finally block.
+	private openPerf(
+		location: string,
+		depth: number,
+		parentPerf: PerfNodeInternal | undefined,
+	): PerfNodeInternal | undefined {
+		if (!PERF) return undefined;
+		const myPerf: PerfNodeInternal = {
+			name: depth === 0 ? location : path.basename(location) || location,
+			path: location,
+			startMs: performance.now(),
+			totalMs: 0,
+			selfMs: 0,
+			readdirMs: 0,
+			entryCount: 0,
+			depth,
+			inProgress: true,
+			children: [],
+		};
+		if (parentPerf) parentPerf.children.push(myPerf);
+		else this.perfRoot = myPerf;
+		return myPerf;
+	}
+
+	// Settle the perf node's totals. selfMs is clamped at zero because tiny
+	// scheduling noise can push it negative when a child dominates wall time.
+	private closePerf(myPerf: PerfNodeInternal | undefined): void {
+		if (!myPerf) return;
+		const totalMs = performance.now() - myPerf.startMs;
+		let maxChildTotal = 0;
+		for (const c of myPerf.children) {
+			if (c.totalMs > maxChildTotal) maxChildTotal = c.totalMs;
+		}
+		myPerf.totalMs = totalMs;
+		myPerf.selfMs = Math.max(0, totalMs - maxChildTotal);
+		myPerf.inProgress = false;
+	}
+
+	// readdir + record the timing on `myPerf`. Returns undefined when readdir
+	// fails (the error is funneled into recordError so a bad directory just
+	// becomes an empty branch in the tree instead of aborting the scan).
+	private async readdirTimed(
+		location: string,
+		myPerf: PerfNodeInternal | undefined,
+	): Promise<string[] | undefined> {
+		const start = PERF ? performance.now() : 0;
+		const files = await fs.readdir(location).catch((error: unknown) => {
+			this.recordError(location, error);
+			return undefined;
+		});
+		if (myPerf) {
+			myPerf.readdirMs = performance.now() - start;
+			myPerf.entryCount = files?.length ?? 0;
+			if (myPerf.readdirMs > DIR_LOG_THRESHOLD_MS) {
+				perfLog(
+					"scan",
+					`readdir ${location} ${myPerf.readdirMs.toFixed(0)}ms (${files?.length ?? 0} entries)`,
+				);
 			}
 		}
+		return files;
+	}
+
+	// One entry under `location`. Stats it, classifies it, and either pushes
+	// a file row, recurses into a directory, or just bumps the per-kind
+	// counter for things we don't include in the tree (symlinks, devices,
+	// "other"). Errors are swallowed into recordError so a single bad entry
+	// can't abort the whole scan.
+	private async processEntry(
+		location: string,
+		name: string,
+		state: Ob.VfsDirectory,
+		parentPerf: PerfNodeInternal | undefined,
+		depth: number,
+	): Promise<void> {
+		if (this.aborted) return;
+		const entity = path.join(location, name);
+		const stats = await fs.lstat(entity).catch((error: unknown) => {
+			this.recordError(entity, error);
+			return undefined;
+		});
+		if (!stats) return;
+
+		if (stats.isFile()) {
+			this.counts.files++;
+			state.files.push({
+				type: "file",
+				name,
+				size: stats.size,
+				mtime: stats.mtimeMs,
+			});
+			state.size += stats.size;
+			if (stats.mtimeMs > state.mtime) state.mtime = stats.mtimeMs;
+			return;
+		}
+
+		if (stats.isDirectory()) {
+			this.counts.directories++;
+			if (shouldSkipDirectory(entity, stats.dev, this.rootDev)) return;
+			const directory = await this._scan(entity, depth + 1, parentPerf);
+			state.files.push({ ...directory, name });
+			state.size += directory.size;
+			if (directory.mtime > state.mtime) state.mtime = directory.mtime;
+			return;
+		}
+
+		if (stats.isSymbolicLink()) {
+			this.counts.symlinks++;
+			return;
+		}
+
+		if (stats.isCharacterDevice() || stats.isBlockDevice()) {
+			this.counts.devices++;
+			return;
+		}
+
+		this.counts.misc++;
 	}
 
 	private recordError(targetPath: string, error: unknown) {

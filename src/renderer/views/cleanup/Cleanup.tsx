@@ -147,43 +147,38 @@ const QueueList: React.FC<QueueListProps> = ({
 	</div>
 );
 
+const KIND_BY_EXT: Record<string, string> = {
+	"mov": "video",
+	"mp4": "video",
+	"mkv": "video",
+	"avi": "video",
+	"webm": "video",
+	"zip": "archive",
+	"tar": "archive",
+	"gz": "archive",
+	"bz2": "archive",
+	"xz": "archive",
+	"7z": "archive",
+	"dmg": "disk image",
+	"iso": "disk image",
+	"fcpbundle": "bundle",
+	"logicx": "bundle",
+	"app": "bundle",
+	"jpg": "image",
+	"jpeg": "image",
+	"png": "image",
+	"gif": "image",
+	"heic": "image",
+	"mp3": "audio",
+	"wav": "audio",
+	"flac": "audio",
+	"aac": "audio",
+	"pdf": "pdf",
+};
+
 function kindLabel(item: CleanupItem): string {
 	const name = item.name.toLowerCase();
 	if (!name.includes(".")) return "folder";
 	const ext = name.slice(name.lastIndexOf(".") + 1);
-	if (
-		ext === "mov" ||
-		ext === "mp4" ||
-		ext === "mkv" ||
-		ext === "avi" ||
-		ext === "webm"
-	) {
-		return "video";
-	}
-	if (
-		ext === "zip" ||
-		ext === "tar" ||
-		ext === "gz" ||
-		ext === "bz2" ||
-		ext === "xz" ||
-		ext === "7z"
-	) {
-		return "archive";
-	}
-	if (ext === "dmg" || ext === "iso") return "disk image";
-	if (ext === "fcpbundle" || ext === "logicx" || ext === "app") return "bundle";
-	if (
-		ext === "jpg" ||
-		ext === "jpeg" ||
-		ext === "png" ||
-		ext === "gif" ||
-		ext === "heic"
-	) {
-		return "image";
-	}
-	if (ext === "mp3" || ext === "wav" || ext === "flac" || ext === "aac") {
-		return "audio";
-	}
-	if (ext === "pdf") return "pdf";
-	return "file";
+	return KIND_BY_EXT[ext] ?? "file";
 }

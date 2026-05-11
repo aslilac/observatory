@@ -74,26 +74,7 @@ type ScanHeaderProps = {
 const ScanHeader: React.FC<ScanHeaderProps> = ({ root, total, progress }) => (
 	<div className="flex items-center gap-4">
 		<div className="relative size-[44px] shrink-0">
-			<svg width="44" height="44" viewBox="0 0 44 44">
-				<circle
-					cx="22"
-					cy="22"
-					r="20"
-					fill="none"
-					stroke="var(--color-line)"
-					strokeWidth="1.5"
-					strokeDasharray="3 4"
-				/>
-				<g className="origin-center animate-spin [animation-duration:2.4s]">
-					<path
-						d="M 22 2 A 20 20 0 0 1 42 22"
-						fill="none"
-						stroke="var(--color-default)"
-						strokeWidth="3"
-						strokeLinecap="round"
-					/>
-				</g>
-			</svg>
+			<SpinnerArc size={44} radius={20} trackWidth={1.5} arcWidth={3} />
 		</div>
 		<div className="flex min-w-0 flex-1 flex-col gap-[2px]">
 			<div className="flex items-baseline gap-[10px]">
@@ -122,25 +103,7 @@ type SpinnerProps = {
 
 const Spinner: React.FC<SpinnerProps> = ({ total }) => (
 	<div className="relative size-[260px]">
-		<svg width="260" height="260" viewBox="0 0 260 260">
-			<circle
-				cx="130"
-				cy="130"
-				r="118"
-				fill="none"
-				stroke="var(--color-line)"
-				strokeWidth="2"
-				strokeDasharray="3 4"
-			/>
-			<g className="origin-center animate-spin [animation-duration:2.4s]">
-				<path
-					d="M 130 12 A 118 118 0 0 1 248 130"
-					fill="none"
-					stroke="var(--color-default)"
-					strokeWidth="6"
-					strokeLinecap="round"
-				/>
-			</g>
+		<SpinnerArc size={260} radius={118} trackWidth={2} arcWidth={6}>
 			<circle cx="130" cy="130" r="62" fill="var(--color-default)" />
 			<text
 				x="130"
@@ -166,9 +129,50 @@ const Spinner: React.FC<SpinnerProps> = ({ total }) => (
 			>
 				{total > 0 ? "items" : "indexing"}
 			</text>
-		</svg>
+		</SpinnerArc>
 	</div>
 );
+
+type SpinnerArcProps = {
+	size: number;
+	radius: number;
+	trackWidth: number;
+	arcWidth: number;
+	children?: React.ReactNode;
+};
+
+const SpinnerArc: React.FC<SpinnerArcProps> = ({
+	size,
+	radius,
+	trackWidth,
+	arcWidth,
+	children,
+}) => {
+	const c = size / 2;
+	return (
+		<svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+			<circle
+				cx={c}
+				cy={c}
+				r={radius}
+				fill="none"
+				stroke="var(--color-line)"
+				strokeWidth={trackWidth}
+				strokeDasharray="3 4"
+			/>
+			<g className="origin-center animate-spin [animation-duration:2.4s]">
+				<path
+					d={`M ${c} ${c - radius} A ${radius} ${radius} 0 0 1 ${c + radius} ${c}`}
+					fill="none"
+					stroke="var(--color-default)"
+					strokeWidth={arcWidth}
+					strokeLinecap="round"
+				/>
+			</g>
+			{children}
+		</svg>
+	);
+};
 
 function compactNumber(n: number): string {
 	if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;

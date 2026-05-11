@@ -25,8 +25,7 @@ import { SearchBar } from "./SearchBar";
 import { SearchResults } from "./SearchResults";
 import { type SortMode, SortPicker } from "./SortPicker";
 import { Sunburst } from "./Sunburst";
-
-type SelectableItem = { path: string; name: string; size: number };
+import type { SelectableItem } from "./types";
 
 type InspectProps = {
 	scan: Ob.ScanInfo;
@@ -126,24 +125,22 @@ export const Inspect: React.FC<InspectProps> = ({ scan }) => {
 		[tree?.list.files],
 	);
 
-	if (!tree) {
-		return (
-			<Toolbar
-				chips={
-					<>
-						<IssuesChip
-							count={scanErrors.length}
-							onClick={() => setIssuesOpen(true)}
-						/>
-						<PerfChip
-							available={perfTree !== null}
-							onClick={() => setPerfOpen(true)}
-						/>
-						<CleanupChip />
-					</>
-				}
+	const chips = (
+		<>
+			<IssuesChip
+				count={scanErrors.length}
+				onClick={() => setIssuesOpen(true)}
 			/>
-		);
+			<PerfChip
+				available={perfTree !== null}
+				onClick={() => setPerfOpen(true)}
+			/>
+			<CleanupChip />
+		</>
+	);
+
+	if (!tree) {
+		return <Toolbar chips={chips} />;
 	}
 
 	const navigateForward = (...into: string[]) =>
@@ -175,19 +172,7 @@ export const Inspect: React.FC<InspectProps> = ({ scan }) => {
 						onChange={setMode}
 					/>
 				}
-				chips={
-					<>
-						<IssuesChip
-							count={scanErrors.length}
-							onClick={() => setIssuesOpen(true)}
-						/>
-						<PerfChip
-							available={perfTree !== null}
-							onClick={() => setPerfOpen(true)}
-						/>
-						<CleanupChip />
-					</>
-				}
+				chips={chips}
 			/>
 			<SearchBar
 				query={query}

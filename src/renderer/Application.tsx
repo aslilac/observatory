@@ -70,21 +70,6 @@ export const Application: React.FC = () => {
 		[],
 	);
 
-	let body: React.ReactNode;
-	if (view === "cleanup") {
-		body = <Cleanup />;
-	} else if (inspecting && inspectingScan?.status === "complete") {
-		body = <Inspect scan={inspectingScan} />;
-	} else if (inspecting && inspectingScan) {
-		body = (
-			<Scanning scan={inspectingScan} root={displayName(inspecting, drives)} />
-		);
-	} else {
-		body = (
-			<Welcome drives={drives} scans={scans} recent={recent} onOpen={onOpen} />
-		);
-	}
-
 	const titleSuffix =
 		view === "cleanup"
 			? "cleanup review"
@@ -101,7 +86,15 @@ export const Application: React.FC = () => {
 			<div className="flex min-h-0 flex-col overflow-hidden">
 				<ErrorBoundary key={`${view}-${inspecting ?? "menu"}`}>
 					<Profiler id="screen" onRender={handleProfilerRender}>
-						{body}
+						<Body
+							view={view}
+							inspecting={inspecting}
+							inspectingScan={inspectingScan}
+							drives={drives}
+							scans={scans}
+							recent={recent}
+							onOpen={onOpen}
+						/>
 					</Profiler>
 				</ErrorBoundary>
 			</div>
@@ -115,6 +108,39 @@ export const Application: React.FC = () => {
 			)}
 			<DragReceiver onDrop={onOpen} />
 		</div>
+	);
+};
+
+type BodyProps = {
+	view: ReturnType<typeof useNavigation>["view"];
+	inspecting: string | null;
+	inspectingScan: Ob.ScanInfo | null;
+	drives: Ob.PhysicalDrive[];
+	scans: Ob.ScanInfo[];
+	recent: ReturnType<typeof useRecentScans>["recent"];
+	onOpen: (path: string) => void;
+};
+
+const Body: React.FC<BodyProps> = ({
+	view,
+	inspecting,
+	inspectingScan,
+	drives,
+	scans,
+	recent,
+	onOpen,
+}) => {
+	if (view === "cleanup") return <Cleanup />;
+	if (inspecting && inspectingScan?.status === "complete") {
+		return <Inspect scan={inspectingScan} />;
+	}
+	if (inspecting && inspectingScan) {
+		return (
+			<Scanning scan={inspectingScan} root={displayName(inspecting, drives)} />
+		);
+	}
+	return (
+		<Welcome drives={drives} scans={scans} recent={recent} onOpen={onOpen} />
 	);
 };
 

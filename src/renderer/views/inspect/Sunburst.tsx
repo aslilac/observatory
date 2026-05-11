@@ -382,23 +382,23 @@ function arcPath(
 	const a = (BASE_ANGLE_TURNS + position) * Math.PI * 2;
 	const b = (BASE_ANGLE_TURNS + position + size) * Math.PI * 2;
 	const largeArc = b - a > Math.PI ? 1 : 0;
-
-	// Outer ring endpoints
-	const ox1 = (or * Math.cos(a)).toFixed(2);
-	const oy1 = (or * Math.sin(a)).toFixed(2);
-	const ox2 = (or * Math.cos(b)).toFixed(2);
-	const oy2 = (or * Math.sin(b)).toFixed(2);
-	// Inner ring endpoints
-	const ix1 = (ir * Math.cos(a)).toFixed(2);
-	const iy1 = (ir * Math.sin(a)).toFixed(2);
-	const ix2 = (ir * Math.cos(b)).toFixed(2);
-	const iy2 = (ir * Math.sin(b)).toFixed(2);
+	const outer = arcEndpoints(or, a, b);
+	const inner = arcEndpoints(ir, a, b);
 
 	return [
-		`M ${ox1} ${oy1}`,
-		`A ${or} ${or} 0 ${largeArc} 1 ${ox2} ${oy2}`,
-		`L ${ix2} ${iy2}`,
-		`A ${ir} ${ir} 0 ${largeArc} 0 ${ix1} ${iy1}`,
+		`M ${outer.x1} ${outer.y1}`,
+		`A ${or} ${or} 0 ${largeArc} 1 ${outer.x2} ${outer.y2}`,
+		`L ${inner.x2} ${inner.y2}`,
+		`A ${ir} ${ir} 0 ${largeArc} 0 ${inner.x1} ${inner.y1}`,
 		"Z",
 	].join(" ");
+}
+
+function arcEndpoints(r: number, a: number, b: number) {
+	return {
+		x1: (r * Math.cos(a)).toFixed(2),
+		y1: (r * Math.sin(a)).toFixed(2),
+		x2: (r * Math.cos(b)).toFixed(2),
+		y2: (r * Math.sin(b)).toFixed(2),
+	};
 }

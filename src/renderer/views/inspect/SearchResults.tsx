@@ -2,8 +2,7 @@ import { rowActions } from "#/contextActions";
 import { readableSize } from "#/util";
 import { Checkbox } from "#/components/Checkbox";
 import { RowMenu } from "#/components/ContextMenu";
-
-type SelectableItem = { path: string; name: string; size: number };
+import type { SelectableItem } from "./types";
 
 type SearchResultsProps = {
 	results: Ob.SearchResults | null;

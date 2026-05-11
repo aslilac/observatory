@@ -8,21 +8,17 @@ import { joinPath } from "#/state";
 import { readableSize } from "#/util";
 import { Checkbox } from "#/components/Checkbox";
 import { type ContextMenuItem, RowMenu } from "#/components/ContextMenu";
-
-type SelectableItem = { path: string; name: string; size: number };
+import {
+	type FileListBaseProps,
+	type SelectableItem,
+	selectableFromFile,
+} from "./types";
 
 type CacheValue = Ob.VfsNode[] | "loading" | "error";
 
-type FolderTreeProps = {
-	inspecting: string;
-	cursor: string[];
+type FolderTreeProps = FileListBaseProps & {
 	rootName: string;
-	files: Ob.VfsNode[];
-	hueByName: Map<string, number>;
-	selection: Map<string, SelectableItem>;
 	onForward: (...names: string[]) => void;
-	onToggleSelect: (item: SelectableItem) => void;
-	onAddToCleanup: (item: SelectableItem) => void;
 };
 
 export const FolderTree: React.FC<FolderTreeProps> = ({
@@ -152,12 +148,10 @@ const TreeChildren: React.FC<ChildrenProps> = ({
 	<>
 		{files.map((file) => {
 			const key = [...path, file.name].join("/");
-			const fullPath = joinPath(inspecting, ...cursor, ...path, file.name);
-			const item: SelectableItem = {
-				path: fullPath,
-				name: file.name,
-				size: file.size,
-			};
+			const { fullPath, item } = selectableFromFile(
+				file,
+				joinPath(inspecting, ...cursor, ...path, file.name),
+			);
 			const isOpen = expanded.has(key);
 			const isDir = file.type === "directory";
 			const cached = cache.get(key);

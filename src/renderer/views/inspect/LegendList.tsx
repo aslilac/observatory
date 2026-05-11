@@ -9,23 +9,15 @@ import { readableDate, readableSize } from "#/util";
 import { Checkbox } from "#/components/Checkbox";
 import { RowMenu } from "#/components/ContextMenu";
 import type { SortMode } from "./SortPicker";
-
-type SelectableItem = { path: string; name: string; size: number };
+import { type FileListBaseProps, selectableFromFile } from "./types";
 
 const TOP_N = 10;
 
-type LegendListProps = {
-	inspecting: string;
-	cursor: string[];
+type LegendListProps = FileListBaseProps & {
 	name: string;
 	size: number;
 	capacity: number;
-	files: Ob.VfsNode[];
-	hueByName: Map<string, number>;
-	selection: Map<string, SelectableItem>;
 	onForward: (name: string) => void;
-	onToggleSelect: (item: SelectableItem) => void;
-	onAddToCleanup: (item: SelectableItem) => void;
 	sortMode: SortMode;
 	showAll: boolean;
 	onShowAll: () => void;
@@ -68,14 +60,11 @@ export const LegendList: React.FC<LegendListProps> = ({
 			</div>
 
 			{visible.map((file) => {
-				const fullPath = joinPath(inspecting, ...cursor, file.name);
-				const item: SelectableItem = {
-					path: fullPath,
-					name: file.name,
-					size: file.size,
-				};
+				const { fullPath, item, isDir } = selectableFromFile(
+					file,
+					joinPath(inspecting, ...cursor, file.name),
+				);
 				const isSelected = selection.has(fullPath);
-				const isDir = file.type === "directory";
 				const hue = hueByName.get(file.name) ?? 0;
 
 				return (

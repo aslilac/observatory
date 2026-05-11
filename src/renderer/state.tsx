@@ -57,23 +57,44 @@ export function useScanPerfTree(
 	status: Ob.ScanStatus | null,
 	revision: number | undefined,
 ): Ob.PerfNode | null {
-	const [tree, setTree] = useState<Ob.PerfNode | null>(null);
+	return useScanArtifact<Ob.PerfNode | null>(
+		path,
+		status,
+		null,
+		(p) => Ob.getScanPerfTree(p),
+		[revision],
+	);
+}
+
+// Shared "fetch this once the scan is complete" pattern: returns `empty`
+// while the scan is still building / no path is selected, then resolves to
+// whatever the fetcher returns. The active flag drops late responses if the
+// scan changes underneath us.
+function useScanArtifact<T>(
+	path: string | null,
+	status: Ob.ScanStatus | null,
+	empty: T,
+	fetcher: (path: string) => Promise<T>,
+	extraDeps: React.DependencyList = [],
+): T {
+	const [value, setValue] = useState<T>(empty);
 
 	useEffect(() => {
 		if (!path || status !== "complete") {
-			setTree(null);
+			setValue(empty);
 			return;
 		}
 		let active = true;
-		void Ob.getScanPerfTree(path).then((next) => {
-			if (active) setTree(next);
+		void fetcher(path).then((next) => {
+			if (active) setValue(next);
 		});
 		return () => {
 			active = false;
 		};
-	}, [path, status, revision]);
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- caller passes extraDeps explicitly
+	}, [path, status, ...extraDeps]);
 
-	return tree;
+	return value;
 }
 
 export function useRenderTree(
@@ -168,24 +189,14 @@ export function useScanErrors(
 	path: string | null,
 	status: Ob.ScanStatus | null,
 ): Ob.ScanError[] {
-	const [errors, setErrors] = useState<Ob.ScanError[]>([]);
-
-	useEffect(() => {
-		if (!path || status !== "complete") {
-			setErrors([]);
-			return;
-		}
-		let active = true;
-		void Ob.getScanErrors(path).then((next) => {
-			if (active) setErrors(next);
-		});
-		return () => {
-			active = false;
-		};
-	}, [path, status]);
-
-	return errors;
+	return useScanArtifact<Ob.ScanError[]>(path, status, EMPTY_ERRORS, (p) =>
+		Ob.getScanErrors(p),
+	);
 }
+
+// Stable reference so useScanArtifact's empty-state set doesn't cause
+// downstream consumers to see a "new" array each render.
+const EMPTY_ERRORS: Ob.ScanError[] = [];
 
 export function useSearch(
 	path: string | null,
@@ -228,18 +239,27 @@ const RECENT_SCANS_KEY = "observatory:recent-scans";
 const RECENT_SCANS_MAX = 10;
 
 function readRecentScans(): RecentScan[] {
+	return readJsonArray<RecentScan>(
+		RECENT_SCANS_KEY,
+		(item): item is RecentScan =>
+			typeof item === "object" &&
+			item !== null &&
+			typeof (item as { path?: unknown }).path === "string" &&
+			typeof (item as { scannedAt?: unknown }).scannedAt === "number",
+	);
+}
+
+// Read & validate an array stored in localStorage. Anything that isn't valid
+// JSON, isn't an array, or fails the per-item guard becomes an empty list —
+// localStorage is best-effort and we never want a malformed entry to crash
+// the app on boot.
+function readJsonArray<T>(key: string, isItem: (v: unknown) => v is T): T[] {
 	try {
-		const raw = localStorage.getItem(RECENT_SCANS_KEY);
+		const raw = localStorage.getItem(key);
 		if (!raw) return [];
 		const parsed: unknown = JSON.parse(raw);
 		if (!Array.isArray(parsed)) return [];
-		return parsed.filter(
-			(item): item is RecentScan =>
-				typeof item === "object" &&
-				item !== null &&
-				typeof (item as { path?: unknown }).path === "string" &&
-				typeof (item as { scannedAt?: unknown }).scannedAt === "number",
-		);
+		return parsed.filter(isItem);
 	} catch {
 		return [];
 	}
@@ -286,23 +306,16 @@ export type CleanupItem = {
 const CLEANUP_KEY = "observatory:cleanup-queue";
 
 function readCleanup(): CleanupItem[] {
-	try {
-		const raw = localStorage.getItem(CLEANUP_KEY);
-		if (!raw) return [];
-		const parsed: unknown = JSON.parse(raw);
-		if (!Array.isArray(parsed)) return [];
-		return parsed.filter(
-			(item): item is CleanupItem =>
-				typeof item === "object" &&
-				item !== null &&
-				typeof (item as CleanupItem).path === "string" &&
-				typeof (item as CleanupItem).name === "string" &&
-				typeof (item as CleanupItem).size === "number" &&
-				typeof (item as CleanupItem).addedAt === "number",
-		);
-	} catch {
-		return [];
-	}
+	return readJsonArray<CleanupItem>(
+		CLEANUP_KEY,
+		(item): item is CleanupItem =>
+			typeof item === "object" &&
+			item !== null &&
+			typeof (item as CleanupItem).path === "string" &&
+			typeof (item as CleanupItem).name === "string" &&
+			typeof (item as CleanupItem).size === "number" &&
+			typeof (item as CleanupItem).addedAt === "number",
+	);
 }
 
 function writeCleanup(items: CleanupItem[]) {
