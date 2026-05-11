@@ -4,26 +4,24 @@ export const PERF = process.env["OB_PERF"] === "1";
 
 function approxBytes(value: unknown): number {
 	try {
-		return JSON.stringify(value)?.length;
+		return JSON.stringify(value).length;
 	} catch {
 		return 0;
 	}
 }
 
+const invoke = PERF ? timedInvoke : ipcRenderer.invoke;
+
 async function timedInvoke(
 	channel: string,
 	...args: unknown[]
 ): Promise<unknown> {
-	if (!PERF) {
-		return ipcRenderer.invoke(channel, ...args);
-	}
-
 	const start = performance.now();
 	const result = await ipcRenderer.invoke(channel, ...args);
 	const elapsed = performance.now() - start;
 	const bytes = approxBytes(result);
 	console.log(
-		`[perf:ipc] ${channel} ${elapsed.toFixed(1)}ms / ${bytes.toLocaleString()}B`,
+		`[perf:ipc:${channel}]  time=${elapsed.toFixed(1)}ms  size=${(bytes / 1000).toFixed(0)}kb`,
 	);
 	return result;
 }
@@ -40,41 +38,41 @@ contextBridge.exposeInMainWorld("Ob", {
 	PERF,
 	platform: process.platform,
 
-	selectDirectory: () => timedInvoke("ob:selectDirectory"),
-	scanPath: (path: string) => timedInvoke("ob:scanPath", path),
-	cancelScan: (path: string) => timedInvoke("ob:cancelScan", path),
-	getDrives: () => timedInvoke("ob:getDrives"),
-	getScans: () => timedInvoke("ob:getScans"),
+	selectDirectory: () => invoke("Ob.selectDirectory"),
+	scanPath: (path: string) => invoke("Ob.scanPath", path),
+	cancelScan: (path: string) => invoke("Ob.cancelScan", path),
+	getDrives: () => invoke("Ob.getDrives"),
+	getScans: () => invoke("Ob.getScans"),
 	getRenderTree: (path: string, cursor: string[]) =>
-		timedInvoke("ob:getRenderTree", path, cursor),
-	getScanProgress: (path: string) => timedInvoke("ob:getScanProgress", path),
-	getScanPerfTree: (path: string) => timedInvoke("ob:getScanPerfTree", path),
-	deleteFiles: (paths: string[]) => timedInvoke("ob:deleteFiles", paths),
+		invoke("Ob.getRenderTree", path, cursor),
+	getScanProgress: (path: string) => invoke("Ob.getScanProgress", path),
+	getScanPerfTree: (path: string) => invoke("Ob.getScanPerfTree", path),
+	deleteFiles: (paths: string[]) => invoke("Ob.deleteFiles", paths),
 	searchScan: (path: string, query: string) =>
-		timedInvoke("ob:searchScan", path, query),
-	getScanErrors: (path: string) => timedInvoke("ob:getScanErrors", path),
-	statPath: (path: string) => timedInvoke("ob:statPath", path),
+		invoke("Ob.searchScan", path, query),
+	getScanErrors: (path: string) => invoke("Ob.getScanErrors", path),
+	statPath: (path: string) => invoke("Ob.statPath", path),
 	pathForFile: (file: File) => webUtils.getPathForFile(file),
 	publishRecentScans: (
 		recents: ReadonlyArray<{ path: string; scannedAt: number }>,
-	) => timedInvoke("ob:publishRecentScans", recents),
-	revealInFinder: (path: string) => timedInvoke("ob:revealInFinder", path),
-	openPath: (path: string) => timedInvoke("ob:openPath", path),
+	) => invoke("Ob.publishRecentScans", recents),
+	revealInFinder: (path: string) => invoke("Ob.revealInFinder", path),
+	openPath: (path: string) => invoke("Ob.openPath", path),
 
 	onDrives: (cb: (drives: Ob.PhysicalDrive[]) => void) => {
-		const unsub = subscribe<Ob.PhysicalDrive[]>("ob:drives", cb);
-		void timedInvoke("ob:getDrives").then((drives) =>
+		const unsub = subscribe<Ob.PhysicalDrive[]>("Ob.drives", cb);
+		void invoke("Ob.getDrives").then((drives) =>
 			cb(drives as Ob.PhysicalDrive[]),
 		);
 		return unsub;
 	},
 	onScans: (cb: (scans: Ob.ScanInfo[]) => void) => {
-		const unsub = subscribe<Ob.ScanInfo[]>("ob:scans", cb);
-		void timedInvoke("ob:getScans").then((scans) => cb(scans as Ob.ScanInfo[]));
+		const unsub = subscribe<Ob.ScanInfo[]>("Ob.scans", cb);
+		void invoke("Ob.getScans").then((scans) => cb(scans as Ob.ScanInfo[]));
 		return unsub;
 	},
 	onSetInspecting: (cb: (path: string | null) => void) =>
-		subscribe<string | null>("ob:setInspecting", cb),
+		subscribe<string | null>("Ob.setInspecting", cb),
 	onNav: (cb: (direction: "back" | "forward") => void) =>
-		subscribe<"back" | "forward">("ob:nav", cb),
+		subscribe<"back" | "forward">("Ob.nav", cb),
 });

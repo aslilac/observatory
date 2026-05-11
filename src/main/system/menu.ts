@@ -1,5 +1,4 @@
 import { app, Menu, type MenuItemConstructorOptions, shell } from "electron";
-
 import { setInspecting } from "../broadcast";
 import { selectDirectory } from "../dialog";
 import { startScan } from "../vfsManager";

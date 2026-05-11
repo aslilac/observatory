@@ -2,14 +2,10 @@
 import "./platform/squirrel";
 
 import { app } from "electron";
-
 import "./system/menu";
-import "./bridge";
+import "./ipc";
 import "./vfsManager";
 import { createWindow } from "./viewManager";
-
-// For testing telescope development
-// import "./telescope";
 
 // Launch on startup, quit when all windows are closed
 app.on("ready", createWindow);

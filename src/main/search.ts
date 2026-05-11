@@ -45,7 +45,9 @@ export function searchVfs(
 		}
 	};
 
-	for (const child of root.files) walk(child, basePath);
+	for (const child of root.files) {
+		walk(child, basePath);
+	}
 
 	matches.sort((a, b) => b.size - a.size);
 	const truncated = matches.length > MATCH_CAP;

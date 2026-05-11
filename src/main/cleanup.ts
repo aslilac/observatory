@@ -1,5 +1,4 @@
 import { shell } from "electron";
-
 import { removePath } from "./vfsManager";
 
 export type DeleteResult = {
@@ -29,7 +28,9 @@ export async function deleteFiles(paths: string[]): Promise<DeleteResult> {
 		}),
 	);
 
-	for (const path of deleted) removePath(path);
+	for (const path of deleted) {
+		removePath(path);
+	}
 
 	return { deleted, failed };
 }
