@@ -37,6 +37,10 @@ export type NativeScanProgress = {
 	currentPath: string | null;
 	aborted: boolean;
 	errorCount: number;
+	// Snapshot of the live flame-graph tree when the scan was started
+	// with `perf: true`; null otherwise. In-progress directories have
+	// `inProgress: true` and `totalMs` computed from wall time since entry.
+	perfTree: Ob.PerfNode | null;
 };
 
 export type NativeScanResult = {

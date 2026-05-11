@@ -121,9 +121,7 @@ export function getScanProgress(path: string): Ob.ScanProgress | null {
 			status: entry.status,
 			counts: p.counts,
 			currentPath: p.currentPath,
-			// Live perf streaming isn't wired through yet — the native
-			// binding only emits the perf tree in the final result.
-			...(entry.perf ? { perfTree: entry.perf } : {}),
+			...(p.perfTree ? { perfTree: p.perfTree } : {}),
 		};
 	}
 	return {

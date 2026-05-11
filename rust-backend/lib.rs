@@ -23,7 +23,7 @@ use rayon::prelude::*;
 use serde::Serialize;
 use std::fs;
 use std::path::Path;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::{Instant, SystemTime};
 
@@ -128,6 +128,96 @@ pub struct PerfNode {
 	pub children: Vec<PerfNode>,
 }
 
+// The live, mutable perf tree built during a scan. Wrapped in Arc<Mutex>
+// per-node so the JS side polling `Scan::progress()` can take a snapshot
+// at any time without coordinating with the threadpool worker. Each scan
+// builds nodes top-down (created on `scan_dir` entry, registered with the
+// parent) and settles them bottom-up (totals written on exit). `snapshot`
+// walks this graph to produce the serializable `PerfNode` form — for
+// in-progress nodes, `total_ms` is computed from wall time since `start`.
+pub struct PerfNodeShared {
+	data: Mutex<PerfNodeData>,
+}
+
+struct PerfNodeData {
+	name: String,
+	path: String,
+	depth: u64,
+	start: Instant,
+	total_ms: f64,
+	readdir_ms: f64,
+	entry_count: u64,
+	in_progress: bool,
+	children: Vec<Arc<PerfNodeShared>>,
+}
+
+impl PerfNodeShared {
+	fn new(name: String, path: String, depth: u64) -> Arc<Self> {
+		Arc::new(Self {
+			data: Mutex::new(PerfNodeData {
+				name,
+				path,
+				depth,
+				start: Instant::now(),
+				total_ms: 0.0,
+				readdir_ms: 0.0,
+				entry_count: 0,
+				in_progress: true,
+				children: Vec::new(),
+			}),
+		})
+	}
+
+	fn settle(&self, readdir_ms: f64, entry_count: u64) {
+		if let Ok(mut d) = self.data.lock() {
+			d.total_ms = d.start.elapsed().as_secs_f64() * 1000.0;
+			d.readdir_ms = readdir_ms;
+			d.entry_count = entry_count;
+			d.in_progress = false;
+		}
+	}
+
+	fn attach_child(&self, child: &Arc<PerfNodeShared>) {
+		if let Ok(mut d) = self.data.lock() {
+			d.children.push(Arc::clone(child));
+		}
+	}
+}
+
+pub fn snapshot_perf(root: &PerfNodeShared) -> PerfNode {
+	snapshot_perf_at(root, Instant::now())
+}
+
+fn snapshot_perf_at(node: &PerfNodeShared, now: Instant) -> PerfNode {
+	let data = node.data.lock().expect("perf node mutex poisoned");
+	let total_ms = if data.in_progress {
+		(now - data.start).as_secs_f64() * 1000.0
+	} else {
+		data.total_ms
+	};
+	let children: Vec<PerfNode> = data
+		.children
+		.iter()
+		.map(|c| snapshot_perf_at(c, now))
+		.collect();
+	let max_child = children
+		.iter()
+		.map(|c| c.total_ms)
+		.fold(0f64, f64::max);
+	PerfNode {
+		name: data.name.clone(),
+		path: data.path.clone(),
+		total_ms,
+		elapsed_ms: total_ms,
+		self_ms: (total_ms - max_child).max(0.0),
+		readdir_ms: data.readdir_ms,
+		entry_count: data.entry_count,
+		depth: data.depth,
+		in_progress: data.in_progress,
+		children,
+	}
+}
+
 #[derive(Serialize, Debug)]
 pub struct ScanResult {
 	pub root: VfsNode,
@@ -154,6 +244,9 @@ pub struct ScanState {
 	pub aborted: AtomicBool,
 	pub root_dev: Option<u64>,
 	pub perf: bool,
+	// Root of the live perf tree, set on the first scan_dir call when perf
+	// is enabled. None while the scan hasn't started or perf is off.
+	pub live_perf: Mutex<Option<Arc<PerfNodeShared>>>,
 }
 
 impl ScanState {
@@ -165,6 +258,7 @@ impl ScanState {
 			aborted: AtomicBool::new(false),
 			root_dev,
 			perf,
+			live_perf: Mutex::new(None),
 		}
 	}
 }
@@ -184,7 +278,12 @@ pub fn scan(path: &Path, config: ScanConfig) -> std::io::Result<ScanResult> {
 // napi `Scan` class. Takes a borrowed ScanState so the class can pre-build
 // one, share it via Arc, and pull progress from the JS thread.
 pub fn run_scan(path: &Path, state: &ScanState) -> std::io::Result<ScanResult> {
-	let DirResult { node, perf } = scan_dir(path, 0, state);
+	let node = scan_dir(path, 0, state, None);
+	let perf = state
+		.live_perf
+		.lock()
+		.ok()
+		.and_then(|g| g.as_ref().map(|n| snapshot_perf(n)));
 
 	Ok(ScanResult {
 		root: node,
@@ -214,19 +313,12 @@ fn entry_dev_id(_meta: &fs::Metadata) -> Option<u64> {
 	None
 }
 
-struct DirResult {
-	node: VfsNode,
-	perf: Option<PerfNode>,
-}
-
-struct EntryResult {
-	node: VfsNode,
-	perf: Option<PerfNode>,
-}
-
-fn scan_dir(path: &Path, depth: u64, state: &ScanState) -> DirResult {
-	let start = if state.perf { Some(Instant::now()) } else { None };
-
+fn scan_dir(
+	path: &Path,
+	depth: u64,
+	state: &ScanState,
+	parent_perf: Option<&Arc<PerfNodeShared>>,
+) -> VfsNode {
 	let display_name = path
 		.file_name()
 		.map(|n| n.to_string_lossy().into_owned())
@@ -241,15 +333,32 @@ fn scan_dir(path: &Path, depth: u64, state: &ScanState) -> DirResult {
 		*cp = Some(display_path.clone());
 	}
 
+	// Register an in-progress perf node so live snapshots of state.live_perf
+	// see this directory immediately. Settled below before we return.
+	let my_perf = if state.perf {
+		let node = PerfNodeShared::new(display_name.clone(), display_path.clone(), depth);
+		match parent_perf {
+			Some(parent) => parent.attach_child(&node),
+			None => {
+				if let Ok(mut root) = state.live_perf.lock() {
+					*root = Some(Arc::clone(&node));
+				}
+			}
+		}
+		Some(node)
+	} else {
+		None
+	};
+
 	if state.aborted.load(Ordering::Relaxed) {
-		return DirResult {
-			node: VfsNode::Directory {
-				name: display_name,
-				size: 0,
-				mtime: 0,
-				files: vec![],
-			},
-			perf: None,
+		if let Some(ref n) = my_perf {
+			n.settle(0.0, 0);
+		}
+		return VfsNode::Directory {
+			name: display_name,
+			size: 0,
+			mtime: 0,
+			files: vec![],
 		};
 	}
 
@@ -258,110 +367,54 @@ fn scan_dir(path: &Path, depth: u64, state: &ScanState) -> DirResult {
 		Ok(rd) => rd.filter_map(Result::ok).collect(),
 		Err(err) => {
 			record_error(state, path, &err);
-			return DirResult {
-				node: VfsNode::Directory {
-					name: display_name.clone(),
-					size: 0,
-					mtime: 0,
-					files: vec![],
-				},
-				perf: build_perf_node(
-					state, &display_name, &display_path, depth, start, readdir_start, 0,
-					vec![],
-				),
+			if let Some(ref n) = my_perf {
+				let readdir_ms = readdir_start
+					.map(|t| t.elapsed().as_secs_f64() * 1000.0)
+					.unwrap_or(0.0);
+				n.settle(readdir_ms, 0);
+			}
+			return VfsNode::Directory {
+				name: display_name,
+				size: 0,
+				mtime: 0,
+				files: vec![],
 			};
 		}
 	};
 	let entry_count = entries.len() as u64;
-	let readdir_ms = readdir_start.map(|t| t.elapsed().as_secs_f64() * 1000.0);
+	let readdir_ms = readdir_start
+		.map(|t| t.elapsed().as_secs_f64() * 1000.0)
+		.unwrap_or(0.0);
 
-	let results: Vec<EntryResult> = entries
+	let mut children: Vec<VfsNode> = entries
 		.into_par_iter()
-		.filter_map(|entry| classify(entry, depth + 1, state))
+		.filter_map(|entry| classify(entry, depth + 1, state, my_perf.as_ref()))
 		.collect();
-
-	let mut children: Vec<VfsNode> = Vec::with_capacity(results.len());
-	let mut child_perf: Vec<PerfNode> = Vec::new();
-	for r in results {
-		children.push(r.node);
-		if let Some(p) = r.perf {
-			child_perf.push(p);
-		}
-	}
 
 	children.sort_by(|a, b| b.size().cmp(&a.size()));
 	let size = children.iter().map(|n| n.size()).sum();
 	let mtime = children.iter().map(|n| n.mtime()).max().unwrap_or(0);
 
-	let perf = if state.perf {
-		let total_ms = start.unwrap().elapsed().as_secs_f64() * 1000.0;
-		let max_child_total = child_perf
-			.iter()
-			.map(|c| c.total_ms)
-			.fold(0f64, f64::max);
-		Some(PerfNode {
-			name: display_name.clone(),
-			path: display_path,
-			total_ms,
-			elapsed_ms: total_ms,
-			self_ms: (total_ms - max_child_total).max(0.0),
-			readdir_ms: readdir_ms.unwrap_or(0.0),
-			entry_count,
-			depth,
-			in_progress: false,
-			children: child_perf,
-		})
-	} else {
-		None
-	};
-
-	DirResult {
-		node: VfsNode::Directory {
-			name: display_name,
-			size,
-			mtime,
-			files: children,
-		},
-		perf,
+	if let Some(ref n) = my_perf {
+		n.settle(readdir_ms, entry_count);
 	}
-}
 
-// Stand up a perf node for an early-return (read_dir failed) directory, so
-// the flame graph still shows we tried.
-fn build_perf_node(
-	state: &ScanState,
-	name: &str,
-	path: &str,
-	depth: u64,
-	start: Option<Instant>,
-	readdir_start: Option<Instant>,
-	entry_count: u64,
-	children: Vec<PerfNode>,
-) -> Option<PerfNode> {
-	if !state.perf {
-		return None;
+	VfsNode::Directory {
+		name: display_name,
+		size,
+		mtime,
+		files: children,
 	}
-	let total_ms = start.map(|t| t.elapsed().as_secs_f64() * 1000.0).unwrap_or(0.0);
-	let readdir_ms = readdir_start
-		.map(|t| t.elapsed().as_secs_f64() * 1000.0)
-		.unwrap_or(0.0);
-	Some(PerfNode {
-		name: name.to_string(),
-		path: path.to_string(),
-		total_ms,
-		elapsed_ms: total_ms,
-		self_ms: total_ms,
-		readdir_ms,
-		entry_count,
-		depth,
-		in_progress: false,
-		children,
-	})
 }
 
 // `DirEntry::metadata` does not follow symlinks (lstat semantics) — matches
 // what the JS scanner uses for entry-level decisions.
-fn classify(entry: fs::DirEntry, depth: u64, state: &ScanState) -> Option<EntryResult> {
+fn classify(
+	entry: fs::DirEntry,
+	depth: u64,
+	state: &ScanState,
+	parent_perf: Option<&Arc<PerfNodeShared>>,
+) -> Option<VfsNode> {
 	if state.aborted.load(Ordering::Relaxed) {
 		return None;
 	}
@@ -385,27 +438,21 @@ fn classify(entry: fs::DirEntry, depth: u64, state: &ScanState) -> Option<EntryR
 
 	if ft.is_file() {
 		state.counts.files.fetch_add(1, Ordering::Relaxed);
-		Some(EntryResult {
-			node: VfsNode::File {
-				name: entry_name,
-				size: meta.len(),
-				mtime,
-			},
-			perf: None,
+		Some(VfsNode::File {
+			name: entry_name,
+			size: meta.len(),
+			mtime,
 		})
 	} else if ft.is_dir() {
 		state.counts.directories.fetch_add(1, Ordering::Relaxed);
 		if should_skip_dir(&entry_path, entry_dev_id(&meta), state.root_dev) {
 			return None;
 		}
-		let DirResult { node, perf } = scan_dir(&entry_path, depth, state);
+		let node = scan_dir(&entry_path, depth, state, parent_perf);
 		// scan_dir derives the name from the path's basename; for entries
 		// we already know the parent-yielded name, which is what the
 		// renderer uses. Rewrite to be safe.
-		Some(EntryResult {
-			node: rename(node, entry_name),
-			perf,
-		})
+		Some(rename(node, entry_name))
 	} else if ft.is_symlink() {
 		state.counts.symlinks.fetch_add(1, Ordering::Relaxed);
 		None

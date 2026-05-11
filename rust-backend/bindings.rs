@@ -13,7 +13,7 @@
 
 use crate::{
 	CountsSnapshot, PerfNode, ScanError, ScanErrorKind, ScanResult, ScanState,
-	VfsNode, root_dev_id, run_scan,
+	VfsNode, root_dev_id, run_scan, snapshot_perf,
 };
 use napi::bindgen_prelude::*;
 use napi::{Env, JsObject, Task};
@@ -65,7 +65,10 @@ impl Scan {
 	/// Snapshot of in-progress state. Cheap; safe to poll on a tight
 	/// interval. Counts use atomics (lockless), currentPath/errors take
 	/// short Mutex acquisitions that contend with the scan only at
-	/// directory boundaries.
+	/// directory boundaries. When the scan was started with `perf: true`,
+	/// `perfTree` is the live snapshot of the flame-graph tree —
+	/// in-progress nodes have `inProgress: true` and `totalMs` computed
+	/// from wall time since entry.
 	#[napi]
 	pub fn progress(&self, env: Env) -> Result<JsObject> {
 		let mut obj = env.create_object()?;
@@ -89,6 +92,21 @@ impl Scan {
 			.map(|e| e.clone())
 			.unwrap_or_default();
 		obj.set_named_property("errorCount", env.create_int64(errors.len() as i64)?)?;
+		// Live perf snapshot. Cheap-ish (a brief Mutex per node, then JS
+		// object construction); typical PerfNodeShared trees are <10K
+		// nodes even on deep scans. Callers that don't want the cost
+		// can simply not poll while OB_PERF is off — when state.perf is
+		// false, live_perf stays None and we emit null.
+		let perf_snapshot = self
+			.state
+			.live_perf
+			.lock()
+			.ok()
+			.and_then(|g| g.as_ref().map(|n| snapshot_perf(n)));
+		match perf_snapshot {
+			Some(p) => obj.set_named_property("perfTree", perf_node_to_js(&env, &p)?)?,
+			None => obj.set_named_property("perfTree", env.get_null()?)?,
+		}
 		Ok(obj)
 	}
 
