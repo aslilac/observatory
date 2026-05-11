@@ -9,9 +9,19 @@ import { Toolbar } from "#/components/Toolbar";
 import { CleanupChip } from "./CleanupChip";
 import { CleanupModal } from "./CleanupModal";
 
-export const Cleanup: React.FC = () => {
+type CleanupProps = {
+	onOpen: (path: string) => void;
+};
+
+export const Cleanup: React.FC<CleanupProps> = ({ onOpen }) => {
 	const { items, totalSize, remove, clear } = useCleanupQueue();
 	const [confirmOpen, setConfirmOpen] = useState(false);
+
+	const onBrowse = useCallback(() => {
+		void Ob.selectDirectory().then((picked) => {
+			if (picked) onOpen(picked);
+		});
+	}, [onOpen]);
 
 	const onTrash = useCallback(
 		async (queued: CleanupItem[]) => {
@@ -55,7 +65,7 @@ export const Cleanup: React.FC = () => {
 				chips={<CleanupChip />}
 			/>
 			{empty ? (
-				<EmptyState onBrowseFiles={() => void Ob.selectDirectory()} />
+				<EmptyState onBrowseFiles={onBrowse} />
 			) : (
 				<QueueList items={items} totalSize={totalSize} onRemove={remove} />
 			)}

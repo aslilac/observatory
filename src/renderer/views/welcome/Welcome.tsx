@@ -58,7 +58,13 @@ export const Welcome: React.FC<WelcomeProps> = ({
 								or paste a path
 							</div>
 						</div>
-						<Button onClick={() => void Ob.selectDirectory()}>
+						<Button
+							onClick={() => {
+								void Ob.selectDirectory().then((picked) => {
+									if (picked) onOpen(picked);
+								});
+							}}
+						>
 							Choose folder…
 						</Button>
 					</div>

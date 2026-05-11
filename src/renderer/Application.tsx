@@ -129,7 +129,7 @@ const Body: React.FC<BodyProps> = ({
 	recent,
 	onOpen,
 }) => {
-	if (view === "cleanup") return <Cleanup />;
+	if (view === "cleanup") return <Cleanup onOpen={onOpen} />;
 	if (inspecting && inspectingScan?.status === "complete") {
 		return <Inspect scan={inspectingScan} />;
 	}

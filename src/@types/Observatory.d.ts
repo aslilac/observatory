@@ -4,7 +4,7 @@ declare global {
 		const platform: "darwin" | "linux" | "win32";
 
 		// RPC (renderer -> main)
-		function selectDirectory(): Promise<void>;
+		function selectDirectory(): Promise<string | undefined>;
 		function scanPath(path: string): Promise<void>;
 		function cancelScan(path: string): Promise<void>;
 		function getDrives(): Promise<PhysicalDrive[]>;

@@ -1,20 +1,13 @@
 import { dialog } from "electron";
 
-import { setInspecting } from "./broadcast";
-import { startScan } from "./vfsManager";
-
-export async function selectDirectory() {
+// Show the system folder picker. Returns the chosen path (or undefined if
+// the user canceled) so the caller can decide what to do with it — start
+// a scan, navigate the renderer, etc. We don't kick the scan off here so
+// that menu items and renderer-driven flows stay symmetric.
+export async function selectDirectory(): Promise<string | undefined> {
 	const result = await dialog.showOpenDialog({
 		properties: ["openDirectory"],
 	});
-
-	if (result.canceled) return;
-
-	for (const selectedPath of result.filePaths) startScan(selectedPath);
-
-	// Drop the renderer onto the first picked path so it sees the scan
-	// progress (and eventually the result) without having to navigate by
-	// hand. Multi-pick rolls up to the first one.
-	const first = result.filePaths[0];
-	if (first) setInspecting(first);
+	if (result.canceled) return undefined;
+	return result.filePaths[0];
 }

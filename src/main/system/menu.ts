@@ -68,7 +68,13 @@ function buildTemplate(): MenuItemConstructorOptions[] {
 				{
 					label: "Open Folder…",
 					accelerator: "CmdOrCtrl+O",
-					click: () => void selectDirectory(),
+					click: () => {
+						void selectDirectory().then((picked) => {
+							if (!picked) return;
+							startScan(picked);
+							setInspecting(picked);
+						});
+					},
 				},
 				{ label: "Open Recent", submenu: recentItems() },
 				{ type: "separator" },
