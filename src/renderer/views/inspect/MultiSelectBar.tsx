@@ -14,7 +14,7 @@ export const MultiSelectBar: React.FC<MultiSelectBarProps> = ({
 	onAddToCleanup,
 	onCancel,
 }) => (
-	<div className="flex items-center gap-3 border-t border-line-soft bg-background px-3 py-[8px]">
+	<div className="flex items-center gap-3 border-t border-line-soft bg-background px-3 py-2">
 		<div className="flex-1 text-[12px]">
 			<span className="font-medium">{count}</span>{" "}
 			<span className="text-muted">selected ·</span>{" "}
