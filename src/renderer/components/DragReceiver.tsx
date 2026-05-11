@@ -67,9 +67,13 @@ export const DragReceiver: React.FC<DragReceiverProps> = ({ onDrop }) => {
 	return dragOver ? <DropOverlay /> : null;
 };
 
+// The overlay sits on top of a fixed dark scrim regardless of the app
+// theme, so its border/text/tint are pinned to the off-white from the
+// light palette rather than `text-background` / `border-background` which
+// would flip to dark in the dark theme and disappear against the scrim.
 const DropOverlay: React.FC = () => (
-	<div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center bg-[rgba(26,26,26,0.32)] p-6">
-		<div className="flex min-h-[60%] w-full flex-col items-center justify-center gap-3 rounded-modal border-[2.5px] border-dashed border-background bg-[rgba(250,250,248,0.08)] p-[40px] text-background">
+	<div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center bg-[rgba(26,26,26,0.6)] p-6">
+		<div className="flex min-h-[60%] w-full flex-col items-center justify-center gap-3 rounded-modal border-[2.5px] border-dashed border-[#fafaf8] bg-[rgba(250,250,248,0.08)] p-[40px] text-[#fafaf8]">
 			<FolderIcon size={64} strokeWidth={1.4} />
 			<div className="text-[20px] font-semibold">Drop folder to scan</div>
 			<div className="font-mono text-[12px] opacity-80">
