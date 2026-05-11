@@ -105,13 +105,14 @@ export const Application: React.FC = () => {
 					</Profiler>
 				</ErrorBoundary>
 			</div>
-			<PasteConfirm
-				open={paste.pastePath !== null}
-				path={paste.pastePath}
-				stat={paste.pasteStat}
-				onCancel={paste.cancel}
-				onConfirm={paste.confirm}
-			/>
+			{paste.pastePath && (
+				<PasteConfirm
+					path={paste.pastePath}
+					stat={paste.pasteStat}
+					onCancel={paste.cancel}
+					onConfirm={paste.confirm}
+				/>
+			)}
 			<DragReceiver onDrop={onOpen} />
 		</div>
 	);
@@ -126,7 +127,7 @@ type TitleBarProps = {
 const TitleBar: React.FC<TitleBarProps> = ({ title, theme, onToggleTheme }) => (
 	<div className="relative flex h-[36px] items-center justify-center border-b border-line-soft text-[12px] font-medium text-muted darwin:[-webkit-app-region:drag]">
 		Observatory{title && ` — ${title}`}
-		<div className="absolute top-1/2 right-[10px] -translate-y-1/2">
+		<div className="absolute top-1/2 right-[10px] -translate-y-1/2 darwin:[-webkit-app-region:no-drag]">
 			<ThemeToggle theme={theme} onToggle={onToggleTheme} />
 		</div>
 	</div>

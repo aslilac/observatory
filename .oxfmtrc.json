@@ -1,12 +1,12 @@
 {
-  "$schema": "./node_modules/oxfmt/configuration_schema.json",
-  "proseWrap": "never",
-  "quoteProps": "consistent",
-  "tabWidth": 2,
-  "useTabs": true,
-  "printWidth": 80,
-  "sortPackageJson": false,
-  "sortTailwindcss": {
-    "stylesheet": "./src/renderer/index.css"
-  }
+	"$schema": "./node_modules/oxfmt/configuration_schema.json",
+	"proseWrap": "never",
+	"quoteProps": "consistent",
+	"tabWidth": 2,
+	"useTabs": true,
+	"printWidth": 80,
+	"sortPackageJson": false,
+	"sortTailwindcss": {
+		"stylesheet": "./src/renderer/index.css"
+	}
 }

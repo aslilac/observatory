@@ -1,6 +1,5 @@
 import { MoonIcon, SunIcon } from "lucide-react";
-
-import type { Theme } from "../state";
+import type { Theme } from "#/state";
 
 type ThemeToggleProps = {
 	theme: Theme;
@@ -15,7 +14,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
 		type="button"
 		onClick={onToggle}
 		title={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
-		className="grid size-[22px] cursor-pointer place-items-center rounded-button text-muted hover:bg-fill hover:text-default darwin:[-webkit-app-region:no-drag]"
+		className="grid size-[22px] cursor-pointer place-items-center rounded-button text-muted hover:bg-fill hover:text-default"
 	>
 		{theme === "dark" ? <SunIcon size={13} /> : <MoonIcon size={13} />}
 	</button>
