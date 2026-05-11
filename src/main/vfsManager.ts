@@ -2,7 +2,7 @@ import * as drivelist from "drivelist";
 import { app } from "electron";
 import { EventEmitter } from "node:events";
 import { Scan, type NativeScan } from "./native";
-import { timed, timedAsync } from "./perf";
+import { PERF, timed, timedAsync } from "./perf";
 import { buildRenderTree } from "./renderTree";
 import { searchVfs, type SearchResults } from "./search";
 
@@ -129,7 +129,7 @@ export function startScan(path: string) {
 
 	let scan: NativeScan;
 	try {
-		scan = new Scan(path, { perf: false });
+		scan = new Scan(path, { perf: PERF });
 	} catch (e) {
 		// Constructor throws synchronously if stat-ing the root fails
 		// (e.g. path doesn't exist). Record an entry that immediately
