@@ -127,9 +127,9 @@ const VolumeCard: React.FC<VolumeCardProps> = ({ drive, scan, onOpen }) => {
 		<button
 			type="button"
 			onClick={onOpen}
-			className={`flex items-center gap-3 rounded-card border border-line p-3 text-left transition-shadow hover:shadow-window`}
+			className={`group flex items-center gap-3 rounded-card border border-line p-3 text-left transition-[background-color,box-shadow,transform] hover:-translate-y-[1px] hover:bg-fill hover:shadow-window`}
 		>
-			<div className="grid h-[36px] w-[36px] flex-shrink-0 place-items-center rounded-button border border-line">
+			<div className="grid h-[36px] w-[36px] flex-shrink-0 place-items-center rounded-button border border-line bg-background transition-colors group-hover:bg-fill-strong">
 				<div className="h-[16px] w-[12px] rounded-[1px] border-[1.25px] border-default" />
 			</div>
 			<div className="min-w-0 flex-1">
