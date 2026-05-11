@@ -42,13 +42,14 @@ module.exports = {
 		name: "Observatory",
 	},
 	makers: [
-		{
-			name: "@electron-forge/maker-dmg",
-			platforms: ["darwin"],
-			config: {
-				icon: "./build-resources/icon.icns",
-			},
-		},
+		// macOS ships .zip-with-an-.app-inside via the zip maker below.
+		// `@electron-forge/maker-dmg` (→ appdmg → ds-store → macos-alias →
+		// nan) is broken on Node 22+ — nan uses v8 APIs that have been
+		// removed (AccessorSignature, ObjectTemplate::SetAccessor, etc.)
+		// and macos-alias hasn't been touched in years. Revisit by wiring
+		// `create-dmg` (Homebrew CLI, sidesteps the whole nan toolchain)
+		// into a postMake hook if a real .dmg becomes worth the build-
+		// machine dep.
 		{
 			name: "@electron-forge/maker-squirrel",
 			platforms: ["win32"],
