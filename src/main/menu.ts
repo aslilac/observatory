@@ -1,8 +1,8 @@
 import { app, Menu, type MenuItemConstructorOptions, shell } from "electron";
-import { setInspecting } from "../broadcast";
-import { selectDirectory } from "../dialog";
-import { startScan } from "../vfsManager";
-import showAboutWindow from "./about";
+import { setInspecting } from "./broadcast";
+import { selectDirectory } from "./dialog";
+import { startScan } from "./vfsManager";
+import { showAboutWindow } from "./viewManager";
 
 const isMac = process.platform === "darwin";
 

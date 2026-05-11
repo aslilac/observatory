@@ -11,5 +11,5 @@ export function broadcast(channel: string, payload: unknown) {
 }
 
 export function setInspecting(path: string | null) {
-	broadcast("ob:setInspecting", path);
+	broadcast("Ob.setInspecting", path);
 }

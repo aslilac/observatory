@@ -3,7 +3,7 @@ import * as fs from "node:fs/promises";
 import { broadcast } from "./broadcast";
 import { deleteFiles } from "./cleanup";
 import { selectDirectory } from "./dialog";
-import { setRecentScans } from "./system/menu";
+import { setRecentScans } from "./menu";
 import {
 	cancelScan,
 	getDrives,

@@ -2,7 +2,7 @@
 import "./platform/squirrel";
 
 import { app } from "electron";
-import "./system/menu";
+import "./menu";
 import "./ipc";
 import "./vfsManager";
 import { createWindow } from "./viewManager";

@@ -1,10 +1,8 @@
 import * as drivelist from "drivelist";
 import { app } from "electron";
 import { EventEmitter } from "node:events";
-
 import { timed, timedAsync } from "./perf";
 import { searchVfs, type SearchResults } from "./search";
-import { areMapsSimilar } from "./util";
 import { type PerfNodeInternal, VirtualFileSystem } from "./vfs";
 
 type ScanEntry = {
@@ -248,3 +246,12 @@ app.on("ready", () => {
 	void pollDrives();
 	setInterval(pollDrives, 5000);
 });
+
+function areMapsSimilar<K = unknown, V = unknown>(a: Map<K, V>, b: Map<K, V>) {
+	if (a.size !== b.size) return false;
+
+	const keysA = Array.from(a.keys());
+	const keysB = Array.from(b.keys());
+
+	return keysA.every((key) => keysB.includes(key));
+}

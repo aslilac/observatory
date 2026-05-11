@@ -39,13 +39,15 @@ export class ErrorBoundary extends Component<
 		}
 
 		return (
-			<div className="flex flex-1 flex-col items-center justify-center gap-[14px] px-[28px] text-center">
+			<div className="flex flex-1 flex-col items-center justify-center gap-4 px-7 text-center">
 				<div className="text-[20px] font-semibold">Something broke</div>
 				<div className="max-w-[480px] font-mono text-[12px] text-muted">
 					{error.message || String(error)}
 				</div>
 				{error.stack && (
-					<pre className="max-h-[200px] max-w-[640px] overflow-auto rounded-card border border-line-soft bg-fill px-3 py-2.5 text-left font-mono text-[10px] text-muted select-text">
+					<pre
+						className="max-h-[200px] max-w-[640px] overflow-auto rounded-card border border-line-soft bg-fill px-3 py-2.5 text-left font-mono text-[10px] text-muted select-text"
+					>
 						{error.stack}
 					</pre>
 				)}

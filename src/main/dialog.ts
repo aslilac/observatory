@@ -8,6 +8,8 @@ export async function selectDirectory(): Promise<string | undefined> {
 	const result = await dialog.showOpenDialog({
 		properties: ["openDirectory"],
 	});
-	if (result.canceled) return undefined;
+	if (result.canceled) {
+		return undefined;
+	}
 	return result.filePaths[0];
 }
