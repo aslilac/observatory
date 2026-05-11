@@ -69,7 +69,7 @@ export const Sunburst: React.FC<SunburstProps> = ({
 		<div className="grow">
 			<svg
 				viewBox={`${-VIEW_RADIUS} ${-VIEW_RADIUS} ${VIEW_RADIUS * 2} ${VIEW_RADIUS * 2}`}
-				className="h-full w-full"
+				className="size-full"
 				preserveAspectRatio="xMidYMid meet"
 			>
 				<ShardTree
