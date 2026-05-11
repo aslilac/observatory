@@ -33,7 +33,7 @@ Main owns the truth; renderer is a view that asks for it. Communication is plain
 
 ### Process layout
 
-- **Main** (`src/main/`) — Node-side. Owns drive list and active scans (`vfsManager.ts`). The actual filesystem traversal happens in Rust via the napi-rs binding (`native.ts` loads `rust-backend/observatory_scan.node`); `vfs.ts` is the legacy JS scanner kept around as a reference and for its algorithm tests. Window management lives here too. Entry: `src/main/index.ts`.
+- **Main** (`src/main/`) — Node-side. Owns drive list and active scans (`vfsManager.ts`). The actual filesystem traversal happens in Rust via the napi-rs binding (`native.ts` loads `rust-backend/observatory_scan.node`); render-tree pruning is the only JS-side scanner artifact left and lives as a pure function in `renderTree.ts`. Window management lives here too. Entry: `src/main/index.ts`.
 - **Preload** (`src/preload/index.ts`) — exposes the typed `Ob.*` surface to the renderer via `contextBridge`. Each method is a thin wrapper over `ipcRenderer.invoke` (RPC) or `ipcRenderer.on` (push events).
 - **Renderer** (`src/renderer/`) — React 18 UI. Entry: `main.tsx` mounting `<Application/>`. UI state is local React state; cross-process data comes from custom hooks in `src/renderer/state.ts`.
 
@@ -86,6 +86,5 @@ Commands (all from `rust-backend/`):
 - `cargo build --release` builds the CLI
 - `cargo test` runs the library unit tests against a tmp directory — no hardcoded paths
 - `cargo build --release --lib --features napi` builds the cdylib (use `yarn build.native` from the repo root for the cross-platform copy/rename to `observatory_scan.node`)
-- `node rust-backend/bench-js.mjs <path>` is a standalone Node re-implementation of the JS scanner's algorithm (without the drivelist/perf deps), kept around for apples-to-apples timing comparisons
 
-The napi-rs cdylib loads in Electron without a separate rebuild dance — N-API is ABI-stable across Node versions, so the same .node file works in plain Node and Electron's runtime. Packaging the .node into the distributed `.app` / `.exe` (via electron-forge) is still TODO; for now the wiring assumes `app.getAppPath()` resolves to the project root (true in dev and `electron-vite preview`).
+The napi-rs cdylib loads in Electron without a separate rebuild dance — N-API is ABI-stable across Node versions, so the same .node file works in plain Node and Electron's runtime. Forge ships it via `asar.unpack: "**/*.node"` so `path.resolve(app.getAppPath(), "rust-backend/observatory_scan.node")` resolves correctly in both dev and packaged builds.
