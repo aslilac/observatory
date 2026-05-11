@@ -98,14 +98,13 @@ export const Application: React.FC = () => {
 					</Profiler>
 				</ErrorBoundary>
 			</div>
-			{paste.pastePath && (
-				<PasteConfirm
-					path={paste.pastePath}
-					stat={paste.pasteStat}
-					onCancel={paste.cancel}
-					onConfirm={paste.confirm}
-				/>
-			)}
+			<PasteConfirm
+				open={paste.pastePath !== null}
+				path={paste.pastePath}
+				stat={paste.pasteStat}
+				onCancel={paste.cancel}
+				onConfirm={paste.confirm}
+			/>
 			<DragReceiver onDrop={onOpen} />
 		</div>
 	);
