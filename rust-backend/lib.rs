@@ -21,10 +21,11 @@
 
 use rayon::prelude::*;
 use serde::Serialize;
+use std::cmp;
 use std::fs;
 use std::path::Path;
-use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::{Instant, SystemTime};
 
 #[cfg(unix)]
@@ -200,10 +201,7 @@ fn snapshot_perf_at(node: &PerfNodeShared, now: Instant) -> PerfNode {
 		.iter()
 		.map(|c| snapshot_perf_at(c, now))
 		.collect();
-	let max_child = children
-		.iter()
-		.map(|c| c.total_ms)
-		.fold(0f64, f64::max);
+	let max_child = children.iter().map(|c| c.total_ms).fold(0f64, f64::max);
 	PerfNode {
 		name: data.name.clone(),
 		path: data.path.clone(),
@@ -364,7 +362,11 @@ fn scan_dir(
 		};
 	}
 
-	let readdir_start = if state.perf { Some(Instant::now()) } else { None };
+	let readdir_start = if state.perf {
+		Some(Instant::now())
+	} else {
+		None
+	};
 	let entries: Vec<_> = match fs::read_dir(path) {
 		Ok(rd) => rd.filter_map(Result::ok).collect(),
 		Err(err) => {
@@ -393,7 +395,7 @@ fn scan_dir(
 		.filter_map(|entry| classify(entry, depth + 1, state, my_perf.as_ref()))
 		.collect();
 
-	children.sort_by(|a, b| b.size().cmp(&a.size()));
+	children.sort_by_key(|b| cmp::Reverse(b.size()));
 	let size = children.iter().map(|n| n.size()).sum();
 	let mtime = children.iter().map(|n| n.mtime()).max().unwrap_or(0);
 
@@ -475,10 +477,7 @@ fn classify(
 fn rename(node: VfsNode, new_name: String) -> VfsNode {
 	match node {
 		VfsNode::Directory {
-			size,
-			mtime,
-			files,
-			..
+			size, mtime, files, ..
 		} => VfsNode::Directory {
 			name: new_name,
 			size,
@@ -501,7 +500,7 @@ fn should_skip_dir(path: &Path, _dev: Option<u64>, _root_dev: Option<u64>) -> bo
 		// duplicates content reachable via the firmlinked root.
 		if matches!(
 			s.as_ref(),
-			"/Volumes" | "/System/Volumes" | "/private/var/db/dyld"
+			"/Volumes" | "/System/Volumes" | "/private/var/db/dyld" | "/dev"
 		) {
 			return true;
 		}
@@ -689,9 +688,7 @@ mod tests {
 			let names: Vec<&str> = files
 				.iter()
 				.map(|n| match n {
-					VfsNode::File { name, .. } | VfsNode::Directory { name, .. } => {
-						name.as_str()
-					}
+					VfsNode::File { name, .. } | VfsNode::Directory { name, .. } => name.as_str(),
 				})
 				.collect();
 			assert_eq!(names, vec!["big.bin", "mid.bin", "small.bin"]);
@@ -756,13 +753,7 @@ mod tests {
 		fs::create_dir(&sub).unwrap();
 		write(&sub.join("a.bin"), 100);
 
-		let result = scan(
-			&dir,
-			ScanConfig {
-				perf: true,
-			},
-		)
-		.unwrap();
+		let result = scan(&dir, ScanConfig { perf: true }).unwrap();
 		let perf = result.perf.expect("perf node should be set");
 		assert_eq!(perf.depth, 0);
 		assert!(!perf.in_progress);

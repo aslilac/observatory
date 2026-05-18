@@ -18,7 +18,8 @@ if (!ext) {
 	console.error(`unsupported platform: ${process.platform}`);
 	process.exit(1);
 }
-const stem = process.platform === "win32" ? "observatory_scan" : "libobservatory_scan";
+const stem =
+	process.platform === "win32" ? "observatory_scan" : "libobservatory_scan";
 
 const result = spawnSync(
 	"cargo",

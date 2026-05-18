@@ -155,9 +155,7 @@ export function startScan(path: string) {
 			status: "complete",
 			scan: null,
 			root: null,
-			errors: [
-				{ path, kind: "other", code: null, message },
-			],
+			errors: [{ path, kind: "other", code: null, message }],
 			perf: null,
 			revision: 1,
 		});

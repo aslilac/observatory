@@ -116,7 +116,7 @@ export const Welcome: React.FC<WelcomeProps> = ({
 											type="button"
 											onClick={() => onRemoveRecent(entry.path)}
 											aria-label="Remove from recents"
-											className="absolute top-1/2 right-[8px] -translate-y-1/2 grid h-[20px] w-[20px] place-items-center rounded text-faint opacity-0 group-hover:opacity-100 hover:bg-fill-strong hover:text-default"
+											className="absolute top-1/2 right-[8px] grid h-[20px] w-[20px] -translate-y-1/2 place-items-center rounded text-faint opacity-0 group-hover:opacity-100 hover:bg-fill-strong hover:text-default"
 										>
 											<XIcon size={12} />
 										</button>
@@ -127,9 +127,7 @@ export const Welcome: React.FC<WelcomeProps> = ({
 					</div>
 				)}
 
-				{import.meta.env.DEV && (
-					<DevTools onOpen={onOpen} />
-				)}
+				{import.meta.env.DEV && <DevTools onOpen={onOpen} />}
 			</div>
 		</>
 	);

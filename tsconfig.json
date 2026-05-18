@@ -2,6 +2,7 @@
 	"compilerOptions": {
 		"composite": true,
 		"outDir": "src/.build/",
+		"erasableSyntaxOnly": true,
 		"exactOptionalPropertyTypes": false,
 		"forceConsistentCasingInFileNames": true,
 		"incremental": true,

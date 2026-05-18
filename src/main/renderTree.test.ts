@@ -162,9 +162,7 @@ describe("buildRenderTree", () => {
 	});
 
 	it("preserves the root name across cursor descents", () => {
-		const root = dir("Macintosh HD", [
-			dir("Users", [file("doc.bin", 100)]),
-		]);
+		const root = dir("Macintosh HD", [dir("Users", [file("doc.bin", 100)])]);
 		const tree = buildRenderTree(root, ["Users"]);
 		expect(tree!.name).toBe("Macintosh HD");
 	});

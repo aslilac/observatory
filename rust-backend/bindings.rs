@@ -11,9 +11,7 @@
 // JS objects with a `type` discriminant, matching `Ob.VfsNode` in
 // Observatory.d.ts.
 
-use crate::{
-	CountsSnapshot, PerfNode, ScanState, root_dev_id, run_scan, snapshot_perf,
-};
+use crate::{CountsSnapshot, PerfNode, ScanState, root_dev_id, run_scan, snapshot_perf};
 use napi::bindgen_prelude::*;
 use napi::{Env, JsObject, JsString, Task};
 use napi_derive::napi;
@@ -71,10 +69,7 @@ impl Scan {
 	#[napi]
 	pub fn progress(&self, env: Env) -> Result<JsObject> {
 		let mut obj = env.create_object()?;
-		obj.set_named_property(
-			"counts",
-			counts_to_js(&env, &self.state.counts.snapshot())?,
-		)?;
+		obj.set_named_property("counts", counts_to_js(&env, &self.state.counts.snapshot())?)?;
 		let cp = self.state.current_path.lock().ok().and_then(|g| g.clone());
 		match cp {
 			Some(p) => obj.set_named_property("currentPath", env.create_string(&p)?)?,

@@ -83,6 +83,7 @@ Main → renderer "set inspecting" events still flow through `Ob.onSetInspecting
 - A napi-rs cdylib (`bindings.rs`, gated behind the `napi` cargo feature) — the .node file the Electron main process loads. Exposes a `Scan` class with `start()` (returns Promise), `progress()` (sync mid-scan snapshot), and `abort()`. Async scan runs on libuv's threadpool, so the JS main thread stays free for IPC
 
 Commands (all from `rust-backend/`):
+
 - `cargo build --release` builds the CLI
 - `cargo test` runs the library unit tests against a tmp directory — no hardcoded paths
 - `cargo build --release --lib --features napi` builds the cdylib (use `yarn build.native` from the repo root for the cross-platform copy/rename to `observatory_scan.node`)

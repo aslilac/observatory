@@ -33,9 +33,7 @@ export function buildRenderTree(
 						mtime: file.mtime,
 						files:
 							recursive > 0 && file.type === "directory"
-								? file.files
-										.filter(isLargeEnough)
-										.map(sanitize(recursive - 1))
+								? file.files.filter(isLargeEnough).map(sanitize(recursive - 1))
 								: [],
 					}
 				: {

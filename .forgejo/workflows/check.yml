@@ -1,0 +1,53 @@
+name: Check
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  typos:
+    runs-on: ubuntu-26.04
+
+    steps:
+      - uses: https://github.com/actions/checkout@v6
+        name: Checkout
+
+      - uses: https://github.com/crate-ci/typos@v1
+        name: Spellcheck
+
+  rust:
+    runs-on: ubuntu-26.04
+
+    steps:
+      - uses: https://github.com/actions/checkout@v6
+
+      - uses: https://github.com/dtolnay/rust-toolchain@stable
+        name: Configure Rust
+
+      - run: cargo fmt -- --check
+        name: Format
+
+      - run: cargo clippy
+        name: Lint
+
+      - run: cargo test
+        name: Test
+
+  typescript:
+    runs-on: ubuntu-26.04
+
+    steps:
+      - uses: https://github.com/actions/checkout@v6
+
+      - run: yarn
+      - run: yarn configure
+
+      - run: yarn check.health
+      - run: yarn -- oxlint
+      - run: yarn -- oxfmt --check
+
+      - run: yarn check.types
+      - run: yarn build
+      - run: yarn check.test
