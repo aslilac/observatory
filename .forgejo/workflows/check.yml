@@ -28,12 +28,15 @@ jobs:
 
       - run: cargo fmt -- --check
         name: Format
+        working-directory: rust-backend/
 
       - run: cargo clippy
         name: Lint
+        working-directory: rust-backend/
 
       - run: cargo test
         name: Test
+        working-directory: rust-backend/
 
   typescript:
     runs-on: ubuntu-26.04
