@@ -44,7 +44,7 @@ declare global {
 			description: string;
 		}
 
-		export type ScanStatus = "init" | "building" | "complete";
+		export type ScanStatus = "building" | "complete";
 
 		export interface ScanInfo {
 			path: string;

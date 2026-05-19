@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Observatory is a cross-platform Electron desktop app for visualizing disk usage (think DaisyDisk). The TypeScript app is the shipped product; `rust-backend/` is an in-progress experimental rewrite of the scanning engine — not currently wired into the Electron app.
+Observatory is a cross-platform Electron desktop app for visualizing disk usage (think DaisyDisk). The filesystem traversal lives in `rust-backend/` (rayon-based parallel scanner) and is loaded by the main process as a napi-rs cdylib; the TypeScript app wraps it with the UI, IPC, and render-tree pruning.
 
 ## Common commands
 
@@ -21,7 +21,7 @@ Node: see `.nvmrc` (currently 22 LTS). Electron bundles its own Node, so this on
 - `yarn type-check` — `tsc --noEmit` over the whole project.
 - `yarn test` — Vitest, single run. `yarn test:watch` for the watcher.
 - `yarn fmt` — Prettier write. (No lint step; `tsc --strict` covers what ESLint would have.)
-- Rust backend: `cd rust-backend && cargo test` — only `v4_big_scan` is uncommented and it hardcodes `/Library/Source` (macOS path), so it will fail on other machines unless edited.
+- Rust backend: `cd rust-backend && cargo test` — runs the library unit tests against ephemeral tmp directories. No hardcoded paths.
 
 Build config lives in `electron.vite.config.ts` at the root — one file for all three processes. Renderer uses `@vitejs/plugin-react` and `@tailwindcss/vite` (Tailwind v4); main and preload use `externalizeDepsPlugin()` so runtime `dependencies` (notably the native `drivelist`) stay external.
 
