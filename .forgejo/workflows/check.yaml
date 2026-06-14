@@ -11,17 +11,17 @@ jobs:
     runs-on: ubuntu-26.04
 
     steps:
-      - uses: https://github.com/actions/checkout@v6
+      - uses: actions/checkout@v6
         name: Checkout
 
-      - uses: https://github.com/crate-ci/typos@v1
+      - uses: actions/typos@v1
         name: Spellcheck
 
   rust:
     runs-on: ubuntu-26.04
 
     steps:
-      - uses: https://github.com/actions/checkout@v6
+      - uses: actions/checkout@v6
 
       - uses: https://github.com/dtolnay/rust-toolchain@stable
         name: Configure Rust
@@ -42,7 +42,7 @@ jobs:
     runs-on: ubuntu-26.04
 
     steps:
-      - uses: https://github.com/actions/checkout@v6
+      - uses: actions/checkout@v6
 
       - run: yarn
       - run: yarn configure
