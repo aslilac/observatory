@@ -1,6 +1,7 @@
 import { rowActions } from "#/contextActions";
 import { readableSize } from "#/format";
 import { basename } from "#/paths";
+import { useCleanupQueue } from "#/state";
 import { Checkbox } from "#/components/Checkbox";
 import { RowMenu } from "#/components/ContextMenu";
 import type { SelectableItem } from "./types";
@@ -22,6 +23,8 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
 	onToggleSelect,
 	onAddToCleanup,
 }) => {
+	const { includes: inCleanup } = useCleanupQueue();
+
 	if (!query.trim()) {
 		return null;
 	}
@@ -64,6 +67,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
 					size: match.size,
 				};
 				const isSelected = selection.has(match.path);
+				const queued = inCleanup(match.path);
 				return (
 					<RowMenu
 						key={match.path}
@@ -84,12 +88,18 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
 							onChange={() => onToggleSelect(item)}
 						/>
 						<span
-							className="min-w-0 flex-1 truncate font-mono text-[12px]"
+							className={`min-w-0 flex-1 truncate font-mono text-[12px] ${
+								queued ? "text-faint line-through" : ""
+							}`}
 							title={match.path}
 						>
 							{match.path}
 						</span>
-						<span className="ml-[8px] flex-shrink-0 font-mono text-[11px] text-muted">
+						<span
+							className={`ml-[8px] flex-shrink-0 font-mono text-[11px] ${
+								queued ? "text-faint" : "text-muted"
+							}`}
+						>
 							{readableSize(match.size)}
 						</span>
 					</RowMenu>

@@ -31,3 +31,13 @@ export function basename(p: string): string {
 	const slash = lastSeparator(trimmed);
 	return slash >= 0 ? trimmed.slice(slash + 1) || trimmed : trimmed;
 }
+
+// Whether `path` is one of `paths`, or inside one of them.
+export function isWithin(path: string, paths: Set<string>): boolean {
+	for (let end = path.length; end > 0; end = lastSeparator(path, end)) {
+		if (paths.has(path.slice(0, end))) {
+			return true;
+		}
+	}
+	return false;
+}

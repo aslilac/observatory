@@ -6,6 +6,7 @@ import { isDarkTheme, sunburstColor } from "#/colors";
 import { rowActions } from "#/contextActions";
 import { readableDate, readableSize } from "#/format";
 import { joinPath } from "#/paths";
+import { useCleanupQueue } from "#/state";
 import { Checkbox } from "#/components/Checkbox";
 import { RowMenu } from "#/components/ContextMenu";
 import type { SortMode } from "./SortPicker";
@@ -40,6 +41,7 @@ export const LegendList: React.FC<LegendListProps> = ({
 	onShowAll,
 }) => {
 	const free = capacity > size ? capacity - size : 0;
+	const { includes: inCleanup } = useCleanupQueue();
 
 	const sorted = useMemo(() => sortFiles(files, sortMode), [files, sortMode]);
 
@@ -64,6 +66,7 @@ export const LegendList: React.FC<LegendListProps> = ({
 					joinPath(inspecting, ...cursor, file.name),
 				);
 				const isSelected = selection.has(fullPath);
+				const queued = inCleanup(fullPath);
 				const hue = hueByName.get(file.name) ?? 0;
 
 				return (
@@ -107,11 +110,17 @@ export const LegendList: React.FC<LegendListProps> = ({
 						</span>
 						<span
 							className={`min-w-0 flex-1 truncate ${
-								isDir ? "text-default" : "text-muted"
+								queued
+									? "text-faint line-through"
+									: isDir
+										? "text-default"
+										: "text-muted"
 							}`}
 						>
 							{file.name}
-							{isDir && <span className="text-muted">/</span>}
+							{isDir && (
+								<span className={queued ? undefined : "text-muted"}>/</span>
+							)}
 						</span>
 						{showDate && (
 							<span
@@ -121,7 +130,11 @@ export const LegendList: React.FC<LegendListProps> = ({
 								{readableDate(file.mtime)}
 							</span>
 						)}
-						<span className="w-[68px] flex-shrink-0 text-right font-mono text-[12px] text-muted tabular-nums">
+						<span
+							className={`w-[68px] flex-shrink-0 text-right font-mono text-[12px] tabular-nums ${
+								queued ? "text-faint" : "text-muted"
+							}`}
+						>
 							{readableSize(file.size)}
 						</span>
 					</RowMenu>

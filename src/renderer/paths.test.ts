@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { basename, joinPath } from "./paths.js";
+import { basename, isWithin, joinPath } from "./paths.js";
 
 // `Ob.platform` is normally injected by the preload contextBridge.
 function on(platform: string) {
@@ -26,6 +26,23 @@ describe("on macOS and Linux", () => {
 		expect(basename("/")).toBe("/");
 		expect(basename("/Users/kayla/a\\b")).toBe("a\\b");
 	});
+
+	describe("isWithin", () => {
+		const queued = new Set(["/Users/kayla/Downloads", "/Users/kayla/a.iso"]);
+
+		it("matches the paths themselves and what's inside them", () => {
+			expect(isWithin("/Users/kayla/a.iso", queued)).toBe(true);
+			expect(isWithin("/Users/kayla/Downloads", queued)).toBe(true);
+			expect(isWithin("/Users/kayla/Downloads/x/y.zip", queued)).toBe(true);
+		});
+
+		it("doesn't match folders around them, or names they start", () => {
+			expect(isWithin("/Users/kayla", queued)).toBe(false);
+			expect(isWithin("/Users/kayla/Downloads old", queued)).toBe(false);
+			expect(isWithin("/Users/kayla/a.iso.part", queued)).toBe(false);
+			expect(isWithin("/Users/kayla/a.iso\\x", queued)).toBe(false);
+		});
+	});
 });
 
 describe("on Windows", () => {
@@ -41,5 +58,12 @@ describe("on Windows", () => {
 		expect(basename("C:\\Users\\kayla\\")).toBe("kayla");
 		expect(basename("C:/Users/kayla")).toBe("kayla");
 		expect(basename("C:\\")).toBe("C:");
+	});
+
+	it("goes up through either slash in isWithin", () => {
+		const queued = new Set(["C:\\Temp"]);
+		expect(isWithin("C:\\Temp\\x.log", queued)).toBe(true);
+		expect(isWithin(joinPath("C:\\", "Temp", "x", "y.log"), queued)).toBe(true);
+		expect(isWithin("C:\\Temporary", queued)).toBe(false);
 	});
 });

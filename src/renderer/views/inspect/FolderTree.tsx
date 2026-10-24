@@ -6,6 +6,7 @@ import { isDarkTheme, sunburstColor } from "#/colors";
 import { rowActions } from "#/contextActions";
 import { readableSize } from "#/format";
 import { joinPath } from "#/paths";
+import { useCleanupQueue } from "#/state";
 import { Checkbox } from "#/components/Checkbox";
 import { type ContextMenuItem, RowMenu } from "#/components/ContextMenu";
 import {
@@ -32,6 +33,7 @@ export const FolderTree: React.FC<FolderTreeProps> = ({
 	onToggleSelect,
 	onAddToCleanup,
 }) => {
+	const { includes: inCleanup } = useCleanupQueue();
 	const [expanded, setExpanded] = useState<Set<string>>(() => new Set([""]));
 	const [cache, setCache] = useState<Map<string, CacheValue>>(new Map());
 
@@ -91,6 +93,7 @@ export const FolderTree: React.FC<FolderTreeProps> = ({
 				expanded={expanded.has("")}
 				selected={false}
 				selectable={false}
+				queued={false}
 				onToggleExpand={() => toggleExpand("")}
 				onToggleSelect={undefined}
 				onClick={undefined}
@@ -108,6 +111,7 @@ export const FolderTree: React.FC<FolderTreeProps> = ({
 					requestChildren={requestChildren}
 					hueByName={hueByName}
 					selection={selection}
+					inCleanup={inCleanup}
 					onForward={onForward}
 					onToggleSelect={onToggleSelect}
 					onAddToCleanup={onAddToCleanup}
@@ -129,6 +133,7 @@ type ChildrenProps = {
 	requestChildren: (key: string, subCursor: string[]) => void;
 	hueByName: Map<string, number>;
 	selection: Map<string, SelectableItem>;
+	inCleanup: (path: string) => boolean;
 	onForward: (...names: string[]) => void;
 	onToggleSelect: (item: SelectableItem) => void;
 	onAddToCleanup: (item: SelectableItem) => void;
@@ -146,6 +151,7 @@ const TreeChildren: React.FC<ChildrenProps> = ({
 	requestChildren,
 	hueByName,
 	selection,
+	inCleanup,
 	onForward,
 	onToggleSelect,
 	onAddToCleanup,
@@ -200,6 +206,7 @@ const TreeChildren: React.FC<ChildrenProps> = ({
 						expanded={isOpen}
 						selected={selection.has(fullPath)}
 						selectable
+						queued={inCleanup(fullPath)}
 						onToggleExpand={handleToggle}
 						onToggleSelect={() => onToggleSelect(item)}
 						onClick={
@@ -239,6 +246,7 @@ const TreeChildren: React.FC<ChildrenProps> = ({
 									requestChildren={requestChildren}
 									hueByName={hueByName}
 									selection={selection}
+									inCleanup={inCleanup}
 									onForward={onForward}
 									onToggleSelect={onToggleSelect}
 									onAddToCleanup={onAddToCleanup}
@@ -275,6 +283,8 @@ type RowProps = {
 	expanded: boolean;
 	selected: boolean;
 	selectable: boolean;
+	// In the cleanup queue, or inside a folder that is.
+	queued: boolean;
 	onToggleExpand: () => void;
 	onToggleSelect: (() => void) | undefined;
 	onClick: (() => void) | undefined;
@@ -290,6 +300,7 @@ const Row: React.FC<RowProps> = ({
 	expanded,
 	selected,
 	selectable,
+	queued,
 	onToggleExpand,
 	onToggleSelect,
 	onClick,
@@ -333,8 +344,14 @@ const Row: React.FC<RowProps> = ({
 			) : (
 				<span className="block h-[8px] w-[8px] flex-shrink-0" />
 			)}
-			<span className="flex-1 truncate">{name}</span>
-			<span className="font-mono text-[12px] text-muted">
+			<span
+				className={`flex-1 truncate ${queued ? "text-faint line-through" : ""}`}
+			>
+				{name}
+			</span>
+			<span
+				className={`font-mono text-[12px] ${queued ? "text-faint" : "text-muted"}`}
+			>
 				{readableSize(size)}
 			</span>
 		</>

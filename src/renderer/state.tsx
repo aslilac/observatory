@@ -7,6 +7,8 @@ import {
 	useState,
 } from "react";
 
+import { isWithin } from "./paths";
+
 export function useDrives(): Ob.PhysicalDrive[] {
 	const [drives, setDrives] = useState<Ob.PhysicalDrive[]>([]);
 	useEffect(() => Ob.onDrives(setDrives), []);
@@ -409,6 +411,9 @@ type CleanupQueue = {
 	remove: (path: string) => void;
 	clear: () => void;
 	totalSize: number;
+	// Whether `path` goes out with the cleanup: it's queued, or a folder
+	// it's in is.
+	includes: (path: string) => boolean;
 };
 
 const CleanupQueueContext = createContext<CleanupQueue | null>(null);
@@ -459,9 +464,14 @@ export const CleanupQueueProvider: React.FC<{ children: React.ReactNode }> = ({
 
 	const totalSize = items.reduce((sum, i) => sum + i.size, 0);
 
+	const includes = useMemo(() => {
+		const queued = new Set(items.map((i) => i.path));
+		return (path: string) => isWithin(path, queued);
+	}, [items]);
+
 	const value = useMemo<CleanupQueue>(
-		() => ({ items, add, remove, clear, totalSize }),
-		[items, add, remove, clear, totalSize],
+		() => ({ items, add, remove, clear, totalSize, includes }),
+		[items, add, remove, clear, totalSize, includes],
 	);
 
 	return (
