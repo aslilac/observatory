@@ -47,13 +47,17 @@ declare global {
 			description: string;
 		}
 
-		export type ScanStatus = "building" | "complete";
+		// "failed" means the root itself couldn't be scanned (missing,
+		// unreadable, …) — there's no tree to show, only `error`.
+		export type ScanStatus = "building" | "complete" | "failed";
 
 		export interface ScanInfo {
 			path: string;
 			status: ScanStatus;
 			// Only set once the scan has completed.
 			size?: number;
+			// Only set when status is "failed".
+			error?: ScanError;
 			// Bumped whenever the VFS for this scan is mutated (e.g. after
 			// trash). Lets the renderer key its render-tree fetch on it.
 			revision: number;

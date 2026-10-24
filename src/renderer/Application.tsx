@@ -14,6 +14,7 @@ import { DragReceiver } from "./components/DragReceiver";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { Inspect } from "./views/inspect/Inspect";
 import { PasteConfirm } from "./components/PasteConfirm";
+import { ScanFailed } from "./views/inspect/ScanFailed";
 import { Scanning } from "./views/inspect/Scanning";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { Welcome } from "./views/welcome/Welcome";
@@ -147,6 +148,15 @@ const Body: React.FC<BodyProps> = ({
 	}
 	if (inspecting && inspectingScan?.status === "complete") {
 		return <Inspect scan={inspectingScan} />;
+	}
+	if (inspecting && inspectingScan?.status === "failed") {
+		return (
+			<ScanFailed
+				scan={inspectingScan}
+				root={displayName(inspecting, drives)}
+				onRetry={onOpen}
+			/>
+		);
 	}
 	if (inspecting && inspectingScan) {
 		return (

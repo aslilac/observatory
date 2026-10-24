@@ -1,6 +1,7 @@
 import * as drivelist from "drivelist";
 import { app } from "electron";
 import { EventEmitter } from "node:events";
+import * as fs from "node:fs";
 import { Scan, type NativeScan } from "./native";
 import { PERF, timed, timedAsync } from "./perf";
 import { assembleRenderTree, type ScanDrive } from "./renderTree";
@@ -58,6 +59,7 @@ export function getScans(): Ob.ScanInfo[] {
 		path,
 		status: entry.status,
 		size: entry.scan?.size() ?? undefined,
+		...(entry.status === "failed" ? { error: entry.errors[0] } : {}),
 		revision: entry.revision,
 	}));
 }
@@ -139,7 +141,10 @@ export function getScanPerfTree(path: string): Ob.PerfNode | null {
 }
 
 export function startScan(path: string) {
-	if (scans.has(path)) {
+	// A failed entry doesn't block a retry — the folder may be back, or the
+	// drive reconnected, since the last attempt.
+	const existing = scans.get(path);
+	if (existing && existing.status !== "failed") {
 		return;
 	}
 
@@ -148,15 +153,14 @@ export function startScan(path: string) {
 		scan = Scan.create(path, { perf: PERF });
 	} catch (e) {
 		// Constructor throws synchronously if stat-ing the root fails
-		// (e.g. path doesn't exist). Record an entry that immediately
-		// shows as complete with the error attached so the renderer can
-		// surface it rather than spinning forever on a missing path.
-		const message = e instanceof Error ? e.message : String(e);
+		// (e.g. path doesn't exist). Record a failed entry with the error
+		// attached so the renderer can explain it rather than spinning
+		// forever or showing an empty inspect view.
 		scans.set(path, {
-			status: "complete",
+			status: "failed",
 			scan: null,
 			drive: null,
-			errors: [{ path, kind: "other", code: null, message }],
+			errors: [rootError(path, e)],
 			perf: null,
 			revision: 1,
 		});
@@ -195,20 +199,43 @@ export function startScan(path: string) {
 			if (!current || current !== entry) {
 				return;
 			}
-			entry.errors = [
-				{
-					path,
-					kind: "other",
-					code: null,
-					message: err instanceof Error ? err.message : String(err),
-				},
-			];
+			entry.errors = [rootError(path, err)];
 			entry.scan = null;
-			entry.status = "complete";
+			entry.status = "failed";
 			entry.revision++;
 			emitter.emit("scans", getScans());
 		},
 	);
+}
+
+
+// The native scanner only hands back a formatted message for root-level
+// failures, so re-stat the root ourselves to tell "it's gone" apart from
+// "we can't read it" — the renderer words those very differently.
+function rootError(path: string, err: unknown): Ob.ScanError {
+	const message = errorMessage(err);
+	try {
+		fs.statSync(path);
+	} catch (statErr) {
+		const code = (statErr as NodeJS.ErrnoException).code ?? null;
+		if (code === "ENOENT" || code === "ENOTDIR") {
+			return { path, kind: "missing", code, message };
+		}
+		if (code === "EACCES" || code === "EPERM") {
+			return { path, kind: "permission", code, message };
+		}
+	}
+	return { path, kind: "other", code: null, message };
+}
+
+// napi-rs rejects with an empty message when a call into V8 fails, leaving
+// only a status in `code`. Say something, at least.
+function errorMessage(err: unknown): string {
+	if (!(err instanceof Error)) {
+		return String(err);
+	}
+	const { code } = err as NodeJS.ErrnoException;
+	return err.message || `The scanner failed (${code ?? err.name})`;
 }
 
 // If the scan's root path matches a drivelist mountpoint, the drive's mount
