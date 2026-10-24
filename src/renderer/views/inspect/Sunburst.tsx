@@ -1,11 +1,10 @@
 import { useState } from "react";
 import { sunburstColor } from "#/colors";
 import { readableSize } from "#/util";
+import { arcPath, isDrawable, layerRadii } from "./sunburstGeometry";
 
 const VIEW_RADIUS = 275;
 const CENTER_R = 64;
-const BASE_ANGLE_TURNS = 5 / 8;
-const MIN_IMAGINARY = 0.003;
 const MAX_LAYER = 6;
 
 type HoverState = {
@@ -143,6 +142,9 @@ const ShardTree: React.FC<ShardTreeProps> = ({
 	let pos = startPos;
 	for (const file of nodes) {
 		const sliceSize = file.size / capacity;
+		if (!isDrawable(sliceSize, layer)) {
+			continue;
+		}
 		const myHue =
 			layer === 0 ? (hueByName.get(file.name) ?? 0) : (parentHue ?? 0);
 		const path = [...parentPath, file.name];
@@ -166,31 +168,35 @@ const ShardTree: React.FC<ShardTreeProps> = ({
 			/>,
 		);
 
-		if (
-			file.type === "directory" &&
-			layer < MAX_LAYER &&
-			file.files.length > 0
-		) {
-			elements.push(
-				<ShardTree
-					key={`${id}/children`}
-					nodes={file.files}
-					layer={layer + 1}
-					startPos={pos}
-					parentHue={myHue}
-					parentPath={path}
-					capacity={capacity}
-					hueByName={hueByName}
-					hover={hover}
-					setHover={setHover}
-					dark={dark}
-					onNavigateForward={onNavigateForward}
-				/>,
-			);
+		if (file.type === "directory" && layer < MAX_LAYER) {
+			if (file.files.length > 0) {
+				elements.push(
+					<ShardTree
+						key={`${id}/children`}
+						nodes={file.files}
+						layer={layer + 1}
+						startPos={pos}
+						parentHue={myHue}
+						parentPath={path}
+						capacity={capacity}
+						hueByName={hueByName}
+						hover={hover}
+						setHover={setHover}
+						dark={dark}
+						onNavigateForward={onNavigateForward}
+					/>,
+				);
+			}
 
-			const childrenSum = file.files.reduce((s, f) => s + f.size, 0) / capacity;
+			// The rest of the directory goes in one gray wedge: children too
+			// small to draw, whether they were dropped here or by the scanner
+			// (rust-backend/tree.rs), which leaves no trace of them.
+			const childrenSum = file.files
+				.map((f) => f.size / capacity)
+				.filter((s) => isDrawable(s, layer + 1))
+				.reduce((sum, s) => sum + s, 0);
 			const remainder = sliceSize - childrenSum;
-			if (layer < 4 && remainder > MIN_IMAGINARY) {
+			if (layer < 4 && isDrawable(remainder, layer + 1)) {
 				const remainderId = `imaginary/${layer + 1}/${path.join("/")}`;
 				elements.push(
 					<Shard
@@ -254,7 +260,7 @@ const Shard: React.FC<ShardProps> = ({
 			d={arcPath(position, size, ir, or)}
 			fill={fill}
 			stroke="var(--color-background)"
-			strokeWidth={1.2}
+			strokeWidth={0.9}
 			className={hovered ? "pulse" : undefined}
 			style={{ cursor: interactive ? "pointer" : "default" }}
 			onPointerOver={(e) =>
@@ -311,67 +317,3 @@ const Tooltip: React.FC<TooltipProps> = ({ file, x, y }) => {
 		</div>
 	);
 };
-
-// Layer ring geometry mirrors the original canvas widths: five 31-unit
-// inner rings followed by tighter 5-unit outer rings for deep hierarchies.
-function layerRadii(layer: number): { ir: number; or: number } {
-	if (layer > 4) {
-		const ir = 228 + 8 * (layer - 5);
-		return { ir, or: ir + 5 };
-	}
-	const ir = 70 + 31 * layer;
-	return { ir, or: ir + 31 };
-}
-
-// Build the SVG `d` attribute for one wedge of an annulus (donut slice).
-//
-// Inputs are in "turns" of a unit circle so the rest of the file can stay in
-// fractional-of-total terms:
-//
-//   position  cumulative offset of this wedge's start, 0..1
-//   size      angular width of this wedge, 0..1
-//   ir, or    inner / outer radius in viewBox units
-//
-// `a` and `b` are the start and end angles in radians, rotated by
-// BASE_ANGLE_TURNS so the 0-position lands where the design wants it (5/8
-// of the way around, i.e. roughly the top-left). The `largeArc` flag is
-// SVG's way of disambiguating arcs over 180°: 0 picks the short way, 1
-// picks the long way. We need it set for any single wedge that wraps more
-// than half the circle.
-//
-// The outline is built outer-arc clockwise, then radially in to the inner
-// circle, then inner-arc counter-clockwise (sweep-flag 0) back to the
-// starting angle, then closed:
-//
-//       (ox1,oy1) ─→ outer arc ─→ (ox2,oy2)
-//          ↑                          ↓
-//       (ix1,iy1) ←─ inner arc ←─ (ix2,iy2)
-function arcPath(
-	position: number,
-	size: number,
-	ir: number,
-	or: number,
-): string {
-	const a = (BASE_ANGLE_TURNS + position) * Math.PI * 2;
-	const b = (BASE_ANGLE_TURNS + position + size) * Math.PI * 2;
-	const largeArc = b - a > Math.PI ? 1 : 0;
-	const outer = arcEndpoints(or, a, b);
-	const inner = arcEndpoints(ir, a, b);
-
-	return [
-		`M ${outer.x1} ${outer.y1}`,
-		`A ${or} ${or} 0 ${largeArc} 1 ${outer.x2} ${outer.y2}`,
-		`L ${inner.x2} ${inner.y2}`,
-		`A ${ir} ${ir} 0 ${largeArc} 0 ${inner.x1} ${inner.y1}`,
-		"Z",
-	].join(" ");
-}
-
-function arcEndpoints(r: number, a: number, b: number) {
-	return {
-		x1: (r * Math.cos(a)).toFixed(2),
-		y1: (r * Math.sin(a)).toFixed(2),
-		x2: (r * Math.cos(b)).toFixed(2),
-		y2: (r * Math.sin(b)).toFixed(2),
-	};
-}
