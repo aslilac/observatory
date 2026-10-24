@@ -1,9 +1,9 @@
 [package]
 name = "observatory-scan"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2024"
 authors = ["McKayla Washburn-Love <kayla@tree.camp>"]
-license = "MIT"
+license = "MPL-2.0"
 publish = false
 
 [lib]

@@ -1,6 +1,6 @@
 module.exports = {
 	packagerConfig: {
-		appBundleId: "dev.mckayla.observatory",
+		appBundleId: "ooo.lilac.observatory",
 		appCategoryType: "public.app-category.utilities",
 		appCopyright: "© 2019-2026 McKayla Washburn-Love ♥",
 		asar: {

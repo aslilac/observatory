@@ -3,8 +3,8 @@
 	"name": "observatory",
 	"version": "1.0.0",
 	"description": "A cross platform disk usage analyzer with a modern UI",
-	"license": "MIT",
-	"author": "McKayla Washburn-Love <mckayla@hey.com>",
+	"license": "MPL-2.0",
+	"author": "McKayla Washburn-Love <kayla@tree.camp>",
 	"repository": "https://github.com/aslilac/observatory",
 	"scripts": {
 		"configure": "electron-rebuild -f -w drivelist",
