@@ -3,7 +3,7 @@ import { useCallback, useState } from "react";
 import { Trash2Icon } from "lucide-react";
 
 import { type CleanupItem, useCleanupQueue } from "#/state";
-import { readableSize } from "#/util";
+import { readableSize } from "#/format";
 import { Button } from "#/components/Button";
 import { Toolbar } from "#/components/Toolbar";
 import { CleanupChip } from "./CleanupChip";

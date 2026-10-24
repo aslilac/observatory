@@ -11,7 +11,7 @@ import {
 	useScanPerfTree,
 	useSearch,
 } from "#/state";
-import { readableSize } from "#/util";
+import { readableSize } from "#/format";
 import { IssuesChip } from "#/components/IssuesChip";
 import { IssuesModal } from "#/components/IssuesModal";
 import { PerfChip } from "#/components/PerfChip";

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { hueForRange, isDarkTheme, sunburstColor } from "#/colors";
-import { readableSize } from "#/util";
+import { readableSize } from "#/format";
 import { arcPath, isDrawable, layerRadii } from "./sunburstGeometry";
 
 const VIEW_RADIUS = 275;

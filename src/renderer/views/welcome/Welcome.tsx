@@ -6,8 +6,9 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { placeActions } from "#/contextActions";
+import { describeDrive, readableSize } from "#/format";
+import { basename } from "#/paths";
 import type { RecentScan } from "#/state";
-import { basename, describeDrive, readableSize } from "#/util";
 import { Button } from "#/components/Button";
 import { type ContextMenuItem, RowMenu } from "#/components/ContextMenu";
 import { Toolbar } from "#/components/Toolbar";

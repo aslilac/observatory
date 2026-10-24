@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 
-import { describeDrive, readableSize, roundedSize } from "./util.js";
+import { describeDrive, readableSize, roundedSize } from "./format.js";
 
 describe("readableSize", () => {
 	beforeAll(() => {

@@ -2,7 +2,7 @@ import { Trash2Icon } from "lucide-react";
 
 import { useNavigation } from "#/navigation";
 import { useCleanupQueue } from "#/state";
-import { readableSize } from "#/util";
+import { readableSize } from "#/format";
 
 export const CleanupChip: React.FC = () => {
 	const { items, totalSize } = useCleanupQueue();

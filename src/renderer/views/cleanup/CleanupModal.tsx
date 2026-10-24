@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { AlertCircleIcon } from "lucide-react";
 
 import type { CleanupItem } from "#/state";
-import { readableSize } from "#/util";
+import { readableSize } from "#/format";
 import { Button } from "#/components/Button";
 import { Modal } from "#/components/Modal";
 

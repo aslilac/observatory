@@ -4,8 +4,8 @@ import { ChevronRightIcon } from "lucide-react";
 
 import { isDarkTheme, sunburstColor } from "#/colors";
 import { rowActions } from "#/contextActions";
-import { joinPath } from "#/state";
-import { readableSize } from "#/util";
+import { readableSize } from "#/format";
+import { joinPath } from "#/paths";
 import { Checkbox } from "#/components/Checkbox";
 import { type ContextMenuItem, RowMenu } from "#/components/ContextMenu";
 import {

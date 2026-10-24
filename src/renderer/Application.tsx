@@ -2,7 +2,7 @@ import { Profiler, useCallback, useLayoutEffect, useMemo } from "react";
 
 import { useNavigation } from "./navigation";
 import { perfEnabled, perfLog, perfMeasure } from "./perf";
-import { basename } from "./util";
+import { basename } from "./paths";
 import {
 	useDrives,
 	usePasteToScan,

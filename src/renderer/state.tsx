@@ -129,22 +129,6 @@ export function useRenderTree(
 	return tree;
 }
 
-// Renderer-side path join. We never see Windows paths in this app (the
-// scan roots come from the volume list or a POSIX dialog on Linux/macOS), so
-// forward slashes and a couple of normalizations are enough.
-export function joinPath(base: string, ...rest: string[]): string {
-	const trimmedBase = base === "/" ? "" : base.replace(/\/+$/, "");
-	const tail = rest
-		.filter((p) => p.length > 0)
-		.map((p) => p.replace(/^\/+|\/+$/g, ""))
-		.filter((p) => p.length > 0)
-		.join("/");
-	if (!tail) {
-		return base;
-	}
-	return `${trimmedBase}/${tail}`;
-}
-
 export type Theme = "light" | "dark";
 
 const THEME_KEY = "observatory:theme";

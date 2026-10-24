@@ -1,5 +1,6 @@
 import { rowActions } from "#/contextActions";
-import { basename, readableSize } from "#/util";
+import { readableSize } from "#/format";
+import { basename } from "#/paths";
 import { Checkbox } from "#/components/Checkbox";
 import { RowMenu } from "#/components/ContextMenu";
 import type { SelectableItem } from "./types";
