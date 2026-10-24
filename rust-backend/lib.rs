@@ -21,6 +21,7 @@
 //   /System/Volumes/*. The generic cross-device check is intentionally
 //   skipped on macOS because firmlinks make stat("/") return the data
 //   volume, which would otherwise filter out /Users.
+// - Everywhere but Windows: a file with several hard links counts once.
 
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -258,6 +259,12 @@ pub struct ScanState {
 	pub aborted: AtomicBool,
 	pub root_dev: Option<u64>,
 	pub mounts: Option<MountPlan>,
+	// Files with more than one hard link, by (device, inode), and the link
+	// each is counted at. Split up so threads don't queue on one lock.
+	#[cfg_attr(not(unix), allow(dead_code))]
+	links: [Mutex<HashMap<(u64, u64), PathBuf>>; LINK_SHARDS],
+	// Links a file was counted at before one that sorts first turned up.
+	displaced: Mutex<Vec<PathBuf>>,
 	// Checked once up front; macOS only applies a change on relaunch anyway.
 	pub full_disk_access: bool,
 	pub perf: bool,
@@ -265,6 +272,8 @@ pub struct ScanState {
 	// is enabled. None while the scan hasn't started or perf is off.
 	pub live_perf: Mutex<Option<Arc<PerfNodeShared>>>,
 }
+
+const LINK_SHARDS: usize = 16;
 
 impl ScanState {
 	pub fn new(perf: bool) -> Self {
@@ -275,6 +284,8 @@ impl ScanState {
 			aborted: AtomicBool::new(false),
 			root_dev: None,
 			mounts: None,
+			links: Default::default(),
+			displaced: Mutex::new(Vec::new()),
 			full_disk_access: has_full_disk_access(),
 			perf,
 			live_perf: Mutex::new(None),
@@ -346,7 +357,21 @@ pub fn scan(path: &Path, config: ScanConfig) -> std::io::Result<ScanResult> {
 // napi `Scan` class. Takes a borrowed ScanState so the class can pre-build
 // one, share it via Arc, and pull progress from the JS thread.
 pub fn run_scan(path: &Path, state: &ScanState) -> std::io::Result<ScanResult> {
-	let node = scan_dir(path, 0, state, None);
+	let mut node = scan_dir(path, 0, state, None);
+	let displaced = state
+		.displaced
+		.lock()
+		.map(|mut displaced| std::mem::take(&mut *displaced))
+		.unwrap_or_default();
+	if !displaced.is_empty() {
+		let mut places = Places::default();
+		for link in &displaced {
+			if let Ok(link) = link.strip_prefix(path) {
+				places.add(link);
+			}
+		}
+		uncount(&mut node, &places);
+	}
 	let perf = state
 		.live_perf
 		.lock()
@@ -519,9 +544,14 @@ fn classify(
 
 	if ft.is_file() {
 		state.counts.files.fetch_add(1, Ordering::Relaxed);
+		let size = if counts_here(state, &meta, &entry_path) {
+			disk_usage(&meta)
+		} else {
+			0
+		};
 		Some(VfsNode::File {
 			name: entry_name,
-			size: disk_usage(&meta),
+			size,
 			mtime,
 		})
 	} else if ft.is_dir() {
@@ -566,6 +596,80 @@ fn disk_usage(meta: &fs::Metadata) -> u64 {
 #[cfg(not(unix))]
 fn disk_usage(meta: &fs::Metadata) -> u64 {
 	meta.len()
+}
+
+// Whether a file's space counts at `path`. A file with several hard links
+// is there once on disk, so it counts once, at the link whose path sorts
+// first, wherever the walk happens to come to it first. ostree and Flatpak
+// link each installed file to their stores, and Time Machine links files
+// between backups. A link that loses out to one found later is uncounted
+// when the walk is done.
+#[cfg(unix)]
+fn counts_here(state: &ScanState, meta: &fs::Metadata, path: &Path) -> bool {
+	use std::collections::hash_map::Entry;
+
+	if meta.nlink() < 2 {
+		return true;
+	}
+	let shard = (meta.ino() % LINK_SHARDS as u64) as usize;
+	let Ok(mut links) = state.links[shard].lock() else {
+		return true;
+	};
+	match links.entry((meta.dev(), meta.ino())) {
+		Entry::Vacant(entry) => {
+			entry.insert(path.to_owned());
+			true
+		}
+		Entry::Occupied(mut entry) if path < entry.get().as_path() => {
+			let counted = entry.insert(path.to_owned());
+			if let Ok(mut displaced) = state.displaced.lock() {
+				displaced.push(counted);
+			}
+			true
+		}
+		Entry::Occupied(_) => false,
+	}
+}
+
+// std doesn't say how many links a file has on Windows.
+#[cfg(not(unix))]
+fn counts_here(_state: &ScanState, _meta: &fs::Metadata, _path: &Path) -> bool {
+	true
+}
+
+// Paths relative to the scan's root, as a tree of names.
+#[derive(Default)]
+struct Places(HashMap<String, Places>);
+
+impl Places {
+	fn add(&mut self, path: &Path) {
+		let mut places = self;
+		for part in path {
+			places = places
+				.0
+				.entry(part.to_string_lossy().into_owned())
+				.or_default();
+		}
+	}
+}
+
+// Zeroes the files at `places` under `node`, and re-totals and re-sorts the
+// folders they're in.
+fn uncount(node: &mut VfsNode, places: &Places) {
+	let VfsNode::Directory { size, files, .. } = node else {
+		return;
+	};
+	for child in files.iter_mut() {
+		let Some(inner) = places.0.get(child.name()) else {
+			continue;
+		};
+		match child {
+			VfsNode::File { size, .. } => *size = 0,
+			VfsNode::Directory { .. } => uncount(child, inner),
+		}
+	}
+	files.sort_by_key(|b| cmp::Reverse(b.size()));
+	*size = files.iter().map(VfsNode::size).sum();
 }
 
 // Reads that come back EINTR (seen inside app containers on macOS) go
@@ -984,6 +1088,64 @@ mod tests {
 
 		let result = scan(&dir, ScanConfig::default()).unwrap();
 		assert!(result.perf.is_none());
+
+		cleanup(&dir);
+	}
+	#[cfg(unix)]
+	fn child<'a>(node: &'a VfsNode, name: &str) -> &'a VfsNode {
+		match node {
+			VfsNode::Directory { files, .. } => files
+				.iter()
+				.find(|file| file.name() == name)
+				.unwrap_or_else(|| panic!("no {name} in {}", node.name())),
+			VfsNode::File { .. } => panic!("{} isn't a folder", node.name()),
+		}
+	}
+
+	#[test]
+	#[cfg(unix)]
+	fn counts_a_hard_linked_file_once_at_its_first_link() {
+		let dir = tmpdir("hardlinks");
+		for folder in ["a", "m", "z"] {
+			fs::create_dir(dir.join(folder)).unwrap();
+		}
+		write(&dir.join("m/data.bin"), 100_000);
+		fs::hard_link(dir.join("m/data.bin"), dir.join("z/data.bin")).unwrap();
+		fs::hard_link(dir.join("m/data.bin"), dir.join("a/data.bin")).unwrap();
+		write(&dir.join("z/own.bin"), 10_000);
+
+		let result = scan(&dir, ScanConfig::default()).unwrap();
+		let data = on_disk(&dir.join("m/data.bin"));
+		let own = on_disk(&dir.join("z/own.bin"));
+		assert_eq!(result.counts.files, 4);
+		assert_eq!(result.root.size(), data + own);
+		assert_eq!(child(&result.root, "a").size(), data);
+		assert_eq!(child(&result.root, "m").size(), 0);
+		assert_eq!(child(&result.root, "z").size(), own);
+		// Re-sorted, now that z's link is uncounted.
+		let VfsNode::Directory { files, .. } = &result.root else {
+			unreachable!();
+		};
+		let names: Vec<&str> = files.iter().map(VfsNode::name).collect();
+		assert_eq!(names[0], "a");
+
+		cleanup(&dir);
+	}
+
+	// Whichever link the walk comes to first, the one that sorts first wins.
+	#[test]
+	#[cfg(unix)]
+	fn a_link_found_later_can_take_the_count() {
+		let dir = tmpdir("relink");
+		write(&dir.join("b.bin"), 10_000);
+		fs::hard_link(dir.join("b.bin"), dir.join("a.bin")).unwrap();
+		let meta = fs::metadata(dir.join("b.bin")).unwrap();
+
+		let state = ScanState::new(false);
+		assert!(counts_here(&state, &meta, &dir.join("b.bin")));
+		assert!(counts_here(&state, &meta, &dir.join("a.bin")));
+		assert!(!counts_here(&state, &meta, &dir.join("b.bin")));
+		assert_eq!(*state.displaced.lock().unwrap(), [dir.join("b.bin")]);
 
 		cleanup(&dir);
 	}
