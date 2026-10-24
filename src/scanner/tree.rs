@@ -454,6 +454,15 @@ mod tests {
 		);
 	}
 
+	// A path as the search spells it, with the platform's separators.
+	fn at(parts: &[&str]) -> String {
+		parts
+			.iter()
+			.collect::<PathBuf>()
+			.to_string_lossy()
+			.into_owned()
+	}
+
 	fn search_tree() -> VfsNode {
 		dir(
 			"root",
@@ -475,10 +484,10 @@ mod tests {
 		assert_eq!(
 			paths,
 			[
-				"/base/Photos",
-				"/base/Photos/photo-1.jpg",
-				"/base/PHOTO-2.JPG",
-				"/base/other/Ünïcode Photo.png",
+				at(&["/base", "Photos"]),
+				at(&["/base", "Photos", "photo-1.jpg"]),
+				at(&["/base", "PHOTO-2.JPG"]),
+				at(&["/base", "other", "Ünïcode Photo.png"]),
 			]
 		);
 		assert_eq!(results.matches[0].kind, "directory");
@@ -491,7 +500,10 @@ mod tests {
 	#[test]
 	fn search_folds_case_in_non_ascii_names() {
 		let results = search(&search_tree(), "/", "ÜNÏ");
-		assert_eq!(results.matches[0].path, "/other/Ünïcode Photo.png");
+		assert_eq!(
+			results.matches[0].path,
+			at(&["/", "other", "Ünïcode Photo.png"])
+		);
 	}
 
 	#[test]
