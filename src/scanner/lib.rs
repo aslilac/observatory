@@ -22,6 +22,8 @@
 //   skipped on macOS because firmlinks make stat("/") return the data
 //   volume, which would otherwise filter out /Users.
 // - Everywhere but Windows: a file with several hard links counts once.
+// - Windows: a disk's virtual memory, hibernation file and restore points are
+//   taken out of its root and counted apart (reserved.rs).
 
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -234,6 +236,9 @@ fn snapshot_perf_at(node: &PerfNodeShared, now: Instant) -> PerfNode {
 #[derive(Serialize, Debug)]
 pub struct ScanResult {
 	pub root: VfsNode,
+	// Taken out of `root`: what Windows keeps for itself, on a scan of a
+	// whole disk (see reserved.rs).
+	pub reserved: Vec<Reserved>,
 	pub counts: CountsSnapshot,
 	pub errors: Vec<ScanError>,
 	// Serialized as `null` when perf isn't enabled — matches the
@@ -372,6 +377,11 @@ pub fn run_scan(path: &Path, state: &ScanState) -> std::io::Result<ScanResult> {
 		}
 		uncount(&mut node, &places);
 	}
+	let reserved = if cfg!(windows) && path.parent().is_none() {
+		reserved::take(&mut node)
+	} else {
+		Vec::new()
+	};
 	let perf = state
 		.live_perf
 		.lock()
@@ -380,6 +390,7 @@ pub fn run_scan(path: &Path, state: &ScanState) -> std::io::Result<ScanResult> {
 
 	Ok(ScanResult {
 		root: node,
+		reserved,
 		counts: state.counts.snapshot(),
 		errors: state.errors.lock().map(|e| e.clone()).unwrap_or_default(),
 		perf,
@@ -870,6 +881,9 @@ fn errno_name(n: i32) -> Option<String> {
 // the wrapper JS sees.
 #[cfg(feature = "napi")]
 mod bindings;
+
+pub mod reserved;
+pub use reserved::Reserved;
 
 #[cfg(any(target_os = "linux", test))]
 #[cfg_attr(not(target_os = "linux"), allow(dead_code))]

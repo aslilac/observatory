@@ -88,4 +88,26 @@ describe("assembleRenderTree", () => {
 		expect(tree.rootCapacity).toBe(1000);
 		expect(tree.capacity).toBe(1000);
 	});
+
+	it("shows what Windows keeps for itself only at the root", () => {
+		const reserved: Ob.ReservedSpace[] = [
+			{ kind: "paging", name: "pagefile.sys", size: 300 },
+		];
+		const drive = { name: "Local Disk (C:)", capacity: 5000 };
+		const root = assembleRenderTree(
+			slice([file("a.bin", 1000)]),
+			[],
+			drive,
+			reserved,
+		);
+		expect(root.reserved).toBe(reserved);
+		expect(root.size).toBe(1000);
+		const below = assembleRenderTree(
+			slice([file("b.bin", 10)]),
+			["Users"],
+			drive,
+			reserved,
+		);
+		expect(below.reserved).toEqual([]);
+	});
 });

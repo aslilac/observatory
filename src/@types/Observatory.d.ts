@@ -184,7 +184,9 @@ declare global {
 			| "symlink"
 			| "device"
 			| "unknown";
-		export type NodeType$ = NodeType | "imaginary";
+		// "imaginary": the rest of a folder, too small to draw one by one.
+		// "reserved": what Windows keeps for itself (ReservedSpace).
+		export type NodeType$ = NodeType | "imaginary" | "reserved";
 
 		export type VfsNode = VfsDirectory | VfsFile;
 
@@ -210,6 +212,16 @@ declare global {
 			files: VfsNode[];
 		};
 
+		// Space Windows keeps for itself at the root of a disk: virtual memory
+		// (pagefile.sys, swapfile.sys), hibernation (hiberfil.sys), and System
+		// Restore (System Volume Information). Not the user's to delete, so
+		// it's counted apart from the tree, like macOS's purgeable space.
+		export interface ReservedSpace {
+			kind: "paging" | "hibernation" | "restore";
+			name: string;
+			size: number;
+		}
+
 		export type RenderTree = {
 			name: string;
 			cursor: string[];
@@ -226,6 +238,9 @@ declare global {
 			// each level. Unlike `sunburst.files` it isn't filtered by size, so
 			// the tree shows tiny entries the sunburst would drop.
 			tree: DisplayInfo;
+			// At the root of a scan of a whole Windows disk, what Windows keeps
+			// for itself, which isn't in `size`. Empty anywhere else.
+			reserved: ReservedSpace[];
 		};
 	}
 }

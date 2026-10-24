@@ -21,6 +21,7 @@ import { CleanupChip } from "../cleanup/CleanupChip";
 import { FolderTree } from "./FolderTree";
 import { LegendList } from "./LegendList";
 import { MultiSelectBar } from "./MultiSelectBar";
+import { groupReserved } from "./reserved";
 import { SearchBar } from "./SearchBar";
 import { SearchResults } from "./SearchResults";
 import { type SortMode, SortPicker } from "./SortPicker";
@@ -132,6 +133,11 @@ export const Inspect: React.FC<InspectProps> = ({ scan }) => {
 			),
 		[tree?.list.files, tree?.position, tree?.rootSize],
 	);
+	const reserved = useMemo(
+		() => groupReserved(tree?.reserved ?? []),
+		[tree?.reserved],
+	);
+	const reservedSize = reserved.reduce((sum, g) => sum + g.size, 0);
 
 	const chips = (
 		<>
@@ -202,6 +208,7 @@ export const Inspect: React.FC<InspectProps> = ({ scan }) => {
 					position={shared.position}
 					rootSize={shared.rootSize}
 					depth={cursor.length}
+					reserved={reserved}
 					onNavigateUp={navigateUp}
 					onNavigateForward={navigateForward}
 				/>
@@ -222,6 +229,7 @@ export const Inspect: React.FC<InspectProps> = ({ scan }) => {
 							name={currentName}
 							size={tree.size}
 							capacity={tree.capacity}
+							reserved={reserved}
 							files={list.files}
 							hueByName={hueByName}
 							selection={selection}
@@ -257,6 +265,12 @@ export const Inspect: React.FC<InspectProps> = ({ scan }) => {
 			) : (
 				<div className="flex h-[28px] items-center border-t border-line-soft px-3 font-mono text-[11px] text-muted">
 					{readableSize(tree.size)}
+					{reservedSize > 0 && (
+						<>
+							<span className="mx-[6px]">·</span>
+							{readableSize(reservedSize)} reserved
+						</>
+					)}
 					{tree.capacity !== tree.size && (
 						<>
 							<span className="mx-[6px]">·</span>

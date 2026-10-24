@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { hueForRange, isDarkTheme, sunburstColor } from "#/colors";
 import { readableSize } from "#/format";
+import type { ReservedGroup } from "./reserved";
 import { arcPath, isDrawable, layerRadii } from "./sunburstGeometry";
 
 const VIEW_RADIUS = 275;
@@ -10,6 +11,8 @@ const MAX_LAYER = 6;
 type HoverState = {
 	id: string;
 	file: Ob.VfsNode;
+	// Set when it's one of the reserved wedges, which `file` only names.
+	reserved?: ReservedGroup;
 	clientX: number;
 	clientY: number;
 };
@@ -44,6 +47,11 @@ type SunburstProps = {
 	 * node's color doesn't change as the user navigates.
 	 */
 	depth: number;
+	/**
+	 * What Windows keeps for itself, which isn't in `size`: drawn in the
+	 * innermost ring after the files, before the free space.
+	 */
+	reserved: ReservedGroup[];
 
 	onNavigateUp: () => void;
 	onNavigateForward: (...into: string[]) => void;
@@ -56,6 +64,7 @@ export const Sunburst: React.FC<SunburstProps> = ({
 	position,
 	rootSize,
 	depth,
+	reserved,
 	onNavigateUp,
 	onNavigateForward,
 }) => {
@@ -67,6 +76,36 @@ export const Sunburst: React.FC<SunburstProps> = ({
 	};
 
 	const dark = isDarkTheme();
+
+	const reservedShards: React.ReactNode[] = [];
+	let reservedPos = size / capacity;
+	for (const group of reserved) {
+		// Kept inside the circle should the capacity be unknown.
+		const share = Math.min(group.size / capacity, 1 - reservedPos);
+		if (isDrawable(share, 0)) {
+			const id = `reserved/${group.kind}`;
+			reservedShards.push(
+				<Shard
+					key={id}
+					id={id}
+					file={{ type: "file", name: group.label, size: group.size, mtime: 0 }}
+					reserved={group}
+					layer={0}
+					depth={depth}
+					position={reservedPos}
+					size={share}
+					hue={0}
+					type="reserved"
+					path={[]}
+					hovered={hover?.id === id}
+					dark={dark}
+					setHover={setHover}
+					onNavigateForward={handleNavigateForward}
+				/>,
+			);
+		}
+		reservedPos += share;
+	}
 
 	return (
 		<div className="grow">
@@ -89,6 +128,7 @@ export const Sunburst: React.FC<SunburstProps> = ({
 					dark={dark}
 					onNavigateForward={handleNavigateForward}
 				/>
+				{reservedShards}
 				<circle
 					cx={0}
 					cy={0}
@@ -113,7 +153,12 @@ export const Sunburst: React.FC<SunburstProps> = ({
 			</svg>
 
 			{hover && (
-				<Tooltip file={hover.file} x={hover.clientX} y={hover.clientY} />
+				<Tooltip
+					file={hover.file}
+					reserved={hover.reserved}
+					x={hover.clientX}
+					y={hover.clientY}
+				/>
 			)}
 		</div>
 	);
@@ -248,6 +293,7 @@ const ShardTree: React.FC<ShardTreeProps> = ({
 type ShardProps = {
 	id: string;
 	file: Ob.VfsNode;
+	reserved?: ReservedGroup;
 	// Ring index in the current view (geometry) vs. depth below the scan
 	// root (color).
 	layer: number;
@@ -266,6 +312,7 @@ type ShardProps = {
 const Shard: React.FC<ShardProps> = ({
 	id,
 	file,
+	reserved,
 	layer,
 	depth,
 	position,
@@ -290,10 +337,10 @@ const Shard: React.FC<ShardProps> = ({
 			className={hovered ? "pulse" : undefined}
 			style={{ cursor: interactive ? "pointer" : "default" }}
 			onPointerOver={(e) =>
-				setHover({ id, file, clientX: e.clientX, clientY: e.clientY })
+				setHover({ id, file, reserved, clientX: e.clientX, clientY: e.clientY })
 			}
 			onPointerMove={(e) =>
-				setHover({ id, file, clientX: e.clientX, clientY: e.clientY })
+				setHover({ id, file, reserved, clientX: e.clientX, clientY: e.clientY })
 			}
 			onPointerLeave={() => setHover((prev) => (prev?.id === id ? null : prev))}
 			onClick={() => {
@@ -307,11 +354,12 @@ const Shard: React.FC<ShardProps> = ({
 
 type TooltipProps = {
 	file: Ob.VfsNode;
+	reserved?: ReservedGroup;
 	x: number;
 	y: number;
 };
 
-const Tooltip: React.FC<TooltipProps> = ({ file, x, y }) => {
+const Tooltip: React.FC<TooltipProps> = ({ file, reserved, x, y }) => {
 	const top = file.type === "directory" ? file.files.slice(0, 7) : [];
 	return (
 		<div
@@ -325,6 +373,14 @@ const Tooltip: React.FC<TooltipProps> = ({ file, x, y }) => {
 					{readableSize(file.size)}
 				</span>
 			</div>
+			{reserved && (
+				<div className="mt-2 max-w-[260px] text-[11px]">
+					<div className="font-mono opacity-80">
+						{reserved.names.join(", ")}
+					</div>
+					<div className="mt-1">{reserved.hint}</div>
+				</div>
+			)}
 			{top.length > 0 && (
 				<ol className="mt-2">
 					{top.map((child, i) => (

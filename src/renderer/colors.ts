@@ -42,7 +42,9 @@ export function isDarkTheme(): boolean {
 // node looks identical wherever the sunburst is centered. Deeper folders
 // recede toward the background — lighter on the light theme, darker on the
 // dark one — and files are always the color they recede toward, at any
-// depth. The `imaginary` type is the small-items remainder slice.
+// depth. The `imaginary` type is the small-items remainder slice, and
+// `reserved` is what Windows keeps for itself: both gray, the reserved one a
+// step stronger, since it's space that's taken rather than a remainder.
 export function sunburstColor(
 	hue: number,
 	depth: number,
@@ -51,6 +53,9 @@ export function sunburstColor(
 ): string {
 	if (type === "imaginary") {
 		return dark ? "oklch(0.28 0.015 287)" : "oklch(0.92 0.012 287)";
+	}
+	if (type === "reserved") {
+		return dark ? "oklch(0.42 0.012 287)" : "oklch(0.8 0.01 287)";
 	}
 	// Files skip straight to where folders are headed.
 	const steps = type === "file" ? Infinity : depth;

@@ -17,10 +17,14 @@ export type ScanDrive = {
 //   sunburst  — drop anything < 0.3% of the directory, recurse 6 levels
 //   tree      — alphabetical, immediate children only (FolderTree fetches
 //               deeper levels lazily via a fresh getRenderTree(subCursor))
+//
+// `reserved` is what the scanner took out of the root (see
+// src/scanner/reserved.rs), which only the root shows.
 export function assembleRenderTree(
 	slice: RenderSlice,
 	cursor: string[],
 	drive: ScanDrive | null,
+	reserved: Ob.ReservedSpace[] = [],
 ): Ob.RenderTree {
 	return {
 		name: drive?.name ?? slice.name,
@@ -41,5 +45,6 @@ export function assembleRenderTree(
 					a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
 				),
 		},
+		reserved: cursor.length === 0 ? reserved : [],
 	};
 }

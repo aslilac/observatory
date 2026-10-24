@@ -14,6 +14,9 @@ type ScanEntry = {
 	scan: NativeScan | null;
 	// Set on completion if the scan covered a whole disk.
 	drive: ScanDrive | null;
+	// Set on completion: what the scanner took out of the root, on a scan of
+	// a whole Windows disk (see src/scanner/reserved.rs).
+	reserved: Ob.ReservedSpace[];
 	errors: Ob.ScanError[];
 	perf: Ob.PerfNode | null;
 	revision: number;
@@ -57,10 +60,10 @@ export function getRenderTree(
 	if (!entry || entry.status !== "complete" || !entry.scan) {
 		return null;
 	}
-	const { scan, drive } = entry;
+	const { scan, drive, reserved } = entry;
 	return timed(`getRenderTree(${cursor.length} deep)`, () => {
 		const slice = scan.renderTree(cursor);
-		return slice && assembleRenderTree(slice, cursor, drive);
+		return slice && assembleRenderTree(slice, cursor, drive, reserved);
 	});
 }
 
@@ -145,6 +148,7 @@ export function startScan(path: string) {
 			status: "failed",
 			scan: null,
 			drive: null,
+			reserved: [],
 			errors: [rootError(path, e)],
 			perf: null,
 			revision: 1,
@@ -157,6 +161,7 @@ export function startScan(path: string) {
 		status: "building",
 		scan,
 		drive: null,
+		reserved: [],
 		errors: [],
 		perf: null,
 		revision: 0,
@@ -173,6 +178,7 @@ export function startScan(path: string) {
 				return;
 			}
 			entry.drive = scanDrive(path);
+			entry.reserved = result.reserved;
 			entry.errors = result.errors;
 			entry.perf = result.perf;
 			entry.status = "complete";
@@ -263,6 +269,7 @@ export function startFakeScan(name: string, root: Ob.VfsDirectory): string {
 		status: "complete",
 		scan: Scan.fromTree(root),
 		drive: { name: root.name, capacity: root.capacity ?? null },
+		reserved: [],
 		errors: [],
 		perf: null,
 		revision: 1,

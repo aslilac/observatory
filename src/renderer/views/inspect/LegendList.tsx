@@ -9,6 +9,7 @@ import { joinPath } from "#/paths";
 import { useCleanupQueue } from "#/state";
 import { Checkbox } from "#/components/Checkbox";
 import { RowMenu } from "#/components/ContextMenu";
+import type { ReservedGroup } from "./reserved";
 import type { SortMode } from "./SortPicker";
 import { type FileListBaseProps, selectableFromFile } from "./types";
 
@@ -18,6 +19,8 @@ type LegendListProps = FileListBaseProps & {
 	name: string;
 	size: number;
 	capacity: number;
+	// What Windows keeps for itself, which isn't in `size`.
+	reserved: ReservedGroup[];
 	onForward: (name: string) => void;
 	sortMode: SortMode;
 	showAll: boolean;
@@ -30,6 +33,7 @@ export const LegendList: React.FC<LegendListProps> = ({
 	name,
 	size,
 	capacity,
+	reserved,
 	files,
 	hueByName,
 	selection,
@@ -40,7 +44,9 @@ export const LegendList: React.FC<LegendListProps> = ({
 	showAll,
 	onShowAll,
 }) => {
-	const free = capacity > size ? capacity - size : 0;
+	const taken = size + reserved.reduce((sum, g) => sum + g.size, 0);
+	const free = capacity > taken ? capacity - taken : 0;
+	const dark = isDarkTheme();
 	const { includes: inCleanup } = useCleanupQueue();
 
 	const sorted = useMemo(() => sortFiles(files, sortMode), [files, sortMode]);
@@ -93,12 +99,7 @@ export const LegendList: React.FC<LegendListProps> = ({
 						<span
 							className="block h-[8px] w-[8px] flex-shrink-0 rounded-full"
 							style={{
-								background: sunburstColor(
-									hue,
-									cursor.length,
-									file.type,
-									isDarkTheme(),
-								),
+								background: sunburstColor(hue, cursor.length, file.type, dark),
 							}}
 						/>
 						<span className="flex-shrink-0 text-faint">
@@ -151,13 +152,35 @@ export const LegendList: React.FC<LegendListProps> = ({
 				</button>
 			)}
 
-			{free > 0 && (
-				<div className="mt-[8px] flex justify-between border-t border-line-soft px-[8px] pt-[10px] pb-[4px] text-[12px] text-muted">
-					<span className="flex items-center gap-[8px]">
-						<span className="block h-[8px] w-[8px] rounded-full border border-faint" />
-						free space
-					</span>
-					<span className="font-mono">{readableSize(free)}</span>
+			{(reserved.length > 0 || free > 0) && (
+				<div className="mt-[8px] flex flex-col gap-[8px] border-t border-line-soft px-[8px] pt-[10px] pb-[4px] text-[12px] text-muted">
+					{reserved.map((group) => (
+						<div
+							key={group.kind}
+							className="flex justify-between"
+							title={`${group.names.join(", ")}\n${group.hint}`}
+						>
+							<span className="flex items-center gap-[8px]">
+								<span
+									className="block h-[8px] w-[8px] rounded-full"
+									style={{
+										background: sunburstColor(0, 0, "reserved", dark),
+									}}
+								/>
+								{group.label}
+							</span>
+							<span className="font-mono">{readableSize(group.size)}</span>
+						</div>
+					))}
+					{free > 0 && (
+						<div className="flex justify-between">
+							<span className="flex items-center gap-[8px]">
+								<span className="block h-[8px] w-[8px] rounded-full border border-faint" />
+								free space
+							</span>
+							<span className="font-mono">{readableSize(free)}</span>
+						</div>
+					)}
 				</div>
 			)}
 		</div>

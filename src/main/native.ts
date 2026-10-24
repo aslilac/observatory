@@ -66,6 +66,8 @@ export type NativeScanProgress = {
 };
 
 export type NativeScanSummary = {
+	// Taken out of the tree (src/scanner/reserved.rs).
+	reserved: Ob.ReservedSpace[];
 	counts: NativeScanCounts;
 	errors: Ob.ScanError[];
 	perf: Ob.PerfNode | null;

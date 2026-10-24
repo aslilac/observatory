@@ -14,8 +14,8 @@
 // below, and the list of volumes.
 
 use crate::{
-	CountsSnapshot, PerfNode, ScanError, ScanResult, ScanState, VfsNode, run_scan, snapshot_perf,
-	tree, volumes::Volume,
+	CountsSnapshot, PerfNode, Reserved, ScanError, ScanResult, ScanState, VfsNode, run_scan,
+	snapshot_perf, tree, volumes::Volume,
 };
 use napi::bindgen_prelude::*;
 use napi::{Env, JsObject, JsString, Task};
@@ -217,6 +217,7 @@ pub struct ScanTask {
 // Everything in a ScanResult but the tree, which stays on the handle.
 #[derive(Serialize)]
 struct ScanSummary {
+	reserved: Vec<Reserved>,
 	counts: CountsSnapshot,
 	errors: Vec<ScanError>,
 	perf: Option<PerfNode>,
@@ -229,6 +230,7 @@ impl Task for ScanTask {
 	fn compute(&mut self) -> Result<Self::Output> {
 		let ScanResult {
 			root,
+			reserved,
 			counts,
 			errors,
 			perf,
@@ -242,6 +244,7 @@ impl Task for ScanTask {
 		}
 		drop(tree);
 		serde_json::to_string(&ScanSummary {
+			reserved,
 			counts,
 			errors,
 			perf,
