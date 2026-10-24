@@ -45,7 +45,6 @@ export const LegendList: React.FC<LegendListProps> = ({
 
 	const collapse = sortMode === "size" && !showAll && sorted.length > TOP_N;
 	const visible = collapse ? sorted.slice(0, TOP_N) : sorted;
-	const hiddenCount = sorted.length - visible.length;
 	const showDate = sortMode === "newest" || sortMode === "oldest";
 
 	return (
@@ -135,8 +134,7 @@ export const LegendList: React.FC<LegendListProps> = ({
 					onClick={onShowAll}
 					className="mt-[6px] cursor-pointer rounded-[5px] px-[8px] py-[7px] text-left text-[12px] text-muted hover:bg-fill hover:text-default"
 				>
-					Show all {sorted.length} items{" "}
-					<span className="font-mono text-faint">({hiddenCount} more)</span>
+					Show all {sorted.length} items
 				</button>
 			)}
 
