@@ -32,5 +32,10 @@ if (result.status !== 0) {
 
 const src = path.join(cargoCwd, "build", "release", `${stem}.${ext}`);
 const dst = path.join(cargoCwd, "observatory_scan.node");
+// Copy to a new file rather than over the old one. macOS remembers the code
+// signature of a binary it has loaded and kills any process that loads a
+// changed one from the same file, and a running dev app still has the old
+// one mapped in.
+await fs.rm(dst, { force: true });
 await fs.copyFile(src, dst);
 console.log(`built ${path.relative(repoRoot, dst)}`);
