@@ -6,6 +6,7 @@
 	"license": "MPL-2.0",
 	"author": "McKayla Washburn-Love <kayla@tree.camp>",
 	"repository": "https://github.com/aslilac/observatory",
+	"desktopName": "ooo.lilac.observatory.desktop",
 	"scripts": {
 		"check.health": "fallow",
 		"check.lint": "oxlint --fix",

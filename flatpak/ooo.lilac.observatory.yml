@@ -1,0 +1,72 @@
+# Observatory as a Flatpak, built from this checkout. See README.md here.
+id: ooo.lilac.observatory
+runtime: org.freedesktop.Platform
+runtime-version: "26.08"
+sdk: org.freedesktop.Sdk
+base: org.electronjs.Electron2.BaseApp
+base-version: "26.08"
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.node24
+  - org.freedesktop.Sdk.Extension.rust-stable
+command: observatory
+separate-locales: false
+
+finish-args:
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  # The whole host, every mount included, at /run/host/root (Flatpak
+  # 1.17+): the disks to scan. volumes.rs lists them from there.
+  - --filesystem=host-root
+  # And the host's files where they are on the host, so folders picked in
+  # the file chooser, home and removable disks keep their own paths.
+  - --filesystem=host
+  # Electron trashes files with `gio trash`, which goes through the trash
+  # portal in a sandbox.
+  - --env=ELECTRON_TRASH=gio
+  # Reveal in the file manager.
+  - --talk-name=org.freedesktop.FileManager1
+
+build-options:
+  append-path: /usr/lib/sdk/node24/bin:/usr/lib/sdk/rust-stable/bin:/run/build/observatory/.pnpm/bin
+  # pnpm, cargo, and Electron's own download fetch what they need.
+  build-args:
+    - --share=network
+  env:
+    CARGO_HOME: /run/build/observatory/.cargo
+    XDG_CACHE_HOME: /run/build/observatory/.cache
+    npm_config_cache: /run/build/observatory/.npm
+
+modules:
+  - name: observatory
+    buildsystem: simple
+    build-commands:
+      # Forge looks for pnpm on the PATH too.
+      - npm install --global --prefix=/run/build/observatory/.pnpm pnpm@12.12.0
+      - pnpm install --frozen-lockfile --store-dir=.pnpm-store
+      - node scripts/build-native.mjs
+      - node_modules/.bin/electron-vite build
+      - node_modules/.bin/electron-forge package
+      - cp -a out/Observatory-linux-*/. /app/main/
+      - install -Dm755 flatpak/observatory.sh /app/bin/observatory
+      - install -Dm644 -t /app/share/applications flatpak/ooo.lilac.observatory.desktop
+      - install -Dm644 -t /app/share/metainfo flatpak/ooo.lilac.observatory.metainfo.xml
+      - mkdir -p /app/share/icons
+      - cp -r build-resources/hicolor /app/share/icons/
+    sources:
+      - type: dir
+        path: ..
+        # What a build here (or on the Mac it came from) leaves around.
+        skip:
+          - .git
+          - node_modules
+          - build
+          - out
+          - rust-backend/build
+          - rust-backend/observatory_scan.node
+          - icon/out
+          - icon/renders
+          - flatpak/.flatpak-builder
+          - flatpak/build
+          - flatpak/repo

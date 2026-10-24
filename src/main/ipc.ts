@@ -41,7 +41,10 @@ ipcMain.handle("Ob.deleteFiles", pass(deleteFiles));
 ipcMain.handle("Ob.searchScan", pass(searchScan));
 ipcMain.handle("Ob.getScanErrors", pass(getScanErrors));
 ipcMain.handle("Ob.publishRecentScans", pass(setRecentScans));
-ipcMain.handle("Ob.revealInFinder", pass(shell.showItemInFolder.bind(shell)));
+ipcMain.handle(
+	"Ob.revealInFinder",
+	pass((path: string) => shell.showItemInFolder(hostPath(path))),
+);
 ipcMain.handle("Ob.openPath", pass(shell.openPath.bind(shell)));
 ipcMain.handle("Ob.openFullDiskAccessSettings", () =>
 	shell.openExternal(
@@ -64,6 +67,18 @@ ipcMain.handle(
 		}
 	}),
 );
+
+// In a Flatpak, scans of the host's disks go through its root at
+// /run/host/root (see rust-backend/volumes.rs), but the file manager runs
+// outside the sandbox, where those files are where they always are.
+function hostPath(path: string) {
+	const root = "/run/host/root";
+	if (!process.env["FLATPAK_ID"] || !path.startsWith(root)) {
+		return path;
+	}
+	const rest = path.slice(root.length);
+	return rest === "" ? "/" : rest.startsWith("/") ? rest : path;
+}
 
 // Dev-only IPC for the "Load fake disk" button on Welcome. Registered only
 // in unpackaged builds so production simply doesn't have a handler — if the

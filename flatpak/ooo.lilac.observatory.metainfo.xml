@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+	<id>ooo.lilac.observatory</id>
+	<metadata_license>CC0-1.0</metadata_license>
+	<project_license>MPL-2.0</project_license>
+	<name>Observatory</name>
+	<summary>See what's taking up space on your disks</summary>
+	<developer id="ooo.lilac">
+		<name>McKayla Washburn-Love</name>
+	</developer>
+	<description>
+		<p>
+			Observatory scans a disk or folder and draws what's in it as a
+			sunburst chart, so the folders taking up the most space stand out.
+		</p>
+	</description>
+	<launchable type="desktop-id">ooo.lilac.observatory.desktop</launchable>
+	<url type="homepage">https://github.com/aslilac/observatory</url>
+	<url type="bugtracker">https://github.com/aslilac/observatory/issues</url>
+	<content_rating type="oars-1.1" />
+</component>

@@ -14,3 +14,4 @@ target/
 *.tsbuildinfo
 *.node
 .fallow/
+.flatpak-builder/

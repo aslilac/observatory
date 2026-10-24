@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Observatory
+Comment=See what's taking up space on your disks
+Exec=observatory
+Icon=ooo.lilac.observatory
+Terminal=false
+Categories=System;Filesystem;Utility;
+Keywords=disk;usage;space;storage;analyzer;
