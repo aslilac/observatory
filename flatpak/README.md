@@ -11,7 +11,7 @@ flatpak run ooo.lilac.observatory
 
 ## How it gets at the disks
 
-A disk usage analyzer needs to see the whole disk, so the sandbox has `--filesystem=host-root` (Flatpak 1.17+): the host's whole filesystem tree, every mount included, at `/run/host/root`. The mount table in the sandbox lists the host's mounts there too, so the volume list and the scanner's mount plan (`rust-backend/mounts.rs`) work on the host's layout:
+A disk usage analyzer needs to see the whole disk, so the sandbox has `--filesystem=host-root` (Flatpak 1.17+): the host's whole filesystem tree, every mount included, at `/run/host/root`. The mount table in the sandbox lists the host's mounts there too, so the volume list and the scanner's mount plan (`src/scanner/mounts.rs`) work on the host's layout:
 
 - The startup disk is listed as `/run/host/root`, and its scan goes from there. On an ostree system (Bazzite, Silverblue), how full it is comes from `/run/host/root/sysroot`.
 - A disk the sandbox also has at its own place (removable disks under `/run/media`, from `--filesystem=host`) is listed at that place.

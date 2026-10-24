@@ -1,8 +1,8 @@
 // Loader and TypeScript types for the napi-rs scanner. The .node lives at
-// `rust-backend/observatory_scan.node`; `yarn build.native` builds and
+// `src/scanner/observatory_scan.node`; `yarn build.native` builds and
 // places it. Resolved relative to the Electron app path so dev (where
 // app.getAppPath() is the project root) and packaged builds
-// (asar.unpack: "**/*.node" puts it at app.asar.unpacked/rust-backend/
+// (asar.unpack: "**/*.node" puts it at app.asar.unpacked/src/scanner/
 // and Electron's asar layer transparently rewrites the require path)
 // both find it.
 //
@@ -22,7 +22,7 @@ import * as path from "node:path";
 const require = createRequire(import.meta.url);
 const nativePath = path.resolve(
 	app.getAppPath(),
-	"rust-backend/observatory_scan.node",
+	"src/scanner/observatory_scan.node",
 );
 
 type RawNativeBinding = {
@@ -72,7 +72,7 @@ export type NativeScanSummary = {
 };
 
 // What the scanner cuts out of the tree for one directory (`RenderSlice` in
-// rust-backend/tree.rs). Directories in `list` come without their contents;
+// src/scanner/tree.rs). Directories in `list` come without their contents;
 // those in `sunburst` keep the ones big enough to draw, six levels down.
 export type RenderSlice = {
 	// The scan root's name, whichever directory this is.
@@ -163,7 +163,7 @@ export class Scan {
 export type NativeScan = Scan;
 
 // A disk or network share there is to scan (`Volume` in
-// rust-backend/volumes.rs).
+// src/scanner/volumes.rs).
 export type NativeVolume = {
 	path: string;
 	// Where to ask how full it is, when that isn't `path`.

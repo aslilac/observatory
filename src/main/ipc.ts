@@ -69,7 +69,7 @@ ipcMain.handle(
 );
 
 // In a Flatpak, scans of the host's disks go through its root at
-// /run/host/root (see rust-backend/volumes.rs), but the file manager runs
+// /run/host/root (see src/scanner/volumes.rs), but the file manager runs
 // outside the sandbox, where those files are where they always are.
 function hostPath(path: string) {
 	const root = "/run/host/root";

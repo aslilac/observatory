@@ -211,7 +211,7 @@ const ShardTree: React.FC<ShardTreeProps> = ({
 
 			// The rest of the directory goes in one gray wedge: children too
 			// small to draw, whether they were dropped here or by the scanner
-			// (rust-backend/tree.rs), which leaves no trace of them.
+			// (src/scanner/tree.rs), which leaves no trace of them.
 			const childrenSum = file.files
 				.map((f) => f.size / capacity)
 				.filter((s) => isDrawable(s, layer + 1))

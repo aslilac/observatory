@@ -9,7 +9,7 @@ export type ScanDrive = {
 
 // Turns the scanner's slice of a directory into the RenderTree the renderer
 // draws. The pruning already happened in Rust, next to the tree (see
-// rust-backend/tree.rs); what's left is the drive glue, and the folder tree
+// src/scanner/tree.rs); what's left is the drive glue, and the folder tree
 // view's alphabetical order, which wants the locale-aware collation JS has.
 //
 // Three views of the same directory:

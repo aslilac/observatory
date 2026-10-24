@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { RenderSlice } from "./native.js";
 import { assembleRenderTree } from "./renderTree.js";
 
-// The pruning itself is tested with the scanner, in rust-backend/tree.rs.
+// The pruning itself is tested with the scanner, in src/scanner/tree.rs.
 
 function file(name: string, size: number): Ob.VfsFile {
 	return { type: "file", name, size, mtime: 0 };

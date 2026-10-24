@@ -35,7 +35,3 @@ libc = "0.2"
 
 [build-dependencies]
 napi-build = "2"
-
-[profile.release]
-lto = "thin"
-codegen-units = 1

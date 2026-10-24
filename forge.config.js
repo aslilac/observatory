@@ -9,7 +9,7 @@ const shipped = [
 	"/package.json",
 	"/build",
 	"/node_modules",
-	"/rust-backend/observatory_scan.node",
+	"/src/scanner/observatory_scan.node",
 ];
 
 module.exports = {
@@ -21,7 +21,7 @@ module.exports = {
 			// Native modules can't be require()'d from inside an asar archive.
 			// Forge writes them to app.asar.unpacked/ instead and Electron's
 			// asar layer transparently rewrites require() paths so the main
-			// process's `path.resolve(app.getAppPath(), "rust-backend/...")`
+			// process's `path.resolve(app.getAppPath(), "src/scanner/...")`
 			// resolves to the unpacked copy without any code changes.
 			unpack: "**/*.node",
 		},

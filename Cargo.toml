@@ -1,0 +1,8 @@
+[workspace]
+members = ["src/scanner"]
+resolver = "3"
+
+# Cargo reads profiles only from the workspace root.
+[profile.release]
+lto = "thin"
+codegen-units = 1

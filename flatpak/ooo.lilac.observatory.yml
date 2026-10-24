@@ -63,8 +63,8 @@ modules:
           - node_modules
           - build
           - out
-          - rust-backend/build
-          - rust-backend/observatory_scan.node
+          - target
+          - src/scanner/observatory_scan.node
           - icon/out
           - icon/renders
           - flatpak/.flatpak-builder
