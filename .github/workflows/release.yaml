@@ -4,105 +4,165 @@ on:
   push:
     tags: ["v*.*.*"]
 
+permissions:
+  contents: read
+
 jobs:
-  publish:
+  version:
     runs-on: ubuntu-latest
 
-    name: Publish
+    name: Version
+
+    outputs:
+      version: ${{ steps.verify.outputs.version }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         name: Checkout
 
-      # - run: |
-      #     version="v$(cat Cargo.toml | grep -m 1 "version" | sed -r "s/version *= *\"([[:digit:].]+)\"/\1/")"
-      #     if [ "$version" != "${{ github.ref_name }}" ]; then
-      #       echo "tag ${{ github.ref_name }} does not match version $version in Cargo.toml"
-      #       exit 1
-      #     fi
-      #   name: Verify version
-
-      - uses: dtolnay/rust-toolchain@stable
-        name: Configure Rust
-
-      # - run: cargo test
-      #   name: Test
-
-      # - run: cargo publish
-      #   name: Publish
-      #   env:
-      #     CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-
-      - uses: softprops/action-gh-release@v1
-        name: Release
+      # Forge names the builds after the version in package.json.
+      - run: |
+          version="$(node -p 'require("./package.json").version')"
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "tag $GITHUB_REF_NAME does not match version $version in package.json"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+        id: verify
+        name: Verify version
 
   package:
     strategy:
       fail-fast: false
       matrix:
         release:
-          # TODO: Figure out how to "setup pkg-config for cross-compilation"
-          # - os: ubuntu-latest
-          #   target: aarch64-unknown-linux-gnu
-          #   executable: observatory
+          - os: macos-latest
+            target: darwin-arm64
 
           - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            executable: observatory
+            target: linux-x64
 
-          # - os: windows-latest
-          #   target: aarch64-pc-windows-msvc
-          #   executable: observatory.exe
+          - os: ubuntu-24.04-arm
+            target: linux-arm64
 
           - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            executable: observatory.exe
-
-          - os: macos-latest
-            target: aarch64-apple-darwin
-            executable: observatory
+            target: win32-x64
 
     name: Package.${{ matrix.release.target }}
 
     runs-on: ${{ matrix.release.os }}
 
     needs:
-      - publish
+      - version
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         name: Checkout
 
       - uses: dtolnay/rust-toolchain@stable
         name: Configure Rust
+
+      - uses: pnpm/action-setup@v6
+        name: Configure pnpm
         with:
-          target: ${{ matrix.release.target }}
+          version: 12.12.0
 
-      - uses: actions/setup-node
+      - uses: actions/setup-node@v7
+        name: Configure Node
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
 
-      - run: cargo build --target ${{ matrix.release.target }} --release
+      - run: pnpm install --frozen-lockfile
+        name: Install
+
+      - run: node scripts/build-native.mjs
+        name: Build scanner
+
+      - run: pnpm exec electron-vite build
         name: Build
 
-      # Create .tar.gz files for Linux and macOS
-      - run: tar -a -cf ../../../dist/observatory-${{ github.ref_name }}-${{ matrix.release.target }}.tar.gz ${{ matrix.release.executable }}
-        name: Package (tar) — ${{ matrix.release.target }}
-        working-directory: ./build/${{ matrix.release.target }}/release/
-        if: ${{ !startsWith(matrix.release.os, 'windows') }}
+      # A zip everywhere, and a Squirrel installer on Windows.
+      - run: pnpm exec electron-forge make
+        name: Package
 
-      # Create .zip files for Linux and macOS
-      - run: zip -r ../../../dist/observatory-${{ github.ref_name }}-${{ matrix.release.target }}.zip ${{ matrix.release.executable }}
-        name: Package (zip) — ${{ matrix.reclease.target }}
-        working-directory: ./build/${{ matrix.release.target }}/release/
-        if: ${{ !startsWith(matrix.release.os, 'windows') }}
-
-      # Create .zip files for Windows
-      - run: Compress-Archive ${{ matrix.release.executable }} -DestinationPath ../../../dist/observatory-${{ github.ref_name }}-${{ matrix.release.target }}.zip
-        name: Package (zip) — ${{ matrix.release.target }}
-        working-directory: ./build/${{ matrix.release.target }}/release/
-        if: ${{ startsWith(matrix.release.os, 'windows') }}
-
-      # Upload archives to a Github release for this version
-      - uses: softprops/action-gh-release@v1
-        name: Publish
+      - uses: actions/upload-artifact@v7
+        name: Upload
         with:
-          files: ./out/make/zip//${{ matrix.release.target }}/release/observatory-${{ github.ref_name }}-${{ matrix.release.target }}.*
+          name: package-${{ matrix.release.target }}
+          path: |
+            out/make/zip/**/*.zip
+            out/make/squirrel.windows/**/*.exe
+          if-no-files-found: error
+
+  flatpak:
+    strategy:
+      fail-fast: false
+      matrix:
+        release:
+          - os: ubuntu-latest
+            arch: x86_64
+            target: linux-x64
+
+          - os: ubuntu-24.04-arm
+            arch: aarch64
+            target: linux-arm64
+
+    name: Flatpak.${{ matrix.release.target }}
+
+    runs-on: ${{ matrix.release.os }}
+
+    needs:
+      - version
+
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-26.08
+      options: --privileged
+
+    steps:
+      - uses: actions/checkout@v7
+        name: Checkout
+
+      # The manifest builds the checkout around it, so flatpak-builder's own
+      # directories go where its skip list leaves them out. Releases start
+      # from scratch, without a cache.
+      - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        name: Build
+        with:
+          manifest-path: flatpak/ooo.lilac.observatory.yml
+          arch: ${{ matrix.release.arch }}
+          bundle: Observatory-${{ matrix.release.target }}-${{ needs.version.outputs.version }}.flatpak
+          artifact-name: flatpak-${{ matrix.release.target }}
+          state-dir: flatpak/.flatpak-builder
+          build-dir: flatpak/build
+          repo-dir: flatpak/repo
+          cache: false
+
+  publish:
+    runs-on: ubuntu-latest
+
+    name: Publish
+
+    needs:
+      - package
+      - flatpak
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/download-artifact@v8
+        name: Download
+        with:
+          path: dist
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v3
+        name: Release
+        with:
+          files: |
+            dist/**/*.zip
+            dist/**/*.exe
+            dist/**/*.flatpak
+          fail_on_unmatched_files: true
+          generate_release_notes: true
