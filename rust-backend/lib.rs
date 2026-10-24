@@ -450,7 +450,7 @@ fn classify(
 		state.counts.files.fetch_add(1, Ordering::Relaxed);
 		Some(VfsNode::File {
 			name: entry_name,
-			size: meta.len(),
+			size: disk_usage(&meta),
 			mtime,
 		})
 	} else if ft.is_dir() {
@@ -478,6 +478,23 @@ fn classify(
 		state.counts.misc.fetch_add(1, Ordering::Relaxed);
 		None
 	}
+}
+
+// Space the file takes up on disk rather than its length. The two differ
+// most for sparse files: a Docker or VM disk image can claim hundreds of GB
+// it has never written, and counting its length puts the disk past full.
+// APFS compression and partly filled last blocks move it a little too.
+// This is what du, Finder and DaisyDisk count. `st_blocks` is in 512-byte
+// units whatever the filesystem's block size.
+#[cfg(unix)]
+fn disk_usage(meta: &fs::Metadata) -> u64 {
+	meta.blocks() * 512
+}
+
+// std doesn't expose allocation sizes on Windows.
+#[cfg(not(unix))]
+fn disk_usage(meta: &fs::Metadata) -> u64 {
+	meta.len()
 }
 
 fn rename(node: VfsNode, new_name: String) -> VfsNode {
@@ -627,6 +644,12 @@ mod tests {
 		f.write_all(&vec![0u8; bytes]).unwrap();
 	}
 
+	// What the scanner should count for a file: what the filesystem
+	// allocated for it, which rounds up from what was written.
+	fn on_disk(path: &Path) -> u64 {
+		disk_usage(&fs::metadata(path).unwrap())
+	}
+
 	fn cleanup(dir: &Path) {
 		// Restore perms on anything we may have chmod 0'd so rm -rf works.
 		#[cfg(unix)]
@@ -662,7 +685,10 @@ mod tests {
 		let result = scan(&dir, ScanConfig::default()).unwrap();
 		assert_eq!(result.counts.files, 2);
 		assert_eq!(result.counts.directories, 0);
-		assert_eq!(result.root.size(), 300);
+		assert_eq!(
+			result.root.size(),
+			on_disk(&dir.join("a.bin")) + on_disk(&dir.join("b.bin")),
+		);
 		assert!(result.errors.is_empty());
 
 		cleanup(&dir);
@@ -679,7 +705,10 @@ mod tests {
 		let result = scan(&dir, ScanConfig::default()).unwrap();
 		assert_eq!(result.counts.files, 2);
 		assert_eq!(result.counts.directories, 1);
-		assert_eq!(result.root.size(), 600);
+		assert_eq!(
+			result.root.size(),
+			on_disk(&sub.join("deep.bin")) + on_disk(&dir.join("top.bin")),
+		);
 
 		cleanup(&dir);
 	}
@@ -687,9 +716,10 @@ mod tests {
 	#[test]
 	fn sorts_children_size_descending() {
 		let dir = tmpdir("sorted");
-		write(&dir.join("small.bin"), 10);
-		write(&dir.join("big.bin"), 1000);
-		write(&dir.join("mid.bin"), 100);
+		// Big enough apart to allocate different numbers of blocks.
+		write(&dir.join("small.bin"), 10_000);
+		write(&dir.join("big.bin"), 1_000_000);
+		write(&dir.join("mid.bin"), 100_000);
 
 		let result = scan(&dir, ScanConfig::default()).unwrap();
 		if let VfsNode::Directory { files, .. } = &result.root {
@@ -717,7 +747,27 @@ mod tests {
 		let result = scan(&dir, ScanConfig::default()).unwrap();
 		assert_eq!(result.counts.symlinks, 1);
 		assert_eq!(result.counts.files, 1);
-		assert_eq!(result.root.size(), 100);
+		assert_eq!(result.root.size(), on_disk(&dir.join("real.bin")));
+
+		cleanup(&dir);
+	}
+
+	#[test]
+	#[cfg(unix)]
+	fn counts_sparse_files_by_what_they_allocate() {
+		let dir = tmpdir("sparse");
+		// A 1 GB disk image with nothing written to it yet.
+		File::create(dir.join("disk.img"))
+			.unwrap()
+			.set_len(1 << 30)
+			.unwrap();
+
+		let result = scan(&dir, ScanConfig::default()).unwrap();
+		assert!(
+			result.root.size() < 1 << 20,
+			"counted {} bytes",
+			result.root.size(),
+		);
 
 		cleanup(&dir);
 	}
