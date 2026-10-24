@@ -118,14 +118,19 @@ export const Inspect: React.FC<InspectProps> = ({ scan }) => {
 		[selection],
 	);
 
-	// Single source of truth for top-level hues so the dot in the legend list,
-	// the depth-1 hint in the folder tree, and the wedge in the sunburst all
-	// agree. Built from the size-desc list so the rainbow lays itself out
-	// proportionally to byte share. Computed before the early-return below so
-	// the hook is always called.
+	// Hues for the current directory's children, anchored to the scan root
+	// (see colors.ts) so the dot in the legend list and the depth-1 hint in
+	// the folder tree match the sunburst wedge, which derives its hues the
+	// same way. Computed before the early-return below so the hook is always
+	// called.
 	const hueByName = useMemo(
-		() => huesByPosition(tree?.list.files ?? []),
-		[tree?.list.files],
+		() =>
+			huesByPosition(
+				tree?.list.files ?? [],
+				tree?.position ?? 0,
+				tree?.rootSize ?? 0,
+			),
+		[tree?.list.files, tree?.position, tree?.rootSize],
 	);
 
 	const chips = (
@@ -192,7 +197,7 @@ export const Inspect: React.FC<InspectProps> = ({ scan }) => {
 					size={shared.size}
 					position={shared.position}
 					rootSize={shared.rootSize}
-					hueByName={hueByName}
+					depth={cursor.length}
 					onNavigateUp={navigateUp}
 					onNavigateForward={navigateForward}
 				/>

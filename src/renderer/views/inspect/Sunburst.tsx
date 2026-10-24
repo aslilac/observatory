@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { sunburstColor } from "#/colors";
+import { hueForRange, isDarkTheme, sunburstColor } from "#/colors";
 import { readableSize } from "#/util";
 import { arcPath, isDrawable, layerRadii } from "./sunburstGeometry";
 
@@ -27,19 +27,24 @@ type SunburstProps = {
 	/** The contents of the current directory. */
 	files: Ob.VfsNode[];
 	/**
-	 * The starting position of the current directory in bytes, relative to
-	 * beginning of the scan, ordered by largest children first. ie. The largest
-	 * largest child of the scan root has a position of 0, the second largest
-	 * has a position equal to the size of the largest, the third largest has a
-	 * position equal to the size of the largest plus the second largest, and so
-	 * on. The largest child of subdirectories will be the same as the parent
-	 * directory.
+	 * The starting position of the current directory as a fraction of
+	 * `rootSize`, relative to the beginning of the scan, ordered by largest
+	 * children first. ie. The largest child of the scan root has a position of
+	 * 0, the second largest has a position equal to the share of the largest,
+	 * the third largest has a position equal to the share of the largest plus
+	 * the second largest, and so on. The largest child of a subdirectory has
+	 * the same position as the subdirectory itself.
 	 *
-	 * This is all just used for elaborate color math.
+	 * This is all just used for elaborate color math: see `hueForRange`.
 	 */
 	position: number;
+	/**
+	 * How many levels below the scan root the current directory sits (the
+	 * cursor length). Lightness is keyed on absolute depth so, like hue, a
+	 * node's color doesn't change as the user navigates.
+	 */
+	depth: number;
 
-	hueByName: Map<string, number>;
 	onNavigateUp: () => void;
 	onNavigateForward: (...into: string[]) => void;
 };
@@ -48,7 +53,9 @@ export const Sunburst: React.FC<SunburstProps> = ({
 	capacity,
 	files,
 	size,
-	hueByName,
+	position,
+	rootSize,
+	depth,
 	onNavigateUp,
 	onNavigateForward,
 }) => {
@@ -59,7 +66,7 @@ export const Sunburst: React.FC<SunburstProps> = ({
 		setHover(null);
 	};
 
-	const dark = document.documentElement.classList.contains("dark");
+	const dark = isDarkTheme();
 
 	return (
 		<div className="grow">
@@ -71,11 +78,12 @@ export const Sunburst: React.FC<SunburstProps> = ({
 				<ShardTree
 					nodes={files}
 					layer={0}
+					depth={depth}
 					startPos={0}
-					parentHue={null}
+					hueStart={position}
 					parentPath={[]}
 					capacity={capacity}
-					hueByName={hueByName}
+					rootSize={rootSize}
 					hover={hover}
 					setHover={setHover}
 					dark={dark}
@@ -114,11 +122,17 @@ export const Sunburst: React.FC<SunburstProps> = ({
 type ShardTreeProps = {
 	nodes: Ob.VfsNode[];
 	layer: number;
+	// Absolute depth of layer 0 (the current directory's children).
+	depth: number;
 	startPos: number;
-	parentHue: number | null;
+	// Where this run of siblings starts in hue space, as a fraction of
+	// rootSize. Tracked separately from startPos because the arc geometry is
+	// scaled to the current directory's capacity while hues stay anchored to
+	// the scan root.
+	hueStart: number;
 	parentPath: string[];
 	capacity: number;
-	hueByName: Map<string, number>;
+	rootSize: number;
 	hover: HoverState | null;
 	setHover: React.Dispatch<React.SetStateAction<HoverState | null>>;
 	dark: boolean;
@@ -128,11 +142,12 @@ type ShardTreeProps = {
 const ShardTree: React.FC<ShardTreeProps> = ({
 	nodes,
 	layer,
+	depth,
 	startPos,
-	parentHue,
+	hueStart,
 	parentPath,
 	capacity,
-	hueByName,
+	rootSize,
 	hover,
 	setHover,
 	dark,
@@ -140,13 +155,17 @@ const ShardTree: React.FC<ShardTreeProps> = ({
 }) => {
 	const elements: React.ReactNode[] = [];
 	let pos = startPos;
+	let huePos = hueStart;
 	for (const file of nodes) {
 		const sliceSize = file.size / capacity;
+		const hueSize = file.size / rootSize;
+		// Hues follow every sibling's bytes, drawn or not, to match the legend.
+		const fileHuePos = huePos;
+		huePos += hueSize;
 		if (!isDrawable(sliceSize, layer)) {
 			continue;
 		}
-		const myHue =
-			layer === 0 ? (hueByName.get(file.name) ?? 0) : (parentHue ?? 0);
+		const myHue = hueForRange(fileHuePos, hueSize);
 		const path = [...parentPath, file.name];
 		const id = `${layer}/${path.join("/")}`;
 
@@ -156,6 +175,7 @@ const ShardTree: React.FC<ShardTreeProps> = ({
 				id={id}
 				file={file}
 				layer={layer}
+				depth={depth + layer}
 				position={pos}
 				size={sliceSize}
 				hue={myHue}
@@ -175,11 +195,12 @@ const ShardTree: React.FC<ShardTreeProps> = ({
 						key={`${id}/children`}
 						nodes={file.files}
 						layer={layer + 1}
+						depth={depth}
 						startPos={pos}
-						parentHue={myHue}
+						hueStart={fileHuePos}
 						parentPath={path}
 						capacity={capacity}
-						hueByName={hueByName}
+						rootSize={rootSize}
 						hover={hover}
 						setHover={setHover}
 						dark={dark}
@@ -204,6 +225,7 @@ const ShardTree: React.FC<ShardTreeProps> = ({
 						id={remainderId}
 						file={file}
 						layer={layer + 1}
+						depth={depth + layer + 1}
 						position={pos + childrenSum}
 						size={remainder}
 						hue={myHue}
@@ -226,7 +248,10 @@ const ShardTree: React.FC<ShardTreeProps> = ({
 type ShardProps = {
 	id: string;
 	file: Ob.VfsNode;
+	// Ring index in the current view (geometry) vs. depth below the scan
+	// root (color).
 	layer: number;
+	depth: number;
 	position: number;
 	size: number;
 	hue: number;
@@ -242,6 +267,7 @@ const Shard: React.FC<ShardProps> = ({
 	id,
 	file,
 	layer,
+	depth,
 	position,
 	size,
 	hue,
@@ -253,7 +279,7 @@ const Shard: React.FC<ShardProps> = ({
 	onNavigateForward,
 }) => {
 	const { ir, or } = layerRadii(layer);
-	const fill = sunburstColor(hue, layer, type, dark);
+	const fill = sunburstColor(hue, depth, type, dark);
 	const interactive = type === "directory" || type === "file";
 	return (
 		<path

@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 
 import { FileIcon, FolderIcon } from "lucide-react";
 
-import { oklchSwatch } from "#/colors";
+import { isDarkTheme, sunburstColor } from "#/colors";
 import { rowActions } from "#/contextActions";
 import { joinPath } from "#/state";
 import { readableDate, readableSize } from "#/util";
@@ -90,7 +90,14 @@ export const LegendList: React.FC<LegendListProps> = ({
 						/>
 						<span
 							className="block h-[8px] w-[8px] flex-shrink-0 rounded-full"
-							style={{ background: oklchSwatch(hue) }}
+							style={{
+								background: sunburstColor(
+									hue,
+									cursor.length,
+									file.type,
+									isDarkTheme(),
+								),
+							}}
 						/>
 						<span className="flex-shrink-0 text-faint">
 							{isDir ? (

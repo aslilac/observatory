@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 
 import { ChevronRightIcon } from "lucide-react";
 
-import { oklchSwatch } from "#/colors";
+import { isDarkTheme, sunburstColor } from "#/colors";
 import { rowActions } from "#/contextActions";
 import { joinPath } from "#/state";
 import { readableSize } from "#/util";
@@ -86,7 +86,7 @@ export const FolderTree: React.FC<FolderTreeProps> = ({
 				name={rootName}
 				size={files.reduce((sum, f) => sum + f.size, 0)}
 				depth={0}
-				hue={null}
+				swatch={null}
 				expandable={files.length > 0}
 				expanded={expanded.has("")}
 				selected={false}
@@ -186,8 +186,15 @@ const TreeChildren: React.FC<ChildrenProps> = ({
 						name={file.name}
 						size={file.size}
 						depth={depth}
-						hue={
-							depth === 1 && isDir ? (hueByName.get(file.name) ?? null) : null
+						swatch={
+							depth === 1 && isDir && hueByName.has(file.name)
+								? sunburstColor(
+										hueByName.get(file.name)!,
+										cursor.length,
+										"directory",
+										isDarkTheme(),
+									)
+								: null
 						}
 						expandable={expandable}
 						expanded={isOpen}
@@ -262,7 +269,8 @@ type RowProps = {
 	name: string;
 	size: number;
 	depth: number;
-	hue: number | null;
+	// Legend dot color, matching the sunburst wedge; null leaves a spacer.
+	swatch: string | null;
 	expandable: boolean;
 	expanded: boolean;
 	selected: boolean;
@@ -277,7 +285,7 @@ const Row: React.FC<RowProps> = ({
 	name,
 	size,
 	depth,
-	hue,
+	swatch,
 	expandable,
 	expanded,
 	selected,
@@ -317,10 +325,10 @@ const Row: React.FC<RowProps> = ({
 			) : (
 				<span className="block h-[14px] w-[14px] flex-shrink-0" />
 			)}
-			{hue !== null ? (
+			{swatch !== null ? (
 				<span
 					className="block h-[8px] w-[8px] flex-shrink-0 rounded-full"
-					style={{ background: oklchSwatch(hue) }}
+					style={{ background: swatch }}
 				/>
 			) : (
 				<span className="block h-[8px] w-[8px] flex-shrink-0" />
