@@ -11,8 +11,11 @@
 // renderer with no reshaping.
 //
 // Platform parity with the JS scanner:
-// - Linux: skip /dev and /proc by absolute path; refuse cross-device
-//   descent so procfs / sysfs / tmpfs / network shares don't double-count
+// - Linux: skip /dev and /proc by absolute path, and go where the mount
+//   table says (mounts.rs): into every btrfs subvolume of the disk being
+//   scanned, into each folder a bind mount shows only once, and not into
+//   other filesystems (procfs, sysfs, tmpfs, other disks, network shares).
+//   Without a mount table, refuse cross-device descent instead.
 // - macOS: skip the Catalina+ firmlink shadow paths (/Volumes,
 //   /System/Volumes, /private/var/db/dyld) and anything under
 //   /System/Volumes/*. The generic cross-device check is intentionally
@@ -22,9 +25,10 @@
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::cmp;
+use std::collections::HashMap;
 use std::fs;
 use std::io;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Instant, SystemTime};
@@ -253,6 +257,7 @@ pub struct ScanState {
 	pub errors: Mutex<Vec<ScanError>>,
 	pub aborted: AtomicBool,
 	pub root_dev: Option<u64>,
+	pub mounts: Option<MountPlan>,
 	// Checked once up front; macOS only applies a change on relaunch anyway.
 	pub full_disk_access: bool,
 	pub perf: bool,
@@ -262,28 +267,78 @@ pub struct ScanState {
 }
 
 impl ScanState {
-	pub fn new(perf: bool, root_dev: Option<u64>) -> Self {
+	pub fn new(perf: bool) -> Self {
 		Self {
 			counts: Counts::default(),
 			current_path: Mutex::new(None),
 			errors: Mutex::new(Vec::new()),
 			aborted: AtomicBool::new(false),
-			root_dev,
+			root_dev: None,
+			mounts: None,
 			full_disk_access: has_full_disk_access(),
 			perf,
 			live_perf: Mutex::new(None),
 		}
 	}
+
+	// For a scan of `path`. Resolves the root's device via stat (follows
+	// symlinks), matching what the JS scanner does in `_performScan`, and
+	// errors if it can't: we can't meaningfully scan a path we can't stat.
+	pub fn for_path(path: &Path, perf: bool) -> io::Result<Self> {
+		let root_meta = fs::metadata(path)?;
+		Ok(Self {
+			root_dev: root_dev_id(&root_meta),
+			mounts: mount_plan(path),
+			..Self::new(perf)
+		})
+	}
+}
+
+// Where a scan goes among the mounts below its root (see mounts.rs).
+pub struct MountPlan {
+	// Folders to go into or leave out, where the walk would otherwise go on.
+	pub enter: HashMap<PathBuf, bool>,
+	// Whether what's in the root folder counts, rather than only the mounts
+	// in it: not for an ostree system's /, a boot image of what's under
+	// /sysroot.
+	pub root_counts: bool,
+}
+
+impl MountPlan {
+	// Whether the walk goes on into `path`, `depth` below the root.
+	fn enters(&self, path: &Path, depth: u64) -> bool {
+		self.enter
+			.get(path)
+			.copied()
+			.unwrap_or(self.root_counts || depth > 1)
+	}
+}
+
+#[cfg(target_os = "linux")]
+fn mount_plan(path: &Path) -> Option<MountPlan> {
+	let table = fs::read_to_string("/proc/self/mountinfo").ok()?;
+	let real = fs::canonicalize(path).ok()?;
+	let real = real.to_str()?;
+	let plan = mounts::plan(&mounts::parse(&table), real)?;
+	// The mount table has real paths, and the walk goes by `path`.
+	let enter = plan
+		.enter
+		.into_iter()
+		.filter_map(|(place, enter)| Some((path.join(mounts::below(&place, real)?), enter)))
+		.collect();
+	Some(MountPlan {
+		enter,
+		root_counts: plan.root_counts,
+	})
+}
+
+#[cfg(not(target_os = "linux"))]
+fn mount_plan(_path: &Path) -> Option<MountPlan> {
+	None
 }
 
 pub fn scan(path: &Path, config: ScanConfig) -> std::io::Result<ScanResult> {
-	// Resolve root dev via stat (follows symlinks), matching what the JS
-	// scanner does in `_performScan`. Errors here propagate to the caller —
-	// we can't meaningfully scan a path we can't stat.
-	let root_meta = fs::metadata(path)?;
-	let root_dev = root_dev_id(&root_meta);
-
-	let state = ScanState::new(config.perf, root_dev);
+	let state = ScanState::for_path(path, config.perf)?;
 	run_scan(path, &state)
 }
 
@@ -307,12 +362,12 @@ pub fn run_scan(path: &Path, state: &ScanState) -> std::io::Result<ScanResult> {
 }
 
 #[cfg(unix)]
-pub fn root_dev_id(meta: &fs::Metadata) -> Option<u64> {
+fn root_dev_id(meta: &fs::Metadata) -> Option<u64> {
 	Some(meta.dev())
 }
 
 #[cfg(not(unix))]
-pub fn root_dev_id(_meta: &fs::Metadata) -> Option<u64> {
+fn root_dev_id(_meta: &fs::Metadata) -> Option<u64> {
 	None
 }
 
@@ -436,6 +491,15 @@ fn classify(
 		return None;
 	}
 	let entry_path = entry.path();
+	// Only the mounts in an ostree system's / count.
+	if depth == 1
+		&& state
+			.mounts
+			.as_ref()
+			.is_some_and(|plan| !plan.enters(&entry_path, depth))
+	{
+		return None;
+	}
 	let meta = match retry_interrupted(|| entry.metadata()) {
 		Ok(m) => m,
 		Err(err) => {
@@ -462,7 +526,7 @@ fn classify(
 		})
 	} else if ft.is_dir() {
 		state.counts.directories.fetch_add(1, Ordering::Relaxed);
-		if should_skip_dir(&entry_path, entry_dev_id(&meta), state.root_dev) {
+		if should_skip_dir(&entry_path, depth, entry_dev_id(&meta), state) {
 			return None;
 		}
 		let node = scan_dir(&entry_path, depth, state, parent_perf);
@@ -534,7 +598,8 @@ fn rename(node: VfsNode, new_name: String) -> VfsNode {
 	}
 }
 
-fn should_skip_dir(path: &Path, _dev: Option<u64>, _root_dev: Option<u64>) -> bool {
+// `depth` is `path`'s below the scan root.
+fn should_skip_dir(path: &Path, depth: u64, _dev: Option<u64>, state: &ScanState) -> bool {
 	#[cfg(target_os = "macos")]
 	{
 		let s = path.to_string_lossy();
@@ -559,15 +624,20 @@ fn should_skip_dir(path: &Path, _dev: Option<u64>, _root_dev: Option<u64>) -> bo
 		}
 	}
 
-	// Generic cross-device skip on every platform except macOS. macOS firmlinks
-	// make stat("/") report the data volume, which would filter out /Users
-	// by dev id even though it's "the same disk" from the user's perspective.
+	if let Some(plan) = &state.mounts {
+		return !plan.enters(path, depth);
+	}
+
+	// Generic cross-device skip on every platform except macOS, when there's
+	// no mount table to go by. macOS firmlinks make stat("/") report the
+	// data volume, which would filter out /Users by dev id even though it's
+	// "the same disk" from the user's perspective.
 	#[cfg(not(target_os = "macos"))]
 	{
-		if let (Some(d), Some(rd)) = (_dev, _root_dev) {
-			if d != rd {
-				return true;
-			}
+		if let (Some(d), Some(rd)) = (_dev, state.root_dev)
+			&& d != rd
+		{
+			return true;
 		}
 	}
 
@@ -697,6 +767,9 @@ fn errno_name(n: i32) -> Option<String> {
 #[cfg(feature = "napi")]
 mod bindings;
 
+#[cfg(any(target_os = "linux", test))]
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+pub mod mounts;
 pub mod tree;
 pub mod volumes;
 
@@ -911,6 +984,56 @@ mod tests {
 
 		let result = scan(&dir, ScanConfig::default()).unwrap();
 		assert!(result.perf.is_none());
+
+		cleanup(&dir);
+	}
+
+	fn planned(dir: &Path, enter: &[(&str, bool)], root_counts: bool) -> ScanResult {
+		let state = ScanState {
+			mounts: Some(MountPlan {
+				enter: enter
+					.iter()
+					.map(|(place, enter)| (dir.join(place), *enter))
+					.collect(),
+				root_counts,
+			}),
+			..ScanState::new(false)
+		};
+		run_scan(dir, &state).unwrap()
+	}
+
+	#[test]
+	fn goes_where_the_mount_plan_says() {
+		let dir = tmpdir("plan");
+		for folder in ["proc", "home/kayla/.cache", "sysroot/ostree"] {
+			fs::create_dir_all(dir.join(folder)).unwrap();
+		}
+		write(&dir.join("proc/kcore"), 50_000);
+		write(&dir.join("home/kayla/notes.txt"), 10_000);
+		write(&dir.join("home/kayla/.cache/thumbnail.png"), 20_000);
+		write(&dir.join("sysroot/ostree/object"), 30_000);
+		write(&dir.join("vmlinuz"), 40_000);
+		let size = |path: &str| on_disk(&dir.join(path));
+
+		// Not into other filesystems, but still into anything not planned.
+		let result = planned(&dir, &[("proc", false), ("home/kayla/.cache", false)], true);
+		assert_eq!(
+			result.root.size(),
+			size("home/kayla/notes.txt") + size("sysroot/ostree/object") + size("vmlinuz")
+		);
+
+		// An ostree boot image: only its mounts.
+		let result = planned(&dir, &[("sysroot", true), ("home", true)], false);
+		assert_eq!(
+			result.root.size(),
+			size("home/kayla/notes.txt")
+				+ size("home/kayla/.cache/thumbnail.png")
+				+ size("sysroot/ostree/object")
+		);
+		let VfsNode::Directory { files, .. } = &result.root else {
+			unreachable!();
+		};
+		assert_eq!(files.len(), 2);
 
 		cleanup(&dir);
 	}

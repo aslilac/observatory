@@ -14,8 +14,8 @@
 // below, and the list of volumes.
 
 use crate::{
-	CountsSnapshot, PerfNode, ScanError, ScanResult, ScanState, VfsNode, root_dev_id, run_scan,
-	snapshot_perf, tree, volumes::Volume,
+	CountsSnapshot, PerfNode, ScanError, ScanResult, ScanState, VfsNode, run_scan, snapshot_perf,
+	tree, volumes::Volume,
 };
 use napi::bindgen_prelude::*;
 use napi::{Env, JsObject, JsString, Task};
@@ -45,12 +45,11 @@ impl Scan {
 	#[napi(constructor)]
 	pub fn new(path: String, options: Option<ScanOptions>) -> Result<Self> {
 		let perf = options.and_then(|o| o.perf).unwrap_or(false);
-		// Resolve root dev up-front the same way `scan()` does. Failing here
+		// Stat the root up-front the same way `scan()` does. Failing here
 		// gives the caller a clean rejection before any background work
 		// starts (e.g. user passed a non-existent path).
-		let root_meta = std::fs::metadata(&path)
+		let state = ScanState::for_path(path.as_ref(), perf)
 			.map_err(|e| Error::from_reason(format!("stat failed: {e}")))?;
-		let state = ScanState::new(perf, root_dev_id(&root_meta));
 		Ok(Self {
 			path: PathBuf::from(path),
 			state: Arc::new(state),
@@ -66,7 +65,7 @@ impl Scan {
 			.map_err(|e| Error::from_reason(format!("not a scan tree: {e}")))?;
 		Ok(Self {
 			path: PathBuf::new(),
-			state: Arc::new(ScanState::new(false, None)),
+			state: Arc::new(ScanState::new(false)),
 			tree: Arc::new(RwLock::new(Some(root))),
 		})
 	}

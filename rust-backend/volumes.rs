@@ -97,7 +97,7 @@ fn share_server(source: &str) -> Option<String> {
 
 // Replaces each `marker` followed by `width` digits in `radix` with the
 // byte they spell out, leaving anything that doesn't fit the pattern.
-fn unescape(text: &str, marker: &str, width: usize, radix: u32) -> String {
+pub(crate) fn unescape(text: &str, marker: &str, width: usize, radix: u32) -> String {
 	let mut out = Vec::with_capacity(text.len());
 	let mut rest = text.as_bytes();
 	while let Some((&first, tail)) = rest.split_first() {
