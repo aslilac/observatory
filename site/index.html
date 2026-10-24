@@ -11,20 +11,21 @@
 			content="Observatory is a cross-platform disk-usage analyzer for macOS, Linux, and Windows. See where your storage went."
 		/>
 		<meta name="color-scheme" content="light dark" />
-		<link rel="icon" href="icon.svg" type="image/svg+xml" />
-		<link rel="apple-touch-icon" href="icon-512.png" />
+		<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+		<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+		<meta name="theme-color" content="#0d1033" />
 		<meta property="og:title" content="Observatory" />
 		<meta
 			property="og:description"
 			content="A cross platform disk usage analyzer with a modern UI"
 		/>
-		<link rel="stylesheet" href="style.css" />
+		<link rel="stylesheet" href="/src/style.css" />
 	</head>
 	<body>
 		<header class="topbar">
 			<div class="wrap">
-				<a class="brand" href="/">
-					<img src="icon.svg" alt="" width="36" height="36" />
+				<a class="brand" href="./">
+					<img src="./images/logo.svg" alt="" width="32" height="32" />
 					<span>Observatory</span>
 				</a>
 				<nav>
@@ -35,8 +36,55 @@
 		</header>
 
 		<main>
-			<section class="hero">
-				<div class="wrap">
+			<!-- The scene is rendered by scene/hero.py: the ground, the observatory and
+			     the clouds, with no sky. The sky behind it is the gradient in
+			     src/style.css, and src/stars.ts draws the stars, turning around the pole
+			     (where the telescope is aimed). scene/publish.py writes where things
+			     fall on the render (as fractions of it): the horizon, the sun, the
+			     building and the pole. -->
+			<section
+				class="hero"
+				style="
+					--scene-aspect: 1.7778;
+					--horizon: 0.6778;
+					--sun-x: 0.7788;
+					--sun-y: 0.552;
+					--bld-l: 0.5154;
+					--bld-t: 0.3824;
+					--bld-r: 0.9645;
+					--bld-b: 0.8096;
+				"
+			>
+				<div
+					class="scene"
+					data-pole-x="0.4817"
+					data-pole-y="0.1600"
+					data-horizon="0.6778"
+				>
+					<div class="sky"></div>
+					<picture>
+						<source
+							type="image/avif"
+							srcset="
+								./images/hero-1280.avif 1280w,
+								./images/hero-1920.avif 1920w
+							"
+							sizes="(max-width: 899px) min(240vw, 1600px), 125vw"
+						/>
+						<img
+							src="./images/hero-1920.webp"
+							srcset="
+								./images/hero-1280.webp 1280w,
+								./images/hero-1920.webp 1920w
+							"
+							sizes="(max-width: 899px) min(240vw, 1600px), 125vw"
+							alt=""
+							fetchpriority="high"
+						/>
+					</picture>
+				</div>
+				<div class="stars" aria-hidden="true"></div>
+				<div class="wrap copy">
 					<h1>See what's eating your disk.</h1>
 					<p class="lede">
 						Observatory is a modern, cross-platform disk-usage analyzer. Point
@@ -125,7 +173,7 @@
 						Releases live on GitHub. Pick the artifact for your platform —
 						<code>.dmg</code> for macOS, <code>.exe</code> for Windows,
 						<code>.zip</code> for Linux. Or build from source with
-						<code>yarn forge</code>.
+						<code>yarn build.forge</code>.
 					</p>
 					<p>
 						<a
@@ -141,10 +189,11 @@
 		<footer>
 			<div class="wrap">
 				<p>
-					MIT licensed &middot; made by
+					MPL-2.0 licensed &middot; made by
 					<a href="https://github.com/aslilac">Kayla Washburn-Love</a>
 				</p>
 			</div>
 		</footer>
+		<script type="module" src="/src/stars.ts"></script>
 	</body>
 </html>

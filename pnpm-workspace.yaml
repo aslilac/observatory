@@ -1,3 +1,6 @@
+packages:
+  - "."
+  - "site"
 nodeLinker: hoisted
 allowBuilds:
   electron: true

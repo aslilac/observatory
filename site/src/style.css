@@ -1,0 +1,490 @@
+/* Observatory landing page.
+   Tokens roughly track the app's `app.css` (warm off-white, dark text, muted
+   greys) plus the icon's blue accent. Edit the :root block to retheme. */
+
+:root {
+	--text: #ededea;
+	--bg: #15151a;
+	--cream: #2a292455;
+	--line: #2f2d28;
+	--line-soft: #232220;
+	--muted: #a3a098;
+	--faint: #9a988f;
+	--accent: #3a6df0;
+	--accent-deep: #d4dcfb;
+
+	--midnight-sky: #0e1734;
+	--sky-top: #0d1033;
+	--sky-text: #c9c4e6;
+
+	--rounded-full: calc(infinity * 1px);
+
+	--sans:
+		"Inter", -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", Roboto,
+		sans-serif;
+	--mono:
+		"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+html,
+body {
+	margin: 0;
+	padding: 0;
+}
+
+body {
+	font-family: var(--sans);
+	font-size: 16px;
+	line-height: 1.6;
+	color: var(--text);
+	background-image: linear-gradient(
+		to top,
+		var(--midnight-sky) 0,
+		var(--bg) 1000px
+	);
+	-webkit-font-smoothing: antialiased;
+	font-feature-settings: "ss01", "cv05", "cv11";
+}
+
+a {
+	color: inherit;
+	text-decoration: none;
+	border-bottom: 1px solid currentColor;
+	border-bottom-color: color-mix(in srgb, currentColor 30%, transparent);
+	transition: border-color 120ms ease;
+}
+a:not(.btn):hover {
+	border-bottom-color: var(--accent);
+}
+
+code {
+	font-family: var(--mono);
+	font-size: 0.92em;
+	background: var(--cream);
+	padding: 1px 6px;
+	border-radius: 4px;
+}
+
+.wrap {
+	max-width: 1080px;
+	margin: 0 auto;
+	padding: 0 28px;
+}
+
+/* --- topbar: over the hero's sky --- */
+
+.topbar {
+	position: absolute;
+	inset: 0 0 auto;
+	z-index: 10;
+}
+
+.topbar .wrap {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	height: 72px;
+}
+
+.brand {
+	display: inline-flex;
+	align-items: center;
+	gap: 10px;
+	font-weight: 600;
+	font-size: 17px;
+	letter-spacing: -0.01em;
+	border-bottom: none;
+}
+.brand img {
+	display: block;
+}
+
+nav {
+	display: flex;
+	gap: 24px;
+	font-size: 14px;
+}
+
+/* --- hero: the observatory under a turning sky ---
+
+   The scene is the render (scene/hero.py) on a sky gradient. Where things fall on the
+   render, as fractions of it, are on .hero (from scene/publish.py): --horizon, the
+   sun (--sun-x, --sun-y), and the building's box (--bld-l, -t, -r, -b).
+
+   Side by side (wide screens), the copy is a column on the left and the building is
+   fitted into the space to its right: as big as that space allows, up to the size
+   that has the scene cover the hero's height, and centred in it. Stacked (narrow
+   screens), the copy sits above and the scene below it, with the building centred
+   and its top clear of the copy. Either way the scene is anchored to the hero's
+   bottom, and where it doesn't reach the top, its sky carries on above it.
+
+   The stars cover the whole hero, between the sky and the render. */
+
+.hero {
+	--bld-w: calc(var(--bld-r) - var(--bld-l));
+	--bld-x: calc((var(--bld-l) + var(--bld-r)) / 2);
+	--hero-h: clamp(640px, 100svh, 1440px);
+	/* the copy's column, and where it ends, with a gap */
+	--copy-w: clamp(440px, 46%, 560px);
+	--copy-r: calc(max(28px, 50% - 512px) + var(--copy-w) + 48px);
+	/* the space for the building: from the copy (or the middle) to near the edge */
+	--room: calc(100% - max(24px, 4%) - max(var(--copy-r), 52%));
+	--scene-w: max(
+		102%,
+		min(
+			calc(var(--room) / var(--bld-w)),
+			calc(var(--hero-h) * var(--scene-aspect))
+		)
+	);
+	--scene-h: calc(var(--scene-w) / var(--scene-aspect));
+	--scene-x: clamp(
+		calc(100% - var(--scene-w)),
+		calc(
+			(max(var(--copy-r), 52%) + 100% - max(24px, 4%)) / 2 - var(--bld-x) *
+				var(--scene-w)
+		),
+		0%
+	);
+	position: relative;
+	isolation: isolate;
+	overflow: hidden;
+	height: var(--hero-h);
+	background: var(--sky-top);
+}
+
+.scene {
+	position: absolute;
+	bottom: 0;
+	left: var(--scene-x);
+	width: var(--scene-w);
+	aspect-ratio: var(--scene-aspect);
+}
+
+/* The sky reaches three scene-heights above the scene, so a fraction f of the
+   scene's height is at (3 + f) / 4 of it. A sunset isn't a straight gradient: it's
+   brightest around the sun (just behind the building), and dimmer and pinker along
+   the horizon away from it. */
+.scene .sky {
+	--at: calc(var(--sun-x) * 100%) calc((3 + var(--sun-y)) * 25%);
+	position: absolute;
+	inset: auto 0 0;
+	height: 400%;
+	z-index: 0;
+	background:
+		/* the sun, behind the building */
+		radial-gradient(
+			ellipse 14% calc(0.07 * 25%) at var(--at),
+			rgb(255 232 186 / 0.95),
+			rgb(255 194 140 / 0.5) 45%,
+			transparent
+		),
+		/* its glow, spreading along the horizon */
+		radial-gradient(
+			ellipse 46% calc(0.24 * 25%) at var(--at),
+			rgb(255 168 122 / 0.8),
+			rgb(246 132 128 / 0.35) 50%,
+			transparent
+		),
+		/* the afterglow, wider and pinker, up into the sky */
+		radial-gradient(
+			ellipse 105% calc(0.6 * 25%) at var(--at),
+			rgb(206 108 160 / 0.42),
+			rgb(150 84 160 / 0.15) 55%,
+			transparent
+		),
+		/* zenith to horizon, away from the sun */
+		linear-gradient(
+			to bottom,
+			var(--sky-top) calc((3 + var(--horizon) - 1) * 25%),
+			#191c56 calc((3 + var(--horizon) - 0.55) * 25%),
+			#2c2775 calc((3 + var(--horizon) - 0.34) * 25%),
+			#4d3c8f calc((3 + var(--horizon) - 0.2) * 25%),
+			#7b5499 calc((3 + var(--horizon) - 0.1) * 25%),
+			#a8689a calc((3 + var(--horizon) - 0.04) * 25%),
+			#c97f95 calc((3 + var(--horizon)) * 25%),
+			/* haze below the horizon, where the far clouds fade into it */ #b47b9a
+				calc((3 + var(--horizon) + 0.05) * 25%),
+			#7b6496 100%
+		);
+}
+
+.scene picture,
+.scene img {
+	position: absolute;
+	inset: 0;
+	z-index: 2;
+	display: block;
+	width: 100%;
+	height: 100%;
+}
+
+/* the ground runs on into the page */
+.scene::after {
+	content: "";
+	position: absolute;
+	inset: auto 0 0;
+	height: 16%;
+	z-index: 3;
+	background: linear-gradient(to bottom, transparent, var(--bg));
+	pointer-events: none;
+}
+
+/* src/stars.ts puts the sky in here, centred on the pole, and turns it */
+.stars {
+	position: absolute;
+	inset: 0;
+	z-index: 1;
+	overflow: hidden;
+	pointer-events: none;
+	/* the stars set into the haze above the horizon (--horizon-y is from stars.ts) */
+	mask-image: linear-gradient(
+		to bottom,
+		#000 calc(var(--horizon-y, 100%) - 14%),
+		transparent var(--horizon-y, 100%)
+	);
+}
+.stars div,
+.stars canvas {
+	position: absolute;
+	display: block;
+}
+.stars div > canvas:first-child {
+	inset: 0;
+	width: 100%;
+	height: 100%;
+}
+
+.hero .copy {
+	position: relative;
+	z-index: 4;
+	padding-top: clamp(120px, 20svh, 220px);
+}
+
+.hero .copy > * {
+	max-width: clamp(440px, 46vw, 560px);
+}
+
+.hero h1 {
+	font-size: clamp(40px, 5.4vw, 68px);
+	line-height: 1.04;
+	letter-spacing: -0.025em;
+	margin: 0 0 20px;
+	font-weight: 700;
+	text-shadow: 0 2px 24px rgb(13 16 51 / 0.6);
+}
+
+.hero .lede {
+	max-width: 520px;
+	font-size: 18px;
+	color: var(--sky-text);
+	margin: 0 0 28px;
+	text-shadow: 0 1px 16px rgb(13 16 51 / 0.8);
+}
+
+.cta {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	margin-bottom: 24px;
+}
+
+.btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 18px;
+	font-size: 14px;
+	font-weight: 500;
+	border-radius: var(--rounded-full);
+	border: 1px solid transparent;
+	transition:
+		background-color 120ms ease,
+		border-color 120ms ease,
+		color 120ms ease;
+}
+.btn.primary {
+	background: var(--text);
+	color: var(--bg);
+}
+.btn.primary:hover {
+	background: var(--accent-deep);
+}
+.btn.ghost {
+	border-color: rgb(255 255 255 / 0.28);
+	color: var(--text);
+	/* no backdrop blur: over the turning sky it would be redone every step */
+	background: rgb(13 16 51 / 0.4);
+}
+.btn.ghost:hover {
+	background: rgb(255 255 255 / 0.1);
+}
+
+.platforms {
+	display: flex;
+	gap: 14px;
+	margin: 0;
+	font-family: var(--mono);
+	font-size: 12px;
+	color: #ece8ff;
+	text-shadow: 0 1px 10px rgb(13 16 51 / 0.9);
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+}
+.platforms span {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+}
+.platforms span::before {
+	content: "";
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: var(--accent);
+	display: inline-block;
+}
+
+/* --- screenshot --- */
+
+/* the app window rises in front of the summit */
+.screenshot {
+	position: relative;
+	margin-top: -120px;
+	padding: 0 0 88px;
+}
+
+.screenshot figure {
+	margin: 0;
+}
+
+.screenshot img {
+	width: stretch;
+}
+
+/* --- features --- */
+
+.features {
+	padding: 56px 0;
+	border-top: 1px solid var(--line-soft);
+}
+
+.features .grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+	gap: 36px 28px;
+}
+
+.features article h2 {
+	font-size: 17px;
+	font-weight: 600;
+	margin: 0 0 8px;
+	letter-spacing: -0.01em;
+}
+.features article p {
+	margin: 0;
+	font-size: 15px;
+	color: var(--muted);
+	line-height: 1.55;
+}
+
+/* --- grab --- */
+
+.grab {
+	padding: 72px 0 96px;
+	border-top: 1px solid var(--line-soft);
+	text-align: center;
+}
+
+.grab h2 {
+	font-size: 28px;
+	letter-spacing: -0.02em;
+	margin: 0 0 12px;
+}
+
+.grab p {
+	max-width: 560px;
+	margin: 0 auto 20px;
+	color: var(--muted);
+}
+
+/* --- footer --- */
+
+footer {
+	padding: 28px 0 40px;
+	border-top: 1px solid var(--line-soft);
+}
+
+footer p {
+	margin: 0;
+	font-family: var(--mono);
+	font-size: 12px;
+	color: var(--text);
+	text-align: center;
+}
+footer a {
+	color: inherit;
+}
+
+/* --- responsive nudges --- */
+
+@media (max-width: 640px) {
+	.wrap {
+		padding: 0 20px;
+	}
+	nav {
+		gap: 16px;
+		font-size: 13px;
+	}
+	.topbar .wrap {
+		height: 60px;
+	}
+	.screenshot {
+		margin-top: -64px;
+		padding: 0 0 56px;
+	}
+	.features {
+		padding: 40px 0;
+	}
+	.grab {
+		padding: 56px 0 72px;
+	}
+}
+
+/* narrow screens: stacked, the copy on the sky above the scene, and the building
+   centred below it, about two thirds of the width (up to a point, on tablets), so
+   some sky and summit still show around it */
+@media (max-width: 899px) {
+	.hero {
+		--scene-w: max(
+			102%,
+			min(calc(68% / var(--bld-w)), calc(400px / var(--bld-w)))
+		);
+		--scene-x: clamp(
+			calc(100% - var(--scene-w)),
+			calc(50% - var(--bld-x) * var(--scene-w)),
+			0%
+		);
+		height: auto;
+		/* the copy ends above the building's top */
+		padding-bottom: calc((1 - var(--bld-t)) * var(--scene-h) + 32px);
+	}
+	.hero .copy {
+		padding-top: 112px;
+	}
+	.hero .copy > * {
+		max-width: 600px;
+	}
+}
+
+@media (max-width: 640px) {
+	.hero .copy {
+		padding-top: 96px;
+	}
+	.hero .lede {
+		font-size: 17px;
+	}
+}
