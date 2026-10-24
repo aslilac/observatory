@@ -24,7 +24,7 @@ Node: see `.nvmrc` (currently 22 LTS). Electron bundles its own Node, so this on
 - `yarn fmt` — Prettier write. (No lint step; `tsc --strict` covers what ESLint would have.)
 - Rust backend: `cd rust-backend && cargo test` — runs the library unit tests against ephemeral tmp directories. No hardcoded paths.
 
-Build config lives in `electron.vite.config.ts` at the root — one file for all three processes. Renderer uses `@vitejs/plugin-react` and `@tailwindcss/vite` (Tailwind v4); main and preload use `externalizeDepsPlugin()` so runtime `dependencies` stay external.
+Build config lives in `electron.vite.config.ts` at the root — one file for all three processes. Renderer uses `@vitejs/plugin-react` and `@tailwindcss/vite` (Tailwind v4); main and preload use `externalizeDepsPlugin()` so runtime `dependencies` stay external. That makes `dependencies` only what main loads from `node_modules` at runtime (just `electron-squirrel-startup`): everything the bundles inline (React, Base UI, lucide, the fonts) goes in `devDependencies`, which Forge prunes out of the asar. `forge.config.js`'s `ignore` is an allowlist of what goes in it.
 
 In dev, the main process reads `process.env.ELECTRON_RENDERER_URL` and loads from it; in packaged builds it falls back to `loadFile("../renderer/index.html")`. Same pattern for the about window.
 

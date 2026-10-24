@@ -1,6 +1,17 @@
 const fs = require("node:fs/promises");
 const path = require("node:path");
 
+// What goes into app.asar: the bundles, the native scanner (and none of
+// its sources or cargo's build dir), and the runtime dependencies. Forge
+// prunes devDependencies, so anything the bundles already inline (React,
+// the icons, the fonts) belongs there, not in dependencies.
+const shipped = [
+	"/package.json",
+	"/build",
+	"/node_modules",
+	"/rust-backend/observatory_scan.node",
+];
+
 module.exports = {
 	packagerConfig: {
 		appBundleId: "ooo.lilac.observatory",
@@ -28,21 +39,19 @@ module.exports = {
 			if (filePath === "") {
 				return false;
 			}
-			if (filePath.startsWith("/scripts")) {
+			// Tool caches (.vite, .vitest-cache) and pnpm's bookkeeping. No
+			// package's name starts with a dot.
+			if (filePath.startsWith("/node_modules/.")) {
 				return true;
 			}
-			if (filePath.startsWith("/src")) {
-				return true;
-			}
-			// rust-backend ships only the .node binary. Source, manifests,
-			// the bench script, and the cargo target dir all stay out.
-			if (filePath === "/rust-backend") {
-				return false;
-			}
-			if (filePath.startsWith("/rust-backend/")) {
-				return filePath !== "/rust-backend/observatory_scan.node";
-			}
-			return false;
+			// Everything else in the repo stays out, .git and the icon
+			// renders included.
+			return !shipped.some(
+				(path) =>
+					filePath === path ||
+					filePath.startsWith(`${path}/`) ||
+					path.startsWith(`${filePath}/`),
+			);
 		},
 		name: "Observatory",
 	},
