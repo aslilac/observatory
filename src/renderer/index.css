@@ -17,6 +17,12 @@
 	/* The page-level canvas behind window surfaces; slightly deeper. */
 	--color-canvas: #e7e7f4;
 
+	/* How full a volume is, on its usage bar: plenty of room, under 15%
+	   free, under 5% free. */
+	--color-meter: oklch(0.6 0.17 258);
+	--color-meter-low: oklch(0.72 0.17 60);
+	--color-meter-critical: oklch(0.6 0.21 27);
+
 	/* Inline-only danger; never used for hover/focus. */
 	--color-danger-bg: #fff5f4;
 	--color-danger-fg: #7a1f1c;
@@ -53,6 +59,10 @@
 	--color-line-soft: #282734;
 	--color-fill: #282734;
 	--color-fill-strong: #333243;
+
+	--color-meter: oklch(0.68 0.15 258);
+	--color-meter-low: oklch(0.78 0.15 65);
+	--color-meter-critical: oklch(0.68 0.19 25);
 
 	--color-danger-bg: #2a1715;
 	--color-danger-fg: #ff9b96;

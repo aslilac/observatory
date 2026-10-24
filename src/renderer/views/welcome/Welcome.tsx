@@ -215,6 +215,7 @@ const Usage: React.FC<UsageProps> = ({ volume, scan, free }) => {
 	}
 	const percent = (bytes: number) =>
 		`${Math.min(100, (bytes / volume.total) * 100)}%`;
+	const meter = meterColor(volume);
 
 	return (
 		<span className="flex w-[200px] flex-col items-end gap-[6px]">
@@ -228,15 +229,20 @@ const Usage: React.FC<UsageProps> = ({ volume, scan, free }) => {
 				</span>
 			</span>
 			<span className="relative block h-[4px] w-full overflow-hidden rounded-full bg-fill-strong">
+				{/* What's used fades back when it isn't all this row's: on a
+				    folder's row it's the whole volume's, and with a scan the
+				    scanned share is picked out of it. */}
 				<span
-					className="absolute inset-y-0 left-0 rounded-full bg-faint"
+					className={`absolute inset-y-0 left-0 rounded-full ${meter} ${
+						free || scanned !== undefined ? "opacity-40" : ""
+					}`}
 					style={{ width: percent(volume.used) }}
 				/>
 				{scanned !== undefined && (
 					// Most folders are a sliver of their volume; keep the
 					// share visible even when it rounds to nothing.
 					<span
-						className="absolute inset-y-0 left-0 min-w-[3px] rounded-full bg-default"
+						className={`absolute inset-y-0 left-0 min-w-[3px] rounded-full ${meter}`}
 						style={{ width: percent(Math.min(scanned, volume.used)) }}
 					/>
 				)}
@@ -244,6 +250,18 @@ const Usage: React.FC<UsageProps> = ({ volume, scan, free }) => {
 		</span>
 	);
 };
+
+// Blue while there's room, then orange under 15% free and red under 5%.
+function meterColor(volume: Ob.DriveUsage): string {
+	const free = volume.available / volume.total;
+	if (free < 0.05) {
+		return "bg-meter-critical";
+	}
+	if (free < 0.15) {
+		return "bg-meter-low";
+	}
+	return "bg-meter";
+}
 
 // Dev-only escape hatches for states that are slow or annoying to reach
 // naturally: a one-shot "throw from render" to trip the ErrorBoundary, and
