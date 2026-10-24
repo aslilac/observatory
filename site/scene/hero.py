@@ -3,8 +3,8 @@
 The building is the app icon's (../../icon/observatory.py). This sets it on a levelled
 site on the summit with a support building beside it (offices, the control room, a high
 bay for the mirror coating plant, after TMT's), trucks in the yard and on the access road,
-a low hill in front, cinder cones on the shoulders, and a sea of clouds far below with
-mountains rising out of it on the horizon. The sun is setting behind the observatory, and
+a low hill in front, cinder cones on the shoulders, old snow lying in streaks and drifts,
+and a sea of clouds far below with mountain ranges rising out of it toward the horizon. The sun is setting behind the observatory, and
 it and the sky are the only light, but for the building's own. Only the ground, the
 buildings and the clouds are rendered: the sky is left transparent, and the clouds and the
 mountains fade into it toward the horizon, because the page draws the sky (a CSS
@@ -175,6 +175,56 @@ def frange(a, b, step):
 
 def smoothstep(e0, e1, x):
     t = min(max((x - e0) / (e1 - e0), 0.0), 1.0)
+    return t * t * (3 - 2 * t)
+
+
+# noise over whole arrays of points at once (the cloud sea has about a million)
+def cell_rand(ix, iy, seed, k=0):
+    v = np.sin(ix * 127.1 + iy * 311.7 + seed * 74.7 + k * 19.19) * 43758.5453
+    return v - np.floor(v)
+
+
+def value_noise(x, y, seed):
+    ix, iy = np.floor(x), np.floor(y)
+    fx, fy = x - ix, y - iy
+    u, v = fx * fx * (3 - 2 * fx), fy * fy * (3 - 2 * fy)
+    a, b = cell_rand(ix, iy, seed), cell_rand(ix + 1, iy, seed)
+    c, d = cell_rand(ix, iy + 1, seed), cell_rand(ix + 1, iy + 1, seed)
+    return 2 * ((a + (b - a) * u) * (1 - v) + (c + (d - c) * u) * v) - 1
+
+
+def fbm(x, y, seed, octaves=3):
+    s, amp, tot = 0.0, 1.0, 0.0
+    for i in range(octaves):
+        s = s + amp * value_noise(x, y, seed + 7.3 * i)
+        tot += amp
+        x, y, amp = 2.02 * x + 0.4 * y, 2.02 * y - 0.4 * x, amp * 0.5
+    return s / tot
+
+
+def puffs(x, y, cell, seed, r=0.62):
+    """Round puffs, one in each of a grid of cells, jittered: (0..1 height, as a
+    sphere's cap; 0..1 for each puff)."""
+    gx, gy = x / cell, y / cell
+    ix, iy = np.floor(gx), np.floor(gy)
+    best, rand = np.full(gx.shape, 9.0), np.zeros(gx.shape)
+    for dx in (-1, 0, 1):
+        for dy in (-1, 0, 1):
+            cx, cy = ix + dx, iy + dy
+            d = np.hypot(gx - cx - cell_rand(cx, cy, seed, 1), gy - cy - cell_rand(cx, cy, seed, 2))
+            m = d < best
+            best, rand = np.where(m, d, best), np.where(m, cell_rand(cx, cy, seed, 3), rand)
+    return np.sqrt(np.maximum(0.0, 1 - (best / r) ** 2)), rand
+
+
+def smooth_max(a, b, k):
+    """max(a, b), rounded off where they meet, over about k."""
+    h = np.maximum(k - np.abs(a - b), 0.0) / k
+    return np.maximum(a, b) + h * h * k * 0.25
+
+
+def ease(e0, e1, x):
+    t = np.clip((x - e0) / (e1 - e0), 0.0, 1.0)
     return t * t * (3 - 2 * t)
 
 
@@ -366,7 +416,7 @@ def axis(a, b, bands, default):
     return np.array(out)
 
 
-xs = axis(-40.0, 30.0, [(-5.0, 6.0, 0.06), (-14.0, 10.0, 0.15)], 0.35)
+xs = axis(-40.0, 30.0, [(-9.0, 6.0, 0.06), (-14.0, 10.0, 0.15)], 0.35)
 ys = axis(-14.0, 40.0, [(-9.0, 3.0, 0.06), (-12.0, 20.0, 0.15)], 0.35)
 X, Y = np.meshgrid(xs, ys)
 G = np.array([[ground(x, y) for x in xs] for y in ys])
@@ -389,6 +439,51 @@ tt = np.clip((dist - ROAD_W) / ROAD_EDGE, 0.0, 1.0)
 K = 1 - tt * tt * (3 - 2 * tt)
 Z = G * (1 - K) + np.interp(S, road_s, road_z) * K
 
+
+# ---- ledges, snow and rock. Out on the left the ground steps down in ledges toward the
+# clouds. Old snow lasts in the hollows and on the slopes turned from the sun (it sets
+# behind the summit), in streaks and drifts, but not on the road or the yard, which are
+# kept clear, nor on the ledges' cliffs, which are bare rock, as is the steepest ground.
+def blurred(A, k):
+    """A box blur, k cells each way (so wider out where the grid is coarser)."""
+    for axis_ in (0, 1):
+        c = np.cumsum(np.pad(A, [(k + 1, k) if a == axis_ else (0, 0) for a in (0, 1)], mode="edge"),
+                      axis=axis_)
+        A = (np.take(c, range(2 * k + 1, c.shape[axis_]), axis=axis_)
+             - np.take(c, range(0, c.shape[axis_] - 2 * k - 1), axis=axis_)) / (2 * k + 1)
+    return A
+
+
+clear = np.maximum(1 - ease(1.3, 2.6, dist / ROAD_W), ease(0.5, 0.9, SITE))
+gy, gx = np.gradient(blurred(Z, 10), ys, xs)
+fall = np.arctan2(gy, gx)
+# ledges: on the steeper slopes the ground steps down over old lava flows, each a bench
+# under a low cliff, wandering across the contours
+T = 0.28
+zq = Z / T + 0.6 * fbm(X / 2.2, Y / 2.2, 8.8, 3)
+f = zq - np.floor(zq)
+LEDGE = (ease(0.18, 0.45, np.hypot(gx, gy)) * ease(-0.15, 0.25, fbm(X / 3.5, Y / 3.5, 4.4))
+         * ease(-2.5, -4.5, X) * (1 - clear))  # out on the left, falling to the clouds
+Z = Z + (ease(0.7, 0.97, f) - f) * T * LEDGE
+RISER = ease(0.72, 0.8, f) * (1 - ease(0.92, 0.98, f)) * LEDGE
+# the shader draws the snow in streaks down the slopes (noise stretched along the downhill
+# direction, blended between four directions so it never shears: these are each vertex's
+# weights for them), but in drifts along the contours on the slopes facing us, where
+# streaks down them would be foreshortened to flecks, and in round patches where it's flat
+facing = ease(0.5, 0.9, np.maximum(0.0, np.sin(fall)) ** 2)
+lie = fall + 0.5 * math.pi * facing
+tilt = ease(0.015, 0.06, np.hypot(gx, gy))
+STREAKS = [np.maximum(0.0, np.cos(2 * (lie - k * math.pi / 4))) ** 2 * tilt for k in range(4)] + [1 - tilt]
+
+gy, gx = np.gradient(Z, ys, xs)
+steep = np.hypot(gx, gy)
+away = gy / np.sqrt(1 + steep ** 2)  # how much the ground faces us, away from the sun
+hollow = blurred(Z, 10) - Z  # above 0 in hollows, below on crests
+lee = np.exp(-((X + 3.6) / 1.7) ** 2 - ((Y + 4.9) / 1.2) ** 2)  # more on the hill's left flank
+SNOW = ((0.24 + 0.55 * lee + 3.0 * hollow + 0.4 * away + 0.6 * fbm(X / 3.5, Y / 3.5, 3.3, 3)
+         - 1.5 * np.maximum(steep - 0.8, 0.0) - 1.2 * RISER) * (1 - clear))
+ROCK = (1.2 * RISER + 0.8 * ease(0.6, 1.1, steep) + 0.25 * fbm(X / 0.6, Y / 0.6, 6.1, 3)) * (1 - clear)
+
 ny, nx = Z.shape
 verts = np.stack([X, Y, Z], -1).reshape(-1, 3)
 idx = np.arange(nx * ny).reshape(ny, nx)
@@ -396,9 +491,10 @@ faces = np.stack([idx[:-1, :-1], idx[:-1, 1:], idx[1:, 1:], idx[1:, :-1]], -1).r
 me = bpy.data.meshes.new("summit")
 me.from_pydata(verts.tolist(), [], faces.tolist())
 me.shade_smooth()
-# the road and the yard are graded gravel: the shader reads these (interpolated across
-# each face, so the edges come out smooth, finer than the mesh)
-for name, val in (("road", np.minimum(dist / ROAD_W, 4.0)), ("yard", SITE)):
+# the road and the yard are graded gravel, and the snow and the rock: the shader reads
+# these (interpolated across each face, so the edges come out smooth, finer than the mesh)
+for name, val in [("road", np.minimum(dist / ROAD_W, 4.0)), ("yard", SITE), ("snow", SNOW), ("rock", ROCK)] + [
+        (f"streak{k}", w) for k, w in enumerate(STREAKS)]:
     at = me.attributes.new(name, "FLOAT", "POINT")
     at.data.foreach_set("value", val.ravel().astype(np.float32))
 
@@ -410,10 +506,57 @@ put(_nt, _patch.inputs["Vector"], _tc.outputs["Object"])
 _patch.inputs["Scale"].default_value = 0.22
 _patch.inputs["Detail"].default_value = 3.0
 _cinder = mix_colour(_nt, _patch.outputs["Fac"], colour("#74473a"), colour("#b47a56"))
+# and finer: darker scoria and paler ash, in drifts about 20 m across
+_mottle = _nt.nodes.new("ShaderNodeTexNoise")
+put(_nt, _mottle.inputs["Vector"], _tc.outputs["Object"])
+_mottle.inputs["Scale"].default_value = 1.1
+_mottle.inputs["Detail"].default_value = 4.0
+_mottle.inputs["Roughness"].default_value = 0.6
+_cinder = mix_colour(_nt, eased(_nt, _mottle.outputs["Fac"], 0.35, 0.65), colour("#4a2e2a"), _cinder)
 _gravel = math_node(_nt, "MAXIMUM", eased(_nt, attribute(_nt, "road"), 1.0, 0.85),
                     eased(_nt, attribute(_nt, "yard"), 0.86, 0.93))
-put(_nt, _nt.nodes["Principled BSDF"].inputs["Base Color"],
-    mix_colour(_nt, _gravel, _cinder, colour("#9a8a7f")))
+_ragged = _nt.nodes.new("ShaderNodeTexNoise")  # the patches' edges, finer than the mesh
+put(_nt, _ragged.inputs["Vector"], _tc.outputs["Object"])
+_ragged.inputs["Scale"].default_value = 2.0
+_ragged.inputs["Detail"].default_value = 6.0
+_rag = math_node(_nt, "SUBTRACT", _ragged.outputs["Fac"], 0.5)
+_rock = eased(_nt, math_node(_nt, "ADD", attribute(_nt, "rock"), math_node(_nt, "MULTIPLY", _rag, 0.6)),
+              0.6, 0.72)
+
+
+def streaks(nt, coord, across, along):
+    """Noise (0..1, about 0.5) stretched down the slopes, by the summit's streak weights."""
+    total = None
+    for k in range(5):
+        v, size = coord, (along, across, across) if k < 4 else (2 * across,) * 3
+        if k < 4:  # turn the streak's direction onto x
+            rot = nt.nodes.new("ShaderNodeVectorRotate")
+            rot.rotation_type = "Z_AXIS"
+            put(nt, rot.inputs["Vector"], coord)
+            rot.inputs["Angle"].default_value = -k * math.pi / 4
+            v = rot.outputs["Vector"]
+        mul = nt.nodes.new("ShaderNodeVectorMath")
+        mul.operation = "MULTIPLY"
+        put(nt, mul.inputs[0], v)
+        mul.inputs[1].default_value = tuple(1 / d for d in size)
+        n = nt.nodes.new("ShaderNodeTexNoise")
+        put(nt, n.inputs["Vector"], mul.outputs["Vector"])
+        n.inputs["Scale"].default_value = 1.0
+        n.inputs["Detail"].default_value = 1.5
+        term = math_node(nt, "MULTIPLY", n.outputs["Fac"], attribute(nt, f"streak{k}"))
+        total = term if total is None else math_node(nt, "ADD", total, term)
+    return total
+
+
+_streak = math_node(_nt, "SUBTRACT", streaks(_nt, _tc.outputs["Object"], 0.18, 3.0), 0.5)
+_snow = eased(_nt, math_node(_nt, "ADD", attribute(_nt, "snow"),
+                             math_node(_nt, "ADD", math_node(_nt, "MULTIPLY", _streak, 1.8),
+                                       math_node(_nt, "MULTIPLY", _rag, 0.25))),
+              0.5, 0.56)
+_bare = mix_colour(_nt, _rock, mix_colour(_nt, _gravel, _cinder, colour("#9a8a7f")), colour("#3b3034"))
+_b = _nt.nodes["Principled BSDF"]
+put(_nt, _b.inputs["Base Color"], mix_colour(_nt, _snow, _bare, colour("#eeeaf3")))
+put(_nt, _b.inputs["Roughness"], math_node(_nt, "SUBTRACT", 0.95, math_node(_nt, "MULTIPLY", _snow, 0.3)))
 bumpy(m_ground, 1.2, 0.35)
 hazed(m_ground, "#6b5a86", 260.0)
 me.materials.append(m_ground)
@@ -553,8 +696,9 @@ vehicle("pickup_road", _x0 - 0.06 * (_y1 - _y0) / math.dist(ROAD[_i], ROAD[_i + 
         _y0 + 0.06 * (_x1 - _x0) / math.dist(ROAD[_i], ROAD[_i + 3]),
         math.degrees(math.atan2(_y0 - _y1, _x0 - _x1)), "pickup", "yellow", lights=True)
 
-# ---- the sea of clouds: billows near, a flat deck beyond, both fading into the
-# sky toward the horizon
+# ---- the sea of clouds: billows heaping up into banks here and there, with a few holes
+# down to the dark land below; a flat deck beyond; all fading into the sky toward the
+# horizon
 m_cloud = material("cloud", "#ffffff", rough=1.0)
 _b = m_cloud.node_tree.nodes["Principled BSDF"]
 _b.inputs["Subsurface Weight"].default_value = 0.5
@@ -567,131 +711,344 @@ _b.inputs["Sheen Weight"].default_value = 0.6
 _b.inputs["Sheen Roughness"].default_value = 0.35
 _b.inputs["Sheen Tint"].default_value = colour("#ffd2b0")
 bumpy(m_cloud, 0.12, 0.12, detail=2)
+# and a finer texture on that, so the tops look soft and fluffy rather than smooth as satin
+_nt = m_cloud.node_tree
+_fine = _nt.nodes.new("ShaderNodeTexNoise")
+put(_nt, _fine.inputs["Vector"], _nt.nodes["Texture Coordinate"].outputs["Object"])
+_fine.inputs["Scale"].default_value = 0.6
+_fine.inputs["Detail"].default_value = 4.0
+_fine.inputs["Roughness"].default_value = 0.55
+_bump2 = _nt.nodes.new("ShaderNodeBump")
+_bump2.inputs["Strength"].default_value = 0.5
+put(_nt, _bump2.inputs["Height"], _fine.outputs["Fac"])
+put(_nt, _bump2.inputs["Normal"], _nt.nodes["Bump"].outputs["Normal"])
+put(_nt, _b.inputs["Normal"], _bump2.outputs["Normal"])
+# greyer down the holes' walls, as less light gets down there
+put(_nt, _b.inputs["Base Color"], mix_colour(_nt, attribute(_nt, "deep"), colour("#ffffff"), colour("#6f6a8c")))
 hazed(m_cloud, None, 2400.0, into_sky=True)
 CX0, CX1, CY0, CY1 = -900, 800, -20, 1800
+DECK = CLOUD_Z - 0.6  # the flat deck beyond the billows
+# holes in the clouds, toward the back, down to the land below (x, y, and half their size
+# across and along the line of sight). We look across them nearly edge on, from not far
+# above, so they're long along it, the cloud thins toward each to let the land show over
+# its near rim, and it heaps up on the far side, in a wall facing us, in shade as it
+# faces away from the sun.
+HOLES = [(-175, 450, 32, 140), (-20, 880, 42, 180)]
+FLOOR = DECK - 4.0  # the land in the holes, just under the thin cloud at their rims
 
 
-def puffs(x, y, cell, seed, r=0.62):
-    """Round puffs, one per voronoi cell: (0..1 height, as a sphere's cap; 0..1 per puff)."""
-    ds, ps = noise.voronoi(Vector((x / cell, y / cell, seed)))
-    q = ps[0]
-    rand = (math.sin(q.x * 12.9898 + q.y * 78.233 + q.z * 37.719) * 43758.5453) % 1.0
-    return math.sqrt(max(0.0, 1 - (ds[0] / r) ** 2)), rand
+def holes(x, y):
+    """1 in the middle of a hole, falling to 0 at its edge, which wanders and is scalloped,
+    and on below 0 outside it; and how far toward its far side each point is (0 to 1)."""
+    g, far = np.full_like(x, -1.0), np.zeros_like(x)
+    for cx, cy, rx, ry in HOLES:
+        ax, ay = cx - CAM.x, cy - CAM.y
+        ax, ay = ax / math.hypot(ax, ay), ay / math.hypot(ax, ay)
+        u = ((x - cx) * ax + (y - cy) * ay) / ry  # along the line of sight
+        v = ((y - cy) * ax - (x - cx) * ay) / rx  # and across it
+        d = (np.hypot(u, v) * (1 + 0.3 * fbm(x / 35, y / 35, cx, 3))
+             + 0.05 * fbm(x / 18, y / 18, cy, 2))
+        far = np.where(1 - d > g, ease(-0.4, 0.5, u), far)
+        g = np.maximum(g, 1 - d)
+    return g, far
 
 
 def billows(x, y):
-    """Cumulus tops: big round puffs, middling ones riding on them, and small ones on
-    those near the camera. Each layer is taken where it rises above the one below, so
-    the puffs meet in creases, as cauliflower."""
-    edge = min(smoothstep(CX0, CX0 + 200, x), 1 - smoothstep(CX1 - 200, CX1, x),
-               smoothstep(CY0, CY0 + 40, y), 1 - smoothstep(CY1 - 400, CY1, y))
-    mass = 0.5 + 0.5 * noise.fractal(Vector((x / 300, y / 300, 0.7)), 0.5, 2.0, 3)
+    """The cloud sea's top: big low domes, middling puffs riding on them, and small ones
+    on those near the camera, each layer merging smoothly into the one below, so they
+    meet in soft creases, as cauliflower. In places the deck heaps up into banks, with
+    bigger puffs on them, and at the holes it falls away in walls."""
+    edge = np.minimum.reduce([ease(CX0, CX0 + 200, x), 1 - ease(CX1 - 200, CX1, x),
+                              ease(CY0, CY0 + 40, y), 1 - ease(CY1 - 400, CY1, y)])
+    mass = 0.5 + 0.5 * fbm(x / 300, y / 300, 0.7)  # where the deck is thicker
+    bank = ease(0.12, 0.32, fbm(x / 230, y / 230, 2.9, 3))  # and heaps up
+    hole, far = holes(x, y)
+    # warped, so the puffs don't line up in rows
+    x, y = x + 10 * fbm(x / 45, y / 45, 5.1, 2), y + 10 * fbm(x / 45, y / 45, 9.4, 2)
+    d, rd = puffs(x, y, 32, 8.1, 0.75)  # the banks' tops, heaped in rounded heads
+    lift = bank * (10.0 + 6.0 * d * (0.5 + rd)) + 2.5 * fbm(x / 500, y / 500, 6.6, 2)
     a, ra = puffs(x, y, 70, 0.3)
-    z = a * (8 + 14 * ra) * mass
+    z = a * (4.0 + 7.0 * ra) * mass
     b, rb = puffs(x, y, 24, 1.7)
-    z = max(z, 0.8 * z + b * (3 + 4 * rb) * (0.4 + mass))
+    z = smooth_max(z, 0.8 * z + b * (2.0 + 2.8 * rb) * (0.4 + mass), 2.0)
+    e, re = puffs(x, y, 13, 3.3)
+    lift = smooth_max(lift, 0.9 * lift + e * (1.5 + 2.5 * re) * bank, 1.2)
     # the small ones only near the camera: farther off they'd be finer than the mesh
-    near = 1 - smoothstep(200, 380, math.hypot(x - CAM.x, y - CAM.y))
-    if near > 0:
-        c, rc = puffs(x, y, 8, 4.2)
-        z = max(z, 0.85 * z + c * (1.2 + 1.6 * rc) * near * (0.3 + mass))
-    return CLOUD_Z - 6.0 + z * edge
+    near = 1 - ease(220, 420, np.hypot(x - CAM.x, y - CAM.y))
+    c, rc = puffs(x, y, 8, 4.2)
+    z = smooth_max(z, 0.85 * z + c * (0.9 + 1.2 * rc) * near * (0.3 + mass), 0.8)
+    # toward a hole the cloud thins on the near side, to a rim of small puffs, and heaps
+    # up on the far side; at the edge it falls to the land
+    by = ease(-0.4, -0.02, hole)
+    f, rf = puffs(x, y, 10, 6.2)
+    z = ((z + lift) * (1 - 0.9 * by * (1 - far)) + by * (1 - far) * f * (1.0 + 1.5 * rf)
+         + by * far * (1.5 + 2.5 * d))
+    z = z + (FLOOR - DECK + 1.6 - z) * ease(0.0, 0.22, hole)
+    return DECK + (z - 2.4) * edge
 
 
-def spaced_x():
-    """CX0..CX1, fine where the near lumps are (left of the summit), coarse beyond."""
-    out = [CX0]
-    while out[-1] < CX1:
-        x = out[-1]
-        out.append(x + (0.8 if -420 < x < 60 else 3.0))
-    return out
+def cut(x, y):
+    """Where the billows are cut away, at the bottoms of the holes."""
+    return holes(x, y)[0] > 0.22
 
 
-grid_mesh("billows", spaced_x(), spaced(CY0, CY1, 0.8, 0.006), billows, [m_cloud])
+def grid_np(name, xs, ys, z, mats, cut=None):
+    """A grid mesh from arrays (z over ys by xs), built without a Python loop, less the
+    squares with any corner where `cut` is true."""
+    X, Y = np.meshgrid(xs, ys)
+    Z = z(X, Y)
+    ny, nx = Z.shape
+    me = bpy.data.meshes.new(name)
+    me.vertices.add(nx * ny)
+    me.vertices.foreach_set("co", np.stack([X, Y, Z], -1).astype(np.float32).ravel())
+    idx = np.arange(nx * ny, dtype=np.int32).reshape(ny, nx)
+    quads = np.stack([idx[:-1, :-1], idx[:-1, 1:], idx[1:, 1:], idx[1:, :-1]], -1).reshape(-1, 4)
+    if cut is not None:
+        quads = quads[~cut(X, Y).ravel()[quads].any(axis=1)]
+    quads = quads.ravel()
+    nq = len(quads) // 4
+    me.loops.add(4 * nq)
+    me.loops.foreach_set("vertex_index", quads)
+    me.polygons.add(nq)
+    me.polygons.foreach_set("loop_start", np.arange(0, 4 * nq, 4, dtype=np.int32))
+    me.update(calc_edges=True)
+    me.shade_smooth()
+    for mt in mats:
+        me.materials.append(mt)
+    ob = bpy.data.objects.new(name, me)
+    scene.collection.objects.link(ob)
+    return ob
+
+
+# fine where the near clouds are (left of the summit), and around the heap behind it
+_xs = axis(CX0, CX1, [(-260, 20, 0.5), (-420, 160, 0.8)], 3.0)
+_ys = spaced(CY0, CY1, 0.5, 0.004)
+_ob = grid_np("billows", _xs, _ys, billows, [m_cloud], cut)
+_co = np.empty(3 * len(_ob.data.vertices), np.float32)
+_ob.data.vertices.foreach_get("co", _co)
+_deep = (1 - ease(FLOOR, DECK + 4.0, _co[2::3])) * ease(-0.35, -0.05, holes(*np.meshgrid(_xs, _ys))[0].ravel())
+_ob.data.attributes.new("deep", "FLOAT", "POINT").data.foreach_set("value", _deep.astype(np.float32).ravel())
+# the deck, out from the billows' edges (which come down to it) to the horizon
 bm = bmesh.new()
-bmesh.ops.create_grid(bm, x_segments=1, y_segments=1, size=9000)
-for v in bm.verts:
-    v.co.z = CLOUD_Z - 0.6
+outer = [bm.verts.new((x, y, DECK)) for x, y in ((-9000, -9000), (9000, -9000), (9000, 9000), (-9000, 9000))]
+inner = [bm.verts.new((x, y, DECK)) for x, y in ((CX0, CY0), (CX1, CY0), (CX1, CY1), (CX0, CY1))]
+for i in range(4):
+    j = (i + 1) % 4
+    bm.faces.new((outer[i], outer[j], inner[j], inner[i]))
 link("cloud_deck", bm, [m_cloud], smooth=True)
 
-# ---- cumulus heaps rising out of the cloud sea: one behind the building, a couple
-# out on the left. Metaballs, so the puffs melt into each other.
-def heap(name, centre, spread, height, seed, n=220, rmin=0.06, rmax=0.16):
+# the land under the clouds, seen through the gaps: dark, in the clouds' shade, with the
+# lights of a few towns coming on
+m_lowland = material("lowland", "#2e2a30", rough=1.0)
+_nt = m_lowland.node_tree
+_tc = _nt.nodes.new("ShaderNodeTexCoord")
+_fields = _nt.nodes.new("ShaderNodeTexNoise")
+put(_nt, _fields.inputs["Vector"], _tc.outputs["Object"])
+_fields.inputs["Scale"].default_value = 0.04
+_fields.inputs["Detail"].default_value = 5.0
+_b = _nt.nodes["Principled BSDF"]
+put(_nt, _b.inputs["Base Color"], mix_colour(_nt, eased(_nt, _fields.outputs["Fac"], 0.35, 0.65),
+                                             colour("#1b1519"), colour("#33272a")))
+_lamps = _nt.nodes.new("ShaderNodeTexVoronoi")  # one lamp in each cell, in some
+put(_nt, _lamps.inputs["Vector"], _tc.outputs["Object"])
+_lamps.inputs["Scale"].default_value = 0.15
+_towns = _nt.nodes.new("ShaderNodeTexNoise")  # where the towns are
+put(_nt, _towns.inputs["Vector"], _tc.outputs["Object"])
+_towns.inputs["Scale"].default_value = 0.025
+_sep = _nt.nodes.new("ShaderNodeSeparateColor")
+put(_nt, _sep.inputs["Color"], _lamps.outputs["Color"])
+_lit = math_node(_nt, "MULTIPLY", eased(_nt, _lamps.outputs["Distance"], 0.1, 0.06),
+                 math_node(_nt, "MULTIPLY", eased(_nt, _sep.outputs["Red"], 0.5, 0.6),
+                           eased(_nt, _towns.outputs["Fac"], 0.5, 0.6)))
+_b.inputs["Emission Color"].default_value = colour("#ffb066")
+put(_nt, _b.inputs["Emission Strength"], math_node(_nt, "MULTIPLY", _lit, 8.0))
+bumpy(m_lowland, 0.05, 0.4)
+hazed(m_lowland, "#3b3150", 900.0)
+grid_np("lowland", np.arange(CX0, CX1 + 1, 4.0), np.arange(CY0, CY1 + 1, 4.0),
+        lambda x, y: FLOOR - 1.0 + 1.6 * np.abs(fbm(x / 45, y / 45, 1.9, 4)), [m_lowland],
+        lambda x, y: holes(x, y)[0] < -0.8)
+
+
+# ---- a cumulus heap rising out of the cloud sea behind the building: a few big lobes,
+# middling puffs on their surfaces, and small ones on theirs, so its outline is
+# cauliflower rather than balloons. Metaballs, so the puffs melt into each other.
+def heap(name, centre, lobes, seed, n_mid=110, n_small=320):
+    """`lobes`: (x, y, z, radius) for each big lobe, from the heap's foot."""
     rng = random.Random(seed)
     mb = bpy.data.metaballs.new(name)
     mb.resolution = 2.0
-    mb.render_resolution = max(0.4, spread / 90)
+    mb.render_resolution = min(r for *_, r in lobes) / 24
     mb.threshold = 0.6
-    for i in range(n):
-        k = (i / n) ** 0.8  # more puffs low down, fewer up the tower
-        reach = spread * (1 - 0.75 * k) * math.sqrt(rng.random())
-        a = rng.uniform(0, 2 * math.pi)
+    SHOWS = 0.67  # how much of an element's radius shows, alone, at this threshold
+
+    def puff(p, r):
         el = mb.elements.new()
-        el.co = (reach * math.cos(a), reach * math.sin(a) * 0.7, height * k + rng.uniform(-0.05, 0.05) * height)
-        el.radius = spread * rng.uniform(rmin, rmax) * (1 - 0.35 * k)
+        el.co, el.radius = p, r
+
+    def on_surface(balls, k, up):
+        """A point on the surface of the union of `balls` (centre, shown radius), not
+        inside any other, mostly on their upper sides (`up`), and the ball it's on."""
+        for _ in range(200):
+            c, r = rng.choice(balls)
+            d = Vector((rng.gauss(0, 1), rng.gauss(0, 1), rng.gauss(0, 1))).normalized()
+            if d.z < -0.2 or rng.random() > (1 - up) + up * max(d.z, 0.0):
+                continue
+            p = c + d * r
+            if all((p - c2).length >= r2 * k for c2, r2 in balls if c2 is not c):
+                return p, r
+        return None
+
+    big = [(Vector(c[:3]), c[3] * SHOWS) for c in lobes]
+    for c, r in big:
+        puff(c, r / SHOWS)
+    mid = []
+    for _ in range(n_mid):
+        hit = on_surface(big, 0.98, 0.5)
+        if hit:
+            r = hit[1] * rng.uniform(0.22, 0.34)
+            mid.append((hit[0], r))
+            puff(hit[0], r / SHOWS)
+    for _ in range(n_small):
+        hit = on_surface(mid, 0.9, 0.7)
+        if hit:
+            puff(hit[0], hit[1] * rng.uniform(0.35, 0.5) / SHOWS)
     ob = bpy.data.objects.new(name, mb)
-    ob.location = (centre[0], centre[1], CLOUD_Z - 8)
+    ob.location = (centre[0], centre[1], CLOUD_Z - 4)
     scene.collection.objects.link(ob)
     mb.materials.append(m_cloud)
     return ob
 
 
-heap("heapBehind", (80, 260), 85, 44, 3)
-heap("heapLeft", (-130, 330), 60, 30, 5)
-heap("heapFar", (-330, 760), 150, 55, 8, n=300)
+heap("heapBehind", (80, 260), [(-20, 0, 8, 21), (6, 6, 14, 24), (28, 3, 7, 18), (48, -3, 3, 13),
+                               (-3, 8, 34, 15), (14, 11, 42, 11), (-36, -3, 1, 13)], 3)
+# and others farther off: one against the near range, one off to the right
+heap("heapRange", (-122, 800), [(-32, 0, 6, 22), (-6, 6, 12, 28), (22, 2, 8, 22), (44, -4, 3, 15),
+                                (-20, 6, 20, 20), (6, 8, 27, 20), (-6, 10, 37, 14), (-50, -2, 1, 14)],
+     7, n_small=240)
+heap("heapRight", (300, 640), [(-15, 0, 6, 16), (5, 4, 12, 20), (24, 2, 6, 14), (2, 6, 26, 12),
+                               (-20, 2, 16, 10)], 11, n_small=220)
 
-# ---- mountains on the horizon: peaks off to the left rising out of the clouds, a far
-# range along the horizon, and a broad shield volcano beyond the building, all fading
-# into the sky
-PEAKS = [(-150, 600, 100, 30.0), (-265, 790, 140, 40.0), (-95, 830, 80, 24.0), (-420, 1120, 220, 52.0)]
+# ---- mountains on the horizon: a range off to the left rising out of the clouds, its
+# crest running away from us, a paler one beyond it, and a far range along the horizon,
+# each paler than the one before as they fade into the sky
+MOUNTAIN_BASE = CLOUD_Z - 18  # under the land below the clouds
 
 
-def volcano(x, y, cx, cy, R, h, seed):
-    """A peak with concave flanks, cut by gullies running down it."""
-    dx, dy = x - cx, y - cy
-    r = math.hypot(dx, dy) / R
-    if r >= 1.0:
-        return 0.0
-    a = math.atan2(dy, dx)
-    ring = Vector((5 * math.cos(a), 5 * math.sin(a), 2.0 * r + seed))
-    gully = abs(noise.noise(ring))  # 0 along a gully's floor
-    prof = (1 - r) ** 1.7
-    return h * prof * (1 - 0.35 * (1 - gully) * math.sin(math.pi * min(1.0, 1.4 * r)))
+def ridged(x, y, z, octaves=5):
+    """Noise with sharp crests: 1 along them, falling to 0 between."""
+    s, amp, tot = 0.0, 1.0, 0.0
+    for i in range(octaves):
+        n = 1 - abs(noise.noise(Vector((x, y, z + 3.7 * i))))
+        s += amp * n * n
+        tot += amp
+        x, y = 2.03 * x + 0.31 * y, 2.03 * y - 0.31 * x
+        amp *= 0.5
+    return s / tot
+
+
+class Range:
+    """A mountain range along a crest line (x, y, and the crest's height above the
+    cloud tops at each point): peaks and cols along the crest, spurs running down the
+    flanks with gullies between them, and flanks that steepen toward the crest."""
+
+    def __init__(self, crest, width, seed):
+        self.pts = [Vector((x, y)) for x, y, _ in crest]
+        self.h = [CLOUD_Z + h - MOUNTAIN_BASE for *_, h in crest]
+        self.width, self.seed = width, seed
+        self.seg = [(b - a).length for a, b in zip(self.pts, self.pts[1:])]
+        xs = [p.x for p in self.pts]
+        ys = [p.y for p in self.pts]
+        self.box = (min(xs) - width, max(xs) + width, min(ys) - width, max(ys) + width)
+
+    def height(self, x, y):
+        p = Vector((x, y))
+        best, u, h, s0 = 1e9, 0.0, 0.0, 0.0
+        for i, (a, b, L) in enumerate(zip(self.pts, self.pts[1:], self.seg)):
+            t = min(max((p - a).dot(b - a) / (L * L), 0.0), 1.0)
+            d = (p - a - t * (b - a)).length
+            if d < best:
+                best, u, h = d, s0 + t * L, self.h[i] + t * (self.h[i + 1] - self.h[i])
+            s0 += L
+        # the crest wanders off the line a little, and the range is wider in places
+        d = best + 0.25 * self.width * noise.noise(Vector((u / 160, self.seed, 0.5)))
+        w = self.width * (0.85 + 0.3 * noise.noise(Vector((u / 220, self.seed, 1.5))))
+        s = abs(d) / w
+        if s >= 1.0:
+            return 0.0
+        crest = h * (0.62 + 0.5 * ridged(u / 70, self.seed, 2.5, 3))  # peaks and cols
+        # spurs down the flanks, unevenly spaced (the ridges' line along the crest wanders)
+        uw = u + 30 * noise.noise(Vector((u / 90, abs(d) / 120, self.seed + 9.0)))
+        spurs = ridged(uw / 34, abs(d) / 150, self.seed + 4.0, 4)
+        body = crest * (1 - s) ** 1.35
+        gully = (1 - spurs) * math.sin(math.pi * min(1.0, 1.25 * s))
+        return body * (1 - 0.42 * gully)
+
+
+RANGES = [
+    Range([(-345, 470, 8), (-300, 560, 44), (-262, 700, 38), (-212, 900, 33), (-150, 1120, 26),
+           (-100, 1300, 10)], 120, 1.3),
+    Range([(-640, 1150, 12), (-520, 1260, 50), (-400, 1420, 44), (-300, 1560, 30), (-230, 1680, 8)],
+          200, 7.9),
+]
+
+
+def range_mesh(name, rg):
+    """A grid over the range, about as fine as a few pixels at its distance."""
+    x0, x1, y0, y1 = rg.box
+    step = max(1.5, (y0 - CAM.y) / 320)
+    base = MOUNTAIN_BASE
+    return grid_mesh(name, frange(x0, x1, step), spaced(y0, y1, step, 0.0025),
+                     lambda x, y: base + rg.height(x, y), [m_peak])
 
 
 def mountains(x, y):
-    base = CLOUD_Z - 10
+    base = MOUNTAIN_BASE
     z = base
-    for i, (cx, cy, R, h) in enumerate(PEAKS):
-        z = max(z, base + volcano(x, y, cx, cy, R, CLOUD_Z + h - base, 3.1 * i))
-    if z > base:
-        z += (z - base) * 0.06 * noise.fractal(Vector((x / 20, y / 20, 5.0)), 0.7, 2.0, 4)
     band = smoothstep(1300, 1600, y) * (1 - smoothstep(2100, 2400, y))
     if band > 0:  # the far range
         rr = noise.ridged_multi_fractal(Vector((x / 300, y / 300, 2.3)), 1.0, 2.1, 6, 1.0, 2.0)
         lift = 0.5 + 0.5 * noise.noise(Vector((x / 1400, 0.5, 7.7)))
         z = max(z, base + band * (16 + rr * 34 * lift))
-    d2 = ((x + 1150) / 1300) ** 2 + ((y - 2750) / 600) ** 2
-    if d2 < 1:  # a shield volcano, broad and low, off to the left
-        z = max(z, base + 95 * (1 - d2) ** 1.6)
     return z
 
 
+# snow on the heights, on all but the steepest faces, in streaks down them
 m_peak = material("peak", "#a8939f", rough=0.9)
+_nt = m_peak.node_tree
+_geo = _nt.nodes.new("ShaderNodeNewGeometry")
+_n = _nt.nodes.new("ShaderNodeSeparateXYZ")
+put(_nt, _n.inputs[0], _geo.outputs["Normal"])
+_p = _nt.nodes.new("ShaderNodeSeparateXYZ")
+put(_nt, _p.inputs[0], _geo.outputs["Position"])
+_map = _nt.nodes.new("ShaderNodeMapping")
+put(_nt, _map.inputs["Vector"], _geo.outputs["Position"])
+_map.inputs["Scale"].default_value = (1 / 6, 1 / 6, 1 / 24)
+_streak = _nt.nodes.new("ShaderNodeTexNoise")
+put(_nt, _streak.inputs["Vector"], _map.outputs["Vector"])
+_streak.inputs["Detail"].default_value = 4.0
+_snow = math_node(_nt, "ADD",
+                  math_node(_nt, "MULTIPLY", eased(_nt, _n.outputs["Z"], 0.62, 0.88),
+                            eased(_nt, _p.outputs["Z"], CLOUD_Z + 4, CLOUD_Z + 18)),
+                  math_node(_nt, "MULTIPLY", math_node(_nt, "SUBTRACT", _streak.outputs["Fac"], 0.5), 1.4))
+put(_nt, _nt.nodes["Principled BSDF"].inputs["Base Color"],
+    mix_colour(_nt, eased(_nt, _snow, 0.42, 0.52), colour("#a8939f"), colour("#f2ecf3")))
 bumpy(m_peak, 0.08, 0.5)
-hazed(m_peak, None, 3000.0, into_sky=True)
-grid_mesh("mountains", frange(-2500, 1600, 8), spaced(480, 3400, 4, 0.002), mountains, [m_peak])
+hazed(m_peak, None, 1600.0, into_sky=True)
+grid_mesh("mountains", frange(-2500, 1600, 8), spaced(1250, 2500, 4, 0.002), mountains, [m_peak])
+for i, rg in enumerate(RANGES):
+    range_mesh(f"range{i}", rg)
 
 
-# ---- light: the sun, setting behind the observatory (a little to its right, so the page
-# can show it), and the dusk sky, brighter around the sun as the haze scatters its light
+# ---- light: the sun, setting behind the dome (its lower right, so the dome hides it and
+# only its glow shows around it on the page), and the dusk sky, brighter around the sun as
+# the haze scatters its light
 def direction(az, el):
     """az: degrees from +y (straight ahead) toward -x (left); el: degrees up."""
     a, e = math.radians(az), math.radians(el)
     return Vector((-math.sin(a) * math.cos(e), math.cos(a) * math.cos(e), math.sin(e)))
 
 
-SUN = direction(-16, 4.0)
+SUN = direction(-9.1, 2.55)
 world = scene.world
 nt = world.node_tree
 ramp = next(n for n in nt.nodes if n.type == "VALTORGB")

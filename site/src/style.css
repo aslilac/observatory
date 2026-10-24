@@ -247,13 +247,11 @@ nav {
 		transparent var(--horizon-y, 100%)
 	);
 }
-.stars div,
-.stars canvas {
+.stars div {
 	position: absolute;
-	display: block;
 }
-.stars div > canvas:first-child {
-	inset: 0;
+.stars canvas {
+	display: block;
 	width: 100%;
 	height: 100%;
 }
