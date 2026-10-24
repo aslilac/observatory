@@ -1,23 +1,29 @@
 // N-API exports for the scanner.
 //
-// Surface mirrors the JS VirtualFileSystem class: a `Scan` handle that
-// can be started, polled for progress mid-flight, and aborted. The Rust
-// scan runs on libuv's threadpool (via napi-rs AsyncTask) so the JS main
-// thread stays free to handle IPC during long scans.
+// The whole surface is one class, `Scan`: a handle that walks a directory on
+// libuv's threadpool (via napi-rs AsyncTask, so the JS main thread stays
+// free to handle IPC), reports progress while it runs, and then holds on to
+// the finished tree. The tree itself never crosses into JS (see tree.rs);
+// the main process asks the handle for the slices it needs instead.
 //
-// JS objects are built directly via the Env API rather than serializing
-// through JSON — skipping `JSON.parse` is the whole point of the napi
-// binding. The discriminated VfsNode union (Directory | File) becomes
-// JS objects with a `type` discriminant, matching `Ob.VfsNode` in
-// Observatory.d.ts.
+// Results come back as JSON strings for the JS side to parse. V8's
+// JSON.parse is optimized C++, where building the same objects through
+// N-API is one round trip across the binding per property. The exception is
+// the small, frequently polled progress snapshot, built directly below.
 
-use crate::{CountsSnapshot, PerfNode, ScanState, root_dev_id, run_scan, snapshot_perf};
+use crate::{
+	CountsSnapshot, PerfNode, ScanError, ScanResult, ScanState, VfsNode, root_dev_id, run_scan,
+	snapshot_perf, tree,
+};
 use napi::bindgen_prelude::*;
 use napi::{Env, JsObject, JsString, Task};
 use napi_derive::napi;
+use serde::Serialize;
 use std::path::PathBuf;
-use std::sync::Arc;
 use std::sync::atomic::Ordering;
+use std::sync::{Arc, PoisonError, RwLock, RwLockReadGuard, RwLockWriteGuard};
+
+type SharedTree = Arc<RwLock<Option<VfsNode>>>;
 
 #[napi(object)]
 pub struct ScanOptions {
@@ -28,6 +34,8 @@ pub struct ScanOptions {
 pub struct Scan {
 	path: PathBuf,
 	state: Arc<ScanState>,
+	// Filled in when the walk finishes, and kept until `release()`.
+	tree: SharedTree,
 }
 
 #[napi]
@@ -44,18 +52,34 @@ impl Scan {
 		Ok(Self {
 			path: PathBuf::from(path),
 			state: Arc::new(state),
+			tree: SharedTree::default(),
 		})
 	}
 
-	/// Kick off the scan on libuv's threadpool. Returns a Promise resolving
-	/// to the final ScanResult. Safe to call only once per Scan instance —
-	/// subsequent calls will start a second scan that shares the same state
-	/// and produce confusing results.
+	/// A handle that has already finished, holding `json` (a VfsNode) as its
+	/// tree. For the dev-only fake disk, which is built in JS.
+	#[napi(factory)]
+	pub fn from_json(json: String) -> Result<Self> {
+		let root: VfsNode = serde_json::from_str(&json)
+			.map_err(|e| Error::from_reason(format!("not a scan tree: {e}")))?;
+		Ok(Self {
+			path: PathBuf::new(),
+			state: Arc::new(ScanState::new(false, None)),
+			tree: Arc::new(RwLock::new(Some(root))),
+		})
+	}
+
+	/// Kick off the scan on libuv's threadpool. The Promise resolves to a
+	/// JSON summary (counts, errors, perf tree); the tree itself stays on
+	/// this handle. Safe to call only once per Scan instance — subsequent
+	/// calls will start a second scan that shares the same state and
+	/// produce confusing results.
 	#[napi]
 	pub fn start(&self) -> AsyncTask<ScanTask> {
 		AsyncTask::new(ScanTask {
 			path: self.path.clone(),
 			state: Arc::clone(&self.state),
+			tree: Arc::clone(&self.tree),
 		})
 	}
 
@@ -105,27 +129,89 @@ impl Scan {
 	}
 
 	/// Cooperative abort. The next syscall batch finishes, then the scan
-	/// unwinds. The Promise returned by `start()` resolves with whatever
-	/// partial tree was built — it does NOT reject. Callers can tell
-	/// whether the scan completed normally by checking `progress().aborted`.
+	/// unwinds. The Promise returned by `start()` still resolves rather
+	/// than rejecting, but the partial tree is dropped: an aborted scan's
+	/// handle is on its way out.
 	#[napi]
 	pub fn abort(&self) {
 		self.state.aborted.store(true, Ordering::Relaxed);
 	}
+
+	/// The finished tree's size in bytes; null until there is one.
+	#[napi]
+	pub fn size(&self) -> Option<f64> {
+		read(&self.tree).as_ref().map(|root| root.size() as f64)
+	}
+
+	/// JSON for what the renderer draws of the directory at `cursor` (a
+	/// `tree::RenderSlice`), or `null` before the scan finishes or if the
+	/// cursor doesn't lead to a directory.
+	#[napi]
+	pub fn render_tree(&self, cursor: Vec<String>) -> Result<String> {
+		let root = read(&self.tree);
+		let slice = root
+			.as_ref()
+			.and_then(|root| tree::render_slice(root, &cursor));
+		serde_json::to_string(&slice)
+			.map_err(|e| Error::from_reason(format!("serialize failed: {e}")))
+	}
+
+	/// Searches the tree on libuv's threadpool, since it visits every node.
+	/// Resolves to JSON for a `tree::SearchResults` with paths under
+	/// `base_path`, or `null` before the scan finishes.
+	#[napi]
+	pub fn search(&self, base_path: String, query: String) -> AsyncTask<SearchTask> {
+		AsyncTask::new(SearchTask {
+			tree: Arc::clone(&self.tree),
+			base_path,
+			query,
+		})
+	}
+
+	/// Takes the entry at `parts` (names below the root) out of the tree,
+	/// e.g. once it's been moved to the trash. False if it wasn't there.
+	#[napi]
+	pub fn remove(&self, parts: Vec<String>) -> bool {
+		write(&self.tree)
+			.as_mut()
+			.is_some_and(|root| tree::remove(root, &parts))
+	}
+
+	/// Frees the tree. A whole disk's worth is hundreds of MB that V8 can't
+	/// see, so it won't hurry to collect this small handle on its own.
+	/// Millions of nodes take a moment to free, so that happens off the
+	/// calling thread.
+	#[napi]
+	pub fn release(&self) {
+		let root = write(&self.tree).take();
+		if root.is_some() {
+			std::thread::spawn(move || drop(root));
+		}
+	}
 }
 
-// The final ScanResult is shipped to JS as a JSON string. Serialization
-// runs on the libuv worker thread (inside `compute`); the JS side does
-// `JSON.parse` on the result. Counter-intuitively this is faster than
-// building V8 objects via the N-API one set_named_property at a time —
-// V8's JSON parser runs in optimized C++ once it owns the buffer, while
-// per-property napi calls round-trip through the binding boundary each
-// time. For a 170K-entry scan the napi-walk approach blocked the JS
-// thread for ~115ms at resolve time; the JSON path moves most of that
-// work onto the worker.
+// Nothing panics partway through changing the tree while holding the lock,
+// so a poisoned lock still guards a whole tree.
+fn read(tree: &SharedTree) -> RwLockReadGuard<'_, Option<VfsNode>> {
+	tree.read().unwrap_or_else(PoisonError::into_inner)
+}
+
+fn write(tree: &SharedTree) -> RwLockWriteGuard<'_, Option<VfsNode>> {
+	tree.write().unwrap_or_else(PoisonError::into_inner)
+}
+
 pub struct ScanTask {
 	path: PathBuf,
 	state: Arc<ScanState>,
+	tree: SharedTree,
+}
+
+// Everything in a ScanResult but the tree, which stays on the handle.
+#[derive(Serialize)]
+struct ScanSummary {
+	counts: CountsSnapshot,
+	errors: Vec<ScanError>,
+	perf: Option<PerfNode>,
 }
 
 impl Task for ScanTask {
@@ -133,9 +219,49 @@ impl Task for ScanTask {
 	type JsValue = JsString;
 
 	fn compute(&mut self) -> Result<Self::Output> {
-		let result = run_scan(&self.path, &self.state)
+		let ScanResult {
+			root,
+			counts,
+			errors,
+			perf,
+		} = run_scan(&self.path, &self.state)
 			.map_err(|e| Error::from_reason(format!("scan failed: {e}")))?;
-		serde_json::to_string(&result)
+		// Checked under the lock, so a `release()` right after `abort()` can't
+		// slip in ahead of this and leave the tree behind.
+		let mut tree = write(&self.tree);
+		if !self.state.aborted.load(Ordering::Relaxed) {
+			*tree = Some(root);
+		}
+		drop(tree);
+		serde_json::to_string(&ScanSummary {
+			counts,
+			errors,
+			perf,
+		})
+		.map_err(|e| Error::from_reason(format!("serialize failed: {e}")))
+	}
+
+	fn resolve(&mut self, env: Env, output: Self::Output) -> Result<Self::JsValue> {
+		env.create_string(&output)
+	}
+}
+
+pub struct SearchTask {
+	tree: SharedTree,
+	base_path: String,
+	query: String,
+}
+
+impl Task for SearchTask {
+	type Output = String;
+	type JsValue = JsString;
+
+	fn compute(&mut self) -> Result<Self::Output> {
+		let root = read(&self.tree);
+		let results = root
+			.as_ref()
+			.map(|root| tree::search(root, &self.base_path, &self.query));
+		serde_json::to_string(&results)
 			.map_err(|e| Error::from_reason(format!("serialize failed: {e}")))
 	}
 

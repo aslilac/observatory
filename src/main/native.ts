@@ -6,13 +6,14 @@
 // and Electron's asar layer transparently rewrites the require path)
 // both find it.
 //
-// The JS-side `Scan` is a thin wrapper around the raw napi class: the
-// underlying `start()` returns the ScanResult as a JSON string built on
-// the libuv worker thread, and we JSON.parse it on the JS thread before
-// handing the object to vfsManager. That move is significantly faster
-// than building V8 objects through N-API set_named_property() one
-// property at a time (V8's JSON.parse is optimized C++; per-property
-// napi calls round-trip through the binding boundary).
+// A `Scan` walks a directory and then keeps the finished tree on the Rust
+// side, where the main process queries it: the slice of it the renderer
+// draws, search hits, removals after a trash. A whole disk is millions of
+// nodes, too many for V8 to hold comfortably and too long to pass over as
+// one JSON string at all. What does cross comes back as JSON strings that
+// we JSON.parse here, which beats building V8 objects through N-API one
+// property at a time (V8's JSON.parse is optimized C++; per-property napi
+// calls round-trip through the binding boundary).
 
 import { app } from "electron";
 import { createRequire } from "node:module";
@@ -25,18 +26,23 @@ const nativePath = path.resolve(
 );
 
 type RawNativeBinding = {
-	Scan: RawNativeScanConstructor;
+	Scan: RawNativeScanClass;
 };
 
-type RawNativeScanConstructor = new (
-	path: string,
-	options: { perf?: boolean },
-) => RawNativeScan;
+type RawNativeScanClass = {
+	new (path: string, options: { perf?: boolean }): RawNativeScan;
+	fromJson(json: string): RawNativeScan;
+};
 
 interface RawNativeScan {
 	start(): Promise<string>;
 	progress(): NativeScanProgress;
 	abort(): void;
+	size(): number | null;
+	renderTree(cursor: string[]): string;
+	search(basePath: string, query: string): Promise<string>;
+	remove(parts: string[]): boolean;
+	release(): void;
 }
 
 export type NativeScanCounts = {
@@ -58,11 +64,23 @@ export type NativeScanProgress = {
 	perfTree: Ob.PerfNode | null;
 };
 
-export type NativeScanResult = {
-	root: Ob.VfsDirectory;
+export type NativeScanSummary = {
 	counts: NativeScanCounts;
 	errors: Ob.ScanError[];
 	perf: Ob.PerfNode | null;
+};
+
+// What the scanner cuts out of the tree for one directory (`RenderSlice` in
+// rust-backend/tree.rs). Directories in `list` come without their contents;
+// those in `sunburst` keep the ones big enough to draw, six levels down.
+export type RenderSlice = {
+	// The scan root's name, whichever directory this is.
+	name: string;
+	rootSize: number;
+	position: number;
+	size: number;
+	list: Ob.VfsNode[];
+	sunburst: Ob.VfsNode[];
 };
 
 let raw: RawNativeBinding;
@@ -79,13 +97,24 @@ try {
 export class Scan {
 	#inner: RawNativeScan;
 
-	constructor(path: string, options: { perf?: boolean }) {
-		this.#inner = new raw.Scan(path, options);
+	private constructor(inner: RawNativeScan) {
+		this.#inner = inner;
 	}
 
-	async start(): Promise<NativeScanResult> {
-		const json = await this.#inner.start();
-		return JSON.parse(json) as NativeScanResult;
+	// Stats `path` right away, throwing if it can't; the walk waits for
+	// start().
+	static create(path: string, options: { perf?: boolean }): Scan {
+		return new Scan(new raw.Scan(path, options));
+	}
+
+	// A scan that has already finished, holding `root` as its tree.
+	static fromTree(root: Ob.VfsDirectory): Scan {
+		return new Scan(raw.Scan.fromJson(JSON.stringify(root)));
+	}
+
+	// Resolves once the walk is done, after which the tree is queryable.
+	async start(): Promise<NativeScanSummary> {
+		return JSON.parse(await this.#inner.start()) as NativeScanSummary;
 	}
 
 	progress(): NativeScanProgress {
@@ -94,6 +123,39 @@ export class Scan {
 
 	abort(): void {
 		this.#inner.abort();
+	}
+
+	// The rest are for a finished scan, and answer null or false before then.
+
+	size(): number | null {
+		return this.#inner.size();
+	}
+
+	// Null too if `cursor` doesn't lead to a directory.
+	renderTree(cursor: string[]): RenderSlice | null {
+		return JSON.parse(this.#inner.renderTree(cursor)) as RenderSlice | null;
+	}
+
+	// Runs off the main thread, since it visits every node. Hit paths are
+	// built on `basePath`.
+	async search(
+		basePath: string,
+		query: string,
+	): Promise<Ob.SearchResults | null> {
+		const json = await this.#inner.search(basePath, query);
+		return JSON.parse(json) as Ob.SearchResults | null;
+	}
+
+	// Takes the entry at `parts` (names below the root) out of the tree.
+	// False if it wasn't there.
+	remove(parts: string[]): boolean {
+		return this.#inner.remove(parts);
+	}
+
+	// Frees the tree. V8 can't see its size, so it won't hurry to collect
+	// this handle; call this once the scan is done with.
+	release(): void {
+		this.#inner.release();
 	}
 }
 

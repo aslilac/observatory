@@ -20,7 +20,7 @@
 //   volume, which would otherwise filter out /Users.
 
 use rayon::prelude::*;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::cmp;
 use std::fs;
 use std::path::Path;
@@ -67,7 +67,7 @@ impl CountsSnapshot {
 	}
 }
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum VfsNode {
 	Directory {
@@ -84,6 +84,12 @@ pub enum VfsNode {
 }
 
 impl VfsNode {
+	pub fn name(&self) -> &str {
+		match self {
+			VfsNode::Directory { name, .. } | VfsNode::File { name, .. } => name,
+		}
+	}
+
 	pub fn size(&self) -> u64 {
 		match self {
 			VfsNode::Directory { size, .. } | VfsNode::File { size, .. } => *size,
@@ -591,6 +597,8 @@ fn errno_name(n: i32) -> Option<String> {
 // the wrapper JS sees.
 #[cfg(feature = "napi")]
 mod bindings;
+
+pub mod tree;
 
 #[cfg(test)]
 mod tests {

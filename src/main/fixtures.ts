@@ -9,7 +9,13 @@ const GB = 1000 * MB;
 const DAY = 24 * 60 * 60 * 1000;
 
 function file(name: string, size: number, ageDays: number): Ob.VfsFile {
-	return { type: "file", name, size, mtime: Date.now() - ageDays * DAY };
+	return {
+		type: "file",
+		name,
+		// Whole bytes: 1.4 * GB isn't quite, and the scanner only takes integers.
+		size: Math.round(size),
+		mtime: Date.now() - ageDays * DAY,
+	};
 }
 
 // Bundle children into a directory, rolling up size and the latest mtime

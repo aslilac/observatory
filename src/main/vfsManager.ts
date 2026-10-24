@@ -3,18 +3,16 @@ import { app } from "electron";
 import { EventEmitter } from "node:events";
 import { Scan, type NativeScan } from "./native";
 import { PERF, timed, timedAsync } from "./perf";
-import { buildRenderTree } from "./renderTree";
-import { searchVfs, type SearchResults } from "./search";
+import { assembleRenderTree, type ScanDrive } from "./renderTree";
 
-// What we hold per active scan. `scan` is the native handle while the
-// walk is in flight (null afterward — once we have the final tree there's
-// nothing to query it for). `root` is populated when the scan resolves
-// or, in the case of startFakeScan, set directly without ever creating
-// a Scan instance.
+// What we hold per active scan. `scan` is the native handle: it runs the
+// walk, then keeps the finished tree, which the queries below go through.
+// It's null only for a scan that failed before it got going.
 type ScanEntry = {
 	status: Ob.ScanStatus;
 	scan: NativeScan | null;
-	root: Ob.VfsDirectory | null;
+	// Set on completion if the scan covered a whole disk.
+	drive: ScanDrive | null;
 	errors: Ob.ScanError[];
 	perf: Ob.PerfNode | null;
 	revision: number;
@@ -22,11 +20,10 @@ type ScanEntry = {
 
 // Internal drive record. We expose only `{ mountPath, description }` over
 // IPC (the public `Ob.PhysicalDrive` shape), but the manager itself needs
-// the raw device size + mount label to decorate the root VfsDirectory
-// after a scan completes — that's where `capacity` (for the legend's free
+// the raw device size + mount label to describe a scan of a whole disk
+// once it completes — that's where `capacity` (for the legend's free
 // space row, sunburst position math, etc.) and the friendly drive name
-// come from. drivelist re-querying these inside the scan happens in the
-// old JS scanner but the native scanner has no concept of drives.
+// come from. The native scanner has no concept of drives.
 type DriveInfo = {
 	mountPath: string;
 	label: string | null;
@@ -60,7 +57,7 @@ export function getScans(): Ob.ScanInfo[] {
 	return Array.from(scans.entries()).map(([path, entry]) => ({
 		path,
 		status: entry.status,
-		size: entry.root?.size,
+		size: entry.scan?.size() ?? undefined,
 		revision: entry.revision,
 	}));
 }
@@ -70,13 +67,14 @@ export function getRenderTree(
 	cursor: string[],
 ): Ob.RenderTree | null {
 	const entry = scans.get(path);
-	if (!entry || entry.status !== "complete" || !entry.root) {
+	if (!entry || entry.status !== "complete" || !entry.scan) {
 		return null;
 	}
-	const root = entry.root;
-	return timed(`getRenderTree(${cursor.length} deep)`, () =>
-		buildRenderTree(root, cursor),
-	);
+	const { scan, drive } = entry;
+	return timed(`getRenderTree(${cursor.length} deep)`, () => {
+		const slice = scan.renderTree(cursor);
+		return slice && assembleRenderTree(slice, cursor, drive);
+	});
 }
 
 export function getScanErrors(path: string): Ob.ScanError[] {
@@ -87,13 +85,16 @@ export function getScanErrors(path: string): Ob.ScanError[] {
 	return entry.errors;
 }
 
-export function searchScan(path: string, query: string): SearchResults | null {
+export async function searchScan(
+	path: string,
+	query: string,
+): Promise<Ob.SearchResults | null> {
 	const entry = scans.get(path);
-	if (!entry || entry.status !== "complete" || !entry.root) {
+	if (!entry || entry.status !== "complete" || !entry.scan) {
 		return null;
 	}
-	const root = entry.root;
-	return timed(`searchScan("${query}")`, () => searchVfs(root, path, query));
+	const scan = entry.scan;
+	return timedAsync(`searchScan("${query}")`, () => scan.search(path, query));
 }
 
 const EMPTY_COUNTS = {
@@ -114,7 +115,7 @@ export function getScanProgress(path: string): Ob.ScanProgress | null {
 	// still get a sensible reply (counts derivable from the tree would be
 	// expensive; just return zeros since the renderer ignores progress
 	// once status flips to "complete").
-	if (entry.scan) {
+	if (entry.status === "building" && entry.scan) {
 		const p = entry.scan.progress();
 		return {
 			path,
@@ -144,7 +145,7 @@ export function startScan(path: string) {
 
 	let scan: NativeScan;
 	try {
-		scan = new Scan(path, { perf: PERF });
+		scan = Scan.create(path, { perf: PERF });
 	} catch (e) {
 		// Constructor throws synchronously if stat-ing the root fails
 		// (e.g. path doesn't exist). Record an entry that immediately
@@ -154,7 +155,7 @@ export function startScan(path: string) {
 		scans.set(path, {
 			status: "complete",
 			scan: null,
-			root: null,
+			drive: null,
 			errors: [{ path, kind: "other", code: null, message }],
 			perf: null,
 			revision: 1,
@@ -166,7 +167,7 @@ export function startScan(path: string) {
 	const entry: ScanEntry = {
 		status: "building",
 		scan,
-		root: null,
+		drive: null,
 		errors: [],
 		perf: null,
 		revision: 0,
@@ -182,11 +183,9 @@ export function startScan(path: string) {
 			if (!current || current !== entry) {
 				return;
 			}
-			decorateWithDriveInfo(result.root, path);
-			entry.root = result.root;
+			entry.drive = scanDrive(path);
 			entry.errors = result.errors;
 			entry.perf = result.perf;
-			entry.scan = null;
 			entry.status = "complete";
 			entry.revision++;
 			emitter.emit("scans", getScans());
@@ -212,21 +211,20 @@ export function startScan(path: string) {
 	);
 }
 
-// If the scan's root path matches a drivelist mountpoint, copy the drive's
-// total capacity and mount label onto the root VfsDirectory. The renderer
-// reads `root.capacity` for the legend's free-space row and to anchor
-// sunburst slice positions; `root.name` becomes the user-visible scan
-// label in the title bar. The native scanner is drive-agnostic by design,
-// so this glue lives here.
-function decorateWithDriveInfo(root: Ob.VfsDirectory, scanPath: string): void {
+// If the scan's root path matches a drivelist mountpoint, the drive's mount
+// label and total capacity. The renderer uses the capacity for the legend's
+// free-space row and to anchor sunburst slice positions; the name becomes
+// the user-visible scan label in the title bar. The native scanner is
+// drive-agnostic by design, so this glue lives here.
+function scanDrive(scanPath: string): ScanDrive | null {
 	const drive = drives.get(scanPath);
 	if (!drive) {
-		return;
+		return null;
 	}
-	if (drive.size !== null) {
-		root.capacity = drive.size;
-	}
-	root.name = drive.label || `${drive.deviceDescription} (${drive.mountPath})`;
+	return {
+		name: drive.label || `${drive.deviceDescription} (${drive.mountPath})`,
+		capacity: drive.size,
+	};
 }
 
 // Dev-only entry point: register a synthetic completed scan from a pre-built
@@ -239,8 +237,8 @@ export function startFakeScan(name: string, root: Ob.VfsDirectory): string {
 	}
 	scans.set(path, {
 		status: "complete",
-		scan: null,
-		root,
+		scan: Scan.fromTree(root),
+		drive: { name: root.name, capacity: root.capacity ?? null },
 		errors: [],
 		perf: null,
 		revision: 1,
@@ -249,92 +247,40 @@ export function startFakeScan(name: string, root: Ob.VfsDirectory): string {
 	return path;
 }
 
-// Drop a path from the appropriate scan's tree in place, propagating the
-// removed size up through every ancestor. Used after the cleanup queue
-// trashes things so subsequent browsing doesn't keep showing them.
+// Drop a path from every scan's tree that has it, propagating the removed
+// size up through every ancestor. Used after the cleanup queue trashes
+// things so subsequent browsing doesn't keep showing them. Scans can nest
+// (someone scanned both /Users/alice and /Users/alice/Movies), and each
+// has its own copy of the tree.
 export function removePath(target: string) {
-	const owner = findOwningScan(target);
-	if (!owner) {
-		return;
-	}
-	const { root, entry } = owner;
-
-	const relative = target.slice(root.length).replace(/^[/\\]+/, "");
-	if (!relative) {
-		return;
-	} // can't remove the scan root itself
-	const parts = relative.split(/[/\\]+/);
-
-	if (!entry.root) {
-		return;
-	}
-	const walk = walkToParent(entry.root, parts);
-	if (!walk) {
-		return;
-	}
-	const { current, ancestors } = walk;
-
-	const lastPart = parts[parts.length - 1]!;
-	const idx = current.files.findIndex((f) => f.name === lastPart);
-	if (idx < 0) {
-		return;
-	}
-
-	const removedSize = current.files[idx]!.size;
-	current.files.splice(idx, 1);
-	for (const ancestor of ancestors) {
-		ancestor.size -= removedSize;
-	}
-
-	entry.revision++;
-	emitter.emit("scans", getScans());
-}
-
-// Pick the scan whose root is the longest prefix of `target` — handles the
-// case where someone scanned both /Users/alice and /Users/alice/Movies and
-// we delete something in the latter. Both match; we want the deeper one.
-function findOwningScan(
-	target: string,
-): { root: string; entry: ScanEntry } | undefined {
-	let best: { root: string; entry: ScanEntry } | undefined;
+	let changed = false;
 	for (const [root, entry] of scans) {
-		const inside =
-			target === root ||
-			target.startsWith(`${root}/`) ||
-			target.startsWith(`${root}\\`);
-		if (!inside) {
+		if (entry.status !== "complete" || !entry.scan) {
 			continue;
 		}
-		if (!entry.root) {
-			continue;
-		}
-		if (!best || root.length > best.root.length) {
-			best = { root, entry };
+		const parts = partsBelow(root, target);
+		if (parts.length > 0 && entry.scan.remove(parts)) {
+			entry.revision++;
+			changed = true;
 		}
 	}
-	return best;
+	if (changed) {
+		emitter.emit("scans", getScans());
+	}
 }
 
-// Walk `parts[0..-2]` from `start`, returning the parent directory of the
-// final path segment plus every ancestor we passed through (so the caller
-// can subtract the removed size from each).
-function walkToParent(
-	start: Ob.VfsDirectory,
-	parts: string[],
-): { current: Ob.VfsDirectory; ancestors: Ob.VfsDirectory[] } | undefined {
-	let current = start;
-	const ancestors: Ob.VfsDirectory[] = [current];
-	for (let i = 0; i < parts.length - 1; i++) {
-		const child = current.files.find(
-			(f) => f.name === parts[i] && f.type === "directory",
-		);
-		if (!child) {
-			return undefined;
-		}
-		current = child as Ob.VfsDirectory;
-		ancestors.push(current);
+// The names leading from `root` down to `target`; empty if `target` is
+// `root` itself or isn't inside it.
+function partsBelow(root: string, target: string): string[] {
+	if (!target.startsWith(root)) {
+		return [];
 	}
-	return { current, ancestors };
+	const rest = target.slice(root.length);
+	// "/a/bc" isn't inside "/a/b", though anything is inside "/" or "C:\".
+	if (!/^[/\\]/.test(rest) && !/[/\\]$/.test(root)) {
+		return [];
+	}
+	return rest.split(/[/\\]+/).filter(Boolean);
 }
 
 export function cancelScan(path: string) {
@@ -343,6 +289,7 @@ export function cancelScan(path: string) {
 		return;
 	}
 	entry.scan?.abort();
+	entry.scan?.release();
 	scans.delete(path);
 	emitter.emit("scans", getScans());
 }

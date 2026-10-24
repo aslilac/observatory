@@ -33,7 +33,7 @@ Main owns the truth; renderer is a view that asks for it. Communication is plain
 
 ### Process layout
 
-- **Main** (`src/main/`) — Node-side. Owns drive list and active scans (`vfsManager.ts`). The actual filesystem traversal happens in Rust via the napi-rs binding (`native.ts` loads `rust-backend/observatory_scan.node`); render-tree pruning is the only JS-side scanner artifact left and lives as a pure function in `renderTree.ts`. Window management lives here too. Entry: `src/main/index.ts`.
+- **Main** (`src/main/`) — Node-side. Owns drive list and active scans (`vfsManager.ts`). The actual filesystem traversal happens in Rust via the napi-rs binding (`native.ts` loads `rust-backend/observatory_scan.node`), and the finished tree stays there: main only proxies queries to it. `renderTree.ts` adds the JS-side glue (drive label/capacity, alphabetical sort) to the slices Rust hands back. Window management lives here too. Entry: `src/main/index.ts`.
 - **Preload** (`src/preload/index.ts`) — exposes the typed `Ob.*` surface to the renderer via `contextBridge`. Each method is a thin wrapper over `ipcRenderer.invoke` (RPC) or `ipcRenderer.on` (push events).
 - **Renderer** (`src/renderer/`) — React 18 UI. Entry: `main.tsx` mounting `<Application/>`. UI state is local React state; cross-process data comes from custom hooks in `src/renderer/state.ts`.
 
@@ -43,7 +43,7 @@ RPC: `selectDirectory`, `scanPath`, `getDrives`, `getScans`, `getRenderTree(path
 
 ### State ownership
 
-- **Main**: `vfsManager.ts` holds two `Map`s — `drives` (polled every 5s via `drivelist`) and `scans` (`{ status, scan, root, errors, perf, revision }` per path). The `scan` field is the live native handle while a walk is running and is nulled out once the result lands on `root`. It exposes pure getters (`getDrives`, `getScans`, `getRenderTree`, …) and a `startScan(path)` mutator. Changes are emitted through a Node `EventEmitter`; `bridge.ts` subscribes and re-broadcasts to all `webContents.send(...)`.
+- **Main**: `vfsManager.ts` holds two `Map`s — `drives` (polled every 5s via `drivelist`) and `scans` (`{ status, scan, drive, errors, perf, revision }` per path). The `scan` field is the native handle: it runs the walk, then holds the finished tree for the life of the entry (`cancelScan` releases it). `drive` is the label/capacity of a whole-disk scan, which the drive-agnostic scanner can't know. It exposes pure getters (`getDrives`, `getScans`, `getRenderTree`, …) and a `startScan(path)` mutator. Changes are emitted through a Node `EventEmitter`; `bridge.ts` subscribes and re-broadcasts to all `webContents.send(...)`.
 - **Renderer**: `Application.tsx` keeps `inspecting: string | null` and `cursor: string[]` in `useState`. `useDrives()` / `useScans()` hooks subscribe to the corresponding push events. `useRenderTree(path, cursor, status)` calls `Ob.getRenderTree` whenever path/cursor/status changes and the scan is `complete`.
 
 ### Scanning flow
@@ -51,10 +51,10 @@ RPC: `selectDirectory`, `scanPath`, `getDrives`, `getScans`, `getRenderTree(path
 1. User clicks Scan → `Ob.scanPath(path)` → `vfsManager.startScan(path)`.
 2. `startScan` constructs a native `Scan` (`new Scan(path, { perf: false })` — stats the root synchronously), inserts `{ status: "building", scan, root: null, … }` into the `scans` map, emits `scans` change → broadcast, and calls `scan.start()` (returns a Promise; the recursive walk runs on libuv's threadpool inside the Rust addon).
 3. The renderer can poll `Ob.getScanProgress(path)` while the walk runs; the manager reads `counts` and `currentPath` directly off the native handle via `scan.progress()`.
-4. When `scan.start()` resolves, the manager copies `result.root` / `result.errors` / `result.perf` onto the entry, nulls out `scan`, flips status to `complete`, and emits.
+4. When `scan.start()` resolves (with a `{ counts, errors, perf }` summary — the tree stays on the handle), the manager copies the errors and perf onto the entry, records the drive info, flips status to `complete`, and emits.
 5. The renderer sees the status flip via `useScans` and refetches the render tree via `Ob.getRenderTree(path, cursor)`.
 
-`buildRenderTree` (in `renderTree.ts`) produces a serialization-cheap subset of the full tree: directories smaller than 0.3% of the parent are dropped from the sunburst, and recursion is capped at depth 6. The renderer never sees the full VFS — only render trees.
+The tree never crosses into JS: a whole disk is millions of nodes, too much for Electron's 4 GB V8 heap and too long for one V8 string. `scan.renderTree(cursor)` cuts a slice in Rust (`rust-backend/tree.rs`): entries smaller than 0.3% of the current directory are dropped from the sunburst, and recursion is capped at depth 6. `assembleRenderTree` (in `renderTree.ts`) turns that into an `Ob.RenderTree`. Search (`scan.search`, off the main thread, capped at 500 hits) and post-trash removal (`scan.remove`) go through the handle the same way.
 
 The Rust scanner skips `/dev` and `/proc` on Linux and `/Volumes`, `/System/Volumes`, `/private/var/db/dyld` (plus anything under `/System/Volumes/*`) on macOS to avoid Catalina+ firmlink shadow paths and recursive procfs/sysfs mounts. Cross-device descent is rejected on Linux/Windows (skipped on macOS because firmlinks break the dev-id check). Symlinks, character/block devices, and unknowns are counted but not added to the tree.
 
@@ -80,7 +80,7 @@ Main → renderer "set inspecting" events still flow through `Ob.onSetInspecting
 
 - A library (`lib.rs`) — the scan algorithm
 - A CLI binary (`main.rs` → `observatory-scan`) — for ad-hoc scans and benchmarking; emits JSON to stdout and timing/counts to stderr
-- A napi-rs cdylib (`bindings.rs`, gated behind the `napi` cargo feature) — the .node file the Electron main process loads. Exposes a `Scan` class with `start()` (returns Promise), `progress()` (sync mid-scan snapshot), and `abort()`. Async scan runs on libuv's threadpool, so the JS main thread stays free for IPC
+- A napi-rs cdylib (`bindings.rs`, gated behind the `napi` cargo feature) — the .node file the Electron main process loads. Exposes a `Scan` class with `start()` (returns Promise of a summary), `progress()` (sync mid-scan snapshot), and `abort()`, plus queries over the tree it keeps afterwards: `size()`, `renderTree(cursor)`, `search(base, query)` (Promise), `remove(parts)`, and `release()`. `Scan.fromJson` wraps a pre-built tree (the dev fake disk). Async scan and search run on libuv's threadpool, so the JS main thread stays free for IPC
 
 Commands (all from `rust-backend/`):
 
