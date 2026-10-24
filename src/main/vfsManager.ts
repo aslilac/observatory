@@ -320,8 +320,12 @@ export function cancelScan(path: string) {
 
 async function pollDrives() {
 	const next = new Map<string, Ob.PhysicalDrive>();
-	for (const { path, name, ...facts } of timed("volumes", volumes)) {
+	const usagePaths = new Map<string, string>();
+	for (const { path, usagePath, name, ...facts } of timed("volumes", volumes)) {
 		next.set(path, { mountPath: path, description: name, ...facts });
+		if (usagePath) {
+			usagePaths.set(path, usagePath);
+		}
 	}
 
 	// A share whose server has dropped off the network can take a minute to
@@ -330,7 +334,7 @@ async function pollDrives() {
 	await Promise.all(
 		Array.from(next.values(), async (drive) => {
 			const usage = await Promise.race([
-				readVolumeUsage(drive.mountPath),
+				readVolumeUsage(usagePaths.get(drive.mountPath) ?? drive.mountPath),
 				sleep(1000).then(() => drives.get(drive.mountPath)?.usage),
 			]);
 			if (usage) {

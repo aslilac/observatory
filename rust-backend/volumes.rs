@@ -11,6 +11,9 @@
 pub struct Volume {
 	/// Where it's mounted: `/`, `/Volumes/Backup`, `C:\`.
 	pub path: String,
+	/// Where to ask how full it is, when that isn't `path`: an ostree
+	/// system's `/` is a read-only image, and its disk is at /sysroot.
+	pub usage_path: Option<String>,
 	/// What to call it: "Macintosh HD", a disk's label, a share's name.
 	pub name: String,
 	/// Mounted from another machine, rather than a disk attached to this one.
@@ -177,6 +180,7 @@ mod macos {
 			return Some(Volume {
 				name: base_name(),
 				path,
+				usage_path: None,
 				network: true,
 				startup: false,
 				external: false,
@@ -206,6 +210,7 @@ mod macos {
 				.and_then(|disk| disk.volume_name.clone())
 				.unwrap_or_else(base_name),
 			path,
+			usage_path: None,
 			network: false,
 			startup: flags & libc::MNT_ROOTFS != 0,
 			// A USB or Thunderbolt disk is ejectable without being removable,
@@ -372,24 +377,40 @@ mod macos {
 #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 mod linux {
 	use super::{Volume, share_protocol, share_server, unescape};
+	use crate::mounts::{self, Mount, below, depth, join};
 	use std::collections::HashMap;
 	use std::fs;
 	use std::path::{Path, PathBuf};
 
+	// Where a Flatpak sandbox granted `--filesystem=host-root` sees the
+	// host's filesystem, mounts and all (Flatpak 1.17 and up).
+	const HOST_ROOT: &str = "/run/host/root";
+
+	// The boot and EFI system partitions, which the OS looks after itself:
+	// left out like macOS's Preboot and Recovery volumes are.
+	const SYSTEM_PARTITIONS: [&str; 3] = ["/boot", "/boot/efi", "/efi"];
+
 	pub fn volumes() -> Vec<Volume> {
-		let Ok(table) = fs::read_to_string("/proc/self/mounts") else {
+		let Ok(table) = fs::read_to_string("/proc/self/mountinfo") else {
 			return Vec::new();
 		};
-		let labels = labels();
+		let table = mounts::parse(&table);
+		// In a Flatpak, the disks are the host's, and so are the device
+		// nodes they're named by.
+		let host = (Path::new("/.flatpak-info").exists()
+			&& table.iter().any(|mount| mount.path == HOST_ROOT))
+		.then_some(HOST_ROOT);
+		let dev_root = Path::new(host.unwrap_or("/"));
+		let labels = labels(dev_root);
 		let sys = Path::new("/sys/class/block");
-		parse_mounts(&table)
+		choose(&table, host)
 			.into_iter()
-			.filter_map(|mount| {
-				let network = is_network(&mount)?;
-				let device = if network {
+			.map(|disk| {
+				let mount = &disk.mount;
+				let device = if disk.network {
 					None
 				} else {
-					fs::canonicalize(&mount.source).ok()
+					fs::canonicalize(dev_root.join(mount.source.trim_start_matches('/'))).ok()
 				};
 				let label = device
 					.as_ref()
@@ -401,28 +422,122 @@ mod linux {
 					.unwrap_or_default();
 				let name = label
 					.or_else(|| {
-						let name = Path::new(&mount.path).file_name()?;
+						let name = Path::new(&disk.host_path).file_name()?;
 						Some(name.to_string_lossy().into_owned())
 					})
 					.unwrap_or_else(|| "File System".to_owned());
-				Some(Volume {
-					startup: mount.path == "/",
+				Volume {
 					external: is_external(&stack),
 					encrypted: is_encrypted(&stack),
-					server: network.then(|| share_server(&mount.source)).flatten(),
+					server: disk.network.then(|| share_server(&mount.source)).flatten(),
 					protocol: share_protocol(&mount.fs_type).map(str::to_owned),
-					path: mount.path,
+					path: disk.path,
+					usage_path: disk.usage_path,
 					name,
-					network,
-				})
+					network: disk.network,
+					startup: disk.startup,
+				}
 			})
 			.collect()
 	}
 
-	pub(super) struct Mount {
-		pub source: String,
+	// One of the disks and shares there are to scan, as `choose` lists it.
+	pub(super) struct Disk {
+		/// The mount it's listed by, as the host has it.
+		pub mount: Mount,
+		/// Where it's mounted on the host.
+		pub host_path: String,
+		/// Where to scan it, and where to ask how full it is if not there.
+		/// In a sandbox, through the host's root unless it's at the same
+		/// place in the sandbox too (removable disks, with host access).
 		pub path: String,
-		pub fs_type: String,
+		pub usage_path: Option<String>,
+		pub startup: bool,
+		pub network: bool,
+	}
+
+	// The disks and shares in mount table `table`, each once, by the mount
+	// of it that shows the most, and the startup disk first. A disk with
+	// btrfs subvolumes or bind mounts is mounted in several places. `host`
+	// is where a sandbox's table has the host's mounts.
+	pub(super) fn choose(table: &[Mount], host: Option<&str>) -> Vec<Disk> {
+		let seen: Vec<Mount> = match host {
+			Some(root) => table
+				.iter()
+				.filter_map(|mount| {
+					let path = join("/", below(&mount.path, root)?);
+					Some(Mount {
+						path,
+						..mount.clone()
+					})
+				})
+				.collect(),
+			None => table.to_vec(),
+		};
+		let mounts = mounts::visible(&seen);
+		let root = mounts.iter().copied().find(|mount| mount.path == "/");
+		// What / is on: for an ostree system, the disk at /sysroot.
+		let system = root.map(|root| mounts::ostree_sysroot(&mounts, root).unwrap_or(root));
+		let is_startup =
+			|mount: &Mount| system.is_some_and(|system| system.filesystem() == mount.filesystem());
+
+		let mut disks: Vec<&Mount> = Vec::new();
+		for &mount in &mounts {
+			if is_network(mount).is_none() {
+				continue;
+			}
+			match disks
+				.iter_mut()
+				.find(|disk| disk.filesystem() == mount.filesystem())
+			{
+				Some(disk) if rank(mount) < rank(disk) => *disk = mount,
+				Some(_) => {}
+				None => disks.push(mount),
+			}
+		}
+		disks.sort_by_key(|mount| !is_startup(mount));
+
+		// Where the sandbox has the host's `path`, which `mount` is at.
+		let place = |path: &str, mount: &Mount| match host {
+			Some(host)
+				if !table.iter().any(|other| {
+					other.path == path
+						&& other.filesystem() == mount.filesystem()
+						&& other.root == mount.root
+				}) =>
+			{
+				join(host, below(path, "/").unwrap_or(path))
+			}
+			_ => path.to_owned(),
+		};
+		disks
+			.into_iter()
+			.filter(|mount| is_startup(mount) || !SYSTEM_PARTITIONS.contains(&mount.path.as_str()))
+			.map(|mount| {
+				let startup = is_startup(mount);
+				let (host_path, path, usage_path) = match (root, system) {
+					(Some(root), Some(system)) if startup => (
+						"/".to_owned(),
+						place("/", root),
+						(system.path != "/").then(|| place(&system.path, system)),
+					),
+					_ => (mount.path.clone(), place(&mount.path, mount), None),
+				};
+				Disk {
+					mount: mount.clone(),
+					host_path,
+					path,
+					usage_path,
+					startup,
+					network: is_network(mount) == Some(true),
+				}
+			})
+			.collect()
+	}
+
+	// Mounts that show more of a disk first, then the shallower.
+	fn rank(mount: &Mount) -> (usize, usize, &str) {
+		(mount.root.len(), depth(&mount.path), &mount.path)
 	}
 
 	// Whether a mount is a network share, a disk, or (None) neither: procfs,
@@ -432,7 +547,7 @@ mod linux {
 	pub(super) fn is_network(mount: &Mount) -> Option<bool> {
 		if share_protocol(&mount.fs_type).is_some() {
 			Some(true)
-		} else if mount.source.starts_with("/dev/") && !mount.source.starts_with("/dev/loop") {
+		} else if mount.on_device() && !mount.source.starts_with("/dev/loop") {
 			Some(false)
 		} else {
 			None
@@ -469,26 +584,11 @@ mod linux {
 		})
 	}
 
-	// The lines of /proc/self/mounts go `source path type options dump pass`,
-	// with whitespace and backslashes in a field octal-escaped (`\040`).
-	pub(super) fn parse_mounts(table: &str) -> Vec<Mount> {
-		table
-			.lines()
-			.filter_map(|line| {
-				let mut fields = line.split(' ');
-				Some(Mount {
-					source: unescape(fields.next()?, "\\", 3, 8),
-					path: unescape(fields.next()?, "\\", 3, 8),
-					fs_type: fields.next()?.to_owned(),
-				})
-			})
-			.collect()
-	}
-
 	// Filesystem labels by device node, from the symlinks udev keeps in
-	// /dev/disk/by-label (named with hex escapes like `\x20`).
-	fn labels() -> HashMap<PathBuf, String> {
-		let Ok(entries) = fs::read_dir("/dev/disk/by-label") else {
+	// /dev/disk/by-label (named with hex escapes like `\x20`), in the /dev
+	// under `dev_root`.
+	fn labels(dev_root: &Path) -> HashMap<PathBuf, String> {
+		let Ok(entries) = fs::read_dir(dev_root.join("dev/disk/by-label")) else {
 			return HashMap::new();
 		};
 		entries
@@ -627,6 +727,7 @@ mod windows {
 					.is_some_and(|remote| remote.to_ascii_lowercase().contains("\\davwwwroot"));
 				Some(Volume {
 					path,
+					usage_path: None,
 					name: share.unwrap_or_else(|| "Network Drive".to_owned()),
 					network: true,
 					startup: false,
@@ -658,6 +759,7 @@ mod windows {
 					server: None,
 					protocol: None,
 					path,
+					usage_path: None,
 					network: false,
 				})
 			}
@@ -752,46 +854,102 @@ mod windows {
 
 #[cfg(test)]
 mod tests {
-	use super::linux::{Mount, block_stack, is_encrypted, is_external, is_network, parse_mounts};
+	use super::linux::{Disk, choose, is_network};
 	use super::{share_server, unescape};
-	use std::path::Path;
+	use crate::mounts::parse;
+	use crate::mounts::tests::{bazzite, bazzite_sandbox, line};
 
+	// Each disk as (path, where to ask how full it is, startup, network).
+	fn listed(disks: Vec<Disk>) -> Vec<(String, Option<String>, bool, bool)> {
+		disks
+			.into_iter()
+			.map(|disk| (disk.path, disk.usage_path, disk.startup, disk.network))
+			.collect()
+	}
+
+	fn disk(path: &str, startup: bool, network: bool) -> (String, Option<String>, bool, bool) {
+		(path.to_owned(), None, startup, network)
+	}
+
+	// Fedora, with / and /home subvolumes of one btrfs filesystem, a snap,
+	// a USB disk, and two shares.
 	#[test]
 	fn picks_disks_and_shares_out_of_the_linux_mount_table() {
-		let table = "\
-/dev/nvme0n1p2 / ext4 rw,relatime 0 0
-proc /proc proc rw,nosuid,nodev,noexec,relatime 0 0
-/dev/loop3 /snap/core22/1380 squashfs ro,nodev,relatime 0 0
-/dev/sdb1 /media/kayla/My\\040Passport exfat rw 0 0
-//nas/media /mnt/media cifs rw,vers=3.1.1 0 0
-nas:/export/backups /mnt/backups nfs4 rw 0 0
-tmpfs /run/user/1000 tmpfs rw 0 0
-";
-		let found: Vec<(String, bool)> = parse_mounts(table)
-			.into_iter()
-			.filter_map(|mount| Some((mount.path.clone(), is_network(&mount)?)))
-			.collect();
-		let expected = [
-			("/", false),
-			("/media/kayla/My Passport", false),
-			("/mnt/media", true),
-			("/mnt/backups", true),
-		];
+		let table = [
+			line(1, "8:3", "/home", "/home", "btrfs", "/dev/nvme0n1p3"),
+			line(2, "8:3", "/root", "/", "btrfs", "/dev/nvme0n1p3"),
+			line(3, "0:5", "/", "/proc", "proc", "proc"),
+			line(4, "8:2", "/", "/boot", "ext4", "/dev/nvme0n1p2"),
+			line(5, "7:3", "/", "/snap/core22/1380", "squashfs", "/dev/loop3"),
+			line(
+				6,
+				"8:17",
+				"/",
+				"/media/kayla/My\\040Passport",
+				"exfat",
+				"/dev/sdb1",
+			),
+			line(7, "0:50", "/", "/mnt/media", "cifs", "//nas/media"),
+			line(
+				8,
+				"0:51",
+				"/",
+				"/mnt/backups",
+				"nfs4",
+				"nas:/export/backups",
+			),
+			line(9, "0:52", "/", "/run/user/1000", "tmpfs", "tmpfs"),
+		]
+		.concat();
 		assert_eq!(
-			found,
-			expected.map(|(path, network)| (path.to_owned(), network))
+			listed(choose(&parse(&table), None)),
+			[
+				disk("/", true, false),
+				disk("/media/kayla/My Passport", false, false),
+				disk("/mnt/media", false, true),
+				disk("/mnt/backups", false, true),
+			]
+		);
+	}
+
+	// One startup disk, whose usage comes from /sysroot since / is a
+	// read-only image, and none of its subvolumes and bind mounts again.
+	#[test]
+	fn lists_an_ostree_system_once() {
+		assert_eq!(
+			listed(choose(&parse(&bazzite("/")), None)),
+			[
+				("/".to_owned(), Some("/sysroot".to_owned()), true, false),
+				disk("/run/media/kayla/STICK", false, false),
+			]
+		);
+	}
+
+	// A Flatpak scans the host through its root, except for what the
+	// sandbox has at the same place.
+	#[test]
+	fn lists_the_hosts_disks_from_a_sandbox() {
+		let disks = choose(&parse(&bazzite_sandbox()), Some("/run/host/root"));
+		assert_eq!(disks[0].host_path, "/");
+		assert_eq!(
+			listed(disks),
+			[
+				(
+					"/run/host/root".to_owned(),
+					Some("/run/host/root/sysroot".to_owned()),
+					true,
+					false
+				),
+				disk("/run/media/kayla/STICK", false, false),
+			]
 		);
 	}
 
 	#[test]
-	fn leaves_a_mount_without_a_type_out() {
-		assert!(parse_mounts("/dev/sda1 /mnt").is_empty());
-		let mount = Mount {
-			source: "overlay".into(),
-			path: "/".into(),
-			fs_type: "overlay".into(),
-		};
-		assert_eq!(is_network(&mount), None);
+	fn leaves_out_what_isnt_a_disk() {
+		let mounts = parse(&line(1, "0:22", "/", "/", "overlay", "overlay"));
+		assert_eq!(is_network(&mounts[0]), None);
+		assert!(choose(&mounts, None).is_empty());
 	}
 
 	#[test]
@@ -836,8 +994,10 @@ tmpfs /run/user/1000 tmpfs rw 0 0
 	#[cfg(unix)]
 	#[test]
 	fn reads_encryption_and_bus_out_of_sysfs() {
+		use super::linux::{block_stack, is_encrypted, is_external};
 		use std::fs;
 		use std::os::unix::fs::symlink;
+		use std::path::Path;
 
 		let sys = std::env::temp_dir().join(format!("observatory-sysfs-{}", std::process::id()));
 		let _ = fs::remove_dir_all(&sys);

@@ -166,6 +166,8 @@ export type NativeScan = Scan;
 // rust-backend/volumes.rs).
 export type NativeVolume = {
 	path: string;
+	// Where to ask how full it is, when that isn't `path`.
+	usagePath?: string;
 	name: string;
 	network: boolean;
 	startup: boolean;
