@@ -78,15 +78,6 @@ h1 {
 	color: var(--color-muted);
 }
 
-.stack {
-	margin: 0 0 18px;
-	font-family: var(--font-mono);
-	font-size: 10px;
-	letter-spacing: 0.12em;
-	text-transform: uppercase;
-	color: var(--color-faint);
-}
-
 .links {
 	margin-bottom: 22px;
 }
