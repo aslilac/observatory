@@ -1,3 +1,6 @@
+const fs = require("node:fs/promises");
+const path = require("node:path");
+
 module.exports = {
 	packagerConfig: {
 		appBundleId: "ooo.lilac.observatory",
@@ -13,10 +16,12 @@ module.exports = {
 		},
 		darwinDarkModeSupport: true,
 		derefSymlinks: true,
-		// Forge appends the right extension per platform — .icns on darwin,
-		// .ico on win32, .png on linux. Drop a hand-built icon.icns into
-		// build-resources/ to enable proper macOS packaging.
+		// Forge appends the right extension per platform: .icns on darwin,
+		// .ico on win32. icon/build.sh generates both. On macOS 26+ the
+		// system draws the icon from Assets.car instead (see the hook
+		// below), named by CFBundleIconName; older systems use the .icns.
 		icon: "./build-resources/icon",
+		extendInfo: { CFBundleIconName: "Observatory" },
 		ignore: (filePath) => {
 			// Forge calls this with leading-slash relative paths. The first
 			// call passes "" (the project root); never reject that.
@@ -40,6 +45,19 @@ module.exports = {
 			return false;
 		},
 		name: "Observatory",
+	},
+	hooks: {
+		// The compiled macOS 26 icon goes next to the .icns in
+		// Contents/Resources. Not `extraResource`, which would put it in
+		// the Windows and Linux builds too.
+		packageAfterCopy: async (_config, buildPath, _electron, platform) => {
+			if (platform === "darwin" || platform === "mas") {
+				await fs.copyFile(
+					path.join(__dirname, "build-resources/Assets.car"),
+					path.join(buildPath, "../Assets.car"),
+				);
+			}
+		},
 	},
 	makers: [
 		// macOS ships .zip-with-an-.app-inside via the zip maker below.

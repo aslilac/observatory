@@ -2,8 +2,8 @@
 .env*
 .idea/
 .nova/
-.parcel-cache/
 .vscode/
+__pycache__/
 build/
 coverage/
 dist/

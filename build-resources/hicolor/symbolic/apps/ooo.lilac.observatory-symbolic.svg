@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <!-- GNOME symbolic icon: the telescope's aperture. The shutter ring, the sunburst
+       mirror as a ring of three segments, and the hexagonal secondary mirror in the
+       middle. GTK recolours the single colour to the foreground. -->
+  <g fill="#2e3436" fill-rule="evenodd">
+    <path d="M0 8 a8 8 0 1 1 16 0 a8 8 0 1 1 -16 0 Z M1.5 8 a6.5 6.5 0 1 0 13 0 a6.5 6.5 0 1 0 -13 0 Z"/>
+    <path d="M8.750 2.551 A5.5 5.5 0 0 1 10.397 12.950 L9.531 10.284 A2.75 2.75 0 0 0 8.750 5.354 Z"/>
+    <path d="M8.970 13.414 A5.5 5.5 0 0 1 2.507 7.716 L5.261 8.241 A2.75 2.75 0 0 0 8.104 10.748 Z"/>
+    <path d="M2.788 6.242 A5.5 5.5 0 0 1 7.250 2.551 L7.250 5.354 A2.75 2.75 0 0 0 5.542 6.768 Z"/>
+    <path d="M9.750 8 L8.875 6.484 L7.125 6.484 L6.250 8 L7.125 9.516 L8.875 9.516 Z"/>
+  </g>
+</svg>

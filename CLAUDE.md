@@ -17,6 +17,7 @@ Node: see `.nvmrc` (currently 22 LTS). Electron bundles its own Node, so this on
 - `yarn dev` — `electron-vite dev`. Vite serves the renderer with HMR (typically `http://localhost:5173`); main + preload are bundled with esbuild and Electron auto-restarts on main-process changes. One process, one log stream.
 - `yarn build` — `electron-vite build`. Bundles all three processes into `build/main/index.js`, `build/preload/index.js`, and `build/renderer/` (multi-entry: `index.html` + `about.html`).
 - `yarn forge` — `build` + `electron-forge make`. DMG (macOS), Squirrel (win32), and zip artifacts.
+- `icon/build.sh` — regenerates the app icons (Blender, `uv`, Xcode 26+) and copies what ships (`icon.icns`, `Assets.car` for macOS 26, `icon.ico`, `icon.png`) into `build-resources/`, which `forge.config.js` reads. See `icon/README.md`.
 - `yarn preview` — `electron-vite preview`. Runs the packaged build without rebuilding — useful to verify `file://` loading for the renderer.
 - `yarn type-check` — `tsc --noEmit` over the whole project.
 - `yarn test` — Vitest, single run. `yarn test:watch` for the watcher.
