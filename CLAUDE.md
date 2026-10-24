@@ -16,13 +16,13 @@ Node: see `.nvmrc` (currently 22 LTS). Electron bundles its own Node, so this on
 - `yarn build.native` — `node scripts/build-native.mjs`. Runs `cargo build --release --lib --features napi` in `src/scanner/`, then copies/renames the produced cdylib (libobservatory_scan.so/.dylib/.dll, in `target/release/`) to `src/scanner/observatory_scan.node`. Required before the main process can start — `vfsManager` requires this at module load.
 - `yarn dev` — `electron-vite dev`. Vite serves the renderer with HMR (typically `http://localhost:5173`); main + preload are bundled with esbuild and Electron auto-restarts on main-process changes. One process, one log stream.
 - `yarn build` — `electron-vite build`. Bundles all three processes into `build/main/index.js`, `build/preload/index.js`, and `build/renderer/` (multi-entry: `index.html` + `about.html`).
-- `yarn forge` — `build` + `electron-forge make`. DMG (macOS), Squirrel (win32), and zip artifacts.
+- `yarn build.forge` — `build.native` + `build` + `electron-forge make`. DMG (macOS), Squirrel (win32), and zip artifacts.
 - `flatpak/build.sh` — on Linux, builds the Flatpak (`flatpak/ooo.lilac.observatory.yml`) from the checkout with flatpak-builder and installs it for the user. The manifest builds everything inside the SDK (pnpm install, `build-native.mjs`, `electron-vite build`, `electron-forge package`) on the Electron base app, and installs the icons from `build-resources/hicolor` (copied there by `icon/build.sh`). It has `--filesystem=host-root` (Flatpak 1.17+), so the whole host, mounts and all, is at `/run/host/root` in the sandbox. Reveal maps those paths back to the host's (`hostPath` in `src/main/ipc.ts`), since the file manager runs outside.
 - `icon/build.sh` — regenerates the app icons (Blender, `uv`, Xcode 26+) and copies what ships (`icon.icns`, `Assets.car` for macOS 26, `icon.ico`, `icon.png`, and the About window's per-platform `about/*.png`) into `build-resources/`, which `forge.config.js` reads. See `icon/README.md`.
 - `yarn preview` — `electron-vite preview`. Runs the packaged build without rebuilding — useful to verify `file://` loading for the renderer.
-- `yarn type-check` — `tsc --noEmit` over the whole project.
-- `yarn test` — Vitest, single run. `yarn test:watch` for the watcher.
-- `yarn fmt` — Prettier write. (No lint step; `tsc --strict` covers what ESLint would have.)
+- `yarn check.types` — `tsc -b .` over the whole project.
+- `yarn check.test` (or `yarn test`) — Vitest, single run. `yarn check.test.w` for the watcher.
+- `yarn fmt` — oxfmt write. `yarn check.lint` — oxlint with `--fix`.
 - Rust backend: `cargo test` from the repo root — runs the library unit tests against ephemeral tmp directories. No hardcoded paths.
 
 Build config lives in `electron.vite.config.ts` at the root — one file for all three processes. Renderer uses `@vitejs/plugin-react` and `@tailwindcss/vite` (Tailwind v4); main and preload use `externalizeDepsPlugin()` so runtime `dependencies` stay external. That makes `dependencies` only what main loads from `node_modules` at runtime (just `electron-squirrel-startup`): everything the bundles inline (React, Base UI, lucide, the fonts) goes in `devDependencies`, which Forge prunes out of the asar. `forge.config.js`'s `ignore` is an allowlist of what goes in it.
@@ -72,7 +72,7 @@ Main → renderer "set inspecting" events still flow through `Ob.onSetInspecting
 
 ### Build outputs
 
-`build/main/` (tsc), `build/preload.js` (esbuild bundle), `build/renderer/` (parcel). `tsconfig.build.json` excludes preload and renderer because they have their own bundlers; use the root `tsconfig.json` (and `yarn type-check`) for whole-project type checking.
+`build/main/`, `build/preload/`, and `build/renderer/`, all from electron-vite (see `yarn build`). Type checking is separate: `yarn check.types` over the root `tsconfig.json`.
 
 ## Rust backend status
 
