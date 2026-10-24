@@ -6,16 +6,16 @@
 	--font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
 	/* Classic palette — background-and-default with no accent. */
-	--color-background: #fafaf8;
-	--color-default: #1a1a1a;
-	--color-muted: #6e6e68;
-	--color-faint: #9c9a92;
-	--color-line: #d8d6cf;
-	--color-line-soft: #e7e5dd;
-	--color-fill: #f0eee8;
-	--color-fill-strong: #e6e3dc;
-	/* The page-level canvas behind window surfaces; slightly warmer. */
-	--color-canvas: #ebe8e0;
+	--color-background: #f9f9fd;
+	--color-default: #191923;
+	--color-muted: #6c6b81;
+	--color-faint: #9898ac;
+	--color-line: #d5d4e3;
+	--color-line-soft: #e4e4ee;
+	--color-fill: #ededf6;
+	--color-fill-strong: #e2e2ee;
+	/* The page-level canvas behind window surfaces; slightly deeper. */
+	--color-canvas: #e7e7f4;
 
 	/* Inline-only danger; never used for hover/focus. */
 	--color-danger-bg: #fff5f4;
@@ -45,14 +45,14 @@
    defined in @theme so utilities (bg-background, text-default, …) flip
    automatically without a `dark:` prefix on every node. */
 :where(.dark) {
-	--color-background: #1c1b18;
-	--color-default: #ededea;
-	--color-muted: #9a9890;
-	--color-faint: #5e5c56;
-	--color-line: #3a3833;
-	--color-line-soft: #2a2925;
-	--color-fill: #2a2924;
-	--color-fill-strong: #36342e;
+	--color-background: #1a1a24;
+	--color-default: #ececf2;
+	--color-muted: #9696aa;
+	--color-faint: #5b5a6d;
+	--color-line: #373647;
+	--color-line-soft: #282734;
+	--color-fill: #282734;
+	--color-fill-strong: #333243;
 
 	--color-danger-bg: #2a1715;
 	--color-danger-fg: #ff9b96;
