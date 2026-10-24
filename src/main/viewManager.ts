@@ -38,7 +38,7 @@ export function createWindow() {
 	});
 
 	const sendNav = (direction: "back" | "forward") => {
-		view.webContents.send("ob:nav", direction);
+		view.webContents.send("Ob.nav", direction);
 	};
 
 	// Mouse back/forward buttons.
