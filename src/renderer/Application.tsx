@@ -2,6 +2,7 @@ import { Profiler, useCallback, useLayoutEffect, useMemo } from "react";
 
 import { useNavigation } from "./navigation";
 import { perfEnabled, perfLog, perfMeasure } from "./perf";
+import { basename } from "./util";
 import {
 	useDrives,
 	usePasteToScan,
@@ -22,7 +23,12 @@ import { Welcome } from "./views/welcome/Welcome";
 export const Application: React.FC = () => {
 	const drives = useDrives();
 	const scans = useScans();
-	const { recent, push: pushRecent, remove: removeRecent } = useRecentScans();
+	const {
+		recent,
+		volumes,
+		push: pushRecent,
+		remove: removeRecent,
+	} = useRecentScans();
 	const { theme, toggle: toggleTheme } = useTheme();
 	const { view, inspecting, cursor, setInspecting } = useNavigation();
 	const inspectingScan = useMemo(
@@ -37,7 +43,7 @@ export const Application: React.FC = () => {
 	// Scanning vs Inspect based on the live scan status. Recent gets a single
 	// stamp at start — no second push when the scan completes. Disks (real
 	// or the dev fake) are skipped because they're already pinned to the
-	// Disks section above; only ad-hoc folder picks belong in Recent.
+	// Disks section; only ad-hoc folder picks belong in the Folders list.
 	const onOpen = useCallback(
 		(path: string) => {
 			void Ob.scanPath(path);
@@ -104,6 +110,7 @@ export const Application: React.FC = () => {
 							drives={drives}
 							scans={scans}
 							recent={recent}
+							volumes={volumes}
 							onOpen={onOpen}
 							onRemoveRecent={removeRecent}
 						/>
@@ -129,6 +136,7 @@ type BodyProps = {
 	drives: Ob.PhysicalDrive[];
 	scans: Ob.ScanInfo[];
 	recent: ReturnType<typeof useRecentScans>["recent"];
+	volumes: Map<string, Ob.DriveUsage>;
 	onOpen: (path: string) => void;
 	onRemoveRecent: (path: string) => void;
 };
@@ -140,6 +148,7 @@ const Body: React.FC<BodyProps> = ({
 	drives,
 	scans,
 	recent,
+	volumes,
 	onOpen,
 	onRemoveRecent,
 }) => {
@@ -168,6 +177,7 @@ const Body: React.FC<BodyProps> = ({
 			drives={drives}
 			scans={scans}
 			recent={recent}
+			volumes={volumes}
 			onOpen={onOpen}
 			onRemoveRecent={onRemoveRecent}
 		/>
@@ -194,10 +204,5 @@ const TitleBar: React.FC<TitleBarProps> = ({ title, theme, onToggleTheme }) => (
 // path).
 function displayName(p: string, drives: Ob.PhysicalDrive[]): string {
 	const drive = drives.find((d) => d.mountPath === p);
-	if (drive) {
-		return drive.description;
-	}
-	const trimmed = p.replace(/[/\\]+$/, "") || p;
-	const slash = Math.max(trimmed.lastIndexOf("/"), trimmed.lastIndexOf("\\"));
-	return slash >= 0 ? trimmed.slice(slash + 1) || trimmed : trimmed;
+	return drive ? drive.description : basename(p);
 }

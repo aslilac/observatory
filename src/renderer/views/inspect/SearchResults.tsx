@@ -1,5 +1,5 @@
 import { rowActions } from "#/contextActions";
-import { readableSize } from "#/util";
+import { basename, readableSize } from "#/util";
 import { Checkbox } from "#/components/Checkbox";
 import { RowMenu } from "#/components/ContextMenu";
 import type { SelectableItem } from "./types";
@@ -103,9 +103,3 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
 		</div>
 	);
 };
-
-function basename(p: string): string {
-	const trimmed = p.replace(/[/\\]+$/, "");
-	const slash = Math.max(trimmed.lastIndexOf("/"), trimmed.lastIndexOf("\\"));
-	return slash >= 0 ? trimmed.slice(slash + 1) || trimmed : trimmed;
-}

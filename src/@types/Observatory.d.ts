@@ -45,6 +45,17 @@ declare global {
 		export interface PhysicalDrive {
 			mountPath: string;
 			description: string;
+			// OS-reported space (statfs). Absent if the volume couldn't be
+			// queried.
+			usage?: DriveUsage;
+		}
+
+		// Bytes. `used + available` can fall short of `total`: some
+		// filesystems hold back blocks that only root can write to.
+		export interface DriveUsage {
+			total: number;
+			used: number;
+			available: number;
 		}
 
 		// "failed" means the root itself couldn't be scanned (missing,
@@ -93,6 +104,8 @@ declare global {
 		export interface PathStat {
 			exists: boolean;
 			isDirectory: boolean;
+			// Usage of the volume the path lives on, when it exists.
+			volume?: DriveUsage;
 		}
 
 		export interface ScanProgress {

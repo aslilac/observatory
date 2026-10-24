@@ -285,10 +285,17 @@ function readJsonArray<T>(key: string, isItem: (v: unknown) => v is T): T[] {
 
 export function useRecentScans(): {
 	recent: RecentScan[];
+	// Usage of the volume each recent folder lives on, keyed by path.
+	volumes: Map<string, Ob.DriveUsage>;
 	push: (path: string) => void;
 	remove: (path: string) => void;
 } {
-	const [recent, setRecent] = useState<RecentScan[]>(() => readRecentScans());
+	const [stored, setRecent] = useState<RecentScan[]>(() => readRecentScans());
+	const { missing, volumes } = useRecentPathInfo(stored);
+	const recent = useMemo(
+		() => stored.filter((entry) => !missing.has(entry.path)),
+		[stored, missing],
+	);
 
 	// Mirror the list to main so it can populate the File → Open Recent
 	// submenu. The renderer is still the source of truth (localStorage); main
@@ -324,7 +331,62 @@ export function useRecentScans(): {
 		});
 	}, []);
 
-	return { recent, push, remove };
+	return { recent, volumes, push, remove };
+}
+
+// Recents that no longer exist on disk are hidden rather than dropped from
+// storage — a folder on an unplugged drive should reappear once the drive
+// does. Re-checked whenever the list changes and whenever the window regains
+// focus, since that's when the user is likely to have moved, deleted, or
+// reconnected something. The same stat reports the usage of each folder's
+// volume.
+function useRecentPathInfo(entries: RecentScan[]): {
+	missing: Set<string>;
+	volumes: Map<string, Ob.DriveUsage>;
+} {
+	const [missing, setMissing] = useState<Set<string>>(() => new Set());
+	const [volumes, setVolumes] = useState<Map<string, Ob.DriveUsage>>(
+		() => new Map(),
+	);
+
+	useEffect(() => {
+		let active = true;
+		const check = () => {
+			void Promise.all(entries.map((entry) => Ob.statPath(entry.path))).then(
+				(stats) => {
+					if (!active) {
+						return;
+					}
+					const next = new Set(
+						entries
+							.filter((_, i) => !stats[i]?.exists)
+							.map((entry) => entry.path),
+					);
+					setMissing((prev) => (sameSet(prev, next) ? prev : next));
+					setVolumes(
+						new Map(
+							entries.flatMap((entry, i) => {
+								const volume = stats[i]?.volume;
+								return volume ? [[entry.path, volume] as const] : [];
+							}),
+						),
+					);
+				},
+			);
+		};
+		check();
+		window.addEventListener("focus", check);
+		return () => {
+			active = false;
+			window.removeEventListener("focus", check);
+		};
+	}, [entries]);
+
+	return { missing, volumes };
+}
+
+function sameSet<T>(a: Set<T>, b: Set<T>): boolean {
+	return a.size === b.size && [...a].every((v) => b.has(v));
 }
 
 export type CleanupItem = {

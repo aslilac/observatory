@@ -54,3 +54,11 @@ export function readableDate(
 	}
 	return `${month} ${d.getDate()}, ${d.getFullYear()}`;
 }
+
+// Last path segment, tolerant of trailing separators and Windows paths.
+// A bare root ("/") is its own name.
+export function basename(p: string): string {
+	const trimmed = p.replace(/[/\\]+$/, "") || p;
+	const slash = Math.max(trimmed.lastIndexOf("/"), trimmed.lastIndexOf("\\"));
+	return slash >= 0 ? trimmed.slice(slash + 1) || trimmed : trimmed;
+}

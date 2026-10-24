@@ -15,6 +15,7 @@ import {
 	getScanProgress,
 	onDrivesChange,
 	onScansChange,
+	readVolumeUsage,
 	searchScan,
 	startFakeScan,
 	startScan,
@@ -50,7 +51,12 @@ ipcMain.handle(
 	pass(async (path: string): Promise<Ob.PathStat | null> => {
 		try {
 			const stats = await fs.stat(path);
-			return { exists: true, isDirectory: stats.isDirectory() };
+			const volume = await readVolumeUsage(path);
+			return {
+				exists: true,
+				isDirectory: stats.isDirectory(),
+				...(volume ? { volume } : {}),
+			};
 		} catch {
 			return { exists: false, isDirectory: false };
 		}

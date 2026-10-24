@@ -33,6 +33,39 @@ export function rowActions({
 		});
 	}
 	items.push(
+		...locationActions(path),
+		{ kind: "separator" },
+		{
+			kind: "item",
+			label: type === "directory" ? "Add folder to cleanup" : "Add to cleanup",
+			onClick: () => onAddToCleanup({ path, name, size }),
+		},
+	);
+	return items;
+}
+
+type PlaceActionsArgs = {
+	// For recents: the menu is the only way to take one off the list.
+	onRemove?: () => void;
+};
+
+// Right-click items for a disk or recent folder on the welcome page.
+export function placeActions(
+	path: string,
+	{ onRemove }: PlaceActionsArgs = {},
+): ContextMenuItem[] {
+	const items = locationActions(path);
+	if (onRemove) {
+		items.push(
+			{ kind: "separator" },
+			{ kind: "item", label: "Remove from recents", onClick: onRemove },
+		);
+	}
+	return items;
+}
+
+function locationActions(path: string): ContextMenuItem[] {
+	return [
 		{
 			kind: "item",
 			label: isMac ? "Reveal in Finder" : "Show in Folder",
@@ -45,12 +78,5 @@ export function rowActions({
 				void navigator.clipboard.writeText(path);
 			},
 		},
-		{ kind: "separator" },
-		{
-			kind: "item",
-			label: type === "directory" ? "Add folder to cleanup" : "Add to cleanup",
-			onClick: () => onAddToCleanup({ path, name, size }),
-		},
-	);
-	return items;
+	];
 }

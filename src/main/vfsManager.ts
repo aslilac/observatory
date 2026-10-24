@@ -19,7 +19,7 @@ type ScanEntry = {
 	revision: number;
 };
 
-// Internal drive record. We expose only `{ mountPath, description }` over
+// Internal drive record. We expose `{ mountPath, description, usage }` over
 // IPC (the public `Ob.PhysicalDrive` shape), but the manager itself needs
 // the raw device size + mount label to describe a scan of a whole disk
 // once it completes — that's where `capacity` (for the legend's free
@@ -30,6 +30,7 @@ type DriveInfo = {
 	label: string | null;
 	size: number | null;
 	deviceDescription: string;
+	usage: Ob.DriveUsage | null;
 };
 
 const drives = new Map<string, DriveInfo>();
@@ -51,6 +52,7 @@ export function getDrives(): Ob.PhysicalDrive[] {
 	return Array.from(drives.values()).map((d) => ({
 		mountPath: d.mountPath,
 		description: d.label || `${d.mountPath} (${d.deviceDescription})`,
+		...(d.usage ? { usage: d.usage } : {}),
 	}));
 }
 
@@ -326,6 +328,18 @@ async function pollDrives() {
 	const next = new Map<string, DriveInfo>();
 
 	for (const device of driveList) {
+		// Disk images attach through macOS's "Virtual Interface": simulator
+		// runtimes, Time Machine network backups ("Backups of …"), mounted
+		// .dmg files. None of them are disks anyone means to scan. Real disks
+		// — and the APFS containers synthesized on top of them — report their
+		// hardware bus instead (Apple Fabric, USB, Thunderbolt, …).
+		if (
+			process.platform === "darwin" &&
+			device.busType === "Virtual Interface"
+		) {
+			continue;
+		}
+
 		for (const mount of device.mountpoints) {
 			if (
 				process.platform === "darwin" &&
@@ -340,12 +354,19 @@ async function pollDrives() {
 					label: mount.label || null,
 					size: device.size ?? null,
 					deviceDescription: device.description,
+					usage: null,
 				});
 			}
 		}
 	}
 
-	if (!areMapsSimilar(drives, next)) {
+	await Promise.all(
+		Array.from(next.values(), async (drive) => {
+			drive.usage = await readVolumeUsage(drive.mountPath);
+		}),
+	);
+
+	if (!areMapsSimilar(drives, next) || usageMoved(drives, next)) {
 		drives.clear();
 		for (const [key, value] of next) {
 			drives.set(key, value);
@@ -358,6 +379,50 @@ app.on("ready", () => {
 	void pollDrives();
 	setInterval(pollDrives, 5000);
 });
+
+// What the OS reports for the volume holding `path` (any path on it, not
+// just its mount point), so disks and folders can show how full their
+// volume is without scanning it. `used` is whole-volume: on APFS, `/` is a
+// sealed system snapshot that shares its container with the Data volume,
+// and `blocks - bfree` covers the whole container (what Finder calls used),
+// where df's per-volume figure for `/` doesn't.
+export async function readVolumeUsage(
+	path: string,
+): Promise<Ob.DriveUsage | null> {
+	try {
+		const stats = await fs.promises.statfs(path);
+		return {
+			total: stats.blocks * stats.bsize,
+			used: (stats.blocks - stats.bfree) * stats.bsize,
+			available: stats.bavail * stats.bsize,
+		};
+	} catch {
+		return null;
+	}
+}
+
+// Free space drifts on every poll, so only re-broadcast once a drive's usage
+// has moved by a visible amount (0.1% of its capacity, finer than the size
+// labels or meter can show) since the last broadcast.
+function usageMoved(
+	prev: Map<string, DriveInfo>,
+	next: Map<string, DriveInfo>,
+): boolean {
+	for (const [key, drive] of next) {
+		const before = prev.get(key)?.usage ?? null;
+		const after = drive.usage;
+		if (!before || !after) {
+			if (before !== after) {
+				return true;
+			}
+			continue;
+		}
+		if (Math.abs(before.used - after.used) > after.total / 1000) {
+			return true;
+		}
+	}
+	return false;
+}
 
 function areMapsSimilar<K = unknown, V = unknown>(a: Map<K, V>, b: Map<K, V>) {
 	if (a.size !== b.size) {
