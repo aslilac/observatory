@@ -1,7 +1,9 @@
 import {
 	BrowserWindow,
 	type BrowserWindowConstructorOptions,
+	nativeTheme,
 	shell,
+	type TitleBarOverlayOptions,
 } from "electron";
 import * as path from "node:path";
 
@@ -9,21 +11,49 @@ import * as path from "node:path";
 // server. Empty in packaged builds — use the bundled HTML on disk instead.
 const RENDERER_DEV_URL = process.env["ELECTRON_RENDERER_URL"];
 
-export const windowSettings: BrowserWindowConstructorOptions = {
-	minWidth: 1080,
-	minHeight: 800,
-	show: false,
-	titleBarStyle: "hiddenInset",
-	autoHideMenuBar: true,
-	webPreferences: {
-		contextIsolation: true,
-		preload: path.join(__dirname, "../preload/index.js"),
-	},
-};
+// On Windows and Linux the window has no title bar of its own, only the
+// renderer's (TitleBar in Application.tsx), with the minimize / maximize /
+// close buttons drawn over it, as VS Code does: at its right end on Windows,
+// and wherever the desktop puts them on Linux. They're drawn in the app's
+// theme rather than the OS's, so the renderer tells us when that changes
+// (Ob.setTitleBarTheme). 35 tall leaves the title bar's 1px bottom border
+// showing under them.
+export function titleBarOverlay(
+	theme: "light" | "dark",
+): TitleBarOverlayOptions {
+	// --color-background and --color-default in src/renderer/index.css.
+	return theme === "dark"
+		? { color: "#1a1a24", symbolColor: "#ececf2", height: 35 }
+		: { color: "#f9f9fd", symbolColor: "#191923", height: 35 };
+}
+
+function windowSettings(): BrowserWindowConstructorOptions {
+	return {
+		minWidth: 1080,
+		minHeight: 800,
+		show: false,
+		// macOS draws the traffic lights over the renderer's title bar itself.
+		// Elsewhere, until the renderer says which theme it's in, guess the
+		// OS's, which it follows unless the user picked one.
+		...(process.platform === "darwin"
+			? { titleBarStyle: "hiddenInset" }
+			: {
+					titleBarStyle: "hidden",
+					titleBarOverlay: titleBarOverlay(
+						nativeTheme.shouldUseDarkColors ? "dark" : "light",
+					),
+				}),
+		autoHideMenuBar: true,
+		webPreferences: {
+			contextIsolation: true,
+			preload: path.join(__dirname, "../preload/index.js"),
+		},
+	};
+}
 
 export function createWindow() {
 	// Create the browser window.
-	const view = new BrowserWindow(windowSettings);
+	const view = new BrowserWindow(windowSettings());
 
 	// Load the app — Vite dev server in dev, bundled HTML in prod.
 	if (RENDERER_DEV_URL) {

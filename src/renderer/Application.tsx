@@ -1,4 +1,11 @@
-import { Profiler, useCallback, useLayoutEffect, useMemo } from "react";
+import {
+	Profiler,
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useMemo,
+	useState,
+} from "react";
 
 import { useNavigation } from "./navigation";
 import { perfEnabled, perfLog, perfMeasure } from "./perf";
@@ -96,19 +103,23 @@ export const Application: React.FC = () => {
 		[],
 	);
 
-	const titleSuffix =
-		view === "cleanup"
-			? "cleanup review"
-			: inspecting
-				? displayName(inspecting, drives)
-				: "";
+	// The window's title, in the title bar and wherever the OS shows it
+	// (the taskbar, Alt+Tab): where you are, most specific first, as VS Code
+	// has it.
+	const scanName = inspecting ? displayName(inspecting, drives) : null;
+	const folder = cursor[cursor.length - 1];
+	const place = view === "cleanup" ? ["Cleanup review"] : [folder, scanName];
+	const title = [...place, "Observatory"].filter(Boolean).join(" — ");
+	useEffect(() => {
+		document.title = title;
+	}, [title]);
 
 	return (
 		<div
 			id="application"
 			className={`relative grid h-screen grid-rows-[36px_1fr] bg-background ${Ob.platform}`}
 		>
-			<TitleBar title={titleSuffix} theme={theme} onToggleTheme={toggleTheme} />
+			<TitleBar title={title} theme={theme} onToggleTheme={toggleTheme} />
 			<div className="flex min-h-0 flex-col overflow-hidden">
 				<ErrorBoundary key={`${view}-${inspecting ?? "menu"}`}>
 					<Profiler id="screen" onRender={handleProfilerRender}>
@@ -198,19 +209,84 @@ const Body: React.FC<BodyProps> = ({
 };
 
 type TitleBarProps = {
-	title?: string;
+	title: string;
 	theme: "light" | "dark";
 	onToggleTheme: () => void;
 };
 
-const TitleBar: React.FC<TitleBarProps> = ({ title, theme, onToggleTheme }) => (
-	<div className="relative flex h-[36px] items-center justify-center border-b border-line-soft text-[12px] font-medium text-muted darwin:[-webkit-app-region:drag]">
-		Observatory{title && ` — ${title}`}
-		<div className="absolute top-1/2 right-[10px] -translate-y-1/2 darwin:[-webkit-app-region:no-drag]">
-			<ThemeToggle theme={theme} onToggle={onToggleTheme} />
+// The window's only title bar, with the OS's window controls drawn over it:
+// the traffic lights at the left on macOS, and minimize / maximize / close
+// elsewhere (see titleBarOverlay in src/main/viewManager.ts). Those are at
+// the right on Windows, but a Linux desktop can put them at the left, the
+// right, or some at each end: they leave this the stretch from
+// titlebar-area-x to titlebar-area-x + titlebar-area-width. On macOS those
+// aren't set, and the fallbacks leave the whole bar. Off macOS it carries
+// the menu too.
+const TitleBar: React.FC<TitleBarProps> = ({ title, theme, onToggleTheme }) => {
+	const mac = Ob.platform === "darwin";
+	useEffect(() => {
+		if (!mac) {
+			void Ob.setTitleBarTheme(theme);
+		}
+	}, [mac, theme]);
+
+	return (
+		<div
+			className="relative flex h-[36px] items-center border-b border-line-soft text-[12px] font-medium text-muted [-webkit-app-region:drag]"
+			// The menu starts after any window controls at the left.
+			style={{ paddingLeft: "env(titlebar-area-x, 0px)" }}
+		>
+			{!mac && <AppMenu />}
+			<div
+				className="pointer-events-none absolute truncate text-center"
+				// Centered, and as far in from both ends as the menu has been
+				// pushed from the left.
+				style={{ insetInline: "calc(260px + env(titlebar-area-x, 0px))" }}
+			>
+				{title}
+			</div>
+			<div
+				className="absolute top-1/2 -translate-y-1/2 [-webkit-app-region:no-drag]"
+				// 10px in from any window controls at the right.
+				style={{
+					right:
+						"calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) + 10px)",
+				}}
+			>
+				<ThemeToggle theme={theme} onToggle={onToggleTheme} />
+			</div>
 		</div>
-	</div>
-);
+	);
+};
+
+// Windows and Linux: the window has no menu bar (see
+// src/main/viewManager.ts), so the title bar names the application menu's
+// menus, and opens them where you click, as VS Code does. Their shortcuts
+// work either way.
+const AppMenu: React.FC = () => {
+	const [labels, setLabels] = useState<string[]>([]);
+	useEffect(() => {
+		void Ob.getAppMenu().then(setLabels);
+	}, []);
+
+	return (
+		<div className="flex h-full items-center pl-[6px] [-webkit-app-region:no-drag]">
+			{labels.map((label, i) => (
+				<button
+					key={label}
+					type="button"
+					className="h-[26px] cursor-default rounded-button px-[8px] font-normal text-muted hover:bg-fill hover:text-default"
+					onClick={(e) => {
+						const { left, bottom } = e.currentTarget.getBoundingClientRect();
+						void Ob.popupAppMenu(i, left, bottom);
+					}}
+				>
+					{label}
+				</button>
+			))}
+		</div>
+	);
+};
 
 // Display name for a scan target. Drive paths get the drive description
 // ("Macintosh HD"); folder scans get the basename ("Movies", not the full

@@ -60,6 +60,11 @@ contextBridge.exposeInMainWorld("Ob", {
 	revealInFinder: (path: string) => invoke("Ob.revealInFinder", path),
 	openPath: (path: string) => invoke("Ob.openPath", path),
 	openFullDiskAccessSettings: () => invoke("Ob.openFullDiskAccessSettings"),
+	setTitleBarTheme: (theme: "light" | "dark") =>
+		invoke("Ob.setTitleBarTheme", theme),
+	getAppMenu: () => invoke("Ob.getAppMenu"),
+	popupAppMenu: (index: number, x: number, y: number) =>
+		invoke("Ob.popupAppMenu", index, x, y),
 	devLoadFakeDisk: () => invoke("Ob.devLoadFakeDisk"),
 
 	onDrives: (cb: (drives: Ob.PhysicalDrive[]) => void) => {

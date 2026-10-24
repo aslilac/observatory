@@ -1,10 +1,18 @@
-import { app, type IpcMainInvokeEvent, ipcMain, shell } from "electron";
+import {
+	app,
+	BrowserWindow,
+	type IpcMainInvokeEvent,
+	ipcMain,
+	Menu,
+	shell,
+} from "electron";
 import * as fs from "node:fs/promises";
 import { broadcast } from "./broadcast";
 import { deleteFiles } from "./cleanup";
 import { buildFakeDisk } from "./fixtures";
 import { selectDirectory } from "./dialog";
 import { setRecentScans } from "./menu";
+import { titleBarOverlay } from "./viewManager";
 import {
 	cancelScan,
 	getDrives,
@@ -50,6 +58,40 @@ ipcMain.handle("Ob.openFullDiskAccessSettings", () =>
 	shell.openExternal(
 		"x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles",
 	),
+);
+
+// The title bar Windows and Linux draw their window buttons over (see
+// titleBarOverlay in viewManager.ts), and the menu there's no bar for.
+ipcMain.handle(
+	"Ob.setTitleBarTheme",
+	(event: IpcMainInvokeEvent, theme: "light" | "dark") => {
+		if (process.platform !== "darwin") {
+			BrowserWindow.fromWebContents(event.sender)?.setTitleBarOverlay(
+				titleBarOverlay(theme),
+			);
+		}
+	},
+);
+ipcMain.handle(
+	"Ob.getAppMenu",
+	() => Menu.getApplicationMenu()?.items.map((item) => item.label) ?? [],
+);
+ipcMain.handle(
+	"Ob.popupAppMenu",
+	(event: IpcMainInvokeEvent, index: number, x: number, y: number) => {
+		const window = BrowserWindow.fromWebContents(event.sender);
+		const submenu = Menu.getApplicationMenu()?.items[index]?.submenu;
+		if (!window || !submenu) {
+			return;
+		}
+		// CSS pixels, which View → Zoom scales.
+		const zoom = event.sender.getZoomFactor();
+		submenu.popup({
+			window,
+			x: Math.round(x * zoom),
+			y: Math.round(y * zoom),
+		});
+	},
 );
 ipcMain.handle(
 	"Ob.statPath",

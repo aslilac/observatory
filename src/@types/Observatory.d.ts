@@ -34,6 +34,17 @@ declare global {
 		// macOS: opens Privacy & Security → Full Disk Access in System
 		// Settings.
 		function openFullDiskAccessSettings(): Promise<void>;
+		// Windows and Linux: the window's title bar draws its own window
+		// controls (see viewManager.ts), which follow the app's theme rather
+		// than the OS's.
+		function setTitleBarTheme(theme: "light" | "dark"): Promise<void>;
+		// Windows and Linux: the application menu's top-level labels ("File",
+		// "Edit", …), for the title bar to draw, since the window has no menu
+		// bar.
+		function getAppMenu(): Promise<string[]>;
+		// Opens the application menu's `index`th submenu at (x, y), in CSS
+		// pixels from the window's top left.
+		function popupAppMenu(index: number, x: number, y: number): Promise<void>;
 		// Dev-only. Resolves to the synthetic scan path so the renderer can
 		// onOpen() it; rejects in packaged builds where the handler isn't
 		// registered.

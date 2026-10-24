@@ -41,7 +41,7 @@ Main owns the truth; renderer is a view that asks for it. Communication is plain
 
 ### The Ob surface (declared in `src/@types/Observatory.d.ts`)
 
-RPC: `selectDirectory`, `scanPath`, `getDrives`, `getScans`, `getRenderTree(path, cursor)`. Subscriptions (each returns an unsubscribe): `onDrives`, `onScans`, `onSetInspecting`. The `onDrives` / `onScans` subscriptions also fire once with the current state immediately after subscribing, so renderer hooks don't need a separate initial fetch.
+RPC: `selectDirectory`, `scanPath`, `getDrives`, `getScans`, `getRenderTree(path, cursor)`. Subscriptions (each returns an unsubscribe): `onDrives`, `onScans`, `onSetInspecting`. The `onDrives` / `onScans` subscriptions also fire once with the current state immediately after subscribing, so renderer hooks don't need a separate initial fetch. Windows and Linux: `setTitleBarTheme`, `getAppMenu`, `popupAppMenu` for the title bar (see Renderer UI).
 
 ### State ownership
 
@@ -67,6 +67,8 @@ Cancellation is cooperative: `cancelScan(path)` calls the native `scan.abort()` 
 ### Renderer UI
 
 `Application.tsx` switches between `<Menu/>` (drive picker) and `<Display/>` based on whether the inspected scan is complete and a render tree has loaded. `<Display/>` composes `<List/>` and `<Sunburst/>` and passes navigation callbacks down (no global dispatch). Styling is Tailwind v4 utilities inline on JSX; theme variables, the `darwin:` / `win32:` / `linux:` custom variants, and a single `.btn` component class live in `src/renderer/resources/app.css`. The about window uses its own `about.css` entry, and shows the platform's app icon (`about.ts`, from `build-resources/about/`); it has no preload, so main passes the platform in its URL. Tailwind is wired through `@tailwindcss/vite` in the renderer config.
+
+The window has one title bar, the app's own (`TitleBar` in `Application.tsx`), and the OS window title is `document.title`, which follows where the user is ("Users — Local Disk — Observatory"). On macOS the traffic lights sit in it (`hiddenInset`). On Windows and Linux (`viewManager.ts`) the native bar is hidden and its buttons overlaid (`titleBarOverlay`): the bar is a drag region, it keeps clear of the buttons with `env(titlebar-area-x/width)` (a Linux desktop can put them at the left, so the menu starts at `titlebar-area-x` and the title is inset by it from both ends), and the overlay's colors follow the app's theme through `Ob.setTitleBarTheme`. With no native menu bar there, the TitleBar shows the application menu's top-level labels (`Ob.getAppMenu`) and pops each submenu up under its label (`Ob.popupAppMenu`); the accelerators work regardless.
 
 Main → renderer "set inspecting" events still flow through `Ob.onSetInspecting`; right now only `bridge.ts:selectDirectory` uses it (so the user lands on the new scan after the dialog closes).
 
