@@ -210,6 +210,18 @@ export function startScan(path: string) {
 	);
 }
 
+// Throws out the finished scan of `path` and walks it again, for when files
+// have changed outside the app. A scan that's still running is already as
+// fresh as it gets, and the dev fake disk has nothing on disk to re-read.
+export function rescan(path: string) {
+	const existing = scans.get(path);
+	if (existing?.status === "building" || path.startsWith("fake://")) {
+		return;
+	}
+	existing?.scan?.release();
+	scans.delete(path);
+	startScan(path);
+}
 
 // The native scanner only hands back a formatted message for root-level
 // failures, so re-stat the root ourselves to tell "it's gone" apart from

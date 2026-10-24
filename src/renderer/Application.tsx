@@ -57,6 +57,15 @@ export const Application: React.FC = () => {
 		[drives, pushRecent, setInspecting],
 	);
 
+	// Waits for main to swap in the new scan before navigating, so the old
+	// result doesn't flash up first.
+	const onRescan = useCallback(
+		(path: string) => {
+			void Ob.rescanPath(path).then(() => setInspecting(path));
+		},
+		[setInspecting],
+	);
+
 	const paste = usePasteToScan(onOpen);
 
 	// Measure click → painted: nav:start is set inside `navigate`, and we
@@ -112,6 +121,7 @@ export const Application: React.FC = () => {
 							recent={recent}
 							volumes={volumes}
 							onOpen={onOpen}
+							onRescan={onRescan}
 							onRemoveRecent={removeRecent}
 						/>
 					</Profiler>
@@ -138,6 +148,7 @@ type BodyProps = {
 	recent: ReturnType<typeof useRecentScans>["recent"];
 	volumes: Map<string, Ob.DriveUsage>;
 	onOpen: (path: string) => void;
+	onRescan: (path: string) => void;
 	onRemoveRecent: (path: string) => void;
 };
 
@@ -150,6 +161,7 @@ const Body: React.FC<BodyProps> = ({
 	recent,
 	volumes,
 	onOpen,
+	onRescan,
 	onRemoveRecent,
 }) => {
 	if (view === "cleanup") {
@@ -179,6 +191,7 @@ const Body: React.FC<BodyProps> = ({
 			recent={recent}
 			volumes={volumes}
 			onOpen={onOpen}
+			onRescan={onRescan}
 			onRemoveRecent={onRemoveRecent}
 		/>
 	);

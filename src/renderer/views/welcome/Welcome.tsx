@@ -14,6 +14,7 @@ type WelcomeProps = {
 	recent: RecentScan[];
 	volumes: Map<string, Ob.DriveUsage>;
 	onOpen: (path: string) => void;
+	onRescan: (path: string) => void;
 	onRemoveRecent: (path: string) => void;
 };
 
@@ -23,9 +24,16 @@ export const Welcome: React.FC<WelcomeProps> = ({
 	recent,
 	volumes,
 	onOpen,
+	onRescan,
 	onRemoveRecent,
 }) => {
 	const scanByPath = new Map(scans.map((s) => [s.path, s]));
+	const rescanFor = (path: string) => {
+		const status = scanByPath.get(path)?.status;
+		return status === "complete" || status === "failed"
+			? () => onRescan(path)
+			: undefined;
+	};
 	const chooseFolder = () => {
 		void Ob.selectDirectory().then((picked) => {
 			if (picked) {
@@ -53,7 +61,9 @@ export const Welcome: React.FC<WelcomeProps> = ({
 											scan={scanByPath.get(drive.mountPath)}
 										/>
 									}
-									menu={placeActions(drive.mountPath)}
+									menu={placeActions(drive.mountPath, {
+										onRescan: rescanFor(drive.mountPath),
+									})}
 									onOpen={() => onOpen(drive.mountPath)}
 								/>
 							))}
@@ -87,6 +97,7 @@ export const Welcome: React.FC<WelcomeProps> = ({
 									/>
 								}
 								menu={placeActions(entry.path, {
+									onRescan: rescanFor(entry.path),
 									onRemove: () => onRemoveRecent(entry.path),
 								})}
 								onOpen={() => onOpen(entry.path)}

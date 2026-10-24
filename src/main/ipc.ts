@@ -16,6 +16,7 @@ import {
 	onDrivesChange,
 	onScansChange,
 	readVolumeUsage,
+	rescan,
 	searchScan,
 	startFakeScan,
 	startScan,
@@ -30,6 +31,7 @@ function pass<A extends unknown[], R>(fn: (...args: A) => R) {
 ipcMain.handle("Ob.selectDirectory", pass(selectDirectory));
 ipcMain.handle("Ob.scanPath", pass(startScan));
 ipcMain.handle("Ob.cancelScan", pass(cancelScan));
+ipcMain.handle("Ob.rescanPath", pass(rescan));
 ipcMain.handle("Ob.getDrives", pass(getDrives));
 ipcMain.handle("Ob.getScans", pass(getScans));
 ipcMain.handle("Ob.getRenderTree", pass(getRenderTree));

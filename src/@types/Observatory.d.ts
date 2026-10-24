@@ -7,6 +7,9 @@ declare global {
 		function selectDirectory(): Promise<string | undefined>;
 		function scanPath(path: string): Promise<void>;
 		function cancelScan(path: string): Promise<void>;
+		// Replaces a finished or failed scan with a fresh one. Unlike scanPath,
+		// which leaves a path that's already scanned alone.
+		function rescanPath(path: string): Promise<void>;
 		function getDrives(): Promise<PhysicalDrive[]>;
 		function getScans(): Promise<ScanInfo[]>;
 		function getRenderTree(

@@ -45,6 +45,8 @@ export function rowActions({
 }
 
 type PlaceActionsArgs = {
+	// For a place with a finished (or failed) scan to replace.
+	onRescan?: () => void;
 	// For recents: the menu is the only way to take one off the list.
 	onRemove?: () => void;
 };
@@ -52,9 +54,16 @@ type PlaceActionsArgs = {
 // Right-click items for a disk or recent folder on the welcome page.
 export function placeActions(
 	path: string,
-	{ onRemove }: PlaceActionsArgs = {},
+	{ onRescan, onRemove }: PlaceActionsArgs = {},
 ): ContextMenuItem[] {
-	const items = locationActions(path);
+	const items: ContextMenuItem[] = [];
+	if (onRescan) {
+		items.push(
+			{ kind: "item", label: "Rescan", onClick: onRescan },
+			{ kind: "separator" },
+		);
+	}
+	items.push(...locationActions(path));
 	if (onRemove) {
 		items.push(
 			{ kind: "separator" },

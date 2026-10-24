@@ -41,6 +41,7 @@ contextBridge.exposeInMainWorld("Ob", {
 	selectDirectory: () => invoke("Ob.selectDirectory"),
 	scanPath: (path: string) => invoke("Ob.scanPath", path),
 	cancelScan: (path: string) => invoke("Ob.cancelScan", path),
+	rescanPath: (path: string) => invoke("Ob.rescanPath", path),
 	getDrives: () => invoke("Ob.getDrives"),
 	getScans: () => invoke("Ob.getScans"),
 	getRenderTree: (path: string, cursor: string[]) =>
