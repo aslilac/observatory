@@ -1,8 +1,13 @@
-import { FolderIcon, FolderOpenIcon, HardDriveIcon } from "lucide-react";
+import {
+	FolderIcon,
+	FolderOpenIcon,
+	HardDriveIcon,
+	ServerIcon,
+} from "lucide-react";
 import { useState } from "react";
 import { placeActions } from "#/contextActions";
 import type { RecentScan } from "#/state";
-import { basename, readableSize } from "#/util";
+import { basename, describeDrive, readableSize } from "#/util";
 import { Button } from "#/components/Button";
 import { type ContextMenuItem, RowMenu } from "#/components/ContextMenu";
 import { Toolbar } from "#/components/Toolbar";
@@ -52,9 +57,17 @@ export const Welcome: React.FC<WelcomeProps> = ({
 							{drives.map((drive) => (
 								<PlaceRow
 									key={drive.mountPath}
-									icon={<HardDriveIcon size={16} strokeWidth={1.6} />}
+									icon={
+										drive.network ? (
+											<ServerIcon size={16} strokeWidth={1.6} />
+										) : (
+											<HardDriveIcon size={16} strokeWidth={1.6} />
+										)
+									}
 									title={drive.description}
-									detail={<span className="font-mono">{drive.mountPath}</span>}
+									detail={
+										<span title={drive.mountPath}>{describeDrive(drive)}</span>
+									}
 									meta={
 										<Usage
 											volume={drive.usage}

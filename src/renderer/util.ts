@@ -16,6 +16,39 @@ export const readableSize = (size: number) => {
 	return `${sizeString} ${suffixes[exp]!}`;
 };
 
+// A disk's capacity, rounded the way disks are sold: "2 TB" for 1.995 TB,
+// "1.5 TB", "256 GB". Coarser than readableSize, which is for amounts that
+// move.
+export const roundedSize = (size: number) => {
+	const base = Ob.platform === "darwin" ? 1000 : 1024;
+	let exp = 0;
+	// 999.6 GB would round up to "1000 GB".
+	for (; exp + 1 < suffixes.length && size >= 999.5; exp++) {
+		size /= base;
+	}
+	const rounded = size < 9.95 ? Math.round(size * 10) / 10 : Math.round(size);
+	return `${rounded} ${suffixes[exp]!}`;
+};
+
+// What a drive is, for the line under its name: "2 TB encrypted startup
+// disk", "Pecha – SMB network share".
+export function describeDrive(drive: Ob.PhysicalDrive): string {
+	if (drive.network) {
+		const share = drive.protocol
+			? `${drive.protocol} network share`
+			: "Network share";
+		return drive.server ? `${drive.server} – ${share}` : share;
+	}
+	const words = [
+		drive.usage?.total ? roundedSize(drive.usage.total) : null,
+		drive.encrypted ? "encrypted" : null,
+		drive.startup ? "startup" : drive.external ? "external" : "internal",
+		"disk",
+	];
+	const text = words.filter(Boolean).join(" ");
+	return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
