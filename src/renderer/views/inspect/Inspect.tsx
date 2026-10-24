@@ -154,6 +154,10 @@ export const Inspect: React.FC<InspectProps> = ({ scan }) => {
 
 	const { sunburst, list, tree: treeFiles, ...shared } = tree;
 	const treeChildren = treeFiles?.files ?? list.files;
+	// `tree.name` is always the scan root (it labels the toolbar crumb); the
+	// sidebar header follows the directory the user has navigated into.
+	const currentName =
+		cursor.length > 0 ? cursor[cursor.length - 1]! : tree.name;
 
 	return (
 		<>
@@ -215,7 +219,7 @@ export const Inspect: React.FC<InspectProps> = ({ scan }) => {
 						<LegendList
 							inspecting={inspecting}
 							cursor={cursor}
-							name={tree.name}
+							name={currentName}
 							size={tree.size}
 							capacity={tree.capacity}
 							files={list.files}
@@ -232,9 +236,7 @@ export const Inspect: React.FC<InspectProps> = ({ scan }) => {
 						<FolderTree
 							inspecting={inspecting}
 							cursor={cursor}
-							rootName={
-								cursor.length > 0 ? cursor[cursor.length - 1]! : tree.name
-							}
+							rootName={currentName}
 							files={treeChildren}
 							hueByName={hueByName}
 							selection={selection}
