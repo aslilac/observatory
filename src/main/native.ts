@@ -28,6 +28,12 @@ const nativePath = path.resolve(
 type RawNativeBinding = {
 	Scan: RawNativeScanClass;
 	volumes(): NativeVolume[];
+	relaunchElevated(
+		window: Buffer | null,
+		file: string,
+		args: string[],
+		directory: string,
+	): boolean;
 };
 
 type RawNativeScanClass = {
@@ -184,4 +190,17 @@ export type NativeVolume = {
 // knows, so it's quick and never waits on a file server.
 export function volumes(): NativeVolume[] {
 	return raw.volumes();
+}
+
+// Windows: starts `file` with `args` in `directory` as an administrator, once
+// the user says yes when Windows asks (src/scanner/admin.rs). False if they
+// said no. `window` is the native handle of the window asking, which brings
+// the prompt up in front of it. Blocks until the user answers.
+export function relaunchElevated(
+	window: Buffer | null,
+	file: string,
+	args: string[],
+	directory: string,
+): boolean {
+	return raw.relaunchElevated(window, file, args, directory);
 }

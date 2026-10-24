@@ -34,6 +34,10 @@ declare global {
 		// macOS: opens Privacy & Security → Full Disk Access in System
 		// Settings.
 		function openFullDiskAccessSettings(): Promise<void>;
+		// Windows: starts the app again as an administrator, straight into a
+		// scan of `path`, once the user says yes when Windows asks; then this
+		// copy quits. Resolves false if they said no.
+		function restartAsAdmin(path: string): Promise<boolean>;
 		// Windows and Linux: the window's title bar draws its own window
 		// controls (see viewManager.ts), which follow the app's theme rather
 		// than the OS's.
@@ -124,7 +128,10 @@ declare global {
 			path: string;
 			// "protected": macOS privacy protection, which Full Disk Access
 			// lifts. Reported only while the app doesn't have it.
-			kind: "permission" | "protected" | "missing" | "loop" | "other";
+			// "admin": Windows kept the scan out of a folder on this computer's
+			// own disk, which an administrator could list. Reported only while
+			// the app isn't one.
+			kind: "permission" | "protected" | "admin" | "missing" | "loop" | "other";
 			code: string | null;
 			message: string;
 		}

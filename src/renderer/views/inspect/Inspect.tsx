@@ -281,6 +281,7 @@ export const Inspect: React.FC<InspectProps> = ({ scan }) => {
 			)}
 			<IssuesModal
 				open={issuesOpen}
+				path={inspecting}
 				errors={scanErrors}
 				onClose={() => setIssuesOpen(false)}
 			/>

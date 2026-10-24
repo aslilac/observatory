@@ -118,6 +118,9 @@ pub enum ScanErrorKind {
 	// macOS privacy protection kept the scan out (Mail, Messages, Desktop,
 	// other apps' data, …). Granting Full Disk Access lets it in.
 	Protected,
+	// Windows kept the scan out of a folder on this computer's own disk,
+	// which it would let an administrator list (see admin.rs).
+	Admin,
 	Missing,
 	Loop,
 	Other,
@@ -272,6 +275,9 @@ pub struct ScanState {
 	displaced: Mutex<Vec<PathBuf>>,
 	// Checked once up front; macOS only applies a change on relaunch anyway.
 	pub full_disk_access: bool,
+	// Windows: the app isn't an administrator, and the scan is of this
+	// computer's own disk, where an administrator could list every folder.
+	pub admin_would_help: bool,
 	pub perf: bool,
 	// Root of the live perf tree, set on the first scan_dir call when perf
 	// is enabled. None while the scan hasn't started or perf is off.
@@ -292,6 +298,7 @@ impl ScanState {
 			links: Default::default(),
 			displaced: Mutex::new(Vec::new()),
 			full_disk_access: has_full_disk_access(),
+			admin_would_help: false,
 			perf,
 			live_perf: Mutex::new(None),
 		}
@@ -302,9 +309,12 @@ impl ScanState {
 	// errors if it can't: we can't meaningfully scan a path we can't stat.
 	pub fn for_path(path: &Path, perf: bool) -> io::Result<Self> {
 		let root_meta = fs::metadata(path)?;
+		// Before the walk, since it's what lets an administrator in.
+		let admin = admin::can_list_everything();
 		Ok(Self {
 			root_dev: root_dev_id(&root_meta),
 			mounts: mount_plan(path),
+			admin_would_help: !admin && admin::is_local(path),
 			..Self::new(perf)
 		})
 	}
@@ -843,6 +853,7 @@ fn classify_error(state: &ScanState, err: &io::Error) -> (ScanErrorKind, Option<
 			PermissionDenied if is_policy_refusal(err) && !state.full_disk_access => {
 				ScanErrorKind::Protected
 			}
+			PermissionDenied if state.admin_would_help => ScanErrorKind::Admin,
 			PermissionDenied => ScanErrorKind::Permission,
 			NotFound => ScanErrorKind::Missing,
 			_ => ScanErrorKind::Other,
@@ -882,6 +893,7 @@ fn errno_name(n: i32) -> Option<String> {
 #[cfg(feature = "napi")]
 mod bindings;
 
+pub mod admin;
 pub mod reserved;
 pub use reserved::Reserved;
 

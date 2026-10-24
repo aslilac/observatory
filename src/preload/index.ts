@@ -60,6 +60,7 @@ contextBridge.exposeInMainWorld("Ob", {
 	revealInFinder: (path: string) => invoke("Ob.revealInFinder", path),
 	openPath: (path: string) => invoke("Ob.openPath", path),
 	openFullDiskAccessSettings: () => invoke("Ob.openFullDiskAccessSettings"),
+	restartAsAdmin: (path: string) => invoke("Ob.restartAsAdmin", path),
 	setTitleBarTheme: (theme: "light" | "dark") =>
 		invoke("Ob.setTitleBarTheme", theme),
 	getAppMenu: () => invoke("Ob.getAppMenu"),

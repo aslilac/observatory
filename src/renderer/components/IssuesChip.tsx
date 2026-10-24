@@ -7,9 +7,13 @@ type IssuesChipProps = {
 
 export const IssuesChip: React.FC<IssuesChipProps> = ({ errors, onClick }) => {
 	// Folders macOS's privacy protection kept us out of are one issue, with
-	// one fix (Full Disk Access), however many of them there are.
-	const protectedCount = errors.filter((e) => e.kind === "protected").length;
-	const count = errors.length - protectedCount + (protectedCount > 0 ? 1 : 0);
+	// one fix (Full Disk Access), however many of them there are. So are the
+	// ones Windows keeps for administrators (restart as one).
+	let count = errors.length;
+	for (const kind of ["protected", "admin"]) {
+		const folded = errors.filter((e) => e.kind === kind).length;
+		count -= folded > 0 ? folded - 1 : 0;
+	}
 	if (count === 0) {
 		return null;
 	}

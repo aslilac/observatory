@@ -1,6 +1,7 @@
 // N-API exports for the scanner.
 //
-// The surface is one class, `Scan`, plus `volumes()` (see volumes.rs).
+// The surface is one class, `Scan`, plus `volumes()` (see volumes.rs) and,
+// for Windows, `relaunchElevated()` (see admin.rs).
 // A `Scan` is a handle that walks a directory on libuv's threadpool (via
 // napi-rs AsyncTask, so the JS main thread stays free to handle IPC),
 // reports progress while it runs, and then holds on to the finished tree.
@@ -196,6 +197,24 @@ impl Scan {
 #[napi]
 pub fn volumes() -> Vec<Volume> {
 	crate::volumes::volumes()
+}
+
+/// Windows: starts `file` with `args` in `directory` as an administrator,
+/// once the user says yes when Windows asks. False if they said no. `window`
+/// is the asking window's native handle (Electron's `getNativeWindowHandle`),
+/// which brings the prompt up in front of it. Waits for the user's answer.
+#[napi]
+pub fn relaunch_elevated(
+	window: Option<Buffer>,
+	file: String,
+	args: Vec<String>,
+	directory: String,
+) -> Result<bool> {
+	let window = window
+		.and_then(|handle| handle.get(..size_of::<usize>())?.try_into().ok())
+		.map_or(0, usize::from_ne_bytes);
+	crate::admin::relaunch_elevated(window, &file, &args, &directory)
+		.map_err(|e| Error::from_reason(format!("couldn't start as administrator: {e}")))
 }
 
 // Nothing panics partway through changing the tree while holding the lock,

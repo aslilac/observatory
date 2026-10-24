@@ -11,6 +11,7 @@ import { broadcast } from "./broadcast";
 import { deleteFiles } from "./cleanup";
 import { buildFakeDisk } from "./fixtures";
 import { selectDirectory } from "./dialog";
+import { restartAsAdmin } from "./elevation";
 import { setRecentScans } from "./menu";
 import { titleBarOverlay } from "./viewManager";
 import {
@@ -59,6 +60,7 @@ ipcMain.handle("Ob.openFullDiskAccessSettings", () =>
 		"x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles",
 	),
 );
+ipcMain.handle("Ob.restartAsAdmin", restartAsAdmin);
 
 // The title bar Windows and Linux draw their window buttons over (see
 // titleBarOverlay in viewManager.ts), and the menu there's no bar for.

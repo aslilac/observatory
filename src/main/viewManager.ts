@@ -51,15 +51,22 @@ function windowSettings(): BrowserWindowConstructorOptions {
 	};
 }
 
-export function createWindow() {
+// `inspect`: a scan to open straight into, rather than the home screen.
+export function createWindow(inspect: string | null = null) {
 	// Create the browser window.
 	const view = new BrowserWindow(windowSettings());
 
 	// Load the app — Vite dev server in dev, bundled HTML in prod.
+	const query: Record<string, string> = inspect ? { inspect } : {};
 	if (RENDERER_DEV_URL) {
-		void view.loadURL(RENDERER_DEV_URL);
+		const search = new URLSearchParams(query).toString();
+		void view.loadURL(
+			search ? `${RENDERER_DEV_URL}?${search}` : RENDERER_DEV_URL,
+		);
 	} else {
-		void view.loadFile(path.join(__dirname, "../renderer/index.html"));
+		void view.loadFile(path.join(__dirname, "../renderer/index.html"), {
+			query,
+		});
 	}
 
 	// Prevent seeing an unpopulated screen.

@@ -51,10 +51,18 @@ type NavigationProviderProps = {
 export const NavigationProvider: React.FC<NavigationProviderProps> = ({
 	children,
 }) => {
-	const [nav, setNav] = useState<NavState>({
-		history: [{ view: "scan", inspecting: null, cursor: [] }],
+	const [nav, setNav] = useState<NavState>(() => ({
+		history: [
+			{
+				view: "scan",
+				// Set when main opened the window straight into a scan (see
+				// createWindow in src/main/viewManager.ts).
+				inspecting: new URLSearchParams(location.search).get("inspect"),
+				cursor: [],
+			},
+		],
 		index: 0,
-	});
+	}));
 	const current = nav.history[nav.index]!;
 	const { view, inspecting, cursor } = current;
 
