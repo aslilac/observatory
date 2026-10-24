@@ -28,6 +28,9 @@ declare global {
 		): Promise<void>;
 		function revealInFinder(path: string): Promise<void>;
 		function openPath(path: string): Promise<string>;
+		// macOS: opens Privacy & Security → Full Disk Access in System
+		// Settings.
+		function openFullDiskAccessSettings(): Promise<void>;
 		// Dev-only. Resolves to the synthetic scan path so the renderer can
 		// onOpen() it; rejects in packaged builds where the handler isn't
 		// registered.
@@ -76,7 +79,9 @@ declare global {
 
 		export interface ScanError {
 			path: string;
-			kind: "permission" | "missing" | "loop" | "other";
+			// "protected": macOS privacy protection, which Full Disk Access
+			// lifts. Reported only while the app doesn't have it.
+			kind: "permission" | "protected" | "missing" | "loop" | "other";
 			code: string | null;
 			message: string;
 		}

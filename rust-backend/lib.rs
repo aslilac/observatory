@@ -23,6 +23,7 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::cmp;
 use std::fs;
+use std::io;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
@@ -107,6 +108,9 @@ impl VfsNode {
 #[serde(rename_all = "lowercase")]
 pub enum ScanErrorKind {
 	Permission,
+	// macOS privacy protection kept the scan out (Mail, Messages, Desktop,
+	// other apps' data, …). Granting Full Disk Access lets it in.
+	Protected,
 	Missing,
 	Loop,
 	Other,
@@ -249,6 +253,8 @@ pub struct ScanState {
 	pub errors: Mutex<Vec<ScanError>>,
 	pub aborted: AtomicBool,
 	pub root_dev: Option<u64>,
+	// Checked once up front; macOS only applies a change on relaunch anyway.
+	pub full_disk_access: bool,
 	pub perf: bool,
 	// Root of the live perf tree, set on the first scan_dir call when perf
 	// is enabled. None while the scan hasn't started or perf is off.
@@ -263,6 +269,7 @@ impl ScanState {
 			errors: Mutex::new(Vec::new()),
 			aborted: AtomicBool::new(false),
 			root_dev,
+			full_disk_access: has_full_disk_access(),
 			perf,
 			live_perf: Mutex::new(None),
 		}
@@ -373,10 +380,10 @@ fn scan_dir(
 	} else {
 		None
 	};
-	let entries: Vec<_> = match fs::read_dir(path) {
+	let entries: Vec<_> = match retry_interrupted(|| fs::read_dir(path)) {
 		Ok(rd) => rd.filter_map(Result::ok).collect(),
 		Err(err) => {
-			record_error(state, path, &err);
+			record_error(state, path, depth, &err);
 			if let Some(ref n) = my_perf {
 				let readdir_ms = readdir_start
 					.map(|t| t.elapsed().as_secs_f64() * 1000.0)
@@ -429,10 +436,10 @@ fn classify(
 		return None;
 	}
 	let entry_path = entry.path();
-	let meta = match entry.metadata() {
+	let meta = match retry_interrupted(|| entry.metadata()) {
 		Ok(m) => m,
 		Err(err) => {
-			record_error(state, &entry_path, &err);
+			record_error(state, &entry_path, depth, &err);
 			return None;
 		}
 	};
@@ -497,6 +504,18 @@ fn disk_usage(meta: &fs::Metadata) -> u64 {
 	meta.len()
 }
 
+// Reads that come back EINTR (seen inside app containers on macOS) go
+// through when tried again.
+fn retry_interrupted<T>(mut f: impl FnMut() -> io::Result<T>) -> io::Result<T> {
+	let mut tries = 1;
+	loop {
+		match f() {
+			Err(err) if err.kind() == io::ErrorKind::Interrupted && tries < 5 => tries += 1,
+			result => return result,
+		}
+	}
+}
+
 fn rename(node: VfsNode, new_name: String) -> VfsNode {
 	match node {
 		VfsNode::Directory {
@@ -555,8 +574,13 @@ fn should_skip_dir(path: &Path, _dev: Option<u64>, _root_dev: Option<u64>) -> bo
 	false
 }
 
-fn record_error(state: &ScanState, target: &Path, err: &std::io::Error) {
-	let (kind, code) = classify_error(err);
+// `depth` is `target`'s below the scan root. The root's own failure is
+// always reported: it's the only explanation for an empty scan.
+fn record_error(state: &ScanState, target: &Path, depth: u64, err: &io::Error) {
+	if depth > 0 && is_expected_denial(state, target, err) {
+		return;
+	}
+	let (kind, code) = classify_error(state, err);
 	let scan_err = ScanError {
 		path: target.to_string_lossy().into_owned(),
 		kind,
@@ -568,7 +592,62 @@ fn record_error(state: &ScanState, target: &Path, err: &std::io::Error) {
 	}
 }
 
-fn classify_error(err: &std::io::Error) -> (ScanErrorKind, Option<String>) {
+// Folders that are locked the same way on every machine like this one, and
+// that nothing short of running as root would open, aren't worth an issue
+// each. A whole-disk scan turns up hundreds, mostly in /private/var.
+// - Another account owns it (root, or a service account like _spotlight):
+//   it's private by design.
+// - A refusal by macOS policy that Full Disk Access wouldn't lift: any, once
+//   the app has it, and those outside the user's home folder regardless.
+//   That's System Integrity Protection, and Apple's data vaults (some in
+//   ~/Library, more in the user's temporary folders under
+//   /private/var/folders). The rest, inside the home folder without Full
+//   Disk Access, are mostly privacy protection, which granting it lifts;
+//   those are reported, as `Protected`.
+#[cfg(unix)]
+fn is_expected_denial(state: &ScanState, path: &Path, err: &io::Error) -> bool {
+	if err.kind() != io::ErrorKind::PermissionDenied {
+		return false;
+	}
+	// SAFETY: getuid has no preconditions and can't fail.
+	let uid = unsafe { libc::getuid() };
+	if fs::symlink_metadata(path).is_ok_and(|meta| meta.uid() != uid) {
+		return true;
+	}
+	is_policy_refusal(err)
+		&& (state.full_disk_access
+			|| !std::env::home_dir().is_some_and(|home| path.starts_with(home)))
+}
+
+#[cfg(not(unix))]
+fn is_expected_denial(_state: &ScanState, _path: &Path, _err: &io::Error) -> bool {
+	false
+}
+
+// macOS answers EPERM, rather than the EACCES of a file's own permissions,
+// when system policy refuses: privacy protection, System Integrity
+// Protection, data vaults.
+#[cfg(unix)]
+fn is_policy_refusal(err: &io::Error) -> bool {
+	cfg!(target_os = "macos") && err.raw_os_error() == Some(libc::EPERM)
+}
+
+#[cfg(not(unix))]
+fn is_policy_refusal(_err: &io::Error) -> bool {
+	false
+}
+
+// Whether this process has Full Disk Access, going by the usual tell: the
+// user's own privacy database is off limits without it. Always false off
+// macOS, which has no such thing.
+fn has_full_disk_access() -> bool {
+	cfg!(target_os = "macos")
+		&& std::env::home_dir().is_some_and(|home| {
+			fs::read_dir(home.join("Library/Application Support/com.apple.TCC")).is_ok()
+		})
+}
+
+fn classify_error(state: &ScanState, err: &io::Error) -> (ScanErrorKind, Option<String>) {
 	let raw = err.raw_os_error();
 	let code = raw.and_then(errno_name);
 	let kind = if code.as_deref() == Some("ELOOP") {
@@ -576,6 +655,9 @@ fn classify_error(err: &std::io::Error) -> (ScanErrorKind, Option<String>) {
 	} else {
 		use std::io::ErrorKind::*;
 		match err.kind() {
+			PermissionDenied if is_policy_refusal(err) && !state.full_disk_access => {
+				ScanErrorKind::Protected
+			}
 			PermissionDenied => ScanErrorKind::Permission,
 			NotFound => ScanErrorKind::Missing,
 			_ => ScanErrorKind::Other,

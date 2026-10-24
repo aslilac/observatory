@@ -1,11 +1,15 @@
 import { AlertCircleIcon } from "lucide-react";
 
 type IssuesChipProps = {
-	count: number;
+	errors: Ob.ScanError[];
 	onClick: () => void;
 };
 
-export const IssuesChip: React.FC<IssuesChipProps> = ({ count, onClick }) => {
+export const IssuesChip: React.FC<IssuesChipProps> = ({ errors, onClick }) => {
+	// Folders macOS's privacy protection kept us out of are one issue, with
+	// one fix (Full Disk Access), however many of them there are.
+	const protectedCount = errors.filter((e) => e.kind === "protected").length;
+	const count = errors.length - protectedCount + (protectedCount > 0 ? 1 : 0);
 	if (count === 0) {
 		return null;
 	}

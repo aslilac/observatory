@@ -130,10 +130,7 @@ export const Inspect: React.FC<InspectProps> = ({ scan }) => {
 
 	const chips = (
 		<>
-			<IssuesChip
-				count={scanErrors.length}
-				onClick={() => setIssuesOpen(true)}
-			/>
+			<IssuesChip errors={scanErrors} onClick={() => setIssuesOpen(true)} />
 			<PerfChip
 				available={perfTree !== null}
 				onClick={() => setPerfOpen(true)}

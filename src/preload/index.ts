@@ -58,6 +58,7 @@ contextBridge.exposeInMainWorld("Ob", {
 	) => invoke("Ob.publishRecentScans", recents),
 	revealInFinder: (path: string) => invoke("Ob.revealInFinder", path),
 	openPath: (path: string) => invoke("Ob.openPath", path),
+	openFullDiskAccessSettings: () => invoke("Ob.openFullDiskAccessSettings"),
 	devLoadFakeDisk: () => invoke("Ob.devLoadFakeDisk"),
 
 	onDrives: (cb: (drives: Ob.PhysicalDrive[]) => void) => {

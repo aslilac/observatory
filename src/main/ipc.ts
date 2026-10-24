@@ -40,6 +40,11 @@ ipcMain.handle("Ob.getScanErrors", pass(getScanErrors));
 ipcMain.handle("Ob.publishRecentScans", pass(setRecentScans));
 ipcMain.handle("Ob.revealInFinder", pass(shell.showItemInFolder.bind(shell)));
 ipcMain.handle("Ob.openPath", pass(shell.openPath.bind(shell)));
+ipcMain.handle("Ob.openFullDiskAccessSettings", () =>
+	shell.openExternal(
+		"x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles",
+	),
+);
 ipcMain.handle(
 	"Ob.statPath",
 	pass(async (path: string): Promise<Ob.PathStat | null> => {
