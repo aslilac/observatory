@@ -1,0 +1,46 @@
+name: Check
+
+on:
+  push:
+    branches: ["trunk"]
+  pull_request:
+    branches: ["**"]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  conformance:
+    name: Conformance
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        name: Checkout
+
+      - uses: crate-ci/typos@v1
+        name: Spellcheck
+
+      - uses: dtolnay/rust-toolchain@stable
+        name: Configure Rust
+
+      - run: cargo fmt -- --check
+        name: Format
+
+      - uses: actions/cache@v4
+        name: Configure cache
+        with:
+          path: |
+            ~/.cargo/git/
+            ~/.cargo/registry/
+            build/
+          key: cargo-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: cargo-${{ github.workflow }}-${{ github.job }}-
+
+      - run: cargo clippy
+        name: Lint
+
+      - run: cargo test
+        name: Test
