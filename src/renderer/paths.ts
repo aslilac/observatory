@@ -1,23 +1,33 @@
-// Renderer-side path join. We never see Windows paths in this app (the
-// scan roots come from the volume list or a POSIX dialog on Linux/macOS), so
-// forward slashes and a couple of normalizations are enough.
-export function joinPath(base: string, ...rest: string[]): string {
-	const trimmedBase = base === "/" ? "" : base.replace(/\/+$/, "");
-	const tail = rest
-		.filter((p) => p.length > 0)
-		.map((p) => p.replace(/^\/+|\/+$/g, ""))
-		.filter((p) => p.length > 0)
-		.join("/");
-	if (!tail) {
-		return base;
-	}
-	return `${trimmedBase}/${tail}`;
+// Paths here are written the way the platform writes them, as the scanner's
+// search does: Windows puts "\" between names and takes "/" too. Everywhere
+// else "/" is the only separator, and "\" is a character a name can have.
+const windows = () => Ob.platform === "win32";
+
+// `path` without the separators it ends with.
+function trimEnd(path: string): string {
+	return path.replace(windows() ? /[/\\]+$/ : /\/+$/, "");
 }
 
-// Last path segment, tolerant of trailing separators and Windows paths.
-// A bare root ("/") is its own name.
+// Where the last separator before `end` is, or -1.
+function lastSeparator(path: string, end = path.length): number {
+	const slash = path.lastIndexOf("/", end - 1);
+	return windows() ? Math.max(slash, path.lastIndexOf("\\", end - 1)) : slash;
+}
+
+// `names` inside `base`: "C:\" and "Users" are "C:\Users" on Windows, and "/"
+// and "Users" are "/Users" everywhere else.
+export function joinPath(base: string, ...names: string[]): string {
+	const rest = names.filter((name) => name.length > 0);
+	if (rest.length === 0) {
+		return base;
+	}
+	return [trimEnd(base), ...rest].join(windows() ? "\\" : "/");
+}
+
+// Last path segment, tolerant of trailing separators. A bare root ("/") is
+// its own name.
 export function basename(p: string): string {
-	const trimmed = p.replace(/[/\\]+$/, "") || p;
-	const slash = Math.max(trimmed.lastIndexOf("/"), trimmed.lastIndexOf("\\"));
+	const trimmed = trimEnd(p) || p;
+	const slash = lastSeparator(trimmed);
 	return slash >= 0 ? trimmed.slice(slash + 1) || trimmed : trimmed;
 }

@@ -293,6 +293,10 @@ export function removePath(target: string) {
 	}
 }
 
+// Windows takes either slash. Everywhere else "\" is a character a name can
+// have.
+const separator = process.platform === "win32" ? /[/\\]/ : /\//;
+
 // The names leading from `root` down to `target`; empty if `target` is
 // `root` itself or isn't inside it.
 function partsBelow(root: string, target: string): string[] {
@@ -301,10 +305,10 @@ function partsBelow(root: string, target: string): string[] {
 	}
 	const rest = target.slice(root.length);
 	// "/a/bc" isn't inside "/a/b", though anything is inside "/" or "C:\".
-	if (!/^[/\\]/.test(rest) && !/[/\\]$/.test(root)) {
+	if (!separator.test(rest.charAt(0)) && !separator.test(root.slice(-1))) {
 		return [];
 	}
-	return rest.split(/[/\\]+/).filter(Boolean);
+	return rest.split(separator).filter(Boolean);
 }
 
 export function cancelScan(path: string) {

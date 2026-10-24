@@ -1,4 +1,5 @@
 import { app, Menu, type MenuItemConstructorOptions, shell } from "electron";
+import * as path from "node:path";
 import { setInspecting } from "./broadcast";
 import { selectDirectory } from "./dialog";
 import { startScan } from "./vfsManager";
@@ -13,11 +14,10 @@ type RecentScan = { path: string; scannedAt: number };
 // menu around the current snapshot.
 let recentScans: RecentScan[] = [];
 
+// Node's basename splits the way the platform does. A root ("/", "C:\")
+// has no name, so it's its own label.
 function recentLabel(p: string): string {
-	const trimmed = p.replace(/[/\\]+$/, "") || p;
-	const slash = Math.max(trimmed.lastIndexOf("/"), trimmed.lastIndexOf("\\"));
-	const base = slash >= 0 ? trimmed.slice(slash + 1) : trimmed;
-	return base || trimmed;
+	return path.basename(p) || p;
 }
 
 function recentItems(): MenuItemConstructorOptions[] {
