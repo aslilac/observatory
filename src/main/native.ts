@@ -27,6 +27,7 @@ const nativePath = path.resolve(
 
 type RawNativeBinding = {
 	Scan: RawNativeScanClass;
+	volumes(): NativeVolume[];
 };
 
 type RawNativeScanClass = {
@@ -160,3 +161,23 @@ export class Scan {
 }
 
 export type NativeScan = Scan;
+
+// A disk or network share there is to scan (`Volume` in
+// rust-backend/volumes.rs).
+export type NativeVolume = {
+	path: string;
+	name: string;
+	network: boolean;
+	startup: boolean;
+	external: boolean;
+	encrypted: boolean;
+	server?: string;
+	protocol?: string;
+};
+
+// The disks attached to this machine and the shares mounted from others, as
+// the OS's file manager would list them. Only reads what the OS already
+// knows, so it's quick and never waits on a file server.
+export function volumes(): NativeVolume[] {
+	return raw.volumes();
+}

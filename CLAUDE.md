@@ -12,7 +12,7 @@ Package manager: **yarn** (yarn.lock is the source of truth; no committed packag
 
 Node: see `.nvmrc` (currently 22 LTS). Electron bundles its own Node, so this only governs build-side tooling.
 
-- `yarn` — install deps. After install, run `yarn configure` once to rebuild the native `drivelist` module against the Electron ABI, and `yarn build.native` once to build the napi-rs scanner (`rust-backend/observatory_scan.node`).
+- `yarn` — install deps. After install, run `yarn build.native` once to build the napi-rs scanner (`rust-backend/observatory_scan.node`).
 - `yarn build.native` — `node scripts/build-native.mjs`. Runs `cargo build --release --lib --features napi` in `rust-backend/`, then copies/renames the produced cdylib (libobservatory_scan.so/.dylib/.dll) to `rust-backend/observatory_scan.node`. Required before the main process can start — `vfsManager` requires this at module load.
 - `yarn dev` — `electron-vite dev`. Vite serves the renderer with HMR (typically `http://localhost:5173`); main + preload are bundled with esbuild and Electron auto-restarts on main-process changes. One process, one log stream.
 - `yarn build` — `electron-vite build`. Bundles all three processes into `build/main/index.js`, `build/preload/index.js`, and `build/renderer/` (multi-entry: `index.html` + `about.html`).
@@ -23,7 +23,7 @@ Node: see `.nvmrc` (currently 22 LTS). Electron bundles its own Node, so this on
 - `yarn fmt` — Prettier write. (No lint step; `tsc --strict` covers what ESLint would have.)
 - Rust backend: `cd rust-backend && cargo test` — runs the library unit tests against ephemeral tmp directories. No hardcoded paths.
 
-Build config lives in `electron.vite.config.ts` at the root — one file for all three processes. Renderer uses `@vitejs/plugin-react` and `@tailwindcss/vite` (Tailwind v4); main and preload use `externalizeDepsPlugin()` so runtime `dependencies` (notably the native `drivelist`) stay external.
+Build config lives in `electron.vite.config.ts` at the root — one file for all three processes. Renderer uses `@vitejs/plugin-react` and `@tailwindcss/vite` (Tailwind v4); main and preload use `externalizeDepsPlugin()` so runtime `dependencies` stay external.
 
 In dev, the main process reads `process.env.ELECTRON_RENDERER_URL` and loads from it; in packaged builds it falls back to `loadFile("../renderer/index.html")`. Same pattern for the about window.
 
@@ -43,7 +43,7 @@ RPC: `selectDirectory`, `scanPath`, `getDrives`, `getScans`, `getRenderTree(path
 
 ### State ownership
 
-- **Main**: `vfsManager.ts` holds two `Map`s — `drives` (polled every 5s via `drivelist`) and `scans` (`{ status, scan, drive, errors, perf, revision }` per path). The `scan` field is the native handle: it runs the walk, then holds the finished tree for the life of the entry (`cancelScan` releases it). `drive` is the label/capacity of a whole-disk scan, which the drive-agnostic scanner can't know. It exposes pure getters (`getDrives`, `getScans`, `getRenderTree`, …) and a `startScan(path)` mutator. Changes are emitted through a Node `EventEmitter`; `bridge.ts` subscribes and re-broadcasts to all `webContents.send(...)`.
+- **Main**: `vfsManager.ts` holds two `Map`s — `drives` (the native `volumes()`, polled every 5s) and `scans` (`{ status, scan, drive, errors, perf, revision }` per path). The `scan` field is the native handle: it runs the walk, then holds the finished tree for the life of the entry (`cancelScan` releases it). `drive` is the label/capacity of a whole-disk scan, which the drive-agnostic scanner can't know. It exposes pure getters (`getDrives`, `getScans`, `getRenderTree`, …) and a `startScan(path)` mutator. Changes are emitted through a Node `EventEmitter`; `bridge.ts` subscribes and re-broadcasts to all `webContents.send(...)`.
 - **Renderer**: `Application.tsx` keeps `inspecting: string | null` and `cursor: string[]` in `useState`. `useDrives()` / `useScans()` hooks subscribe to the corresponding push events. `useRenderTree(path, cursor, status)` calls `Ob.getRenderTree` whenever path/cursor/status changes and the scan is `complete`.
 
 ### Scanning flow
@@ -68,10 +68,6 @@ Cancellation is cooperative: `cancelScan(path)` calls the native `scan.abort()` 
 
 Main → renderer "set inspecting" events still flow through `Ob.onSetInspecting`; right now only `bridge.ts:selectDirectory` uses it (so the user lands on the new scan after the dialog closes).
 
-### Native dependency
-
-`drivelist` is a native module — after `yarn install` you must run `yarn configure` (= `electron-rebuild -f -w drivelist`) or Electron will fail to load it.
-
 ### Build outputs
 
 `build/main/` (tsc), `build/preload.js` (esbuild bundle), `build/renderer/` (parcel). `tsconfig.build.json` excludes preload and renderer because they have their own bundlers; use the root `tsconfig.json` (and `yarn type-check`) for whole-project type checking.
@@ -82,7 +78,7 @@ Main → renderer "set inspecting" events still flow through `Ob.onSetInspecting
 
 - A library (`lib.rs`) — the scan algorithm
 - A CLI binary (`main.rs` → `observatory-scan`) — for ad-hoc scans and benchmarking; emits JSON to stdout and timing/counts to stderr
-- A napi-rs cdylib (`bindings.rs`, gated behind the `napi` cargo feature) — the .node file the Electron main process loads. Exposes a `Scan` class with `start()` (returns Promise of a summary), `progress()` (sync mid-scan snapshot), and `abort()`, plus queries over the tree it keeps afterwards: `size()`, `renderTree(cursor)`, `search(base, query)` (Promise), `remove(parts)`, and `release()`. `Scan.fromJson` wraps a pre-built tree (the dev fake disk). Async scan and search run on libuv's threadpool, so the JS main thread stays free for IPC
+- A napi-rs cdylib (`bindings.rs`, gated behind the `napi` cargo feature) — the .node file the Electron main process loads. Exposes a `Scan` class with `start()` (returns Promise of a summary), `progress()` (sync mid-scan snapshot), and `abort()`, plus queries over the tree it keeps afterwards: `size()`, `renderTree(cursor)`, `search(base, query)` (Promise), `remove(parts)`, and `release()`. `Scan.fromJson` wraps a pre-built tree (the dev fake disk). Alongside it, `volumes()` (`volumes.rs`) lists the disks and network shares there are to scan, as the OS's file manager would: on macOS the mount table (`getfsstat`) minus `nobrowse` mounts, with DiskArbitration for volume names and to drop disk images; on Linux `/proc/self/mounts` (device-backed, minus loop devices, plus SMB/NFS/sshfs) with udev labels; on Windows the drive letters (`GetDriveTypeW`, volume labels, `WNetGetConnectionW` for mapped shares). Each volume also says whether it's the startup volume, external, or encrypted (macOS: DiskArbitration, with `/` taking its Data volume's encryption, since FileVault leaves the sealed system snapshot alone; Linux: sysfs, a dm-crypt mapping anywhere under the device and a USB bus in its path; Windows: `SystemDrive` and the storage bus type, BitLocker not yet), and a share's server and protocol are parsed out of its mount source. None of it contacts a file server. How full each one is comes from `statfs` in `vfsManager.readVolumeUsage`, which keeps one call per path in flight, since a vanished server can leave the call hanging on a libuv thread. Async scan and search run on libuv's threadpool, so the JS main thread stays free for IPC
 
 Commands (all from `rust-backend/`):
 

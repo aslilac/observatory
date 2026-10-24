@@ -45,7 +45,6 @@ jobs:
       - uses: actions/checkout@v6
 
       - run: yarn
-      - run: yarn configure
 
       # CLEANUP: improve fallow scores
       - run: yarn check.health

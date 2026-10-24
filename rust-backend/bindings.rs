@@ -1,19 +1,21 @@
 // N-API exports for the scanner.
 //
-// The whole surface is one class, `Scan`: a handle that walks a directory on
-// libuv's threadpool (via napi-rs AsyncTask, so the JS main thread stays
-// free to handle IPC), reports progress while it runs, and then holds on to
-// the finished tree. The tree itself never crosses into JS (see tree.rs);
-// the main process asks the handle for the slices it needs instead.
+// The surface is one class, `Scan`, plus `volumes()` (see volumes.rs).
+// A `Scan` is a handle that walks a directory on libuv's threadpool (via
+// napi-rs AsyncTask, so the JS main thread stays free to handle IPC),
+// reports progress while it runs, and then holds on to the finished tree.
+// The tree itself never crosses into JS (see tree.rs); the main process asks
+// the handle for the slices it needs instead.
 //
 // Results come back as JSON strings for the JS side to parse. V8's
 // JSON.parse is optimized C++, where building the same objects through
-// N-API is one round trip across the binding per property. The exception is
-// the small, frequently polled progress snapshot, built directly below.
+// N-API is one round trip across the binding per property. The exceptions
+// are small and frequently polled: the progress snapshot, built directly
+// below, and the list of volumes.
 
 use crate::{
 	CountsSnapshot, PerfNode, ScanError, ScanResult, ScanState, VfsNode, root_dev_id, run_scan,
-	snapshot_perf, tree,
+	snapshot_perf, tree, volumes::Volume,
 };
 use napi::bindgen_prelude::*;
 use napi::{Env, JsObject, JsString, Task};
@@ -188,6 +190,13 @@ impl Scan {
 			std::thread::spawn(move || drop(root));
 		}
 	}
+}
+
+/// The disks and network shares there are to scan. Only reads what the OS
+/// already knows, so it's quick and never waits on a file server.
+#[napi]
+pub fn volumes() -> Vec<Volume> {
+	crate::volumes::volumes()
 }
 
 // Nothing panics partway through changing the tree while holding the lock,

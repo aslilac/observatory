@@ -17,7 +17,7 @@ Install dependencies:
 
 ```shell
 yarn
-yarn configure
+yarn build.native
 ```
 
 To run in development:

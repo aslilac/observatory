@@ -1,8 +1,8 @@
-import * as drivelist from "drivelist";
 import { app } from "electron";
 import { EventEmitter } from "node:events";
 import * as fs from "node:fs";
-import { Scan, type NativeScan } from "./native";
+import { setTimeout as sleep } from "node:timers/promises";
+import { Scan, volumes, type NativeScan } from "./native";
 import { PERF, timed, timedAsync } from "./perf";
 import { assembleRenderTree, type ScanDrive } from "./renderTree";
 
@@ -19,21 +19,8 @@ type ScanEntry = {
 	revision: number;
 };
 
-// Internal drive record. We expose `{ mountPath, description, usage }` over
-// IPC (the public `Ob.PhysicalDrive` shape), but the manager itself needs
-// the raw device size + mount label to describe a scan of a whole disk
-// once it completes — that's where `capacity` (for the legend's free
-// space row, sunburst position math, etc.) and the friendly drive name
-// come from. The native scanner has no concept of drives.
-type DriveInfo = {
-	mountPath: string;
-	label: string | null;
-	size: number | null;
-	deviceDescription: string;
-	usage: Ob.DriveUsage | null;
-};
-
-const drives = new Map<string, DriveInfo>();
+// The disks and network shares there are to scan, by mount path.
+const drives = new Map<string, Ob.PhysicalDrive>();
 const scans = new Map<string, ScanEntry>();
 
 const emitter = new EventEmitter();
@@ -49,11 +36,7 @@ export function onScansChange(cb: (scans: Ob.ScanInfo[]) => void) {
 }
 
 export function getDrives(): Ob.PhysicalDrive[] {
-	return Array.from(drives.values()).map((d) => ({
-		mountPath: d.mountPath,
-		description: d.label || `${d.mountPath} (${d.deviceDescription})`,
-		...(d.usage ? { usage: d.usage } : {}),
-	}));
+	return Array.from(drives.values());
 }
 
 export function getScans(): Ob.ScanInfo[] {
@@ -252,10 +235,10 @@ function errorMessage(err: unknown): string {
 	return err.message || `The scanner failed (${code ?? err.name})`;
 }
 
-// If the scan's root path matches a drivelist mountpoint, the drive's mount
-// label and total capacity. The renderer uses the capacity for the legend's
+// If the scan's root path is a drive's mount path, the drive's name and
+// total capacity. The renderer uses the capacity for the legend's
 // free-space row and to anchor sunburst slice positions; the name becomes
-// the user-visible scan label in the title bar. The native scanner is
+// the user-visible scan label in the title bar. The scanner itself is
 // drive-agnostic by design, so this glue lives here.
 function scanDrive(scanPath: string): ScanDrive | null {
 	const drive = drives.get(scanPath);
@@ -263,8 +246,8 @@ function scanDrive(scanPath: string): ScanDrive | null {
 		return null;
 	}
 	return {
-		name: drive.label || `${drive.deviceDescription} (${drive.mountPath})`,
-		capacity: drive.size,
+		name: drive.description,
+		capacity: drive.usage?.total ?? null,
 	};
 }
 
@@ -336,49 +319,27 @@ export function cancelScan(path: string) {
 }
 
 async function pollDrives() {
-	const driveList = await timedAsync("drivelist.list", () => drivelist.list());
-	const next = new Map<string, DriveInfo>();
-
-	for (const device of driveList) {
-		// Disk images attach through macOS's "Virtual Interface": simulator
-		// runtimes, Time Machine network backups ("Backups of …"), mounted
-		// .dmg files. None of them are disks anyone means to scan. Real disks
-		// — and the APFS containers synthesized on top of them — report their
-		// hardware bus instead (Apple Fabric, USB, Thunderbolt, …).
-		if (
-			process.platform === "darwin" &&
-			device.busType === "Virtual Interface"
-		) {
-			continue;
-		}
-
-		for (const mount of device.mountpoints) {
-			if (
-				process.platform === "darwin" &&
-				mount.path.startsWith("/System/Volumes")
-			) {
-				continue;
-			}
-
-			if (!next.has(mount.path)) {
-				next.set(mount.path, {
-					mountPath: mount.path,
-					label: mount.label || null,
-					size: device.size ?? null,
-					deviceDescription: device.description,
-					usage: null,
-				});
-			}
-		}
+	const next = new Map<string, Ob.PhysicalDrive>();
+	for (const { path, name, ...facts } of timed("volumes", volumes)) {
+		next.set(path, { mountPath: path, description: name, ...facts });
 	}
 
+	// A share whose server has dropped off the network can take a minute to
+	// answer statfs. Rather than hold up the whole list for it, keep what it
+	// said last time.
 	await Promise.all(
 		Array.from(next.values(), async (drive) => {
-			drive.usage = await readVolumeUsage(drive.mountPath);
+			const usage = await Promise.race([
+				readVolumeUsage(drive.mountPath),
+				sleep(1000).then(() => drives.get(drive.mountPath)?.usage),
+			]);
+			if (usage) {
+				drive.usage = usage;
+			}
 		}),
 	);
 
-	if (!areMapsSimilar(drives, next) || usageMoved(drives, next)) {
+	if (!sameDrives(drives, next) || usageMoved(drives, next)) {
 		drives.clear();
 		for (const [key, value] of next) {
 			drives.set(key, value);
@@ -398,31 +359,42 @@ app.on("ready", () => {
 // sealed system snapshot that shares its container with the Data volume,
 // and `blocks - bfree` covers the whole container (what Finder calls used),
 // where df's per-volume figure for `/` doesn't.
-export async function readVolumeUsage(
-	path: string,
-): Promise<Ob.DriveUsage | null> {
-	try {
-		const stats = await fs.promises.statfs(path);
-		return {
-			total: stats.blocks * stats.bsize,
-			used: (stats.blocks - stats.bfree) * stats.bsize,
-			available: stats.bavail * stats.bsize,
-		};
-	} catch {
-		return null;
+//
+// On a network share, statfs asks the server, and one that has gone away
+// leaves the call hanging, holding one of the few libuv threadpool threads
+// that scans and every other fs call wait on. So there's only ever one read
+// of a path out at a time, which everyone asking shares.
+const usageReads = new Map<string, Promise<Ob.DriveUsage | null>>();
+
+export function readVolumeUsage(path: string): Promise<Ob.DriveUsage | null> {
+	let read = usageReads.get(path);
+	if (!read) {
+		read = fs.promises
+			.statfs(path)
+			.then(
+				(stats) => ({
+					total: stats.blocks * stats.bsize,
+					used: (stats.blocks - stats.bfree) * stats.bsize,
+					available: stats.bavail * stats.bsize,
+				}),
+				() => null,
+			)
+			.finally(() => usageReads.delete(path));
+		usageReads.set(path, read);
 	}
+	return read;
 }
 
 // Free space drifts on every poll, so only re-broadcast once a drive's usage
 // has moved by a visible amount (0.1% of its capacity, finer than the size
 // labels or meter can show) since the last broadcast.
 function usageMoved(
-	prev: Map<string, DriveInfo>,
-	next: Map<string, DriveInfo>,
+	prev: Map<string, Ob.PhysicalDrive>,
+	next: Map<string, Ob.PhysicalDrive>,
 ): boolean {
 	for (const [key, drive] of next) {
 		const before = prev.get(key)?.usage ?? null;
-		const after = drive.usage;
+		const after = drive.usage ?? null;
 		if (!before || !after) {
 			if (before !== after) {
 				return true;
@@ -436,13 +408,26 @@ function usageMoved(
 	return false;
 }
 
-function areMapsSimilar<K = unknown, V = unknown>(a: Map<K, V>, b: Map<K, V>) {
-	if (a.size !== b.size) {
+// Whether `next` lists the same drives as `prev`, the same in everything but
+// how full they are. A drive letter on Windows can go to a different disk
+// between polls.
+function sameDrives(
+	prev: Map<string, Ob.PhysicalDrive>,
+	next: Map<string, Ob.PhysicalDrive>,
+): boolean {
+	if (prev.size !== next.size) {
 		return false;
 	}
-
-	const keysA = Array.from(a.keys());
-	const keysB = Array.from(b.keys());
-
-	return keysA.every((key) => keysB.includes(key));
+	for (const [key, drive] of next) {
+		const before = prev.get(key);
+		if (!before || driveFacts(before) !== driveFacts(drive)) {
+			return false;
+		}
+	}
+	return true;
 }
+
+// Both sides build drives the same way, so their keys come out in the same
+// order.
+const driveFacts = ({ usage: _usage, ...facts }: Ob.PhysicalDrive) =>
+	JSON.stringify(facts);

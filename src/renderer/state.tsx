@@ -130,7 +130,7 @@ export function useRenderTree(
 }
 
 // Renderer-side path join. We never see Windows paths in this app (the
-// scan roots come from drivelist or a POSIX dialog on Linux/macOS), so
+// scan roots come from the volume list or a POSIX dialog on Linux/macOS), so
 // forward slashes and a couple of normalizations are enough.
 export function joinPath(base: string, ...rest: string[]): string {
 	const trimmedBase = base === "/" ? "" : base.replace(/\/+$/, "");

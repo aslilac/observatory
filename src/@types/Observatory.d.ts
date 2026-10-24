@@ -48,6 +48,20 @@ declare global {
 		export interface PhysicalDrive {
 			mountPath: string;
 			description: string;
+			// A share mounted from another machine (SMB, NFS, …) rather than
+			// a disk attached to this one.
+			network: boolean;
+			// The volume the OS started up from.
+			startup: boolean;
+			// On a disk that's plugged in (USB, an SD card) rather than built
+			// in.
+			external: boolean;
+			// Encrypted at rest (FileVault, LUKS). Always false on Windows.
+			encrypted: boolean;
+			// For a share: the machine it's from ("Pecha") and what it's
+			// shared over ("SMB"), when the OS says.
+			server?: string;
+			protocol?: string;
 			// OS-reported space (statfs). Absent if the volume couldn't be
 			// queried.
 			usage?: DriveUsage;

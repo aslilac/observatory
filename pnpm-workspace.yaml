@@ -1,5 +1,4 @@
 nodeLinker: hoisted
 allowBuilds:
-  drivelist: true
   electron: true
   electron-winstaller: true

@@ -698,6 +698,7 @@ fn errno_name(n: i32) -> Option<String> {
 mod bindings;
 
 pub mod tree;
+pub mod volumes;
 
 #[cfg(test)]
 mod tests {
