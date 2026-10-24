@@ -17,7 +17,7 @@ Node: see `.nvmrc` (currently 22 LTS). Electron bundles its own Node, so this on
 - `yarn dev` — `electron-vite dev`. Vite serves the renderer with HMR (typically `http://localhost:5173`); main + preload are bundled with esbuild and Electron auto-restarts on main-process changes. One process, one log stream.
 - `yarn build` — `electron-vite build`. Bundles all three processes into `build/main/index.js`, `build/preload/index.js`, and `build/renderer/` (multi-entry: `index.html` + `about.html`).
 - `yarn forge` — `build` + `electron-forge make`. DMG (macOS), Squirrel (win32), and zip artifacts.
-- `icon/build.sh` — regenerates the app icons (Blender, `uv`, Xcode 26+) and copies what ships (`icon.icns`, `Assets.car` for macOS 26, `icon.ico`, `icon.png`) into `build-resources/`, which `forge.config.js` reads. See `icon/README.md`.
+- `icon/build.sh` — regenerates the app icons (Blender, `uv`, Xcode 26+) and copies what ships (`icon.icns`, `Assets.car` for macOS 26, `icon.ico`, `icon.png`, and the About window's per-platform `about/*.png`) into `build-resources/`, which `forge.config.js` reads. See `icon/README.md`.
 - `yarn preview` — `electron-vite preview`. Runs the packaged build without rebuilding — useful to verify `file://` loading for the renderer.
 - `yarn type-check` — `tsc --noEmit` over the whole project.
 - `yarn test` — Vitest, single run. `yarn test:watch` for the watcher.
@@ -65,7 +65,7 @@ Cancellation is cooperative: `cancelScan(path)` calls the native `scan.abort()` 
 
 ### Renderer UI
 
-`Application.tsx` switches between `<Menu/>` (drive picker) and `<Display/>` based on whether the inspected scan is complete and a render tree has loaded. `<Display/>` composes `<List/>` and `<Sunburst/>` and passes navigation callbacks down (no global dispatch). Styling is Tailwind v4 utilities inline on JSX; theme variables, the `darwin:` / `win32:` / `linux:` custom variants, and a single `.btn` component class live in `src/renderer/resources/app.css`. The about window uses its own `about.css` entry. Tailwind is wired through `@tailwindcss/vite` in the renderer config.
+`Application.tsx` switches between `<Menu/>` (drive picker) and `<Display/>` based on whether the inspected scan is complete and a render tree has loaded. `<Display/>` composes `<List/>` and `<Sunburst/>` and passes navigation callbacks down (no global dispatch). Styling is Tailwind v4 utilities inline on JSX; theme variables, the `darwin:` / `win32:` / `linux:` custom variants, and a single `.btn` component class live in `src/renderer/resources/app.css`. The about window uses its own `about.css` entry, and shows the platform's app icon (`about.ts`, from `build-resources/about/`); it has no preload, so main passes the platform in its URL. Tailwind is wired through `@tailwindcss/vite` in the renderer config.
 
 Main → renderer "set inspecting" events still flow through `Ob.onSetInspecting`; right now only `bridge.ts:selectDirectory` uses it (so the user lands on the new scan after the dialog closes).
 

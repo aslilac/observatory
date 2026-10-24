@@ -80,11 +80,16 @@ export function showAboutWindow() {
 		});
 
 		// Load the about page — Vite dev server in dev, bundled HTML in prod.
+		// It shows this platform's icon, and has no preload to ask with.
+		const query = { platform: process.platform };
 		if (RENDERER_DEV_URL) {
-			void aboutWindow.loadURL(`${RENDERER_DEV_URL}/views/about/about.html`);
+			void aboutWindow.loadURL(
+				`${RENDERER_DEV_URL}/views/about/about.html?${new URLSearchParams(query)}`,
+			);
 		} else {
 			void aboutWindow.loadFile(
 				path.join(__dirname, "../renderer/views/about/about.html"),
+				{ query },
 			);
 		}
 

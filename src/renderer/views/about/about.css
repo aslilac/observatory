@@ -48,17 +48,13 @@ main {
 	text-align: center;
 }
 
+/* Each platform's icon brings its own padding and shadow, after that
+   platform's guidelines, so they're all shown the same size, as is. */
 .icon {
-	width: 96px;
-	height: 96px;
-	margin: 0 auto 18px;
-	filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.45));
-}
-
-.icon svg {
 	display: block;
-	width: 100%;
-	height: 100%;
+	width: 112px;
+	height: 112px;
+	margin: 0 auto 18px;
 }
 
 h1 {
