@@ -13,6 +13,7 @@ import { buildFakeDisk } from "./fixtures";
 import { selectDirectory } from "./dialog";
 import { restartAsAdmin } from "./elevation";
 import { setRecentScans } from "./menu";
+import { applyUpdate, getUpdate } from "./updates";
 import { titleBarOverlay } from "./viewManager";
 import {
 	cancelScan,
@@ -63,6 +64,8 @@ ipcMain.handle("Ob.openFullDiskAccessSettings", () =>
 	),
 );
 ipcMain.handle("Ob.restartAsAdmin", restartAsAdmin);
+ipcMain.handle("Ob.getUpdate", pass(getUpdate));
+ipcMain.handle("Ob.applyUpdate", pass(applyUpdate));
 
 // The title bar Windows and Linux draw their window buttons over (see
 // titleBarOverlay in viewManager.ts), and the menu there's no bar for.

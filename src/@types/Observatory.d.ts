@@ -60,6 +60,12 @@ declare global {
 		// Opens the application menu's `index`th submenu at (x, y), in CSS
 		// pixels from the window's top left.
 		function popupAppMenu(index: number, x: number, y: number): Promise<void>;
+		// A new version of the app, if there's one out (see
+		// src/main/updates.ts).
+		function getUpdate(): Promise<Update | null>;
+		// Restarts into the update, once it's downloaded, or opens the new
+		// version's release page, where the app can't update itself.
+		function applyUpdate(): Promise<void>;
 		// Dev-only. Resolves to the synthetic scan path so the renderer can
 		// onOpen() it; rejects in packaged builds where the handler isn't
 		// registered.
@@ -68,8 +74,15 @@ declare global {
 		// Push events (main -> renderer); each returns an unsubscribe.
 		function onDrives(cb: (drives: PhysicalDrive[]) => void): () => void;
 		function onScans(cb: (scans: ScanInfo[]) => void): () => void;
+		function onUpdate(cb: (update: Update | null) => void): () => void;
 		function onSetInspecting(cb: (path: string | null) => void): () => void;
 		function onNav(cb: (direction: "back" | "forward") => void): () => void;
+
+		// Downloaded, to be installed on the next start, or only out, to be
+		// downloaded from its release page.
+		export type Update =
+			| { status: "downloaded" }
+			| { status: "available"; version: string };
 
 		export interface PhysicalDrive {
 			mountPath: string;

@@ -54,6 +54,19 @@ module.exports = {
 			);
 		},
 		name: "Observatory",
+		// Signed with a Developer ID and notarized, when release.yaml has the
+		// secrets for it: Squirrel.Mac only updates an app a team signed (see
+		// src/main/updates.ts). Otherwise the app's signed ad hoc.
+		...(process.env.APPLE_TEAM_ID
+			? {
+					osxSign: {},
+					osxNotarize: {
+						appleId: process.env.APPLE_ID,
+						appleIdPassword: process.env.APPLE_APP_SPECIFIC_PASSWORD,
+						teamId: process.env.APPLE_TEAM_ID,
+					},
+				}
+			: {}),
 	},
 	hooks: {
 		// The compiled macOS 26 icon goes next to the .icns in
@@ -82,7 +95,7 @@ module.exports = {
 			platforms: ["win32"],
 			config: {
 				iconUrl:
-					"https://raw.githubusercontent.com/aslilac/observatory/main/build-resources/icon.ico",
+					"https://raw.githubusercontent.com/aslilac/observatory/trunk/build-resources/icon.ico",
 				setupIcon: "./build-resources/icon.ico",
 			},
 		},

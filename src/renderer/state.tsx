@@ -21,6 +21,12 @@ export function useScans(): Ob.ScanInfo[] {
 	return scans;
 }
 
+export function useUpdate(): Ob.Update | null {
+	const [update, setUpdate] = useState<Ob.Update | null>(null);
+	useEffect(() => Ob.onUpdate(setUpdate), []);
+	return update;
+}
+
 export function useScanProgress(
 	path: string | null,
 	active: boolean,

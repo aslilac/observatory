@@ -69,6 +69,8 @@ contextBridge.exposeInMainWorld("Ob", {
 	getAppMenu: () => invoke("Ob.getAppMenu"),
 	popupAppMenu: (index: number, x: number, y: number) =>
 		invoke("Ob.popupAppMenu", index, x, y),
+	getUpdate: () => invoke("Ob.getUpdate"),
+	applyUpdate: () => invoke("Ob.applyUpdate"),
 	devLoadFakeDisk: () => invoke("Ob.devLoadFakeDisk"),
 
 	onDrives: (cb: (drives: Ob.PhysicalDrive[]) => void) => {
@@ -81,6 +83,13 @@ contextBridge.exposeInMainWorld("Ob", {
 	onScans: (cb: (scans: Ob.ScanInfo[]) => void) => {
 		const unsub = subscribe<Ob.ScanInfo[]>("Ob.scans", cb);
 		void invoke("Ob.getScans").then((scans) => cb(scans as Ob.ScanInfo[]));
+		return unsub;
+	},
+	onUpdate: (cb: (update: Ob.Update | null) => void) => {
+		const unsub = subscribe<Ob.Update | null>("Ob.update", cb);
+		void invoke("Ob.getUpdate").then((update) =>
+			cb(update as Ob.Update | null),
+		);
 		return unsub;
 	},
 	onSetInspecting: (cb: (path: string | null) => void) =>

@@ -5,6 +5,7 @@ import { app } from "electron";
 import { scanArgument } from "./elevation";
 import "./menu";
 import "./ipc";
+import { startUpdates } from "./updates";
 import { startScan } from "./vfsManager";
 import { createWindow } from "./viewManager";
 
@@ -16,5 +17,6 @@ app.on("ready", () => {
 		startScan(scan);
 	}
 	createWindow(scan);
+	startUpdates();
 });
 app.on("window-all-closed", app.quit);

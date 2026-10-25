@@ -26,6 +26,7 @@ import { PasteConfirm } from "./components/PasteConfirm";
 import { ScanFailed } from "./views/inspect/ScanFailed";
 import { Scanning } from "./views/inspect/Scanning";
 import { ThemeToggle } from "./components/ThemeToggle";
+import { UpdateButton } from "./components/UpdateButton";
 import { Welcome } from "./views/welcome/Welcome";
 
 export const Application: React.FC = () => {
@@ -244,13 +245,14 @@ const TitleBar: React.FC<TitleBarProps> = ({ title, theme, onToggleTheme }) => {
 				{title}
 			</div>
 			<div
-				className="absolute top-1/2 -translate-y-1/2 [-webkit-app-region:no-drag]"
+				className="absolute top-1/2 flex -translate-y-1/2 items-center gap-[4px] [-webkit-app-region:no-drag]"
 				// 10px in from any window controls at the right.
 				style={{
 					right:
 						"calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) + 10px)",
 				}}
 			>
+				<UpdateButton />
 				<ThemeToggle theme={theme} onToggle={onToggleTheme} />
 			</div>
 		</div>
