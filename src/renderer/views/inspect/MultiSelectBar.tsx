@@ -14,7 +14,9 @@ export const MultiSelectBar: React.FC<MultiSelectBarProps> = ({
 	onMoveToCleanup,
 	onCancel,
 }) => (
-	<div className="flex items-center gap-3 border-t border-line-soft bg-background px-3 py-2">
+	// As tall as the status line it stands in for (Inspect), so the view
+	// doesn't jump as things are selected.
+	<div className="flex h-[32px] flex-shrink-0 items-center gap-2 border-t border-line-soft bg-background px-3">
 		<div className="flex-1 text-[12px]">
 			<span className="font-medium">{count}</span>{" "}
 			<span className="text-muted">selected ·</span>{" "}

@@ -15,7 +15,7 @@
 // below, and the list of volumes.
 
 use crate::{
-	CountsSnapshot, PerfNode, Reserved, ScanError, ScanResult, ScanState, Tree, run_scan,
+	CountsSnapshot, PerfNode, Reserved, ScanError, ScanResult, ScanState, Tree, find, run_scan,
 	snapshot_perf, tree, volumes::Volume,
 };
 use napi::bindgen_prelude::*;
@@ -160,15 +160,36 @@ impl Scan {
 			.map_err(|e| Error::from_reason(format!("serialize failed: {e}")))
 	}
 
-	/// Searches the tree on libuv's threadpool, since it visits every node.
-	/// Resolves to JSON for a `tree::SearchResults` with paths under
-	/// `base_path`, or `null` before the scan finishes.
+	/// Finds what `query` (JSON for a `find::Query`) matches below the folder
+	/// at `cursor`, on libuv's threadpool, since it visits every node there.
+	/// Resolves to JSON for a `find::Found` with paths under `base_path`, or
+	/// `null` before the scan finishes or for a cursor that leads nowhere.
 	#[napi]
-	pub fn search(&self, base_path: String, query: String) -> AsyncTask<SearchTask> {
-		AsyncTask::new(SearchTask {
+	pub fn find(
+		&self,
+		base_path: String,
+		cursor: Vec<String>,
+		query: String,
+	) -> Result<AsyncTask<FindTask>> {
+		let query = serde_json::from_str(&query)
+			.map_err(|e| Error::from_reason(format!("not a query: {e}")))?;
+		Ok(AsyncTask::new(FindTask {
 			tree: Arc::clone(&self.tree),
 			base_path,
+			cursor,
 			query,
+		}))
+	}
+
+	/// How much each finder finds below the folder at `cursor`, in this scan
+	/// of `base_path`, on libuv's threadpool. Resolves to JSON for a list of `find::Summary`, or `null`
+	/// as `find` does.
+	#[napi]
+	pub fn summarize(&self, base_path: String, cursor: Vec<String>) -> AsyncTask<SummarizeTask> {
+		AsyncTask::new(SummarizeTask {
+			tree: Arc::clone(&self.tree),
+			base_path,
+			cursor,
 		})
 	}
 
@@ -278,22 +299,47 @@ impl Task for ScanTask {
 	}
 }
 
-pub struct SearchTask {
+pub struct FindTask {
 	tree: SharedTree,
 	base_path: String,
-	query: String,
+	cursor: Vec<String>,
+	query: find::Query,
 }
 
-impl Task for SearchTask {
+impl Task for FindTask {
 	type Output = String;
 	type JsValue = JsString;
 
 	fn compute(&mut self) -> Result<Self::Output> {
 		let held = read(&self.tree);
-		let results = held
+		let found = held
 			.as_ref()
-			.map(|tree| tree::search(tree, &self.base_path, &self.query));
-		serde_json::to_string(&results)
+			.and_then(|tree| find::find(tree, &self.base_path, &self.cursor, &self.query));
+		serde_json::to_string(&found)
+			.map_err(|e| Error::from_reason(format!("serialize failed: {e}")))
+	}
+
+	fn resolve(&mut self, env: Env, output: Self::Output) -> Result<Self::JsValue> {
+		env.create_string(&output)
+	}
+}
+
+pub struct SummarizeTask {
+	tree: SharedTree,
+	base_path: String,
+	cursor: Vec<String>,
+}
+
+impl Task for SummarizeTask {
+	type Output = String;
+	type JsValue = JsString;
+
+	fn compute(&mut self) -> Result<Self::Output> {
+		let held = read(&self.tree);
+		let summaries = held
+			.as_ref()
+			.and_then(|tree| find::summarize(tree, &self.base_path, &self.cursor));
+		serde_json::to_string(&summaries)
 			.map_err(|e| Error::from_reason(format!("serialize failed: {e}")))
 	}
 

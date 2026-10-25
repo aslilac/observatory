@@ -16,6 +16,7 @@ import { setRecentScans } from "./menu";
 import { titleBarOverlay } from "./viewManager";
 import {
 	cancelScan,
+	findInScan,
 	getDrives,
 	getRenderTree,
 	getScanErrors,
@@ -26,9 +27,9 @@ import {
 	onScansChange,
 	readVolumeUsage,
 	rescan,
-	searchScan,
 	startFakeScan,
 	startScan,
+	summarizeFinders,
 } from "./vfsManager";
 
 // Drop the `event` arg most handlers don't care about — saves repeating the
@@ -47,7 +48,8 @@ ipcMain.handle("Ob.getRenderTree", pass(getRenderTree));
 ipcMain.handle("Ob.getScanProgress", pass(getScanProgress));
 ipcMain.handle("Ob.getScanPerfTree", pass(getScanPerfTree));
 ipcMain.handle("Ob.deleteFiles", pass(deleteFiles));
-ipcMain.handle("Ob.searchScan", pass(searchScan));
+ipcMain.handle("Ob.findInScan", pass(findInScan));
+ipcMain.handle("Ob.summarizeFinders", pass(summarizeFinders));
 ipcMain.handle("Ob.getScanErrors", pass(getScanErrors));
 ipcMain.handle("Ob.publishRecentScans", pass(setRecentScans));
 ipcMain.handle(

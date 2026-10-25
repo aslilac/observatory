@@ -1028,6 +1028,7 @@ fn errno_name(n: i32) -> Option<String> {
 mod bindings;
 
 pub mod admin;
+pub mod find;
 pub mod reserved;
 pub use reserved::Reserved;
 

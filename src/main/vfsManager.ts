@@ -75,16 +75,33 @@ export function getScanErrors(path: string): Ob.ScanError[] {
 	return entry.errors;
 }
 
-export async function searchScan(
+export async function findInScan(
 	path: string,
-	query: string,
-): Promise<Ob.SearchResults | null> {
+	cursor: string[],
+	query: Ob.FindQuery,
+): Promise<Ob.Found | null> {
 	const entry = scans.get(path);
 	if (!entry || entry.status !== "complete" || !entry.scan) {
 		return null;
 	}
 	const scan = entry.scan;
-	return timedAsync(`searchScan("${query}")`, () => scan.search(path, query));
+	return timedAsync(`findInScan(${JSON.stringify(query)})`, () =>
+		scan.find(path, cursor, query),
+	);
+}
+
+export async function summarizeFinders(
+	path: string,
+	cursor: string[],
+): Promise<Ob.FinderSummary[] | null> {
+	const entry = scans.get(path);
+	if (!entry || entry.status !== "complete" || !entry.scan) {
+		return null;
+	}
+	const scan = entry.scan;
+	return timedAsync(`summarizeFinders(${cursor.length} deep)`, () =>
+		scan.summarize(path, cursor),
+	);
 }
 
 const EMPTY_COUNTS = {

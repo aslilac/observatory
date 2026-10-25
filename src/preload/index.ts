@@ -50,8 +50,10 @@ contextBridge.exposeInMainWorld("Ob", {
 	getScanPerfTree: (path: string) => invoke("Ob.getScanPerfTree", path),
 	deleteFiles: (paths: string[], mode: Ob.DeleteMode) =>
 		invoke("Ob.deleteFiles", paths, mode),
-	searchScan: (path: string, query: string) =>
-		invoke("Ob.searchScan", path, query),
+	findInScan: (path: string, cursor: string[], query: Ob.FindQuery) =>
+		invoke("Ob.findInScan", path, cursor, query),
+	summarizeFinders: (path: string, cursor: string[]) =>
+		invoke("Ob.summarizeFinders", path, cursor),
 	getScanErrors: (path: string) => invoke("Ob.getScanErrors", path),
 	statPath: (path: string) => invoke("Ob.statPath", path),
 	pathForFile: (file: File) => webUtils.getPathForFile(file),

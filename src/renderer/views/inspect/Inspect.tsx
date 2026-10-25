@@ -6,10 +6,11 @@ import { huesByPosition } from "#/colors";
 import { useNavigation } from "#/navigation";
 import {
 	useCleanupQueue,
+	useFind,
+	useFinderSummaries,
 	useRenderTree,
 	useScanErrors,
 	useScanPerfTree,
-	useSearch,
 } from "#/state";
 import { readableSize } from "#/format";
 import { joinPath } from "#/paths";
@@ -19,12 +20,13 @@ import { PerfChip } from "#/components/PerfChip";
 import { PerfModal } from "#/components/PerfModal";
 import { Segmented, Toolbar } from "#/components/Toolbar";
 import { CleanupChip } from "../cleanup/CleanupChip";
+import { FindBar } from "./FindBar";
+import { finderInfo } from "./finders";
+import { FindResults } from "./FindResults";
 import { FolderTree } from "./FolderTree";
 import { LegendList } from "./LegendList";
 import { MultiSelectBar } from "./MultiSelectBar";
 import { groupReserved } from "./reserved";
-import { SearchBar } from "./SearchBar";
-import { SearchResults } from "./SearchResults";
 import { type SortMode, SortPicker } from "./SortPicker";
 import { Sunburst } from "./Sunburst";
 import type { SelectableItem } from "./types";
@@ -48,14 +50,61 @@ export const Inspect: React.FC<InspectProps> = ({ scan }) => {
 	const [selection, setSelection] = useState<Map<string, SelectableItem>>(
 		() => new Map(),
 	);
-	const [query, setQuery] = useState("");
 	const [sortMode, setSortMode] = useState<SortMode>("size");
 	const [showAll, setShowAll] = useState(false);
-	const { results: searchResults, loading: searching } = useSearch(
+
+	// Find: what a finder finds, or what has a name, in place of the list
+	// while there's a query. It looks in the folder that was showing when
+	// the query started, and keeps to it while the user goes through the
+	// matches in the sunburst.
+	const [findText, setFindText] = useState("");
+	const [finder, setFinder] = useState<Ob.Finder | null>(null);
+	const [findScope, setFindScope] = useState<string[] | null>(null);
+	const [suggesting, setSuggesting] = useState(false);
+	const scope = findScope ?? cursor;
+	const findName = findText.trim();
+	const findQuery: Ob.FindQuery | null = findName
+		? { name: findName }
+		: finder
+			? { finder }
+			: null;
+	const { found, loading: finding } = useFind(
 		inspecting,
-		query,
+		scope,
+		findQuery,
+		scan.revision,
 	);
-	const searchActive = query.trim().length > 0;
+	const summaries = useFinderSummaries(
+		inspecting,
+		scope,
+		suggesting,
+		scan.revision,
+	);
+
+	const onFindText = (next: string) => {
+		setFindText(next);
+		if (next.trim()) {
+			setFinder(null);
+			setFindScope((prev) => prev ?? cursor);
+		} else if (!finder) {
+			setFindScope(null);
+		}
+	};
+	const pickFinder = (next: Ob.Finder) => {
+		setFinder(next);
+		setFindText("");
+		setFindScope(scope);
+		setSuggesting(false);
+	};
+	const clearFinder = () => {
+		setFinder(null);
+		setFindScope(null);
+	};
+	const clearFind = useCallback(() => {
+		setFindText("");
+		setFinder(null);
+		setFindScope(null);
+	}, []);
 
 	const onMoveOne = useCallback(
 		(item: SelectableItem) => addToCleanup([item]),
@@ -75,10 +124,10 @@ export const Inspect: React.FC<InspectProps> = ({ scan }) => {
 	// without losing prior selections.
 	useEffect(() => {
 		setSelection(new Map());
-		setQuery("");
+		clearFind();
 		setSortMode("size");
 		setShowAll(false);
-	}, [inspecting]);
+	}, [inspecting, clearFind]);
 
 	// Each new directory collapses the list back to top-N for size-sort so a
 	// previously-expanded view doesn't follow the user into a child folder.
@@ -160,6 +209,7 @@ export const Inspect: React.FC<InspectProps> = ({ scan }) => {
 	// sidebar header follows the directory the user has navigated into.
 	const currentName =
 		cursor.length > 0 ? cursor[cursor.length - 1]! : tree.name;
+	const scopeName = scope.length > 0 ? scope[scope.length - 1]! : tree.name;
 
 	return (
 		<>
@@ -180,18 +230,28 @@ export const Inspect: React.FC<InspectProps> = ({ scan }) => {
 								icon: <ListTreeIcon size={12} strokeWidth={2} />,
 							},
 						]}
-						onChange={setMode}
+						onChange={(next) => {
+							setMode(next);
+							clearFind();
+						}}
 					/>
 				}
 				chips={chips}
 			/>
-			<SearchBar
-				query={query}
-				onQueryChange={setQuery}
-				matchCount={searchResults?.totalCount ?? null}
-				loading={searching}
+			<FindBar
+				text={findText}
+				onTextChange={onFindText}
+				finder={finder}
+				onPickFinder={pickFinder}
+				onClearFinder={clearFinder}
+				onClear={clearFind}
+				suggesting={suggesting}
+				onSuggestingChange={setSuggesting}
+				summaries={summaries}
+				named={findName ? found : null}
+				scopeName={scopeName}
 				right={
-					!searchActive && mode === "list" ? (
+					!findQuery && mode === "list" ? (
 						<SortPicker value={sortMode} onChange={onSortChange} />
 					) : null
 				}
@@ -211,14 +271,23 @@ export const Inspect: React.FC<InspectProps> = ({ scan }) => {
 					onMoveToCleanup={onMoveOne}
 				/>
 				<div className="flex w-1/3 max-w-[600px] min-w-[340px] flex-shrink-0 flex-col overflow-auto p-4">
-					{searchActive ? (
-						<SearchResults
-							results={searchResults}
-							loading={searching}
-							query={query}
+					{findQuery ? (
+						<FindResults
+							title={
+								finder && !findName
+									? finderInfo(finder).label
+									: `Names with “${findName}”`
+							}
+							scopeName={scopeName}
+							found={found}
+							loading={finding}
+							showDates={!findName && finder === "old"}
+							viewing={joinPath(inspecting, ...cursor)}
 							selection={selection}
 							onToggleSelect={toggleSelect}
-							onMoveToCleanup={onMoveOne}
+							onMoveToCleanup={addToCleanup}
+							onOpen={(within) => setCursor([...scope, ...within])}
+							onClose={clearFind}
 						/>
 					) : mode === "list" ? (
 						<LegendList
@@ -261,7 +330,7 @@ export const Inspect: React.FC<InspectProps> = ({ scan }) => {
 					onMoveToCleanup={moveSelectedToCleanup}
 				/>
 			) : (
-				<div className="flex h-[28px] items-center border-t border-line-soft px-3 text-[11px] text-muted tabular-nums">
+				<div className="flex h-[32px] flex-shrink-0 items-center border-t border-line-soft px-3 text-[11px] text-muted tabular-nums">
 					{readableSize(tree.size)}
 					{reservedSize > 0 && (
 						<>

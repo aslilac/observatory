@@ -3,7 +3,7 @@ import type { SelectableItem } from "./views/inspect/types";
 
 const isMac = Ob.platform === "darwin";
 
-// Right-click items shared across LegendList, FolderTree, and SearchResults
+// Right-click items shared across LegendList, FolderTree, and FindResults
 // rows, and the sunburst's wedges. Keeps the four destructive-or-navigational
 // actions the design calls for; per-list controls (sort, etc.) live next to
 // their own UI.

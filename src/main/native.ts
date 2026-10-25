@@ -8,7 +8,7 @@
 //
 // A `Scan` walks a directory and then keeps the finished tree on the Rust
 // side, where the main process queries it: the slice of it the renderer
-// draws, search hits, removals after a trash. A whole disk is millions of
+// draws, what find finds, removals after a delete. A whole disk is millions of
 // nodes, too many for V8 to hold comfortably and too long to pass over as
 // one JSON string at all. What does cross comes back as JSON strings that
 // we JSON.parse here, which beats building V8 objects through N-API one
@@ -47,7 +47,8 @@ interface RawNativeScan {
 	abort(): void;
 	size(): number | null;
 	renderTree(cursor: string[]): string;
-	search(basePath: string, query: string): Promise<string>;
+	find(basePath: string, cursor: string[], query: string): Promise<string>;
+	summarize(basePath: string, cursor: string[]): Promise<string>;
 	remove(parts: string[]): boolean;
 	release(): void;
 }
@@ -145,14 +146,29 @@ export class Scan {
 		return JSON.parse(this.#inner.renderTree(cursor)) as RenderSlice | null;
 	}
 
-	// Runs off the main thread, since it visits every node. Hit paths are
-	// built on `basePath`.
-	async search(
+	// These two run off the main thread, since they visit everything below
+	// `cursor`. Null if it doesn't lead to a directory. `basePath` is the
+	// scan root's: match paths are built on it, and what's above the root
+	// can make a folder a cache.
+	async find(
 		basePath: string,
-		query: string,
-	): Promise<Ob.SearchResults | null> {
-		const json = await this.#inner.search(basePath, query);
-		return JSON.parse(json) as Ob.SearchResults | null;
+		cursor: string[],
+		query: Ob.FindQuery,
+	): Promise<Ob.Found | null> {
+		const json = await this.#inner.find(
+			basePath,
+			cursor,
+			JSON.stringify(query),
+		);
+		return JSON.parse(json) as Ob.Found | null;
+	}
+
+	async summarize(
+		basePath: string,
+		cursor: string[],
+	): Promise<Ob.FinderSummary[] | null> {
+		const json = await this.#inner.summarize(basePath, cursor);
+		return JSON.parse(json) as Ob.FinderSummary[] | null;
 	}
 
 	// Takes the entry at `parts` (names below the root) out of the tree.

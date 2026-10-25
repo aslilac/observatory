@@ -196,38 +196,83 @@ export function useScanErrors(
 // downstream consumers to see a "new" array each render.
 const EMPTY_ERRORS: Ob.ScanError[] = [];
 
-export function useSearch(
+// What `query` finds below the folder at `cursor`, refetched when the scan
+// changes under it (`revision`). Text is looked for once typing pauses,
+// rather than walking the disk at every key; a finder straight away.
+export function useFind(
 	path: string | null,
-	query: string,
-): { results: Ob.SearchResults | null; loading: boolean } {
-	const [results, setResults] = useState<Ob.SearchResults | null>(null);
-	const [loading, setLoading] = useState(false);
+	cursor: string[],
+	query: Ob.FindQuery | null,
+	revision: number | undefined,
+): { found: Ob.Found | null; loading: boolean } {
+	const key = path && query && JSON.stringify([path, cursor, query, revision]);
+	const named = query !== null && "name" in query;
+	const [answer, setAnswer] = useState<{
+		key: string;
+		named: boolean;
+		found: Ob.Found | null;
+	} | null>(null);
 
 	useEffect(() => {
-		const trimmed = query.trim();
-		if (!path || !trimmed) {
-			setResults(null);
-			setLoading(false);
+		if (!key || !path || !query) {
 			return;
 		}
-		let cancelled = false;
-		setLoading(true);
-		const id = setTimeout(() => {
-			void Ob.searchScan(path, trimmed).then((next) => {
-				if (cancelled) {
-					return;
-				}
-				setResults(next);
-				setLoading(false);
-			});
-		}, 180);
+		let active = true;
+		const id = setTimeout(
+			() => {
+				void Ob.findInScan(path, cursor, query).then((found) => {
+					if (active) {
+						setAnswer({ key, named, found });
+					}
+				});
+			},
+			named ? 180 : 0,
+		);
 		return () => {
-			cancelled = true;
+			active = false;
 			clearTimeout(id);
 		};
-	}, [path, query]);
+	}, [key]);
 
-	return { results, loading };
+	const current = !!key && answer?.key === key;
+	return {
+		// While text is typed, what the last text found stays up until the
+		// new matches are in, rather than flashing empty at every key.
+		found: current || (named && answer?.named) ? (answer?.found ?? null) : null,
+		loading: !!key && !current,
+	};
+}
+
+// How much each finder finds below the folder at `cursor`, while `enabled`.
+// Null until it's known.
+export function useFinderSummaries(
+	path: string | null,
+	cursor: string[],
+	enabled: boolean,
+	revision: number | undefined,
+): Ob.FinderSummary[] | null {
+	const key = path && enabled && JSON.stringify([path, cursor, revision]);
+	const [answer, setAnswer] = useState<{
+		key: string;
+		summaries: Ob.FinderSummary[] | null;
+	} | null>(null);
+
+	useEffect(() => {
+		if (!key || !path) {
+			return;
+		}
+		let active = true;
+		void Ob.summarizeFinders(path, cursor).then((summaries) => {
+			if (active) {
+				setAnswer({ key, summaries });
+			}
+		});
+		return () => {
+			active = false;
+		};
+	}, [key]);
+
+	return key && answer?.key === key ? answer.summaries : null;
 }
 
 export type RecentScan = {

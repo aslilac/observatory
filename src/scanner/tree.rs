@@ -4,24 +4,18 @@
 // handed to JS. A whole disk is millions of nodes: a lot of V8 heap (which
 // Electron caps at 4 GB), and as one JSON document, longer than V8 allows a
 // string to be. Nothing in the app needs all of it at once anyway. The
-// renderer only ever sees a pruned slice around the current directory or a
-// capped list of search hits, so those are cut here and only they cross
-// into JS.
+// renderer only ever sees a pruned slice around the current directory (or
+// a capped list of what find.rs finds), so those are cut here and only they
+// cross into JS.
 
 use crate::{Name, Tree, VfsNode};
 use serde::Serialize;
-use std::cmp::{Ordering, Reverse};
-use std::collections::BinaryHeap;
-use std::path::PathBuf;
-use string_interner::Symbol;
 
 // Entries smaller than this share of the current directory are left out of
 // the sunburst, which couldn't draw them at a visible size anyway.
 const SUNBURST_MIN_SHARE: f64 = 0.003;
 // Rings the sunburst draws below its innermost one.
 const SUNBURST_DEPTH: u32 = 6;
-// Search hits that come back with paths; the rest are only counted.
-const MATCH_CAP: usize = 500;
 
 /// What the renderer needs to draw one directory. The main process adds the
 /// drive glue (label, capacity) and the alphabetical tree view, which wants
@@ -112,7 +106,7 @@ fn prune<'a>(tree: &'a Tree, node: &'a VfsNode, depth: u32, min_size: f64) -> Pr
 
 // Follows `cursor` down from the root to the directory it names, adding up
 // the share of the root taken by the siblings ahead of it at each level.
-fn walk_to_cursor<'a>(tree: &'a Tree, cursor: &[String]) -> Option<(&'a VfsNode, f64)> {
+pub(crate) fn walk_to_cursor<'a>(tree: &'a Tree, cursor: &[String]) -> Option<(&'a VfsNode, f64)> {
 	let scale = tree.root.size() as f64;
 	let mut position = 0.0;
 	let mut current = &tree.root;
@@ -135,164 +129,6 @@ fn walk_to_cursor<'a>(tree: &'a Tree, cursor: &[String]) -> Option<(&'a VfsNode,
 		current = found?;
 	}
 	Some((current, position))
-}
-
-#[derive(Serialize, Debug, PartialEq)]
-pub struct SearchMatch {
-	pub path: String,
-	pub size: u64,
-	#[serde(rename = "type")]
-	pub kind: &'static str,
-}
-
-#[derive(Serialize, Debug, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct SearchResults {
-	/// The largest matches, largest first; ties keep scan order.
-	pub matches: Vec<SearchMatch>,
-	pub total_count: u64,
-	pub total_size: u64,
-	pub truncated: bool,
-}
-
-/// Every file and directory below the root whose name contains `query`,
-/// ignoring case. The search carries on inside matching directories. Only
-/// the `MATCH_CAP` largest come back with paths, which start at `base_path`;
-/// the rest are counted.
-pub fn search(tree: &Tree, base_path: &str, query: &str) -> SearchResults {
-	let needle = query.trim().to_lowercase();
-	if needle.is_empty() {
-		return SearchResults::default();
-	}
-	// Each name is checked once, rather than once per node that has it.
-	let mut matching = vec![false; tree.names.len()];
-	for (name, text) in &tree.names {
-		matching[name.to_usize()] = contains_folded(text, &needle);
-	}
-	let mut search = Search {
-		tree,
-		matching,
-		base_path,
-		stack: Vec::new(),
-		top: BinaryHeap::new(),
-		total_count: 0,
-		total_size: 0,
-	};
-	if let VfsNode::Directory { files, .. } = &tree.root {
-		for child in files {
-			search.visit(child);
-		}
-	}
-	SearchResults {
-		matches: search
-			.top
-			.into_sorted_vec()
-			.into_iter()
-			.map(|Reverse(hit)| hit.found)
-			.collect(),
-		truncated: search.total_count > MATCH_CAP as u64,
-		total_count: search.total_count,
-		total_size: search.total_size,
-	}
-}
-
-struct Search<'a> {
-	tree: &'a Tree,
-	// Whether each of the tree's names matches, by its index.
-	matching: Vec<bool>,
-	base_path: &'a str,
-	// Names from just below the root down to the node being visited.
-	stack: Vec<Name>,
-	// The best hits so far, worst on top so it's the one to evict.
-	top: BinaryHeap<Reverse<Hit>>,
-	total_count: u64,
-	total_size: u64,
-}
-
-impl<'a> Search<'a> {
-	fn visit(&mut self, node: &VfsNode) {
-		self.stack.push(node.name());
-		if self.matching[node.name().to_usize()] {
-			self.total_count += 1;
-			self.total_size += node.size();
-			self.offer(node);
-		}
-		if let VfsNode::Directory { files, .. } = node {
-			for child in files {
-				self.visit(child);
-			}
-		}
-		self.stack.pop();
-	}
-
-	// Keeps the hit if it's among the largest so far. The path is only
-	// built once it's in, since most hits on a broad query aren't.
-	fn offer(&mut self, node: &VfsNode) {
-		let rank = (node.size(), Reverse(self.total_count));
-		if self.top.len() == MATCH_CAP {
-			match self.top.peek() {
-				Some(Reverse(worst)) if rank > worst.rank => {
-					self.top.pop();
-				}
-				_ => return,
-			}
-		}
-		let mut path = PathBuf::from(self.base_path);
-		for &name in &self.stack {
-			path.push(self.tree.names.resolve(name).unwrap_or_default());
-		}
-		self.top.push(Reverse(Hit {
-			rank,
-			found: SearchMatch {
-				path: path.to_string_lossy().into_owned(),
-				size: node.size(),
-				kind: match node {
-					VfsNode::Directory { .. } => "directory",
-					VfsNode::File { .. } => "file",
-				},
-			},
-		}));
-	}
-}
-
-// Ordered by `rank` alone: size, then earlier in the scan.
-struct Hit {
-	rank: (u64, Reverse<u64>),
-	found: SearchMatch,
-}
-
-impl Ord for Hit {
-	fn cmp(&self, other: &Self) -> Ordering {
-		self.rank.cmp(&other.rank)
-	}
-}
-
-impl PartialOrd for Hit {
-	fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-		Some(self.cmp(other))
-	}
-}
-
-impl PartialEq for Hit {
-	fn eq(&self, other: &Self) -> bool {
-		self.rank == other.rank
-	}
-}
-
-impl Eq for Hit {}
-
-// Whether `name`, lowercased, contains `needle` (already lowercase). Most
-// names are ASCII, and those are compared in place rather than lowercased
-// into a new string per node.
-fn contains_folded(name: &str, needle: &str) -> bool {
-	if name.is_ascii() {
-		let (name, needle) = (name.as_bytes(), needle.as_bytes());
-		return name.len() >= needle.len()
-			&& name
-				.windows(needle.len())
-				.any(|w| w.eq_ignore_ascii_case(needle));
-	}
-	name.to_lowercase().contains(needle)
 }
 
 /// Takes the entry at `parts` (names below the root) out of the tree and its
@@ -478,90 +314,6 @@ mod tests {
 		assert_eq!(
 			serde_json::to_value(prune(&tree, &tree.root, 2, 0.0)).unwrap(),
 			serde_json::to_value(&tree).unwrap(),
-		);
-	}
-
-	// A path as the search spells it, with the platform's separators.
-	fn at(parts: &[&str]) -> String {
-		parts
-			.iter()
-			.collect::<PathBuf>()
-			.to_string_lossy()
-			.into_owned()
-	}
-
-	fn search_tree() -> Tree {
-		Tree::from(dir(
-			"root",
-			vec![
-				dir(
-					"Photos",
-					vec![file("photo-1.jpg", 300), file("notes.txt", 5)],
-				),
-				file("PHOTO-2.JPG", 200),
-				dir("other", vec![file("Ünïcode Photo.png", 100)]),
-			],
-		))
-	}
-
-	#[test]
-	fn search_matches_names_ignoring_case_inside_matching_directories() {
-		let results = search(&search_tree(), "/base", "  photo ");
-		let paths: Vec<_> = results.matches.iter().map(|m| m.path.as_str()).collect();
-		assert_eq!(
-			paths,
-			[
-				at(&["/base", "Photos"]),
-				at(&["/base", "Photos", "photo-1.jpg"]),
-				at(&["/base", "PHOTO-2.JPG"]),
-				at(&["/base", "other", "Ünïcode Photo.png"]),
-			]
-		);
-		assert_eq!(results.matches[0].kind, "directory");
-		assert_eq!(results.matches[1].kind, "file");
-		assert_eq!(results.total_count, 4);
-		assert_eq!(results.total_size, 305 + 300 + 200 + 100);
-		assert!(!results.truncated);
-	}
-
-	#[test]
-	fn search_folds_case_in_non_ascii_names() {
-		let results = search(&search_tree(), "/", "ÜNÏ");
-		assert_eq!(
-			results.matches[0].path,
-			at(&["/", "other", "Ünïcode Photo.png"])
-		);
-	}
-
-	#[test]
-	fn empty_search_matches_nothing() {
-		let results = search(&search_tree(), "/", "   ");
-		assert!(results.matches.is_empty());
-		assert_eq!(results.total_count, 0);
-	}
-
-	#[test]
-	fn search_keeps_the_largest_matches_and_counts_the_rest() {
-		let files = (1..=600).map(|i| file(&format!("f{i}"), i)).collect();
-		let results = search(&Tree::from(dir("root", files)), "/", "f");
-		assert_eq!(results.matches.len(), MATCH_CAP);
-		assert!(results.truncated);
-		assert_eq!(results.total_count, 600);
-		assert_eq!(results.total_size, (1..=600).sum::<u64>());
-		assert_eq!(results.matches.first().unwrap().size, 600);
-		assert_eq!(results.matches.last().unwrap().size, 101);
-	}
-
-	#[test]
-	fn search_ties_keep_scan_order() {
-		let files = (0..MATCH_CAP + 10)
-			.map(|i| file(&format!("f{i}"), 7))
-			.collect();
-		let results = search(&Tree::from(dir("root", files)), "/", "f");
-		assert_eq!(results.matches[0].path, "/f0");
-		assert_eq!(
-			results.matches.last().unwrap().path,
-			format!("/f{}", MATCH_CAP - 1)
 		);
 	}
 

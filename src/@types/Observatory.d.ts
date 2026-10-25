@@ -22,10 +22,18 @@ declare global {
 			paths: string[],
 			mode: DeleteMode,
 		): Promise<DeleteResult>;
-		function searchScan(
+		// Everything below the folder at `cursor` in a finished scan that
+		// `query` matches, largest first. Null if there's no such folder.
+		function findInScan(
 			path: string,
-			query: string,
-		): Promise<SearchResults | null>;
+			cursor: string[],
+			query: FindQuery,
+		): Promise<Found | null>;
+		// How much each finder finds below the folder at `cursor`.
+		function summarizeFinders(
+			path: string,
+			cursor: string[],
+		): Promise<FinderSummary[] | null>;
 		function getScanErrors(path: string): Promise<ScanError[]>;
 		function statPath(path: string): Promise<PathStat | null>;
 		function pathForFile(file: File): string;
@@ -117,17 +125,45 @@ declare global {
 			failed: Array<{ path: string; error: string }>;
 		}
 
-		export interface SearchMatch {
+		// Kinds of things that tend to be worth cleaning up, each found
+		// across a whole folder (src/scanner/find.rs).
+		export type Finder =
+			| "large"
+			| "old"
+			| "videos"
+			| "archives"
+			| "installers"
+			| "developer"
+			| "caches";
+
+		// Names that contain some text, ignoring case, or what a finder finds.
+		export type FindQuery = { name: string } | { finder: Finder };
+
+		export interface FindMatch {
 			path: string;
+			// The folders between the one searched and the match.
+			within: string[];
 			size: number;
 			type: "file" | "directory";
+			// When anything in it last changed, in milliseconds since 1970.
+			// 0 if that isn't known.
+			modified: number;
 		}
 
-		export interface SearchResults {
-			matches: SearchMatch[];
+		// Only the outermost match counts: a folder that matches, and not
+		// what's in it too.
+		export interface Found {
+			// The largest 500, largest first.
+			matches: FindMatch[];
 			totalCount: number;
 			totalSize: number;
 			truncated: boolean;
+		}
+
+		export interface FinderSummary {
+			finder: Finder;
+			count: number;
+			size: number;
 		}
 
 		export interface ScanError {
