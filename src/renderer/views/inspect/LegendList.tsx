@@ -61,7 +61,7 @@ export const LegendList: React.FC<LegendListProps> = ({
 				<div>
 					<div className="text-[14px] font-semibold">{name}</div>
 				</div>
-				<div className="font-mono text-[13px] text-default">
+				<div className="text-[13px] text-default tabular-nums">
 					{readableSize(size)}
 				</div>
 			</div>
@@ -125,14 +125,14 @@ export const LegendList: React.FC<LegendListProps> = ({
 						</span>
 						{showDate && (
 							<span
-								className="w-[88px] flex-shrink-0 text-right font-mono text-[11px] text-faint tabular-nums"
+								className="w-[88px] flex-shrink-0 text-right text-[11px] text-faint tabular-nums"
 								title={new Date(file.mtime).toLocaleString()}
 							>
 								{readableDate(file.mtime)}
 							</span>
 						)}
 						<span
-							className={`w-[68px] flex-shrink-0 text-right font-mono text-[12px] tabular-nums ${
+							className={`w-[68px] flex-shrink-0 text-right text-[12px] tabular-nums ${
 								queued ? "text-faint" : "text-muted"
 							}`}
 						>
@@ -169,7 +169,7 @@ export const LegendList: React.FC<LegendListProps> = ({
 								/>
 								{group.label}
 							</span>
-							<span className="font-mono">{readableSize(group.size)}</span>
+							<span className="tabular-nums">{readableSize(group.size)}</span>
 						</div>
 					))}
 					{free > 0 && (
@@ -178,7 +178,7 @@ export const LegendList: React.FC<LegendListProps> = ({
 								<span className="block h-[8px] w-[8px] rounded-full border border-faint" />
 								free space
 							</span>
-							<span className="font-mono">{readableSize(free)}</span>
+							<span className="tabular-nums">{readableSize(free)}</span>
 						</div>
 					)}
 				</div>

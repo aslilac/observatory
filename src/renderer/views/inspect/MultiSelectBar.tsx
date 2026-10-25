@@ -18,7 +18,7 @@ export const MultiSelectBar: React.FC<MultiSelectBarProps> = ({
 		<div className="flex-1 text-[12px]">
 			<span className="font-medium">{count}</span>{" "}
 			<span className="text-muted">selected ·</span>{" "}
-			<span className="font-mono">{readableSize(totalSize)}</span>
+			<span className="tabular-nums">{readableSize(totalSize)}</span>
 		</div>
 		<Button size="small" onClick={onCancel}>
 			Cancel

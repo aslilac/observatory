@@ -119,11 +119,11 @@ const QueueList: React.FC<QueueListProps> = ({
 		<div className="mb-[18px] flex items-end justify-between">
 			<div>
 				<div className="eyebrow">You'll reclaim</div>
-				<div className="font-mono text-[40px] leading-[1.1] font-semibold text-default">
+				<div className="text-[40px] leading-[1.1] font-semibold text-default tabular-nums">
 					{readableSize(totalSize)}
 				</div>
 			</div>
-			<div className="text-right font-mono text-[12px] text-muted">
+			<div className="text-right text-[12px] text-muted tabular-nums">
 				{items.length} item{items.length === 1 ? "" : "s"}
 			</div>
 		</div>
@@ -135,16 +135,16 @@ const QueueList: React.FC<QueueListProps> = ({
 						i < items.length - 1 ? "border-b border-line-soft" : ""
 					}`}
 				>
-					<span className="w-[64px] flex-shrink-0 font-mono text-[11px] text-muted">
+					<span className="w-[64px] flex-shrink-0 text-[11px] text-muted tabular-nums">
 						{kindLabel(item)}
 					</span>
 					<span
-						className="min-w-0 flex-1 truncate font-mono text-default"
+						className="min-w-0 flex-1 truncate text-default"
 						title={item.path}
 					>
 						{item.path}
 					</span>
-					<span className="flex-shrink-0 font-mono text-[11px] text-muted">
+					<span className="flex-shrink-0 text-[11px] text-muted tabular-nums">
 						{readableSize(item.size)}
 					</span>
 					<button

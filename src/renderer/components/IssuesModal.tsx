@@ -48,7 +48,7 @@ export const IssuesModal: React.FC<IssuesModalProps> = ({
 					<Dialog.Title className="text-[16px] font-semibold">
 						Scan issues
 					</Dialog.Title>
-					<Dialog.Description className="font-mono text-[11px] text-muted">
+					<Dialog.Description className="text-[11px] text-muted tabular-nums">
 						{errors.length} entr{errors.length === 1 ? "y" : "ies"} skipped or
 						unreadable
 					</Dialog.Description>
@@ -80,7 +80,7 @@ export const IssuesModal: React.FC<IssuesModalProps> = ({
 									<div className="text-[12px] font-semibold">
 										{KIND_LABEL[kind]}
 									</div>
-									<div className="font-mono text-[11px] text-muted">
+									<div className="text-[11px] text-muted tabular-nums">
 										{list.length}
 									</div>
 								</div>
@@ -216,9 +216,7 @@ const AccessCard: React.FC<AccessCardProps> = ({
 				</Button>
 			</div>
 			{failure && (
-				<p className="mt-[8px] font-mono text-[11px] text-danger-fg">
-					{failure}
-				</p>
+				<p className="mt-[8px] text-[11px] text-danger-fg">{failure}</p>
 			)}
 			{showFolders && (
 				<div className="mt-[12px] max-h-[200px] overflow-auto rounded-card border border-line-soft bg-background">
@@ -233,17 +231,17 @@ const ErrorRows: React.FC<{ errors: Ob.ScanError[] }> = ({ errors }) => (
 	<div>
 		{errors.slice(0, 50).map((err, i) => (
 			<div key={`${err.path}-${i}`} className="px-[12px] py-[5px] text-[11px]">
-				<div className="truncate font-mono text-default" title={err.path}>
+				<div className="truncate text-default" title={err.path}>
 					{err.path}
 				</div>
-				<div className="truncate font-mono text-[10px] text-muted">
+				<div className="truncate text-[10px] text-muted">
 					{err.code ? `${err.code} · ` : ""}
 					{err.message}
 				</div>
 			</div>
 		))}
 		{errors.length > 50 && (
-			<div className="px-[12px] py-[6px] font-mono text-[10px] text-muted">
+			<div className="px-[12px] py-[6px] text-[10px] text-muted tabular-nums">
 				… {errors.length - 50} more not shown
 			</div>
 		)}

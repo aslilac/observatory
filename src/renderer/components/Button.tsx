@@ -7,13 +7,15 @@ export type ButtonProps = React.ComponentPropsWithoutRef<"button"> & {
 };
 
 const base =
-	"inline-flex items-center gap-[6px] cursor-pointer rounded-button font-sans font-medium transition-shadow active:translate-y-px " +
+	"inline-flex items-center gap-[6px] cursor-pointer rounded-button font-sans font-medium transition-colors active:translate-y-px " +
 	"disabled:cursor-default disabled:translate-y-0 disabled:bg-fill disabled:text-muted disabled:border-line";
 
 const variants: Record<Variant, string> = {
-	default: "border border-default bg-background text-default",
-	primary: "border border-default bg-default text-background",
-	danger: "border border-danger-border bg-danger-bg text-danger-fg",
+	default: "border border-line bg-background text-default hover:bg-fill",
+	primary:
+		"border border-transparent bg-default text-background hover:bg-default/85",
+	danger:
+		"border border-danger-border bg-danger-bg text-danger-fg hover:border-danger-fg/40",
 };
 
 const sizes: Record<Size, string> = {

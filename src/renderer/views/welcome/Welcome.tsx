@@ -102,7 +102,7 @@ export const Welcome: React.FC<WelcomeProps> = ({
 								key={entry.path}
 								icon={<FolderIcon size={16} strokeWidth={1.6} />}
 								title={basename(entry.path)}
-								detail={<span className="font-mono">{entry.path}</span>}
+								detail={entry.path}
 								meta={
 									<Usage
 										volume={volumes.get(entry.path)}
@@ -182,7 +182,7 @@ const PlaceRow: React.FC<PlaceRowProps> = ({
 				<span className="block truncate text-[11px] text-muted">{detail}</span>
 			</span>
 			{meta && (
-				<span className="flex flex-shrink-0 items-center gap-3 font-mono text-[11px]">
+				<span className="flex flex-shrink-0 items-center gap-3 text-[11px] tabular-nums">
 					{meta}
 				</span>
 			)}

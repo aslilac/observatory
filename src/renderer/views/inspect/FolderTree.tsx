@@ -266,7 +266,7 @@ type PlaceholderProps = {
 };
 
 const Placeholder: React.FC<PlaceholderProps> = ({ depth, children }) => (
-	<div className="flex items-center gap-[6px] px-[8px] py-[4px] font-mono text-[11px] text-faint">
+	<div className="flex items-center gap-[6px] px-[8px] py-[4px] text-[11px] text-faint tabular-nums">
 		<span style={{ width: depth * 14 }} className="flex-shrink-0" />
 		<span className="w-[22px] flex-shrink-0" />
 		<span>{children}</span>
@@ -350,7 +350,7 @@ const Row: React.FC<RowProps> = ({
 				{name}
 			</span>
 			<span
-				className={`font-mono text-[12px] ${queued ? "text-faint" : "text-muted"}`}
+				className={`text-[12px] tabular-nums ${queued ? "text-faint" : "text-muted"}`}
 			>
 				{readableSize(size)}
 			</span>

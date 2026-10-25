@@ -143,7 +143,7 @@ export const Sunburst: React.FC<SunburstProps> = ({
 					textAnchor="middle"
 					dominantBaseline="middle"
 					fill="var(--color-background)"
-					fontFamily="IBM Plex Mono, ui-monospace, monospace"
+					className="tabular-nums"
 					fontSize={17}
 					fontWeight={600}
 					style={{ pointerEvents: "none" }}
@@ -369,15 +369,13 @@ const Tooltip: React.FC<TooltipProps> = ({ file, reserved, x, y }) => {
 		>
 			<div className="flex justify-between gap-3">
 				<span className="font-semibold">{file.name}</span>
-				<span className="ml-[14px] font-mono opacity-80">
+				<span className="ml-[14px] tabular-nums opacity-80">
 					{readableSize(file.size)}
 				</span>
 			</div>
 			{reserved && (
 				<div className="mt-2 max-w-[260px] text-[11px]">
-					<div className="font-mono opacity-80">
-						{reserved.names.join(", ")}
-					</div>
+					<div className="opacity-80">{reserved.names.join(", ")}</div>
 					<div className="mt-1">{reserved.hint}</div>
 				</div>
 			)}
@@ -389,7 +387,7 @@ const Tooltip: React.FC<TooltipProps> = ({ file, reserved, x, y }) => {
 							className="flex justify-between gap-3 py-[2px] text-[11px]"
 						>
 							<span className="truncate">{child.name}</span>
-							<span className="font-mono opacity-80">
+							<span className="tabular-nums opacity-80">
 								{readableSize(child.size)}
 							</span>
 						</li>

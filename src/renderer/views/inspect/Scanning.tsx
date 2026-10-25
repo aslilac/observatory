@@ -79,7 +79,7 @@ const ScanHeader: React.FC<ScanHeaderProps> = ({ root, total, progress }) => (
 		<div className="flex min-w-0 flex-1 flex-col gap-[2px]">
 			<div className="flex items-baseline gap-[10px]">
 				<div className="text-[14px] font-semibold">{root}</div>
-				<div className="font-mono text-[11px] text-muted">
+				<div className="text-[11px] text-muted tabular-nums">
 					{total > 0 ? `${compactNumber(total)} items` : "indexing"}
 				</div>
 			</div>
@@ -91,7 +91,7 @@ const ScanHeader: React.FC<ScanHeaderProps> = ({ root, total, progress }) => (
 type CurrentPathProps = { progress: Ob.ScanProgress | null };
 
 const CurrentPath: React.FC<CurrentPathProps> = ({ progress }) => (
-	<div className="max-w-full truncate font-mono text-[11px] text-muted">
+	<div className="max-w-full truncate text-[11px] text-muted">
 		indexing&nbsp;
 		<span className="text-default">{progress?.currentPath}</span>
 	</div>
@@ -111,7 +111,7 @@ const Spinner: React.FC<SpinnerProps> = ({ total }) => (
 				textAnchor="middle"
 				dominantBaseline="middle"
 				fill="var(--color-background)"
-				fontFamily="IBM Plex Mono, ui-monospace, monospace"
+				className="tabular-nums"
 				fontSize="20"
 				fontWeight="600"
 			>
@@ -124,7 +124,6 @@ const Spinner: React.FC<SpinnerProps> = ({ total }) => (
 				dominantBaseline="middle"
 				fill="var(--color-background)"
 				fillOpacity="0.55"
-				fontFamily="IBM Plex Mono, ui-monospace, monospace"
 				fontSize="11"
 			>
 				{total > 0 ? "items" : "indexing"}

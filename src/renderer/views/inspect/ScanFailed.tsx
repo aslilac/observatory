@@ -29,13 +29,13 @@ export const ScanFailed: React.FC<ScanFailedProps> = ({
 					{explanation(kind)}
 				</div>
 				<div
-					className="max-w-[560px] truncate rounded-card border border-line-soft bg-fill px-[12px] py-[8px] font-mono text-[12px] select-text"
+					className="max-w-[560px] truncate rounded-card border border-line-soft bg-fill px-[12px] py-[8px] text-[12px] select-text"
 					title={scan.path}
 				>
 					{scan.path}
 				</div>
 				{kind === "other" && scan.error && (
-					<div className="max-w-[480px] font-mono text-[11px] text-muted select-text">
+					<div className="max-w-[480px] text-[11px] text-muted select-text">
 						{scan.error.message}
 					</div>
 				)}

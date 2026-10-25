@@ -23,7 +23,7 @@ export const PerfModal: React.FC<PerfModalProps> = ({
 				<Dialog.Title className="text-[16px] font-semibold">
 					Scan timing
 				</Dialog.Title>
-				<Dialog.Description className="font-mono text-[11px] text-muted">
+				<Dialog.Description className="text-[11px] text-muted tabular-nums">
 					per-directory wall time, click a node to zoom
 				</Dialog.Description>
 			</div>

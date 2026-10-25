@@ -41,7 +41,7 @@ export class ErrorBoundary extends Component<
 		return (
 			<div className="flex flex-1 flex-col items-center justify-center gap-4 px-7 text-center">
 				<div className="text-[20px] font-semibold">Something broke</div>
-				<div className="max-w-[480px] font-mono text-[12px] text-muted">
+				<div className="max-w-[480px] text-[12px] text-muted">
 					{error.message || String(error)}
 				</div>
 				{error.stack && (

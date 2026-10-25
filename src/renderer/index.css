@@ -3,7 +3,7 @@
 @theme {
 	--spacing: 4px;
 	--font-sans: "Inter Variable", -apple-system, system-ui, sans-serif;
-	--font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+	--font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
 	/* Classic palette — background-and-default with no accent. */
 	--color-background: #f9f9fd;
@@ -26,7 +26,7 @@
 	/* Inline-only danger; never used for hover/focus. */
 	--color-danger-bg: #fff5f4;
 	--color-danger-fg: #7a1f1c;
-	--color-danger-border: #3a1a1a;
+	--color-danger-border: #f2cbc7;
 
 	--radius-button: 6px;
 	--radius-card: 8px;
@@ -66,7 +66,7 @@
 
 	--color-danger-bg: #2a1715;
 	--color-danger-fg: #ff9b96;
-	--color-danger-border: #c25a55;
+	--color-danger-border: #5c2b28;
 
 	color-scheme: dark;
 }

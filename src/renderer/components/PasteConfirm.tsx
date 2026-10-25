@@ -35,7 +35,7 @@ export const PasteConfirm: React.FC<PasteConfirmProps> = ({
 						Scan this folder?
 					</AlertDialog.Title>
 					<AlertDialog.Description
-						className="mb-[16px] truncate rounded-card border border-line-soft bg-fill px-[12px] py-[10px] font-mono text-[12px]"
+						className="mb-[16px] truncate rounded-card border border-line-soft bg-fill px-[12px] py-[10px] text-[12px]"
 						title={path ?? undefined}
 					>
 						{path}

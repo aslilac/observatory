@@ -91,7 +91,7 @@ const DropOverlay: React.FC = () => (
 		<div className="flex min-h-[60%] w-full flex-col items-center justify-center gap-3 rounded-modal border-[2.5px] border-dashed border-[#f9f9fd] bg-[rgba(249,249,253,0.08)] p-[40px] text-[#f9f9fd]">
 			<FolderIcon size={64} strokeWidth={1} />
 			<div className="text-[20px] font-semibold">Drop folder to scan</div>
-			<div className="font-mono text-[12px] opacity-80">
+			<div className="text-[12px] opacity-80">
 				Anything you drop here will start a fresh scan.
 			</div>
 		</div>

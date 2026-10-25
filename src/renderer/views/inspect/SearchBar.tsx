@@ -36,7 +36,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 				</button>
 			)}
 			{query && matchCount !== null && (
-				<span className="font-mono text-[11px] text-muted">
+				<span className="text-[11px] text-muted tabular-nums">
 					{loading ? "…" : `${matchCount.toLocaleString()} matches`}
 				</span>
 			)}

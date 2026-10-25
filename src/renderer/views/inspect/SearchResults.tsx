@@ -31,7 +31,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
 
 	if (loading && !results) {
 		return (
-			<div className="flex items-center justify-center py-[40px] font-mono text-[12px] text-muted">
+			<div className="flex items-center justify-center py-[40px] text-[12px] text-muted tabular-nums">
 				searching…
 			</div>
 		);
@@ -41,7 +41,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
 		return (
 			<div className="flex flex-col items-center justify-center gap-[6px] py-[40px] text-[13px]">
 				<div className="font-medium">No matches</div>
-				<div className="font-mono text-[11px] text-muted">
+				<div className="text-[11px] text-muted tabular-nums">
 					Nothing in this scan contains{" "}
 					<span className="text-default">{query}</span>.
 				</div>
@@ -56,7 +56,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
 					{results.totalCount.toLocaleString()} match
 					{results.totalCount === 1 ? "" : "es"}
 				</div>
-				<div className="font-mono text-[12px] text-default">
+				<div className="text-[12px] text-default tabular-nums">
 					{readableSize(results.totalSize)}
 				</div>
 			</div>
@@ -88,7 +88,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
 							onChange={() => onToggleSelect(item)}
 						/>
 						<span
-							className={`min-w-0 flex-1 truncate font-mono text-[12px] ${
+							className={`min-w-0 flex-1 truncate text-[12px] ${
 								queued ? "text-faint line-through" : ""
 							}`}
 							title={match.path}
@@ -96,7 +96,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
 							{match.path}
 						</span>
 						<span
-							className={`ml-[8px] flex-shrink-0 font-mono text-[11px] ${
+							className={`ml-[8px] flex-shrink-0 text-[11px] tabular-nums ${
 								queued ? "text-faint" : "text-muted"
 							}`}
 						>
@@ -106,7 +106,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
 				);
 			})}
 			{results.truncated && (
-				<div className="mt-[6px] py-[8px] text-center font-mono text-[11px] text-muted">
+				<div className="mt-[6px] py-[8px] text-center text-[11px] text-muted tabular-nums">
 					Showing top {results.matches.length} of{" "}
 					{results.totalCount.toLocaleString()} — refine the query to see more.
 				</div>

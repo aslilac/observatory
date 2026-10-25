@@ -32,9 +32,9 @@ export const CleanupChip: React.FC = () => {
 		>
 			<Trash2Icon size={12} strokeWidth={1.8} />
 			<span className="font-medium">Cleanup</span>
-			<span className="font-mono text-muted">·</span>
-			<span className="font-mono">{count}</span>
-			<span className="rounded-full bg-default px-[9px] py-[3px] font-mono text-[10px] font-semibold text-background">
+			<span className="text-muted">·</span>
+			<span className="tabular-nums">{count}</span>
+			<span className="rounded-full bg-default px-[9px] py-[3px] text-[10px] font-semibold text-background tabular-nums">
 				{readableSize(totalSize)}
 			</span>
 		</button>

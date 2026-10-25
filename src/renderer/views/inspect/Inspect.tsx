@@ -263,7 +263,7 @@ export const Inspect: React.FC<InspectProps> = ({ scan }) => {
 					onMoveToCleanup={moveSelectedToCleanup}
 				/>
 			) : (
-				<div className="flex h-[28px] items-center border-t border-line-soft px-3 font-mono text-[11px] text-muted">
+				<div className="flex h-[28px] items-center border-t border-line-soft px-3 text-[11px] text-muted tabular-nums">
 					{readableSize(tree.size)}
 					{reservedSize > 0 && (
 						<>

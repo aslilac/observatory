@@ -108,13 +108,13 @@ const ConfirmStage: React.FC<ConfirmStageProps> = ({
 			</div>
 			<div className="mb-[14px] text-[13px] text-muted">
 				This will move{" "}
-				<span className="font-mono font-semibold text-default">
+				<span className="font-semibold text-default tabular-nums">
 					{readableSize(totalSize)}
 				</span>{" "}
 				across {items.length} path{items.length === 1 ? "" : "s"} to your system
 				Trash. You can restore items from Trash until you empty it.
 			</div>
-			<div className="mb-[20px] rounded-card border border-line-soft bg-fill px-[12px] py-[10px] font-mono text-[11px] text-default">
+			<div className="mb-[20px] rounded-card border border-line-soft bg-fill px-[12px] py-[10px] text-[11px] text-default">
 				{preview.map((item) => (
 					<div key={item.path} className="truncate" title={item.path}>
 						{item.path}
@@ -133,7 +133,7 @@ const ConfirmStage: React.FC<ConfirmStageProps> = ({
 };
 
 const DeletingStage: React.FC = () => (
-	<div className="flex items-center justify-center py-[32px] font-mono text-[12px] text-muted">
+	<div className="flex items-center justify-center py-[32px] text-[12px] text-muted tabular-nums">
 		Moving items to Trash…
 	</div>
 );
@@ -154,9 +154,11 @@ const SuccessStage: React.FC<SuccessStageProps> = ({
 	<>
 		<div className="mb-[8px] text-[16px] font-semibold">Cleanup complete</div>
 		<div className="mb-[24px] text-[13px] text-muted">
-			<span className="font-mono text-default">{deleted}</span> item
+			<span className="text-default tabular-nums">{deleted}</span> item
 			{deleted === 1 ? "" : "s"} moved ·{" "}
-			<span className="font-mono text-default">{readableSize(reclaimed)}</span>{" "}
+			<span className="text-default tabular-nums">
+				{readableSize(reclaimed)}
+			</span>{" "}
 			reclaimed.
 			{failed > 0 && (
 				<div className="mt-[8px] text-danger-fg">

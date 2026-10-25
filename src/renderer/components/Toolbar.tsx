@@ -41,7 +41,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 				›
 			</IconButton>
 			<div className="mx-1 h-6 w-px bg-line" />
-			<div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+			<div className="flex min-w-0 flex-1 [scrollbar-width:none] items-center gap-2 overflow-x-auto whitespace-nowrap [&::-webkit-scrollbar]:hidden">
 				<Crumb
 					active={!inAScan && !inView}
 					onClick={inAScan || inView ? showMenu : undefined}
@@ -93,7 +93,7 @@ const Chevron: React.FC = () => {
 };
 
 const ScanningBadge: React.FC = () => (
-	<span className="ml-1.5 flex items-center gap-1.5 font-mono text-[11px] text-muted">
+	<span className="ml-1.5 flex items-center gap-1.5 text-[11px] text-muted">
 		<span className="block size-1.5 animate-pulse rounded-full bg-default" />
 		scanning
 	</span>
