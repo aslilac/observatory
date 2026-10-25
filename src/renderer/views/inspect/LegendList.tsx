@@ -9,6 +9,7 @@ import { joinPath } from "#/paths";
 import { useCleanupQueue } from "#/state";
 import { Checkbox } from "#/components/Checkbox";
 import { RowMenu } from "#/components/ContextMenu";
+import { draggedWith, startCleanupDrag } from "../cleanup/cleanupDrag";
 import type { ReservedGroup } from "./reserved";
 import type { SortMode } from "./SortPicker";
 import { type FileListBaseProps, selectableFromFile } from "./types";
@@ -84,13 +85,10 @@ export const LegendList: React.FC<LegendListProps> = ({
 						onClick={() =>
 							isDir ? onForward(file.name) : onToggleSelect(item)
 						}
-						items={rowActions({
-							path: fullPath,
-							name: file.name,
-							size: file.size,
-							type: isDir ? "directory" : "file",
-							onMoveToCleanup,
-						})}
+						onDragStart={(e) =>
+							startCleanupDrag(e, draggedWith(item, selection))
+						}
+						items={rowActions(item, onMoveToCleanup)}
 					>
 						<Checkbox
 							checked={isSelected}

@@ -4,6 +4,7 @@ import { basename } from "#/paths";
 import { useCleanupQueue } from "#/state";
 import { Checkbox } from "#/components/Checkbox";
 import { RowMenu } from "#/components/ContextMenu";
+import { draggedWith, startCleanupDrag } from "../cleanup/cleanupDrag";
 import type { SelectableItem } from "./types";
 
 type SearchResultsProps = {
@@ -65,6 +66,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
 					path: match.path,
 					name: basename(match.path),
 					size: match.size,
+					type: match.type,
 				};
 				const isSelected = selection.has(match.path);
 				const queued = inCleanup(match.path);
@@ -72,13 +74,10 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
 					<RowMenu
 						key={match.path}
 						onClick={() => onToggleSelect(item)}
-						items={rowActions({
-							path: match.path,
-							name: item.name,
-							size: match.size,
-							type: match.type,
-							onMoveToCleanup,
-						})}
+						onDragStart={(e) =>
+							startCleanupDrag(e, draggedWith(item, selection))
+						}
+						items={rowActions(item, onMoveToCleanup)}
 						className={`group flex cursor-pointer items-center gap-[8px] rounded-[5px] px-[8px] py-[7px] ${
 							isSelected ? "bg-fill" : "hover:bg-fill"
 						}`}

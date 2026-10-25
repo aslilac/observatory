@@ -7,10 +7,6 @@ type ToolbarProps = {
 	right?: React.ReactNode;
 	scanning?: boolean;
 	chips?: React.ReactNode;
-	// When set, render a "Disks and folders › <view>" breadcrumb pattern. The
-	// root crumb becomes inactive-clickable (hops home) and `view` is the
-	// terminal active label. Used for the cleanup destination.
-	view?: string;
 };
 
 export const Toolbar: React.FC<ToolbarProps> = ({
@@ -18,7 +14,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 	right,
 	scanning,
 	chips,
-	view,
 }) => {
 	const {
 		cursor,
@@ -30,7 +25,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 		showMenu,
 	} = useNavigation();
 	const inAScan = Boolean(root);
-	const inView = Boolean(view);
 
 	return (
 		<div className="flex h-[44px] items-center gap-2 border-b border-line-soft px-3">
@@ -42,18 +36,9 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 			</IconButton>
 			<div className="mx-1 h-6 w-px bg-line" />
 			<div className="flex min-w-0 flex-1 [scrollbar-width:none] items-center gap-2 overflow-x-auto whitespace-nowrap [&::-webkit-scrollbar]:hidden">
-				<Crumb
-					active={!inAScan && !inView}
-					onClick={inAScan || inView ? showMenu : undefined}
-				>
+				<Crumb active={!inAScan} onClick={inAScan ? showMenu : undefined}>
 					Disks and folders
 				</Crumb>
-				{inView && (
-					<>
-						<Chevron />
-						<Crumb active>{view}</Crumb>
-					</>
-				)}
 				{inAScan && (
 					<>
 						<Chevron />

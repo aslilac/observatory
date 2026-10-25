@@ -5,6 +5,7 @@ export type SelectableItem = {
 	path: string;
 	name: string;
 	size: number;
+	type: "file" | "directory";
 };
 
 // Props common to both list-style file views (LegendList, FolderTree). Each
@@ -27,7 +28,12 @@ export function selectableFromFile(
 ): { fullPath: string; item: SelectableItem; isDir: boolean } {
 	return {
 		fullPath,
-		item: { path: fullPath, name: file.name, size: file.size },
+		item: {
+			path: fullPath,
+			name: file.name,
+			size: file.size,
+			type: file.type === "directory" ? "directory" : "file",
+		},
 		isDir: file.type === "directory",
 	};
 }

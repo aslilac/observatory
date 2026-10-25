@@ -14,10 +14,11 @@ import {
 	useDrives,
 	usePasteToScan,
 	useRecentScans,
+	useCleanupQueue,
 	useScans,
 	useTheme,
 } from "./state";
-import { Cleanup } from "./views/cleanup/Cleanup";
+import { CleanupPanel } from "./views/cleanup/CleanupPanel";
 import { DragReceiver } from "./components/DragReceiver";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { Inspect } from "./views/inspect/Inspect";
@@ -37,7 +38,8 @@ export const Application: React.FC = () => {
 		remove: removeRecent,
 	} = useRecentScans();
 	const { theme, toggle: toggleTheme } = useTheme();
-	const { view, inspecting, cursor, setInspecting } = useNavigation();
+	const { inspecting, cursor, setInspecting } = useNavigation();
+	const { panelOpen: cleanupOpen } = useCleanupQueue();
 	const inspectingScan = useMemo(
 		() =>
 			inspecting ? (scans.find((s) => s.path === inspecting) ?? null) : null,
@@ -85,7 +87,7 @@ export const Application: React.FC = () => {
 		}
 		const id = requestAnimationFrame(() => perfMeasure("nav", "nav:start"));
 		return () => cancelAnimationFrame(id);
-	}, [view, inspecting, cursorKey]);
+	}, [inspecting, cursorKey]);
 
 	const handleProfilerRender = useCallback(
 		(
@@ -108,8 +110,7 @@ export const Application: React.FC = () => {
 	// has it.
 	const scanName = inspecting ? displayName(inspecting, drives) : null;
 	const folder = cursor[cursor.length - 1];
-	const place = view === "cleanup" ? ["Cleanup review"] : [folder, scanName];
-	const title = [...place, "Observatory"].filter(Boolean).join(" — ");
+	const title = [folder, scanName, "Observatory"].filter(Boolean).join(" — ");
 	useEffect(() => {
 		document.title = title;
 	}, [title]);
@@ -120,23 +121,25 @@ export const Application: React.FC = () => {
 			className={`relative grid h-screen grid-rows-[36px_1fr] bg-background ${Ob.platform}`}
 		>
 			<TitleBar title={title} theme={theme} onToggleTheme={toggleTheme} />
-			<div className="flex min-h-0 flex-col overflow-hidden">
-				<ErrorBoundary key={`${view}-${inspecting ?? "menu"}`}>
-					<Profiler id="screen" onRender={handleProfilerRender}>
-						<Body
-							view={view}
-							inspecting={inspecting}
-							inspectingScan={inspectingScan}
-							drives={drives}
-							scans={scans}
-							recent={recent}
-							volumes={volumes}
-							onOpen={onOpen}
-							onRescan={onRescan}
-							onRemoveRecent={removeRecent}
-						/>
-					</Profiler>
-				</ErrorBoundary>
+			<div className="flex min-h-0 overflow-hidden">
+				<div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+					<ErrorBoundary key={inspecting ?? "menu"}>
+						<Profiler id="screen" onRender={handleProfilerRender}>
+							<Body
+								inspecting={inspecting}
+								inspectingScan={inspectingScan}
+								drives={drives}
+								scans={scans}
+								recent={recent}
+								volumes={volumes}
+								onOpen={onOpen}
+								onRescan={onRescan}
+								onRemoveRecent={removeRecent}
+							/>
+						</Profiler>
+					</ErrorBoundary>
+				</div>
+				{cleanupOpen && <CleanupPanel />}
 			</div>
 			<PasteConfirm
 				open={paste.pastePath !== null}
@@ -151,7 +154,6 @@ export const Application: React.FC = () => {
 };
 
 type BodyProps = {
-	view: ReturnType<typeof useNavigation>["view"];
 	inspecting: string | null;
 	inspectingScan: Ob.ScanInfo | null;
 	drives: Ob.PhysicalDrive[];
@@ -164,7 +166,6 @@ type BodyProps = {
 };
 
 const Body: React.FC<BodyProps> = ({
-	view,
 	inspecting,
 	inspectingScan,
 	drives,
@@ -175,9 +176,6 @@ const Body: React.FC<BodyProps> = ({
 	onRescan,
 	onRemoveRecent,
 }) => {
-	if (view === "cleanup") {
-		return <Cleanup onOpen={onOpen} />;
-	}
 	if (inspecting && inspectingScan?.status === "complete") {
 		return <Inspect scan={inspectingScan} />;
 	}

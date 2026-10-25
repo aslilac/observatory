@@ -379,6 +379,8 @@ export type CleanupItem = {
 	path: string;
 	name: string;
 	size: number;
+	// Not on what was queued before it was kept.
+	type?: "file" | "directory";
 	addedAt: number;
 };
 
@@ -414,17 +416,21 @@ type CleanupQueue = {
 	// Whether `path` goes out with the cleanup: it's queued, or a folder
 	// it's in is.
 	includes: (path: string) => boolean;
+	// The panel beside every view that lists the queue (CleanupPanel).
+	panelOpen: boolean;
+	setPanelOpen: (open: boolean) => void;
 };
 
 const CleanupQueueContext = createContext<CleanupQueue | null>(null);
 
 // Cleanup queue lives in a provider so each view can subscribe independently:
 // the CleanupChip in any toolbar, the Inspect view's "move to cleanup", and
-// the Cleanup view itself all share one store without props plumbing.
+// the CleanupPanel all share one store without props plumbing.
 export const CleanupQueueProvider: React.FC<{ children: React.ReactNode }> = ({
 	children,
 }) => {
 	const [items, setItems] = useState<CleanupItem[]>(() => readCleanup());
+	const [panelOpen, setPanelOpen] = useState(false);
 
 	const add = useCallback((next: Array<Omit<CleanupItem, "addedAt">>) => {
 		setItems((prev) => {
@@ -470,8 +476,17 @@ export const CleanupQueueProvider: React.FC<{ children: React.ReactNode }> = ({
 	}, [items]);
 
 	const value = useMemo<CleanupQueue>(
-		() => ({ items, add, remove, clear, totalSize, includes }),
-		[items, add, remove, clear, totalSize, includes],
+		() => ({
+			items,
+			add,
+			remove,
+			clear,
+			totalSize,
+			includes,
+			panelOpen,
+			setPanelOpen,
+		}),
+		[items, add, remove, clear, totalSize, includes, panelOpen],
 	);
 
 	return (

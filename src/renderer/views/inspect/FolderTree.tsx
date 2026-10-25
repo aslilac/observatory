@@ -9,6 +9,7 @@ import { joinPath } from "#/paths";
 import { useCleanupQueue } from "#/state";
 import { Checkbox } from "#/components/Checkbox";
 import { type ContextMenuItem, RowMenu } from "#/components/ContextMenu";
+import { draggedWith, startCleanupDrag } from "../cleanup/cleanupDrag";
 import {
 	type FileListBaseProps,
 	type SelectableItem,
@@ -214,13 +215,10 @@ const TreeChildren: React.FC<ChildrenProps> = ({
 								? () => onForward(...path, file.name)
 								: () => onToggleSelect(item)
 						}
-						items={rowActions({
-							path: fullPath,
-							name: file.name,
-							size: file.size,
-							type: isDir ? "directory" : "file",
-							onMoveToCleanup,
-						})}
+						onDragStart={(e) =>
+							startCleanupDrag(e, draggedWith(item, selection))
+						}
+						items={rowActions(item, onMoveToCleanup)}
 					/>
 					{isOpen && isDir && (
 						<>
@@ -288,6 +286,7 @@ type RowProps = {
 	onToggleExpand: () => void;
 	onToggleSelect: (() => void) | undefined;
 	onClick: (() => void) | undefined;
+	onDragStart?: (e: React.DragEvent) => void;
 	items?: ContextMenuItem[];
 };
 
@@ -304,6 +303,7 @@ const Row: React.FC<RowProps> = ({
 	onToggleExpand,
 	onToggleSelect,
 	onClick,
+	onDragStart,
 	items,
 }) => {
 	const className = `group flex items-center gap-[6px] rounded-[5px] py-[5px] pr-[8px] pl-[8px] ${
@@ -359,7 +359,12 @@ const Row: React.FC<RowProps> = ({
 
 	if (items) {
 		return (
-			<RowMenu className={className} onClick={onClick} items={items}>
+			<RowMenu
+				className={className}
+				onClick={onClick}
+				onDragStart={onDragStart}
+				items={items}
+			>
 				{content}
 			</RowMenu>
 		);

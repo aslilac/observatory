@@ -1,8 +1,14 @@
 import { useState } from "react";
 import { hueForRange, isDarkTheme, sunburstColor } from "#/colors";
+import { rowActions } from "#/contextActions";
 import { readableSize } from "#/format";
+import { joinPath } from "#/paths";
+import { useCleanupQueue } from "#/state";
+import { AreaMenu } from "#/components/ContextMenu";
+import { startCleanupDrag } from "../cleanup/cleanupDrag";
 import type { ReservedGroup } from "./reserved";
 import { arcPath, isDrawable, layerRadii } from "./sunburstGeometry";
+import type { SelectableItem } from "./types";
 
 const VIEW_RADIUS = 275;
 const CENTER_R = 64;
@@ -11,6 +17,9 @@ const MAX_LAYER = 6;
 type HoverState = {
 	id: string;
 	file: Ob.VfsNode;
+	// Set when it's a file or folder's own wedge, rather than reserved space or
+	// the rest of a folder: what its menu and dragging it act on.
+	item?: SelectableItem;
 	// Set when it's one of the reserved wedges, which `file` only names.
 	reserved?: ReservedGroup;
 	clientX: number;
@@ -52,9 +61,12 @@ type SunburstProps = {
 	 * innermost ring after the files, before the free space.
 	 */
 	reserved: ReservedGroup[];
+	/** Where the current directory is, which the wedges' paths go on. */
+	path: string;
 
 	onNavigateUp: () => void;
 	onNavigateForward: (...into: string[]) => void;
+	onMoveToCleanup: (item: SelectableItem) => void;
 };
 
 export const Sunburst: React.FC<SunburstProps> = ({
@@ -65,10 +77,13 @@ export const Sunburst: React.FC<SunburstProps> = ({
 	rootSize,
 	depth,
 	reserved,
+	path,
 	onNavigateUp,
 	onNavigateForward,
+	onMoveToCleanup,
 }) => {
 	const [hover, setHover] = useState<HoverState | null>(null);
+	const { includes: inCleanup } = useCleanupQueue();
 
 	const handleNavigateForward = (...into: string[]) => {
 		onNavigateForward(...into);
@@ -97,6 +112,8 @@ export const Sunburst: React.FC<SunburstProps> = ({
 					hue={0}
 					type="reserved"
 					path={[]}
+					item={undefined}
+					queued={false}
 					hovered={hover?.id === id}
 					dark={dark}
 					setHover={setHover}
@@ -108,7 +125,21 @@ export const Sunburst: React.FC<SunburstProps> = ({
 	}
 
 	return (
-		<div className="grow">
+		<AreaMenu
+			className="grow"
+			itemsHere={() =>
+				hover?.item ? rowActions(hover.item, onMoveToCleanup) : null
+			}
+			draggable
+			onDragStart={(e) => {
+				if (!hover?.item) {
+					e.preventDefault();
+					return;
+				}
+				startCleanupDrag(e, [hover.item]);
+				setHover(null);
+			}}
+		>
 			<svg
 				viewBox={`${-VIEW_RADIUS} ${-VIEW_RADIUS} ${VIEW_RADIUS * 2} ${VIEW_RADIUS * 2}`}
 				className="size-full"
@@ -121,6 +152,8 @@ export const Sunburst: React.FC<SunburstProps> = ({
 					startPos={0}
 					hueStart={position}
 					parentPath={[]}
+					basePath={path}
+					inCleanup={inCleanup}
 					capacity={capacity}
 					rootSize={rootSize}
 					hover={hover}
@@ -160,7 +193,7 @@ export const Sunburst: React.FC<SunburstProps> = ({
 					y={hover.clientY}
 				/>
 			)}
-		</div>
+		</AreaMenu>
 	);
 };
 
@@ -176,6 +209,9 @@ type ShardTreeProps = {
 	// the scan root.
 	hueStart: number;
 	parentPath: string[];
+	// Where the current directory is, which parentPath goes on.
+	basePath: string;
+	inCleanup: (path: string) => boolean;
 	capacity: number;
 	rootSize: number;
 	hover: HoverState | null;
@@ -191,6 +227,8 @@ const ShardTree: React.FC<ShardTreeProps> = ({
 	startPos,
 	hueStart,
 	parentPath,
+	basePath,
+	inCleanup,
 	capacity,
 	rootSize,
 	hover,
@@ -213,6 +251,14 @@ const ShardTree: React.FC<ShardTreeProps> = ({
 		const myHue = hueForRange(fileHuePos, hueSize);
 		const path = [...parentPath, file.name];
 		const id = `${layer}/${path.join("/")}`;
+		const fullPath = joinPath(basePath, ...path);
+		const item: SelectableItem = {
+			path: fullPath,
+			name: file.name,
+			size: file.size,
+			type: file.type === "directory" ? "directory" : "file",
+		};
+		const queued = inCleanup(fullPath);
 
 		elements.push(
 			<Shard
@@ -226,6 +272,8 @@ const ShardTree: React.FC<ShardTreeProps> = ({
 				hue={myHue}
 				type={file.type}
 				path={path}
+				item={item}
+				queued={queued}
 				hovered={hover?.id === id}
 				dark={dark}
 				setHover={setHover}
@@ -244,6 +292,8 @@ const ShardTree: React.FC<ShardTreeProps> = ({
 						startPos={pos}
 						hueStart={fileHuePos}
 						parentPath={path}
+						basePath={basePath}
+						inCleanup={inCleanup}
 						capacity={capacity}
 						rootSize={rootSize}
 						hover={hover}
@@ -276,6 +326,8 @@ const ShardTree: React.FC<ShardTreeProps> = ({
 						hue={myHue}
 						type="imaginary"
 						path={path}
+						item={undefined}
+						queued={queued}
 						hovered={hover?.id === remainderId}
 						dark={dark}
 						setHover={setHover}
@@ -303,6 +355,9 @@ type ShardProps = {
 	hue: number;
 	type: Ob.NodeType$;
 	path: string[];
+	item: SelectableItem | undefined;
+	// In cleanup, or inside a folder that is: drawn faded.
+	queued: boolean;
 	hovered: boolean;
 	dark: boolean;
 	setHover: React.Dispatch<React.SetStateAction<HoverState | null>>;
@@ -320,6 +375,8 @@ const Shard: React.FC<ShardProps> = ({
 	hue,
 	type,
 	path,
+	item,
+	queued,
 	hovered,
 	dark,
 	setHover,
@@ -334,13 +391,28 @@ const Shard: React.FC<ShardProps> = ({
 			fill={fill}
 			stroke="var(--color-background)"
 			strokeWidth={0.9}
+			fillOpacity={queued ? 0.3 : undefined}
 			className={hovered ? "pulse" : undefined}
 			style={{ cursor: interactive ? "pointer" : "default" }}
 			onPointerOver={(e) =>
-				setHover({ id, file, reserved, clientX: e.clientX, clientY: e.clientY })
+				setHover({
+					id,
+					file,
+					item,
+					reserved,
+					clientX: e.clientX,
+					clientY: e.clientY,
+				})
 			}
 			onPointerMove={(e) =>
-				setHover({ id, file, reserved, clientX: e.clientX, clientY: e.clientY })
+				setHover({
+					id,
+					file,
+					item,
+					reserved,
+					clientX: e.clientX,
+					clientY: e.clientY,
+				})
 			}
 			onPointerLeave={() => setHover((prev) => (prev?.id === id ? null : prev))}
 			onClick={() => {

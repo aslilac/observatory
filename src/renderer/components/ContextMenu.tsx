@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import { ContextMenu as BaseContextMenu } from "@base-ui/react/context-menu";
 
 export type ContextMenuItem =
@@ -13,6 +15,8 @@ type RowMenuProps = {
 	items: ContextMenuItem[];
 	className?: string;
 	onClick?: (e: React.MouseEvent) => void;
+	// Makes the row draggable.
+	onDragStart?: (e: React.DragEvent) => void;
 	title?: string;
 	children: React.ReactNode;
 };
@@ -24,6 +28,7 @@ export const RowMenu: React.FC<RowMenuProps> = ({
 	items,
 	className,
 	onClick,
+	onDragStart,
 	title,
 	children,
 }) => (
@@ -31,6 +36,8 @@ export const RowMenu: React.FC<RowMenuProps> = ({
 		<BaseContextMenu.Trigger
 			className={className}
 			onClick={onClick}
+			draggable={onDragStart !== undefined}
+			onDragStart={onDragStart}
 			title={title}
 		>
 			{children}
@@ -38,6 +45,48 @@ export const RowMenu: React.FC<RowMenuProps> = ({
 		<MenuPopup items={items} />
 	</BaseContextMenu.Root>
 );
+
+type AreaMenuProps = {
+	// The menu for wherever the pointer is when it's asked for, or null for
+	// none there.
+	itemsHere: () => ContextMenuItem[] | null;
+	className?: string;
+	draggable?: boolean;
+	onDragStart?: (e: React.DragEvent) => void;
+	children: React.ReactNode;
+};
+
+// A right-click menu over an area whose parts each have their own, where a
+// RowMenu can't wrap each one: the sunburst's wedges are SVG.
+export const AreaMenu: React.FC<AreaMenuProps> = ({
+	itemsHere,
+	className,
+	draggable,
+	onDragStart,
+	children,
+}) => {
+	const [items, setItems] = useState<ContextMenuItem[]>([]);
+	return (
+		<BaseContextMenu.Root>
+			<BaseContextMenu.Trigger
+				className={className}
+				draggable={draggable}
+				onDragStart={onDragStart}
+				onContextMenu={(e) => {
+					const here = itemsHere();
+					if (here) {
+						setItems(here);
+					} else {
+						e.preventBaseUIHandler();
+					}
+				}}
+			>
+				{children}
+			</BaseContextMenu.Trigger>
+			<MenuPopup items={items} />
+		</BaseContextMenu.Root>
+	);
+};
 
 const MenuPopup: React.FC<{ items: ContextMenuItem[] }> = ({ items }) => (
 	<BaseContextMenu.Portal>

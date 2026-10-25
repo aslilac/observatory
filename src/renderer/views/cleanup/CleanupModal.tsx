@@ -1,175 +1,211 @@
-import React, { useState } from "react";
+import { useState } from "react";
 
-import { AlertCircleIcon } from "lucide-react";
-
-import type { CleanupItem } from "#/state";
+import { type CleanupItem, useCleanupQueue } from "#/state";
 import { readableSize } from "#/format";
 import { Button } from "#/components/Button";
-import { Modal } from "#/components/Modal";
+import { Dialog, Modal } from "#/components/Modal";
 
 type CleanupModalProps = {
-	open: boolean;
 	items: CleanupItem[];
 	totalSize: number;
 	onClose: () => void;
-	onTrash: (
-		items: CleanupItem[],
-	) => Promise<{ deleted: number; reclaimed: number; failed: number }>;
 };
 
 type Stage =
 	| { kind: "confirm" }
-	| { kind: "deleting" }
+	| { kind: "deleting"; mode: Ob.DeleteMode }
 	| {
-			kind: "success";
+			kind: "done";
+			mode: Ob.DeleteMode;
 			deleted: number;
 			reclaimed: number;
-			failed: number;
+			failed: Ob.DeleteResult["failed"];
 	  };
 
+// Asks before anything's deleted, then does it. Deleting for good is what
+// frees the space, so it's the main action; the Trash is one click away for
+// whoever wants a way back.
 export const CleanupModal: React.FC<CleanupModalProps> = ({
-	open,
 	items,
 	totalSize,
 	onClose,
-	onTrash,
 }) => {
+	const { remove } = useCleanupQueue();
 	const [stage, setStage] = useState<Stage>({ kind: "confirm" });
-	// Snapshot the queue at modal-open time. Anything queued from a different
-	// window (or another concurrent action) after the user clicks
-	// "Review & delete" stays out of this confirmation — they only act on
-	// what they actually reviewed.
-	const [snapshot] = useState(() => ({ items, totalSize }));
+	// What's queued when the dialog opens. Anything moved to cleanup after
+	// (from another window, say) stays out of it: only what was asked about
+	// goes.
+	const [asked] = useState(() => ({ items, totalSize }));
 
-	const handleTrash = async () => {
-		setStage({ kind: "deleting" });
+	const run = async (mode: Ob.DeleteMode) => {
+		setStage({ kind: "deleting", mode });
+		const sizes = new Map(asked.items.map((i) => [i.path, i.size]));
 		try {
-			const result = await onTrash(snapshot.items);
-			setStage({ kind: "success", ...result });
+			const result = await Ob.deleteFiles(
+				asked.items.map((i) => i.path),
+				mode,
+			);
+			for (const path of result.deleted) {
+				remove(path);
+			}
+			setStage({
+				kind: "done",
+				mode,
+				deleted: result.deleted.length,
+				reclaimed: result.deleted.reduce(
+					(sum, p) => sum + (sizes.get(p) ?? 0),
+					0,
+				),
+				failed: result.failed,
+			});
 		} catch {
 			onClose();
 		}
 	};
 
-	// Block dismissal while the trash request is in-flight; the rest of the
-	// stages defer to the standard backdrop/escape behavior from Modal.
-	const handleClose = () => {
-		if (stage.kind === "deleting") {
-			return;
-		}
-		onClose();
-	};
-
 	return (
-		<Modal open={open} onClose={handleClose} className="w-[480px]">
+		<Modal
+			open
+			// Not while it's deleting: there's no stopping it.
+			onClose={stage.kind === "deleting" ? () => {} : onClose}
+			className="w-[460px]"
+		>
 			{stage.kind === "confirm" && (
-				<ConfirmStage
-					items={snapshot.items}
-					totalSize={snapshot.totalSize}
+				<Confirm
+					items={asked.items}
+					totalSize={asked.totalSize}
 					onCancel={onClose}
-					onTrash={() => void handleTrash()}
+					onRun={(mode) => void run(mode)}
 				/>
 			)}
-			{stage.kind === "deleting" && <DeletingStage />}
-			{stage.kind === "success" && (
-				<SuccessStage
-					deleted={stage.deleted}
-					reclaimed={stage.reclaimed}
-					failed={stage.failed}
-					onClose={onClose}
-				/>
+			{stage.kind === "deleting" && (
+				<div className="py-[28px] text-center text-[13px] text-muted">
+					{stage.mode === "trash" ? "Moving to the Trash…" : "Deleting…"}
+				</div>
 			)}
+			{stage.kind === "done" && <Done {...stage} onClose={onClose} />}
 		</Modal>
 	);
 };
 
-type ConfirmStageProps = {
+type ConfirmProps = {
 	items: CleanupItem[];
 	totalSize: number;
 	onCancel: () => void;
-	onTrash: () => void;
+	onRun: (mode: Ob.DeleteMode) => void;
 };
 
-const ConfirmStage: React.FC<ConfirmStageProps> = ({
+const Confirm: React.FC<ConfirmProps> = ({
 	items,
 	totalSize,
 	onCancel,
-	onTrash,
+	onRun,
 }) => {
-	const preview = items.slice(0, 5);
-	const overflow = items.length - preview.length;
+	const shown = items.slice(0, 5);
+	const more = items.length - shown.length;
 	return (
 		<>
-			<div className="mb-[12px] flex items-center gap-[8px]">
-				<AlertCircleIcon size={18} strokeWidth={1.8} className="text-default" />
-				<div className="text-[16px] font-semibold">
-					Move {items.length} item{items.length === 1 ? "" : "s"} to Trash?
-				</div>
-			</div>
-			<div className="mb-[14px] text-[13px] text-muted">
-				This will move{" "}
+			<Dialog.Title className="mb-[6px] text-[16px] font-semibold">
+				Delete {plural(items.length, "item")}?
+			</Dialog.Title>
+			<Dialog.Description className="mb-[16px] text-[13px] text-muted">
+				That's{" "}
 				<span className="font-semibold text-default tabular-nums">
 					{readableSize(totalSize)}
 				</span>{" "}
-				across {items.length} path{items.length === 1 ? "" : "s"} to your system
-				Trash. You can restore items from Trash until you empty it.
-			</div>
-			<div className="mb-[20px] rounded-card border border-line-soft bg-fill px-[12px] py-[10px] text-[11px] text-default">
-				{preview.map((item) => (
-					<div key={item.path} className="truncate" title={item.path}>
-						{item.path}
+				gone for good, which can't be undone. Move it to the Trash instead to
+				keep a way back until you empty it.
+			</Dialog.Description>
+			<div className="mb-[20px] rounded-card border border-line-soft px-[12px] py-[8px] text-[12px]">
+				{shown.map((item) => (
+					<div
+						key={item.path}
+						className="flex justify-between gap-[12px] py-[2px]"
+						title={item.path}
+					>
+						<span className="truncate">{item.name}</span>
+						<span className="flex-shrink-0 text-muted tabular-nums">
+							{readableSize(item.size)}
+						</span>
 					</div>
 				))}
-				{overflow > 0 && <div className="text-muted">+ {overflow} more</div>}
+				{more > 0 && (
+					<div className="py-[2px] text-muted tabular-nums">
+						and {more.toLocaleString()} more
+					</div>
+				)}
 			</div>
-			<div className="flex justify-end gap-[8px]">
+			<div className="flex gap-[8px]">
 				<Button onClick={onCancel}>Cancel</Button>
-				<Button variant="danger" onClick={onTrash}>
-					Move to Trash
+				<div className="flex-1" />
+				<Button onClick={() => onRun("trash")}>Move to Trash</Button>
+				<Button variant="danger" onClick={() => onRun("delete")}>
+					Delete
 				</Button>
 			</div>
 		</>
 	);
 };
 
-const DeletingStage: React.FC = () => (
-	<div className="flex items-center justify-center py-[32px] text-[12px] text-muted tabular-nums">
-		Moving items to Trash…
-	</div>
-);
-
-type SuccessStageProps = {
+type DoneProps = {
+	mode: Ob.DeleteMode;
 	deleted: number;
 	reclaimed: number;
-	failed: number;
+	failed: Ob.DeleteResult["failed"];
 	onClose: () => void;
 };
 
-const SuccessStage: React.FC<SuccessStageProps> = ({
+const Done: React.FC<DoneProps> = ({
+	mode,
 	deleted,
 	reclaimed,
 	failed,
 	onClose,
 }) => (
 	<>
-		<div className="mb-[8px] text-[16px] font-semibold">Cleanup complete</div>
-		<div className="mb-[24px] text-[13px] text-muted">
-			<span className="text-default tabular-nums">{deleted}</span> item
-			{deleted === 1 ? "" : "s"} moved ·{" "}
-			<span className="text-default tabular-nums">
-				{readableSize(reclaimed)}
-			</span>{" "}
-			reclaimed.
-			{failed > 0 && (
-				<div className="mt-[8px] text-danger-fg">
-					{failed} item{failed === 1 ? "" : "s"} could not be moved.
+		<Dialog.Title className="mb-[6px] text-[16px] font-semibold">
+			{deleted === 0
+				? "Nothing was deleted"
+				: mode === "trash"
+					? `Moved ${plural(deleted, "item")} to the Trash`
+					: `Deleted ${plural(deleted, "item")}`}
+		</Dialog.Title>
+		{deleted > 0 && (
+			<Dialog.Description className="text-[13px] text-muted">
+				{mode === "trash" ? "Empty the Trash to free " : "That freed "}
+				<span className="font-semibold text-default tabular-nums">
+					{readableSize(reclaimed)}
+				</span>
+				.
+			</Dialog.Description>
+		)}
+		{failed.length > 0 && (
+			<div className="mt-[14px]">
+				<div className="mb-[6px] text-[13px] text-danger-fg">
+					{plural(failed.length, "item")} couldn't be{" "}
+					{mode === "trash" ? "moved" : "deleted"}, and{" "}
+					{failed.length === 1 ? "is" : "are"} still in cleanup:
 				</div>
-			)}
-		</div>
-		<div className="flex justify-end">
+				<div className="max-h-[160px] overflow-auto rounded-card border border-line-soft px-[12px] py-[8px] text-[12px]">
+					{failed.map((f) => (
+						<div key={f.path} className="py-[2px]">
+							<div className="truncate" title={f.path}>
+								{f.path}
+							</div>
+							<div className="truncate text-[11px] text-muted">{f.error}</div>
+						</div>
+					))}
+				</div>
+			</div>
+		)}
+		<div className="mt-[20px] flex justify-end">
 			<Button variant="primary" onClick={onClose}>
 				Done
 			</Button>
 		</div>
 	</>
 );
+
+function plural(count: number, noun: string): string {
+	return `${count.toLocaleString()} ${noun}${count === 1 ? "" : "s"}`;
+}

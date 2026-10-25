@@ -1,25 +1,17 @@
 import type { ContextMenuItem } from "./components/ContextMenu";
+import type { SelectableItem } from "./views/inspect/types";
 
 const isMac = Ob.platform === "darwin";
 
-type RowActionsArgs = {
-	path: string;
-	name: string;
-	size: number;
-	type: "file" | "directory";
-	onMoveToCleanup: (item: { path: string; name: string; size: number }) => void;
-};
-
 // Right-click items shared across LegendList, FolderTree, and SearchResults
-// rows. Keeps the four destructive-or-navigational actions the design calls
-// for; per-list controls (sort, etc.) live next to their own UI.
-export function rowActions({
-	path,
-	name,
-	size,
-	type,
-	onMoveToCleanup,
-}: RowActionsArgs): ContextMenuItem[] {
+// rows, and the sunburst's wedges. Keeps the four destructive-or-navigational
+// actions the design calls for; per-list controls (sort, etc.) live next to
+// their own UI.
+export function rowActions(
+	item: SelectableItem,
+	onMoveToCleanup: (item: SelectableItem) => void,
+): ContextMenuItem[] {
+	const { path, type } = item;
 	const items: ContextMenuItem[] = [];
 	// "Open" on a folder lands in Finder showing the folder's contents, which
 	// is identical to what "Reveal in Finder" does for the same folder — only
@@ -38,10 +30,22 @@ export function rowActions({
 		{
 			kind: "item",
 			label: "Move to cleanup",
-			onClick: () => onMoveToCleanup({ path, name, size }),
+			onClick: () => onMoveToCleanup(item),
 		},
 	);
 	return items;
+}
+
+// Right-click items for something in the cleanup panel.
+export function queuedActions(
+	path: string,
+	onRemove: () => void,
+): ContextMenuItem[] {
+	return [
+		...locationActions(path),
+		{ kind: "separator" },
+		{ kind: "item", label: "Remove from cleanup", onClick: onRemove },
+	];
 }
 
 type PlaceActionsArgs = {

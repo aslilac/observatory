@@ -18,7 +18,10 @@ declare global {
 		): Promise<RenderTree | null>;
 		function getScanProgress(path: string): Promise<ScanProgress | null>;
 		function getScanPerfTree(path: string): Promise<PerfNode | null>;
-		function deleteFiles(paths: string[]): Promise<DeleteResult>;
+		function deleteFiles(
+			paths: string[],
+			mode: DeleteMode,
+		): Promise<DeleteResult>;
 		function searchScan(
 			path: string,
 			query: string,
@@ -105,6 +108,9 @@ declare global {
 			// trash). Lets the renderer key its render-tree fetch on it.
 			revision: number;
 		}
+
+		// Gone for good, or into the system Trash.
+		export type DeleteMode = "delete" | "trash";
 
 		export interface DeleteResult {
 			deleted: string[];

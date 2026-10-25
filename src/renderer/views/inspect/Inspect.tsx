@@ -12,6 +12,7 @@ import {
 	useSearch,
 } from "#/state";
 import { readableSize } from "#/format";
+import { joinPath } from "#/paths";
 import { IssuesChip } from "#/components/IssuesChip";
 import { IssuesModal } from "#/components/IssuesModal";
 import { PerfChip } from "#/components/PerfChip";
@@ -105,12 +106,7 @@ export const Inspect: React.FC<InspectProps> = ({ scan }) => {
 	const cancelSelect = useCallback(() => setSelection(new Map()), []);
 
 	const moveSelectedToCleanup = useCallback(() => {
-		const items = Array.from(selection.values()).map((i) => ({
-			path: i.path,
-			name: i.name,
-			size: i.size,
-		}));
-		addToCleanup(items);
+		addToCleanup(Array.from(selection.values()));
 		setSelection(new Map());
 	}, [selection, addToCleanup]);
 
@@ -209,10 +205,12 @@ export const Inspect: React.FC<InspectProps> = ({ scan }) => {
 					rootSize={shared.rootSize}
 					depth={cursor.length}
 					reserved={reserved}
+					path={joinPath(inspecting, ...cursor)}
 					onNavigateUp={navigateUp}
 					onNavigateForward={navigateForward}
+					onMoveToCleanup={onMoveOne}
 				/>
-				<div className="flex w-1/3 max-w-[600px] flex-col overflow-auto p-4">
+				<div className="flex w-1/3 max-w-[600px] min-w-[340px] flex-shrink-0 flex-col overflow-auto p-4">
 					{searchActive ? (
 						<SearchResults
 							results={searchResults}

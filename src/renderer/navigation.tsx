@@ -8,9 +8,7 @@ import {
 
 import { perfMark } from "./perf";
 
-type NavView = "scan" | "cleanup";
 type NavEntry = {
-	view: NavView;
 	inspecting: string | null;
 	cursor: string[];
 };
@@ -24,12 +22,9 @@ const sameCursor = (a: string[], b: string[]) =>
 	a.length === b.length && a.every((v, i) => v === b[i]);
 
 const sameEntry = (a: NavEntry, b: NavEntry) =>
-	a.view === b.view &&
-	a.inspecting === b.inspecting &&
-	sameCursor(a.cursor, b.cursor);
+	a.inspecting === b.inspecting && sameCursor(a.cursor, b.cursor);
 
 type NavigationContextValue = {
-	view: NavView;
 	inspecting: string | null;
 	cursor: string[];
 	canBack: boolean;
@@ -38,7 +33,6 @@ type NavigationContextValue = {
 	goForward: () => void;
 	setInspecting: (path: string | null) => void;
 	setCursor: (next: string[]) => void;
-	showCleanup: () => void;
 	showMenu: () => void;
 };
 
@@ -54,7 +48,6 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({
 	const [nav, setNav] = useState<NavState>(() => ({
 		history: [
 			{
-				view: "scan",
 				// Set when main opened the window straight into a scan (see
 				// createWindow in src/main/viewManager.ts).
 				inspecting: new URLSearchParams(location.search).get("inspect"),
@@ -64,7 +57,7 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({
 		index: 0,
 	}));
 	const current = nav.history[nav.index]!;
-	const { view, inspecting, cursor } = current;
+	const { inspecting, cursor } = current;
 
 	const navigate = useCallback((entry: NavEntry) => {
 		perfMark("nav:start");
@@ -96,19 +89,13 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({
 	}, []);
 
 	const setInspecting = useCallback(
-		(path: string | null) =>
-			navigate({ view: "scan", inspecting: path, cursor: [] }),
+		(path: string | null) => navigate({ inspecting: path, cursor: [] }),
 		[navigate],
 	);
 
 	const setCursor = useCallback(
-		(next: string[]) => navigate({ view: "scan", inspecting, cursor: next }),
+		(next: string[]) => navigate({ inspecting, cursor: next }),
 		[navigate, inspecting],
-	);
-
-	const showCleanup = useCallback(
-		() => navigate({ view: "cleanup", inspecting, cursor }),
-		[navigate, inspecting, cursor],
 	);
 
 	const showMenu = useCallback(() => setInspecting(null), [setInspecting]);
@@ -131,7 +118,6 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({
 	);
 
 	const value: NavigationContextValue = {
-		view,
 		inspecting,
 		cursor,
 		canBack: nav.index > 0,
@@ -140,7 +126,6 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({
 		goForward,
 		setInspecting,
 		setCursor,
-		showCleanup,
 		showMenu,
 	};
 
