@@ -7,8 +7,12 @@
 		<script type="module" src="./about.ts"></script>
 	</head>
 	<body>
+		<!-- The site's hero, small: the render of the observatory (from
+		     site/scene/about.py) on a sunset, under a turning sky (sky.ts). -->
+		<div class="sky"></div>
+		<div class="stars" aria-hidden="true"></div>
+		<img class="scene" alt="" />
 		<main>
-			<img class="icon" alt="" />
 			<h1>Observatory</h1>
 			<div class="version">Version 1.0.0</div>
 			<p class="tagline">
@@ -29,13 +33,13 @@
 					>Issues</a
 				>
 			</div>
-			<div class="copyright">
-				&copy; 2019-2026
-				<a href="https://mckayla.dev" target="_blank" rel="noreferrer"
-					>McKayla Washburn-Love</a
-				>
-				&hearts;
-			</div>
 		</main>
+		<footer class="copyright">
+			&copy; 2019-2026
+			<a href="https://mckayla.dev" target="_blank" rel="noreferrer"
+				>McKayla Washburn-Love</a
+			>
+			&hearts;
+		</footer>
 	</body>
 </html>

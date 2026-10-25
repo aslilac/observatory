@@ -52,7 +52,6 @@ The macOS renders use `--rising`: the plinth is left out and the drum carries on
 - `icon.icns` and `icon.ico`: Forge's `packagerConfig.icon: "./build-resources/icon"` picks the extension per platform. The `.ico` is also Squirrel's `setupIcon`.
 - `Assets.car`: a `packageAfterCopy` hook puts it in `Contents/Resources` (macOS builds only), and `extendInfo` names it with `CFBundleIconName: "Observatory"`. macOS 26+ draws the icon from it, and older systems fall back to the `.icns`.
 - `hicolor/`: the GNOME icons as an icon theme, for Linux packages (see below). `icon.png` is the 512px one, which nothing uses yet.
-- `about/darwin.png`, `about/win32.png`, `about/linux.png`: the About window shows the one for the platform it's on, at 256px: the macOS legacy art, the Windows aperture, and the GNOME aperture.
 
 You can open `out/macos/Observatory.icon` in Icon Composer to adjust the layers (glass, shadow, translucency) by hand.
 

@@ -56,11 +56,6 @@ cp out/macos/icon.icns out/windows/icon.ico out/linux/icon.png ../build-resource
 if [ -f out/macos/Assets.car ]; then
   cp out/macos/Assets.car ../build-resources/
 fi
-# and the About window shows the icon as each platform draws it, at 256px
-mkdir -p ../build-resources/about
-cp out/macos/icon.iconset/icon_128x128@2x.png ../build-resources/about/darwin.png
-cp out/windows/png/icon-256.png ../build-resources/about/win32.png
-cp out/linux/hicolor/256x256/apps/ooo.lilac.observatory.png ../build-resources/about/linux.png
 # Linux packages (the Flatpak) install the GNOME icons into the icon theme
 rm -rf ../build-resources/hicolor
 cp -R out/linux/hicolor ../build-resources/

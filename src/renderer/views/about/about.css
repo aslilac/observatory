@@ -6,11 +6,13 @@
 	--font-sans:
 		-apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", sans-serif;
 
-	--color-background: #12142d;
+	/* The sky at the top, as on the site. */
+	--color-background: #0d1033;
+	--color-ground: #15151a;
 	--color-default: #f1ede2;
-	--color-muted: rgba(241, 237, 226, 0.55);
-	--color-faint: rgba(241, 237, 226, 0.35);
-	--color-accent: #7e9eff;
+	--color-muted: rgba(241, 237, 226, 0.62);
+	--color-faint: rgba(241, 237, 226, 0.42);
+	--color-accent: #9fb6ff;
 }
 
 * {
@@ -21,7 +23,8 @@ html,
 body {
 	margin: 0;
 	padding: 0;
-	min-height: 100vh;
+	height: 100vh;
+	overflow: hidden;
 	font-family: var(--font-sans);
 	font-size: 14px;
 	font-weight: 300;
@@ -33,38 +36,136 @@ body {
 }
 
 body {
-	display: flex;
-	align-items: center;
-	justify-content: center;
+	position: relative;
 	-webkit-app-region: drag;
 }
 
-main {
-	width: 100%;
-	max-width: 360px;
-	padding: 32px 24px;
-	text-align: center;
+/* The scene and where things fall on it are laid out by about.ts, in px:
+   --scene-h (the crop's height), --render-w and --render-h (the whole
+   render's, which the sky is sized by, as on the site), --horizon-y, and
+   the sun (--sun-x, --sun-y). */
+.sky {
+	--at: var(--sun-x) var(--sun-y);
+	position: absolute;
+	inset: 0;
+	background:
+		/* the sun, behind the building */
+		radial-gradient(
+			ellipse calc(0.14 * var(--render-w)) calc(0.07 * var(--render-h)) at
+				var(--at),
+			rgb(255 232 186 / 0.95),
+			rgb(255 194 140 / 0.5) 45%,
+			transparent
+		),
+		/* its glow, spreading along the horizon */
+		radial-gradient(
+			ellipse calc(0.46 * var(--render-w)) calc(0.24 * var(--render-h)) at
+				var(--at),
+			rgb(255 168 122 / 0.8),
+			rgb(246 132 128 / 0.35) 50%,
+			transparent
+		),
+		/* the afterglow, wider and pinker, up into the sky */
+		radial-gradient(
+			ellipse calc(1.05 * var(--render-w)) calc(0.6 * var(--render-h)) at
+				var(--at),
+			rgb(206 108 160 / 0.42),
+			rgb(150 84 160 / 0.15) 55%,
+			transparent
+		),
+		/* zenith to horizon, away from the sun */
+		linear-gradient(
+			to bottom,
+			var(--color-background) calc(var(--horizon-y) - 1 * var(--render-h)),
+			#191c56 calc(var(--horizon-y) - 0.55 * var(--render-h)),
+			#2c2775 calc(var(--horizon-y) - 0.34 * var(--render-h)),
+			#4d3c8f calc(var(--horizon-y) - 0.2 * var(--render-h)),
+			#7b5499 calc(var(--horizon-y) - 0.1 * var(--render-h)),
+			#a8689a calc(var(--horizon-y) - 0.04 * var(--render-h)),
+			#c97f95 var(--horizon-y),
+			/* haze below the horizon, where the far clouds fade into it */ #b47b9a
+				calc(var(--horizon-y) + 0.05 * var(--render-h)),
+			#7b6496 100%
+		);
 }
 
-/* Each platform's icon brings its own padding and shadow, after that
-   platform's guidelines, so they're all shown the same size, as is. */
-.icon {
+/* sky.ts puts the stars in here, on a canvas centred on the pole. They set
+   into the haze above the horizon, and dim behind the words so the trails
+   don't run through them. */
+.stars {
+	position: absolute;
+	inset: 0;
+	overflow: hidden;
+	pointer-events: none;
+	mask-image:
+		linear-gradient(
+			to bottom,
+			#000 calc(var(--horizon-y) - 0.14 * var(--render-h)),
+			transparent var(--horizon-y)
+		),
+		radial-gradient(
+			ellipse 210px 105px at 50% 138px,
+			rgb(0 0 0 / 0.22) 40%,
+			#000
+		);
+	mask-composite: intersect;
+}
+
+.stars canvas {
+	position: absolute;
 	display: block;
-	width: 112px;
-	height: 112px;
-	margin: 0 auto 18px;
+	animation: turn 480s steps(14400) infinite;
+}
+
+/* Anticlockwise, as around the north pole, once in eight minutes. */
+@keyframes turn {
+	to {
+		transform: rotate(-1turn);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.stars canvas {
+		animation: none;
+	}
+}
+
+.scene {
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	display: block;
+	width: 100%;
+	height: var(--scene-h);
+}
+
+/* The ground runs into the dark under the copyright. */
+body::after {
+	content: "";
+	position: absolute;
+	inset: auto 0 0;
+	height: 84px;
+	background: linear-gradient(to bottom, transparent, var(--color-ground) 85%);
+	pointer-events: none;
+}
+
+main {
+	position: relative;
+	padding: 52px 24px 0;
+	text-align: center;
+	text-shadow: 0 1px 12px rgb(13 16 51 / 0.6);
 }
 
 h1 {
 	margin: 0;
-	font-size: 26px;
-	font-weight: 500;
-	letter-spacing: -0.4px;
+	font-size: 28px;
+	font-weight: 600;
+	letter-spacing: -0.5px;
 	color: var(--color-default);
 }
 
 .version {
-	margin: 4px 0 18px;
+	margin: 2px 0 14px;
 	font-variant-numeric: tabular-nums;
 	font-size: 11px;
 	color: var(--color-muted);
@@ -72,12 +173,8 @@ h1 {
 
 .tagline {
 	max-width: 280px;
-	margin: 0 auto 28px;
+	margin: 0 auto 16px;
 	color: var(--color-muted);
-}
-
-.links {
-	margin-bottom: 22px;
 }
 
 a {
@@ -98,6 +195,14 @@ a:hover {
 }
 
 .copyright {
+	position: absolute;
+	inset: auto 0 14px;
+	z-index: 1;
+	text-align: center;
 	font-size: 11px;
 	color: var(--color-faint);
+}
+
+.copyright a {
+	font-size: 11px;
 }

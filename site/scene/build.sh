@@ -1,5 +1,6 @@
 #!/bin/sh
-# Render the hero scene (Blender 4.4, Cycles on Metal) and put it on the site.
+# Render the hero scene (Blender 4.4, Cycles on Metal) and put it on the site and
+# in the app's About window.
 #   ./build.sh                     full quality
 #   SAMPLES=24 WIDTH=1280 ./build.sh   quick look
 #   NO_RENDER=1 ./build.sh         only redo the images and icons from the last render
@@ -15,3 +16,4 @@ if [ -z "$NO_RENDER" ]; then
   echo "rendered hero"
 fi
 uv run --no-project --with pillow python publish.py
+uv run --no-project --with pillow python about.py
