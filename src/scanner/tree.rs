@@ -8,11 +8,12 @@
 // capped list of search hits, so those are cut here and only they cross
 // into JS.
 
-use crate::VfsNode;
+use crate::{Name, Tree, VfsNode};
 use serde::Serialize;
 use std::cmp::{Ordering, Reverse};
 use std::collections::BinaryHeap;
 use std::path::PathBuf;
+use string_interner::Symbol;
 
 // Entries smaller than this share of the current directory are left out of
 // the sunburst, which couldn't draw them at a visible size anyway.
@@ -43,7 +44,7 @@ pub struct RenderSlice<'a> {
 }
 
 /// A borrowed copy of a node, cut off below some depth. Serializes to the
-/// same shape as `VfsNode`.
+/// same shape as a `Tree`.
 #[derive(Serialize, Debug)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum Pruned<'a> {
@@ -61,40 +62,38 @@ pub enum Pruned<'a> {
 }
 
 /// None if `cursor` doesn't lead to a directory.
-pub fn render_slice<'a>(root: &'a VfsNode, cursor: &[String]) -> Option<RenderSlice<'a>> {
-	let (dir, position) = walk_to_cursor(root, cursor)?;
+pub fn render_slice<'a>(tree: &'a Tree, cursor: &[String]) -> Option<RenderSlice<'a>> {
+	let (dir, position) = walk_to_cursor(tree, cursor)?;
 	let VfsNode::Directory { size, files, .. } = dir else {
 		return None;
 	};
 	let min_size = *size as f64 * SUNBURST_MIN_SHARE;
 	Some(RenderSlice {
-		name: root.name(),
-		root_size: root.size(),
+		name: tree.name(&tree.root),
+		root_size: tree.root.size(),
 		position,
 		size: *size,
-		list: files.iter().map(|f| prune(f, 0, min_size)).collect(),
+		list: files.iter().map(|f| prune(tree, f, 0, min_size)).collect(),
 		sunburst: files
 			.iter()
 			.filter(|f| f.size() as f64 > min_size)
-			.map(|f| prune(f, SUNBURST_DEPTH, min_size))
+			.map(|f| prune(tree, f, SUNBURST_DEPTH, min_size))
 			.collect(),
 	})
 }
 
-// Copies `node` and its descendants `depth` levels down, skipping any no
-// larger than `min_size`. Directories at the cutoff come out empty.
-fn prune(node: &VfsNode, depth: u32, min_size: f64) -> Pruned<'_> {
+// Copies `node` (in `tree`) and its descendants `depth` levels down, skipping
+// any no larger than `min_size`. Directories at the cutoff come out empty.
+fn prune<'a>(tree: &'a Tree, node: &'a VfsNode, depth: u32, min_size: f64) -> Pruned<'a> {
+	let name = tree.name(node);
 	match node {
-		VfsNode::File { name, size, mtime } => Pruned::File {
+		VfsNode::File { size, mtime, .. } => Pruned::File {
 			name,
 			size: *size,
 			mtime: *mtime,
 		},
 		VfsNode::Directory {
-			name,
-			size,
-			mtime,
-			files,
+			size, mtime, files, ..
 		} => Pruned::Directory {
 			name,
 			size: *size,
@@ -105,26 +104,28 @@ fn prune(node: &VfsNode, depth: u32, min_size: f64) -> Pruned<'_> {
 				files
 					.iter()
 					.filter(|f| f.size() as f64 > min_size)
-					.map(|f| prune(f, depth - 1, min_size))
+					.map(|f| prune(tree, f, depth - 1, min_size))
 					.collect()
 			},
 		},
 	}
 }
 
-// Follows `cursor` down from `root` to the directory it names, adding up the
-// share of the root taken by the siblings ahead of it at each level.
-fn walk_to_cursor<'a>(root: &'a VfsNode, cursor: &[String]) -> Option<(&'a VfsNode, f64)> {
-	let scale = root.size() as f64;
+// Follows `cursor` down from the root to the directory it names, adding up
+// the share of the root taken by the siblings ahead of it at each level.
+fn walk_to_cursor<'a>(tree: &'a Tree, cursor: &[String]) -> Option<(&'a VfsNode, f64)> {
+	let scale = tree.root.size() as f64;
 	let mut position = 0.0;
-	let mut current = root;
+	let mut current = &tree.root;
 	for piece in cursor {
 		let VfsNode::Directory { files, .. } = current else {
 			return None;
 		};
+		// No node has a name the tree doesn't.
+		let piece = tree.names.get(piece)?;
 		let mut found = None;
 		for file in files {
-			if matches!(file, VfsNode::Directory { name, .. } if **name == **piece) {
+			if matches!(file, VfsNode::Directory { name, .. } if *name == piece) {
 				found = Some(file);
 				break;
 			}
@@ -145,7 +146,7 @@ pub struct SearchMatch {
 	pub kind: &'static str,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct SearchResults {
 	/// The largest matches, largest first; ties keep scan order.
@@ -155,22 +156,30 @@ pub struct SearchResults {
 	pub truncated: bool,
 }
 
-/// Every file and directory below `root` whose name contains `query`,
+/// Every file and directory below the root whose name contains `query`,
 /// ignoring case. The search carries on inside matching directories. Only
 /// the `MATCH_CAP` largest come back with paths, which start at `base_path`;
 /// the rest are counted.
-pub fn search(root: &VfsNode, base_path: &str, query: &str) -> SearchResults {
+pub fn search(tree: &Tree, base_path: &str, query: &str) -> SearchResults {
+	let needle = query.trim().to_lowercase();
+	if needle.is_empty() {
+		return SearchResults::default();
+	}
+	// Each name is checked once, rather than once per node that has it.
+	let mut matching = vec![false; tree.names.len()];
+	for (name, text) in &tree.names {
+		matching[name.to_usize()] = contains_folded(text, &needle);
+	}
 	let mut search = Search {
-		needle: query.trim().to_lowercase(),
+		tree,
+		matching,
 		base_path,
 		stack: Vec::new(),
 		top: BinaryHeap::new(),
 		total_count: 0,
 		total_size: 0,
 	};
-	if !search.needle.is_empty()
-		&& let VfsNode::Directory { files, .. } = root
-	{
+	if let VfsNode::Directory { files, .. } = &tree.root {
 		for child in files {
 			search.visit(child);
 		}
@@ -189,10 +198,12 @@ pub fn search(root: &VfsNode, base_path: &str, query: &str) -> SearchResults {
 }
 
 struct Search<'a> {
-	needle: String,
+	tree: &'a Tree,
+	// Whether each of the tree's names matches, by its index.
+	matching: Vec<bool>,
 	base_path: &'a str,
 	// Names from just below the root down to the node being visited.
-	stack: Vec<&'a str>,
+	stack: Vec<Name>,
 	// The best hits so far, worst on top so it's the one to evict.
 	top: BinaryHeap<Reverse<Hit>>,
 	total_count: u64,
@@ -200,9 +211,9 @@ struct Search<'a> {
 }
 
 impl<'a> Search<'a> {
-	fn visit(&mut self, node: &'a VfsNode) {
+	fn visit(&mut self, node: &VfsNode) {
 		self.stack.push(node.name());
-		if contains_folded(node.name(), &self.needle) {
+		if self.matching[node.name().to_usize()] {
 			self.total_count += 1;
 			self.total_size += node.size();
 			self.offer(node);
@@ -228,8 +239,8 @@ impl<'a> Search<'a> {
 			}
 		}
 		let mut path = PathBuf::from(self.base_path);
-		for name in &self.stack {
-			path.push(name);
+		for &name in &self.stack {
+			path.push(self.tree.names.resolve(name).unwrap_or_default());
 		}
 		self.top.push(Reverse(Hit {
 			rank,
@@ -287,23 +298,31 @@ fn contains_folded(name: &str, needle: &str) -> bool {
 
 /// Takes the entry at `parts` (names below the root) out of the tree and its
 /// size off every directory above it. False if there's nothing there.
-pub fn remove(root: &mut VfsNode, parts: &[String]) -> bool {
+pub fn remove(tree: &mut Tree, parts: &[String]) -> bool {
+	// No node has a name the tree doesn't.
+	let Some(parts) = parts
+		.iter()
+		.map(|part| tree.names.get(part))
+		.collect::<Option<Vec<_>>>()
+	else {
+		return false;
+	};
 	match parts.split_last() {
-		Some((last, dirs)) => remove_from(root, dirs, last).is_some(),
+		Some((&last, dirs)) => remove_from(&mut tree.root, dirs, last).is_some(),
 		None => false,
 	}
 }
 
 // Returns the size removed.
-fn remove_from(dir: &mut VfsNode, dirs: &[String], last: &str) -> Option<u64> {
+fn remove_from(dir: &mut VfsNode, dirs: &[Name], last: Name) -> Option<u64> {
 	let VfsNode::Directory { size, files, .. } = dir else {
 		return None;
 	};
 	let removed = match dirs.split_first() {
-		Some((next, rest)) => {
+		Some((&next, rest)) => {
 			let child = files
 				.iter_mut()
-				.find(|f| matches!(f, VfsNode::Directory { name, .. } if **name == **next))?;
+				.find(|f| matches!(f, VfsNode::Directory { name, .. } if *name == next))?;
 			remove_from(child, rest, last)?
 		}
 		None => {
@@ -321,21 +340,27 @@ fn remove_from(dir: &mut VfsNode, dirs: &[String], last: &str) -> Option<u64> {
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use crate::JsonNode;
 
-	fn file(name: &str, size: u64) -> VfsNode {
-		VfsNode::File {
+	fn file(name: &str, size: u64) -> JsonNode {
+		JsonNode::File {
 			name: name.into(),
 			size,
 			mtime: 0,
 		}
 	}
 
-	fn dir(name: &str, files: Vec<VfsNode>) -> VfsNode {
-		VfsNode::Directory {
+	fn dir(name: &str, files: Vec<JsonNode>) -> JsonNode {
+		JsonNode::Directory {
 			name: name.into(),
-			size: files.iter().map(VfsNode::size).sum(),
+			size: files
+				.iter()
+				.map(|f| match f {
+					JsonNode::Directory { size, .. } | JsonNode::File { size, .. } => size,
+				})
+				.sum(),
 			mtime: 0,
-			files: files.into(),
+			files,
 		}
 	}
 
@@ -354,19 +379,19 @@ mod tests {
 
 	#[test]
 	fn no_slice_for_a_cursor_that_does_not_resolve() {
-		let root = dir("root", vec![file("a.bin", 100)]);
-		assert!(render_slice(&root, &cursor(&["nope"])).is_none());
-		assert!(render_slice(&root, &cursor(&["a.bin"])).is_none());
+		let tree = Tree::from(dir("root", vec![file("a.bin", 100)]));
+		assert!(render_slice(&tree, &cursor(&["nope"])).is_none());
+		assert!(render_slice(&tree, &cursor(&["a.bin"])).is_none());
 	}
 
 	#[test]
 	fn sunburst_drops_entries_under_the_minimum_share() {
 		// 0.3% of 10,000,100 bytes is ~30,000: the 100-byte file is under it.
-		let root = dir(
+		let tree = Tree::from(dir(
 			"root",
 			vec![file("big.bin", 10_000_000), file("tiny.bin", 100)],
-		);
-		let slice = render_slice(&root, &[]).unwrap();
+		));
+		let slice = render_slice(&tree, &[]).unwrap();
 		assert_eq!(names(&slice.list), ["big.bin", "tiny.bin"]);
 		assert_eq!(names(&slice.sunburst), ["big.bin"]);
 	}
@@ -378,8 +403,8 @@ mod tests {
 		for i in (0..=6).rev() {
 			inner = dir(&format!("d{i}"), vec![inner]);
 		}
-		let root = dir("root", vec![inner]);
-		let slice = render_slice(&root, &[]).unwrap();
+		let tree = Tree::from(dir("root", vec![inner]));
+		let slice = render_slice(&tree, &[]).unwrap();
 
 		// d0 is the innermost ring, and six more levels come with it: d6 is
 		// the last, emitted without its contents.
@@ -400,15 +425,15 @@ mod tests {
 
 	#[test]
 	fn list_keeps_scan_order_and_drops_contents() {
-		let root = dir(
+		let tree = Tree::from(dir(
 			"root",
 			vec![
 				file("c.bin", 300),
 				dir("a", vec![file("x", 200)]),
 				file("b.bin", 100),
 			],
-		);
-		let slice = render_slice(&root, &[]).unwrap();
+		));
+		let slice = render_slice(&tree, &[]).unwrap();
 		assert_eq!(names(&slice.list), ["c.bin", "a", "b.bin"]);
 		assert!(matches!(&slice.list[1], Pruned::Directory { files, .. } if files.is_empty()));
 	}
@@ -416,8 +441,8 @@ mod tests {
 	#[test]
 	fn cursor_descends_and_keeps_the_root_name() {
 		let child = dir("child", vec![file("inside.bin", 5000)]);
-		let root = dir("Macintosh HD", vec![child, file("sibling.bin", 5000)]);
-		let slice = render_slice(&root, &cursor(&["child"])).unwrap();
+		let tree = Tree::from(dir("Macintosh HD", vec![child, file("sibling.bin", 5000)]));
+		let slice = render_slice(&tree, &cursor(&["child"])).unwrap();
 		assert_eq!(slice.name, "Macintosh HD");
 		assert_eq!(slice.root_size, 10_000);
 		assert_eq!(slice.size, 5000);
@@ -426,7 +451,7 @@ mod tests {
 
 	#[test]
 	fn position_is_the_share_taken_by_preceding_siblings() {
-		let root = dir(
+		let tree = Tree::from(dir(
 			"root",
 			vec![
 				file("a.bin", 250),
@@ -436,24 +461,24 @@ mod tests {
 					vec![file("inside.bin", 300), dir("d", vec![file("x", 200)])],
 				),
 			],
-		);
-		let position = |parts| render_slice(&root, &cursor(parts)).unwrap().position;
+		));
+		let position = |parts| render_slice(&tree, &cursor(parts)).unwrap().position;
 		assert!((position(&["c"]) - 0.5).abs() < 1e-12);
 		assert!((position(&["c", "d"]) - 0.8).abs() < 1e-12);
 	}
 
 	#[test]
 	fn empty_root_has_position_zero() {
-		let root = dir("root", vec![file("a", 0), dir("b", vec![])]);
-		assert_eq!(render_slice(&root, &cursor(&["b"])).unwrap().position, 0.0);
+		let tree = Tree::from(dir("root", vec![file("a", 0), dir("b", vec![])]));
+		assert_eq!(render_slice(&tree, &cursor(&["b"])).unwrap().position, 0.0);
 	}
 
 	#[test]
 	fn pruned_nodes_serialize_like_vfs_nodes() {
-		let node = dir("d", vec![file("f", 10), dir("e", vec![file("g", 1)])]);
+		let tree = Tree::from(dir("d", vec![file("f", 10), dir("e", vec![file("g", 1)])]));
 		assert_eq!(
-			serde_json::to_value(prune(&node, 2, 0.0)).unwrap(),
-			serde_json::to_value(&node).unwrap(),
+			serde_json::to_value(prune(&tree, &tree.root, 2, 0.0)).unwrap(),
+			serde_json::to_value(&tree).unwrap(),
 		);
 	}
 
@@ -466,8 +491,8 @@ mod tests {
 			.into_owned()
 	}
 
-	fn search_tree() -> VfsNode {
-		dir(
+	fn search_tree() -> Tree {
+		Tree::from(dir(
 			"root",
 			vec![
 				dir(
@@ -477,7 +502,7 @@ mod tests {
 				file("PHOTO-2.JPG", 200),
 				dir("other", vec![file("Ünïcode Photo.png", 100)]),
 			],
-		)
+		))
 	}
 
 	#[test]
@@ -519,7 +544,7 @@ mod tests {
 	#[test]
 	fn search_keeps_the_largest_matches_and_counts_the_rest() {
 		let files = (1..=600).map(|i| file(&format!("f{i}"), i)).collect();
-		let results = search(&dir("root", files), "/", "f");
+		let results = search(&Tree::from(dir("root", files)), "/", "f");
 		assert_eq!(results.matches.len(), MATCH_CAP);
 		assert!(results.truncated);
 		assert_eq!(results.total_count, 600);
@@ -533,7 +558,7 @@ mod tests {
 		let files = (0..MATCH_CAP + 10)
 			.map(|i| file(&format!("f{i}"), 7))
 			.collect();
-		let results = search(&dir("root", files), "/", "f");
+		let results = search(&Tree::from(dir("root", files)), "/", "f");
 		assert_eq!(results.matches[0].path, "/f0");
 		assert_eq!(
 			results.matches.last().unwrap().path,
@@ -543,28 +568,28 @@ mod tests {
 
 	#[test]
 	fn remove_takes_the_size_off_every_ancestor() {
-		let mut root = dir(
+		let mut tree = Tree::from(dir(
 			"root",
 			vec![
 				dir("a", vec![dir("b", vec![file("x", 30), file("y", 70)])]),
 				file("z", 5),
 			],
-		);
-		assert!(remove(&mut root, &cursor(&["a", "b", "x"])));
-		assert_eq!(root.size(), 75);
-		let slice = render_slice(&root, &cursor(&["a", "b"])).unwrap();
+		));
+		assert!(remove(&mut tree, &cursor(&["a", "b", "x"])));
+		assert_eq!(tree.root.size(), 75);
+		let slice = render_slice(&tree, &cursor(&["a", "b"])).unwrap();
 		assert_eq!(slice.size, 70);
 		assert_eq!(names(&slice.list), ["y"]);
-		assert_eq!(render_slice(&root, &cursor(&["a"])).unwrap().size, 70);
+		assert_eq!(render_slice(&tree, &cursor(&["a"])).unwrap().size, 70);
 	}
 
 	#[test]
 	fn remove_reports_missing_entries_and_leaves_the_tree_alone() {
-		let mut root = dir("root", vec![dir("a", vec![file("x", 30)])]);
-		assert!(!remove(&mut root, &cursor(&["a", "nope"])));
-		assert!(!remove(&mut root, &cursor(&["nope", "x"])));
-		assert!(!remove(&mut root, &cursor(&["a", "x", "deeper"])));
-		assert!(!remove(&mut root, &[]));
-		assert_eq!(root.size(), 30);
+		let mut tree = Tree::from(dir("root", vec![dir("a", vec![file("x", 30)])]));
+		assert!(!remove(&mut tree, &cursor(&["a", "nope"])));
+		assert!(!remove(&mut tree, &cursor(&["nope", "x"])));
+		assert!(!remove(&mut tree, &cursor(&["a", "x", "deeper"])));
+		assert!(!remove(&mut tree, &[]));
+		assert_eq!(tree.root.size(), 30);
 	}
 }

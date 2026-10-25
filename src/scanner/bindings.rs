@@ -15,7 +15,7 @@
 // below, and the list of volumes.
 
 use crate::{
-	CountsSnapshot, PerfNode, Reserved, ScanError, ScanResult, ScanState, VfsNode, run_scan,
+	CountsSnapshot, PerfNode, Reserved, ScanError, ScanResult, ScanState, Tree, run_scan,
 	snapshot_perf, tree, volumes::Volume,
 };
 use napi::bindgen_prelude::*;
@@ -26,7 +26,7 @@ use std::path::PathBuf;
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, PoisonError, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
-type SharedTree = Arc<RwLock<Option<VfsNode>>>;
+type SharedTree = Arc<RwLock<Option<Tree>>>;
 
 #[napi(object)]
 pub struct ScanOptions {
@@ -58,16 +58,16 @@ impl Scan {
 		})
 	}
 
-	/// A handle that has already finished, holding `json` (a VfsNode) as its
+	/// A handle that has already finished, holding `json` (a `JsonNode`) as its
 	/// tree. For the dev-only fake disk, which is built in JS.
 	#[napi(factory)]
 	pub fn from_json(json: String) -> Result<Self> {
-		let root: VfsNode = serde_json::from_str(&json)
+		let tree = Tree::from_json(&json)
 			.map_err(|e| Error::from_reason(format!("not a scan tree: {e}")))?;
 		Ok(Self {
 			path: PathBuf::new(),
 			state: Arc::new(ScanState::new(false)),
-			tree: Arc::new(RwLock::new(Some(root))),
+			tree: Arc::new(RwLock::new(Some(tree))),
 		})
 	}
 
@@ -142,7 +142,9 @@ impl Scan {
 	/// The finished tree's size in bytes; null until there is one.
 	#[napi]
 	pub fn size(&self) -> Option<f64> {
-		read(&self.tree).as_ref().map(|root| root.size() as f64)
+		read(&self.tree)
+			.as_ref()
+			.map(|tree| tree.root.size() as f64)
 	}
 
 	/// JSON for what the renderer draws of the directory at `cursor` (a
@@ -150,10 +152,10 @@ impl Scan {
 	/// cursor doesn't lead to a directory.
 	#[napi]
 	pub fn render_tree(&self, cursor: Vec<String>) -> Result<String> {
-		let root = read(&self.tree);
-		let slice = root
+		let held = read(&self.tree);
+		let slice = held
 			.as_ref()
-			.and_then(|root| tree::render_slice(root, &cursor));
+			.and_then(|tree| tree::render_slice(tree, &cursor));
 		serde_json::to_string(&slice)
 			.map_err(|e| Error::from_reason(format!("serialize failed: {e}")))
 	}
@@ -176,7 +178,7 @@ impl Scan {
 	pub fn remove(&self, parts: Vec<String>) -> bool {
 		write(&self.tree)
 			.as_mut()
-			.is_some_and(|root| tree::remove(root, &parts))
+			.is_some_and(|tree| tree::remove(tree, &parts))
 	}
 
 	/// Frees the tree. A whole disk's worth is hundreds of MB that V8 can't
@@ -185,9 +187,9 @@ impl Scan {
 	/// calling thread.
 	#[napi]
 	pub fn release(&self) {
-		let root = write(&self.tree).take();
-		if root.is_some() {
-			std::thread::spawn(move || drop(root));
+		let tree = write(&self.tree).take();
+		if tree.is_some() {
+			std::thread::spawn(move || drop(tree));
 		}
 	}
 }
@@ -219,11 +221,11 @@ pub fn relaunch_elevated(
 
 // Nothing panics partway through changing the tree while holding the lock,
 // so a poisoned lock still guards a whole tree.
-fn read(tree: &SharedTree) -> RwLockReadGuard<'_, Option<VfsNode>> {
+fn read(tree: &SharedTree) -> RwLockReadGuard<'_, Option<Tree>> {
 	tree.read().unwrap_or_else(PoisonError::into_inner)
 }
 
-fn write(tree: &SharedTree) -> RwLockWriteGuard<'_, Option<VfsNode>> {
+fn write(tree: &SharedTree) -> RwLockWriteGuard<'_, Option<Tree>> {
 	tree.write().unwrap_or_else(PoisonError::into_inner)
 }
 
@@ -248,7 +250,7 @@ impl Task for ScanTask {
 
 	fn compute(&mut self) -> Result<Self::Output> {
 		let ScanResult {
-			root,
+			tree,
 			reserved,
 			counts,
 			errors,
@@ -257,11 +259,11 @@ impl Task for ScanTask {
 			.map_err(|e| Error::from_reason(format!("scan failed: {e}")))?;
 		// Checked under the lock, so a `release()` right after `abort()` can't
 		// slip in ahead of this and leave the tree behind.
-		let mut tree = write(&self.tree);
+		let mut held = write(&self.tree);
 		if !self.state.aborted.load(Ordering::Relaxed) {
-			*tree = Some(root);
+			*held = Some(tree);
 		}
-		drop(tree);
+		drop(held);
 		serde_json::to_string(&ScanSummary {
 			reserved,
 			counts,
@@ -287,10 +289,10 @@ impl Task for SearchTask {
 	type JsValue = JsString;
 
 	fn compute(&mut self) -> Result<Self::Output> {
-		let root = read(&self.tree);
-		let results = root
+		let held = read(&self.tree);
+		let results = held
 			.as_ref()
-			.map(|root| tree::search(root, &self.base_path, &self.query));
+			.map(|tree| tree::search(tree, &self.base_path, &self.query));
 		serde_json::to_string(&results)
 			.map_err(|e| Error::from_reason(format!("serialize failed: {e}")))
 	}

@@ -26,15 +26,17 @@
 //   taken out of its root and counted apart (reserved.rs).
 
 use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
+use serde::ser::SerializeStruct;
+use serde::{Deserialize, Serialize, Serializer};
 use std::cmp;
 use std::collections::HashMap;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::{Instant, SystemTime};
+use string_interner::{StringInterner, backend::StringBackend, symbol::SymbolU32};
 
 #[cfg(unix)]
 use std::os::unix::fs::MetadataExt;
@@ -75,29 +77,36 @@ impl CountsSnapshot {
 	}
 }
 
-// A whole disk is millions of these, so they're kept small: boxed slices
-// rather than `String` and `Vec`, which carry a capacity field each and, for
-// the children, room to grow that a finished scan never uses.
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(tag = "type", rename_all = "lowercase")]
+// A name, as kept in a tree's `Names`.
+pub type Name = SymbolU32;
+// The names in a tree, each kept once. Names repeat across a disk (every app
+// has its own Info.plist, every package its own package.json), and only a
+// third of a Mac's are different from all the others.
+pub type Names = StringInterner<StringBackend<Name>>;
+
+// A whole disk is millions of these, so they're kept small: names that
+// point into the tree's `Names`, and a boxed slice of children rather than a
+// `Vec`, which carries a capacity field and room to grow that a finished scan
+// never uses.
+#[derive(Debug, Clone)]
 pub enum VfsNode {
 	Directory {
-		name: Box<str>,
+		name: Name,
 		size: u64,
 		mtime: u64,
 		files: Box<[VfsNode]>,
 	},
 	File {
-		name: Box<str>,
+		name: Name,
 		size: u64,
 		mtime: u64,
 	},
 }
 
 impl VfsNode {
-	pub fn name(&self) -> &str {
+	pub fn name(&self) -> Name {
 		match self {
-			VfsNode::Directory { name, .. } | VfsNode::File { name, .. } => name,
+			VfsNode::Directory { name, .. } | VfsNode::File { name, .. } => *name,
 		}
 	}
 
@@ -111,6 +120,113 @@ impl VfsNode {
 		match self {
 			VfsNode::Directory { mtime, .. } | VfsNode::File { mtime, .. } => *mtime,
 		}
+	}
+}
+
+// A finished scan's nodes, and the names they have.
+#[derive(Debug)]
+pub struct Tree {
+	pub root: VfsNode,
+	pub names: Names,
+}
+
+impl Tree {
+	pub fn from_json(json: &str) -> serde_json::Result<Self> {
+		serde_json::from_str::<JsonNode>(json).map(Self::from)
+	}
+
+	pub fn name(&self, node: &VfsNode) -> &str {
+		self.names.resolve(node.name()).unwrap_or_default()
+	}
+}
+
+// A tree as JSON (`Ob.VfsNode`): what the dev fake disk is built as. A
+// `Tree` serializes to the same shape.
+#[derive(Deserialize, Debug)]
+#[serde(tag = "type", rename_all = "lowercase")]
+pub enum JsonNode {
+	Directory {
+		name: String,
+		size: u64,
+		mtime: u64,
+		files: Vec<JsonNode>,
+	},
+	File {
+		name: String,
+		size: u64,
+		mtime: u64,
+	},
+}
+
+impl From<JsonNode> for Tree {
+	fn from(root: JsonNode) -> Self {
+		fn intern(node: JsonNode, names: &mut Names) -> VfsNode {
+			match node {
+				JsonNode::Directory {
+					name,
+					size,
+					mtime,
+					files,
+				} => VfsNode::Directory {
+					name: names.get_or_intern(name),
+					size,
+					mtime,
+					files: files.into_iter().map(|f| intern(f, names)).collect(),
+				},
+				JsonNode::File { name, size, mtime } => VfsNode::File {
+					name: names.get_or_intern(name),
+					size,
+					mtime,
+				},
+			}
+		}
+		let mut names = Names::new();
+		let root = intern(root, &mut names);
+		Self { root, names }
+	}
+}
+
+impl Serialize for Tree {
+	fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+		Named(&self.root, &self.names).serialize(serializer)
+	}
+}
+
+// Nodes, serialized with their names looked up as they're written.
+struct Named<'a, T: ?Sized>(&'a T, &'a Names);
+
+impl Serialize for Named<'_, VfsNode> {
+	fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+		let Named(node, names) = *self;
+		let name = names.resolve(node.name()).unwrap_or_default();
+		match node {
+			VfsNode::Directory {
+				size, mtime, files, ..
+			} => {
+				let mut s = serializer.serialize_struct("Directory", 5)?;
+				s.serialize_field("type", "directory")?;
+				s.serialize_field("name", name)?;
+				s.serialize_field("size", size)?;
+				s.serialize_field("mtime", mtime)?;
+				s.serialize_field("files", &Named(&**files, names))?;
+				s.end()
+			}
+			VfsNode::File { size, mtime, .. } => {
+				let mut s = serializer.serialize_struct("File", 4)?;
+				s.serialize_field("type", "file")?;
+				s.serialize_field("name", name)?;
+				s.serialize_field("size", size)?;
+				s.serialize_field("mtime", mtime)?;
+				s.end()
+			}
+		}
+	}
+}
+
+impl Serialize for Named<'_, [VfsNode]> {
+	fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+		let Named(nodes, names) = *self;
+		serializer.collect_seq(nodes.iter().map(|node| Named(node, names)))
 	}
 }
 
@@ -241,8 +357,9 @@ fn snapshot_perf_at(node: &PerfNodeShared, now: Instant) -> PerfNode {
 
 #[derive(Serialize, Debug)]
 pub struct ScanResult {
-	pub root: VfsNode,
-	// Taken out of `root`: what Windows keeps for itself, on a scan of a
+	#[serde(rename = "root")]
+	pub tree: Tree,
+	// Taken out of `tree`: what Windows keeps for itself, on a scan of a
 	// whole disk (see reserved.rs).
 	pub reserved: Vec<Reserved>,
 	pub counts: CountsSnapshot,
@@ -276,6 +393,8 @@ pub struct ScanState {
 	links: [Mutex<HashMap<(u64, u64), PathBuf>>; LINK_SHARDS],
 	// Links a file was counted at before one that sorts first turned up.
 	displaced: Mutex<Vec<PathBuf>>,
+	// The names in the tree so far, handed to it when the walk is done.
+	names: Mutex<Names>,
 	// Checked once up front; macOS only applies a change on relaunch anyway.
 	pub full_disk_access: bool,
 	// Windows: the app isn't an administrator, and the scan is of this
@@ -300,6 +419,7 @@ impl ScanState {
 			mounts: None,
 			links: Default::default(),
 			displaced: Mutex::new(Vec::new()),
+			names: Mutex::default(),
 			full_disk_access: has_full_disk_access(),
 			admin_would_help: false,
 			perf,
@@ -320,6 +440,12 @@ impl ScanState {
 			admin_would_help: !admin && admin::is_local(path),
 			..Self::new(perf)
 		})
+	}
+
+	// Interning a name either adds it whole or not at all, so a poisoned lock
+	// still guards a good set of names.
+	fn names(&self) -> MutexGuard<'_, Names> {
+		self.names.lock().unwrap_or_else(PoisonError::into_inner)
 	}
 }
 
@@ -375,12 +501,12 @@ pub fn scan(path: &Path, config: ScanConfig) -> std::io::Result<ScanResult> {
 // napi `Scan` class. Takes a borrowed ScanState so the class can pre-build
 // one, share it via Arc, and pull progress from the JS thread.
 pub fn run_scan(path: &Path, state: &ScanState) -> std::io::Result<ScanResult> {
-	let name = path
-		.file_name()
-		.unwrap_or(path.as_os_str())
-		.to_string_lossy()
-		.into();
-	let mut node = scan_dir(path, name, 0, state, None);
+	let name = state.names().get_or_intern(
+		path.file_name()
+			.unwrap_or(path.as_os_str())
+			.to_string_lossy(),
+	);
+	let mut root = scan_dir(path, name, 0, state, None);
 	// The links are only needed during the walk, and the state is kept for as
 	// long as the tree is.
 	for shard in &state.links {
@@ -388,6 +514,8 @@ pub fn run_scan(path: &Path, state: &ScanState) -> std::io::Result<ScanResult> {
 			*links = HashMap::new();
 		}
 	}
+	let mut names = std::mem::take(&mut *state.names());
+	names.shrink_to_fit();
 	let displaced = state
 		.displaced
 		.lock()
@@ -397,13 +525,14 @@ pub fn run_scan(path: &Path, state: &ScanState) -> std::io::Result<ScanResult> {
 		let mut places = Places::default();
 		for link in &displaced {
 			if let Ok(link) = link.strip_prefix(path) {
-				places.add(link);
+				places.add(link, &names);
 			}
 		}
-		uncount(&mut node, &places);
+		uncount(&mut root, &places);
 	}
+	let mut tree = Tree { root, names };
 	let reserved = if cfg!(windows) && path.parent().is_none() {
-		reserved::take(&mut node)
+		reserved::take(&mut tree)
 	} else {
 		Vec::new()
 	};
@@ -414,7 +543,7 @@ pub fn run_scan(path: &Path, state: &ScanState) -> std::io::Result<ScanResult> {
 		.and_then(|g| g.as_ref().map(|n| snapshot_perf(n)));
 
 	Ok(ScanResult {
-		root: node,
+		tree,
 		reserved,
 		counts: state.counts.snapshot(),
 		errors: state.errors.lock().map(|e| e.clone()).unwrap_or_default(),
@@ -444,7 +573,7 @@ fn entry_dev_id(_meta: &fs::Metadata) -> Option<u64> {
 
 fn scan_dir(
 	path: &Path,
-	name: Box<str>,
+	name: Name,
 	depth: u64,
 	state: &ScanState,
 	parent_perf: Option<&Arc<PerfNodeShared>>,
@@ -462,7 +591,8 @@ fn scan_dir(
 	// Register an in-progress perf node so live snapshots of state.live_perf
 	// see this directory immediately. Settled below before we return.
 	let my_perf = if state.perf {
-		let node = PerfNodeShared::new(name.to_string(), display_path.clone(), depth);
+		let perf_name = state.names().resolve(name).unwrap_or_default().to_owned();
+		let node = PerfNodeShared::new(perf_name, display_path.clone(), depth);
 		match parent_perf {
 			Some(parent) => parent.attach_child(&node),
 			None => {
@@ -566,7 +696,11 @@ fn classify(
 		}
 	};
 
-	let entry_name: Box<str> = entry.file_name().to_string_lossy().into();
+	let intern = || {
+		state
+			.names()
+			.get_or_intern(entry.file_name().to_string_lossy())
+	};
 	let mtime = meta
 		.modified()
 		.ok()
@@ -583,7 +717,7 @@ fn classify(
 			0
 		};
 		Some(VfsNode::File {
-			name: entry_name,
+			name: intern(),
 			size,
 			mtime,
 		})
@@ -592,7 +726,7 @@ fn classify(
 		if should_skip_dir(&entry_path, depth, entry_dev_id(&meta), state) {
 			return None;
 		}
-		Some(scan_dir(&entry_path, entry_name, depth, state, parent_perf))
+		Some(scan_dir(&entry_path, intern(), depth, state, parent_perf))
 	} else if ft.is_symlink() {
 		state.counts.symlinks.fetch_add(1, Ordering::Relaxed);
 		None
@@ -668,16 +802,17 @@ fn counts_here(_state: &ScanState, _meta: &fs::Metadata, _path: &Path) -> bool {
 
 // Paths relative to the scan's root, as a tree of names.
 #[derive(Default)]
-struct Places(HashMap<String, Places>);
+struct Places(HashMap<Name, Places>);
 
 impl Places {
-	fn add(&mut self, path: &Path) {
+	fn add(&mut self, path: &Path, names: &Names) {
 		let mut places = self;
 		for part in path {
-			places = places
-				.0
-				.entry(part.to_string_lossy().into_owned())
-				.or_default();
+			// Not in the tree, if the walk never came to it.
+			let Some(name) = names.get(part.to_string_lossy()) else {
+				return;
+			};
+			places = places.0.entry(name).or_default();
 		}
 	}
 }
@@ -689,7 +824,7 @@ fn uncount(node: &mut VfsNode, places: &Places) {
 		return;
 	};
 	for child in files.iter_mut() {
-		let Some(inner) = places.0.get(child.name()) else {
+		let Some(inner) = places.0.get(&child.name()) else {
 			continue;
 		};
 		match child {
@@ -962,7 +1097,7 @@ mod tests {
 		assert_eq!(result.counts.files, 2);
 		assert_eq!(result.counts.directories, 0);
 		assert_eq!(
-			result.root.size(),
+			result.tree.root.size(),
 			on_disk(&dir.join("a.bin")) + on_disk(&dir.join("b.bin")),
 		);
 		assert!(result.errors.is_empty());
@@ -982,7 +1117,7 @@ mod tests {
 		assert_eq!(result.counts.files, 2);
 		assert_eq!(result.counts.directories, 1);
 		assert_eq!(
-			result.root.size(),
+			result.tree.root.size(),
 			on_disk(&sub.join("deep.bin")) + on_disk(&dir.join("top.bin")),
 		);
 
@@ -998,8 +1133,8 @@ mod tests {
 		write(&dir.join("mid.bin"), 100_000);
 
 		let result = scan(&dir, ScanConfig::default()).unwrap();
-		if let VfsNode::Directory { files, .. } = &result.root {
-			let names: Vec<&str> = files.iter().map(VfsNode::name).collect();
+		if let VfsNode::Directory { files, .. } = &result.tree.root {
+			let names: Vec<&str> = files.iter().map(|f| result.tree.name(f)).collect();
 			assert_eq!(names, vec!["big.bin", "mid.bin", "small.bin"]);
 		} else {
 			panic!("root should be a directory");
@@ -1018,7 +1153,7 @@ mod tests {
 		let result = scan(&dir, ScanConfig::default()).unwrap();
 		assert_eq!(result.counts.symlinks, 1);
 		assert_eq!(result.counts.files, 1);
-		assert_eq!(result.root.size(), on_disk(&dir.join("real.bin")));
+		assert_eq!(result.tree.root.size(), on_disk(&dir.join("real.bin")));
 
 		cleanup(&dir);
 	}
@@ -1035,9 +1170,9 @@ mod tests {
 
 		let result = scan(&dir, ScanConfig::default()).unwrap();
 		assert!(
-			result.root.size() < 1 << 20,
+			result.tree.root.size() < 1 << 20,
 			"counted {} bytes",
-			result.root.size(),
+			result.tree.root.size(),
 		);
 
 		cleanup(&dir);
@@ -1102,15 +1237,16 @@ mod tests {
 
 		cleanup(&dir);
 	}
+	// The entry called `name` in the root folder.
 	#[cfg(unix)]
-	fn child<'a>(node: &'a VfsNode, name: &str) -> &'a VfsNode {
-		match node {
-			VfsNode::Directory { files, .. } => files
-				.iter()
-				.find(|file| file.name() == name)
-				.unwrap_or_else(|| panic!("no {name} in {}", node.name())),
-			VfsNode::File { .. } => panic!("{} isn't a folder", node.name()),
-		}
+	fn child<'a>(tree: &'a Tree, name: &str) -> &'a VfsNode {
+		let VfsNode::Directory { files, .. } = &tree.root else {
+			panic!("the root isn't a folder");
+		};
+		files
+			.iter()
+			.find(|file| tree.name(file) == name)
+			.unwrap_or_else(|| panic!("no {name} in the root"))
 	}
 
 	#[test]
@@ -1129,15 +1265,15 @@ mod tests {
 		let data = on_disk(&dir.join("m/data.bin"));
 		let own = on_disk(&dir.join("z/own.bin"));
 		assert_eq!(result.counts.files, 4);
-		assert_eq!(result.root.size(), data + own);
-		assert_eq!(child(&result.root, "a").size(), data);
-		assert_eq!(child(&result.root, "m").size(), 0);
-		assert_eq!(child(&result.root, "z").size(), own);
+		assert_eq!(result.tree.root.size(), data + own);
+		assert_eq!(child(&result.tree, "a").size(), data);
+		assert_eq!(child(&result.tree, "m").size(), 0);
+		assert_eq!(child(&result.tree, "z").size(), own);
 		// Re-sorted, now that z's link is uncounted.
-		let VfsNode::Directory { files, .. } = &result.root else {
+		let VfsNode::Directory { files, .. } = &result.tree.root else {
 			unreachable!();
 		};
-		let names: Vec<&str> = files.iter().map(VfsNode::name).collect();
+		let names: Vec<&str> = files.iter().map(|f| result.tree.name(f)).collect();
 		assert_eq!(names[0], "a");
 
 		cleanup(&dir);
@@ -1191,23 +1327,38 @@ mod tests {
 		// Not into other filesystems, but still into anything not planned.
 		let result = planned(&dir, &[("proc", false), ("home/kayla/.cache", false)], true);
 		assert_eq!(
-			result.root.size(),
+			result.tree.root.size(),
 			size("home/kayla/notes.txt") + size("sysroot/ostree/object") + size("vmlinuz")
 		);
 
 		// An ostree boot image: only its mounts.
 		let result = planned(&dir, &[("sysroot", true), ("home", true)], false);
 		assert_eq!(
-			result.root.size(),
+			result.tree.root.size(),
 			size("home/kayla/notes.txt")
 				+ size("home/kayla/.cache/thumbnail.png")
 				+ size("sysroot/ostree/object")
 		);
-		let VfsNode::Directory { files, .. } = &result.root else {
+		let VfsNode::Directory { files, .. } = &result.tree.root else {
 			unreachable!();
 		};
 		assert_eq!(files.len(), 2);
 
 		cleanup(&dir);
+	}
+
+	#[test]
+	fn trees_go_through_json_unchanged() {
+		let json = r#"{"type":"directory","name":"root","size":30,"mtime":2000,"files":[{"type":"directory","name":"a","size":20,"mtime":2000,"files":[{"type":"file","name":"same","size":20,"mtime":2000}]},{"type":"file","name":"same","size":10,"mtime":1000}]}"#;
+		let tree = Tree::from_json(json).unwrap();
+		assert_eq!(tree.names.len(), 3);
+		assert_eq!(serde_json::to_string(&tree).unwrap(), json);
+	}
+
+	// Most of what a scan keeps is millions of these.
+	#[test]
+	#[cfg(target_pointer_width = "64")]
+	fn nodes_stay_small() {
+		assert_eq!(std::mem::size_of::<VfsNode>(), 40);
 	}
 }
