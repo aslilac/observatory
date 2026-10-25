@@ -56,7 +56,7 @@ export const Inspect: React.FC<InspectProps> = ({ scan }) => {
 	);
 	const searchActive = query.trim().length > 0;
 
-	const onAddOne = useCallback(
+	const onMoveOne = useCallback(
 		(item: SelectableItem) => addToCleanup([item]),
 		[addToCleanup],
 	);
@@ -104,7 +104,7 @@ export const Inspect: React.FC<InspectProps> = ({ scan }) => {
 
 	const cancelSelect = useCallback(() => setSelection(new Map()), []);
 
-	const addSelectedToCleanup = useCallback(() => {
+	const moveSelectedToCleanup = useCallback(() => {
 		const items = Array.from(selection.values()).map((i) => ({
 			path: i.path,
 			name: i.name,
@@ -220,7 +220,7 @@ export const Inspect: React.FC<InspectProps> = ({ scan }) => {
 							query={query}
 							selection={selection}
 							onToggleSelect={toggleSelect}
-							onAddToCleanup={onAddOne}
+							onMoveToCleanup={onMoveOne}
 						/>
 					) : mode === "list" ? (
 						<LegendList
@@ -235,7 +235,7 @@ export const Inspect: React.FC<InspectProps> = ({ scan }) => {
 							selection={selection}
 							onForward={navigateForward}
 							onToggleSelect={toggleSelect}
-							onAddToCleanup={onAddOne}
+							onMoveToCleanup={onMoveOne}
 							sortMode={sortMode}
 							showAll={showAll}
 							onShowAll={() => setShowAll(true)}
@@ -250,7 +250,7 @@ export const Inspect: React.FC<InspectProps> = ({ scan }) => {
 							selection={selection}
 							onForward={navigateForward}
 							onToggleSelect={toggleSelect}
-							onAddToCleanup={onAddOne}
+							onMoveToCleanup={onMoveOne}
 						/>
 					)}
 				</div>
@@ -260,7 +260,7 @@ export const Inspect: React.FC<InspectProps> = ({ scan }) => {
 					count={selection.size}
 					totalSize={selectionTotal}
 					onCancel={cancelSelect}
-					onAddToCleanup={addSelectedToCleanup}
+					onMoveToCleanup={moveSelectedToCleanup}
 				/>
 			) : (
 				<div className="flex h-[28px] items-center border-t border-line-soft px-3 font-mono text-[11px] text-muted">

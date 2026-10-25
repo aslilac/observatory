@@ -39,7 +39,7 @@ export const LegendList: React.FC<LegendListProps> = ({
 	selection,
 	onForward,
 	onToggleSelect,
-	onAddToCleanup,
+	onMoveToCleanup,
 	sortMode,
 	showAll,
 	onShowAll,
@@ -89,7 +89,7 @@ export const LegendList: React.FC<LegendListProps> = ({
 							name: file.name,
 							size: file.size,
 							type: isDir ? "directory" : "file",
-							onAddToCleanup,
+							onMoveToCleanup,
 						})}
 					>
 						<Checkbox

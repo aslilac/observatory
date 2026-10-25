@@ -31,7 +31,7 @@ export const FolderTree: React.FC<FolderTreeProps> = ({
 	selection,
 	onForward,
 	onToggleSelect,
-	onAddToCleanup,
+	onMoveToCleanup,
 }) => {
 	const { includes: inCleanup } = useCleanupQueue();
 	const [expanded, setExpanded] = useState<Set<string>>(() => new Set([""]));
@@ -114,7 +114,7 @@ export const FolderTree: React.FC<FolderTreeProps> = ({
 					inCleanup={inCleanup}
 					onForward={onForward}
 					onToggleSelect={onToggleSelect}
-					onAddToCleanup={onAddToCleanup}
+					onMoveToCleanup={onMoveToCleanup}
 				/>
 			)}
 		</div>
@@ -136,7 +136,7 @@ type ChildrenProps = {
 	inCleanup: (path: string) => boolean;
 	onForward: (...names: string[]) => void;
 	onToggleSelect: (item: SelectableItem) => void;
-	onAddToCleanup: (item: SelectableItem) => void;
+	onMoveToCleanup: (item: SelectableItem) => void;
 };
 
 const TreeChildren: React.FC<ChildrenProps> = ({
@@ -154,7 +154,7 @@ const TreeChildren: React.FC<ChildrenProps> = ({
 	inCleanup,
 	onForward,
 	onToggleSelect,
-	onAddToCleanup,
+	onMoveToCleanup,
 }) => (
 	<>
 		{files.map((file) => {
@@ -219,7 +219,7 @@ const TreeChildren: React.FC<ChildrenProps> = ({
 							name: file.name,
 							size: file.size,
 							type: isDir ? "directory" : "file",
-							onAddToCleanup,
+							onMoveToCleanup,
 						})}
 					/>
 					{isOpen && isDir && (
@@ -249,7 +249,7 @@ const TreeChildren: React.FC<ChildrenProps> = ({
 									inCleanup={inCleanup}
 									onForward={onForward}
 									onToggleSelect={onToggleSelect}
-									onAddToCleanup={onAddToCleanup}
+									onMoveToCleanup={onMoveToCleanup}
 								/>
 							)}
 						</>

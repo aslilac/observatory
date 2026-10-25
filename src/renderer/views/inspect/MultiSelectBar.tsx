@@ -4,14 +4,14 @@ import { Button } from "#/components/Button";
 type MultiSelectBarProps = {
 	count: number;
 	totalSize: number;
-	onAddToCleanup: () => void;
+	onMoveToCleanup: () => void;
 	onCancel: () => void;
 };
 
 export const MultiSelectBar: React.FC<MultiSelectBarProps> = ({
 	count,
 	totalSize,
-	onAddToCleanup,
+	onMoveToCleanup,
 	onCancel,
 }) => (
 	<div className="flex items-center gap-3 border-t border-line-soft bg-background px-3 py-2">
@@ -23,8 +23,8 @@ export const MultiSelectBar: React.FC<MultiSelectBarProps> = ({
 		<Button size="small" onClick={onCancel}>
 			Cancel
 		</Button>
-		<Button size="small" variant="primary" onClick={onAddToCleanup}>
-			Add to cleanup
+		<Button size="small" variant="primary" onClick={onMoveToCleanup}>
+			Move to cleanup
 		</Button>
 	</div>
 );

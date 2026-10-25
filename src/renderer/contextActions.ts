@@ -7,7 +7,7 @@ type RowActionsArgs = {
 	name: string;
 	size: number;
 	type: "file" | "directory";
-	onAddToCleanup: (item: { path: string; name: string; size: number }) => void;
+	onMoveToCleanup: (item: { path: string; name: string; size: number }) => void;
 };
 
 // Right-click items shared across LegendList, FolderTree, and SearchResults
@@ -18,7 +18,7 @@ export function rowActions({
 	name,
 	size,
 	type,
-	onAddToCleanup,
+	onMoveToCleanup,
 }: RowActionsArgs): ContextMenuItem[] {
 	const items: ContextMenuItem[] = [];
 	// "Open" on a folder lands in Finder showing the folder's contents, which
@@ -37,8 +37,8 @@ export function rowActions({
 		{ kind: "separator" },
 		{
 			kind: "item",
-			label: type === "directory" ? "Add folder to cleanup" : "Add to cleanup",
-			onClick: () => onAddToCleanup({ path, name, size }),
+			label: "Move to cleanup",
+			onClick: () => onMoveToCleanup({ path, name, size }),
 		},
 	);
 	return items;

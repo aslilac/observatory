@@ -419,7 +419,7 @@ type CleanupQueue = {
 const CleanupQueueContext = createContext<CleanupQueue | null>(null);
 
 // Cleanup queue lives in a provider so each view can subscribe independently:
-// the CleanupChip in any toolbar, the Inspect view's "add to cleanup", and
+// the CleanupChip in any toolbar, the Inspect view's "move to cleanup", and
 // the Cleanup view itself all share one store without props plumbing.
 export const CleanupQueueProvider: React.FC<{ children: React.ReactNode }> = ({
 	children,

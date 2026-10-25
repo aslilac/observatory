@@ -12,7 +12,7 @@ type SearchResultsProps = {
 	query: string;
 	selection: Map<string, SelectableItem>;
 	onToggleSelect: (item: SelectableItem) => void;
-	onAddToCleanup: (item: SelectableItem) => void;
+	onMoveToCleanup: (item: SelectableItem) => void;
 };
 
 export const SearchResults: React.FC<SearchResultsProps> = ({
@@ -21,7 +21,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
 	query,
 	selection,
 	onToggleSelect,
-	onAddToCleanup,
+	onMoveToCleanup,
 }) => {
 	const { includes: inCleanup } = useCleanupQueue();
 
@@ -77,7 +77,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
 							name: item.name,
 							size: match.size,
 							type: match.type,
-							onAddToCleanup,
+							onMoveToCleanup,
 						})}
 						className={`group flex cursor-pointer items-center gap-[8px] rounded-[5px] px-[8px] py-[7px] ${
 							isSelected ? "bg-fill" : "hover:bg-fill"

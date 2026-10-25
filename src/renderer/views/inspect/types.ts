@@ -16,7 +16,7 @@ export type FileListBaseProps = {
 	hueByName: Map<string, number>;
 	selection: Map<string, SelectableItem>;
 	onToggleSelect: (item: SelectableItem) => void;
-	onAddToCleanup: (item: SelectableItem) => void;
+	onMoveToCleanup: (item: SelectableItem) => void;
 };
 
 // Per-row derivations every file list needs. Centralising these keeps the
