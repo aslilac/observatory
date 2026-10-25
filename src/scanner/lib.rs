@@ -75,17 +75,20 @@ impl CountsSnapshot {
 	}
 }
 
+// A whole disk is millions of these, so they're kept small: boxed slices
+// rather than `String` and `Vec`, which carry a capacity field each and, for
+// the children, room to grow that a finished scan never uses.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum VfsNode {
 	Directory {
-		name: String,
+		name: Box<str>,
 		size: u64,
 		mtime: u64,
-		files: Vec<VfsNode>,
+		files: Box<[VfsNode]>,
 	},
 	File {
-		name: String,
+		name: Box<str>,
 		size: u64,
 		mtime: u64,
 	},
@@ -372,7 +375,19 @@ pub fn scan(path: &Path, config: ScanConfig) -> std::io::Result<ScanResult> {
 // napi `Scan` class. Takes a borrowed ScanState so the class can pre-build
 // one, share it via Arc, and pull progress from the JS thread.
 pub fn run_scan(path: &Path, state: &ScanState) -> std::io::Result<ScanResult> {
-	let mut node = scan_dir(path, 0, state, None);
+	let name = path
+		.file_name()
+		.unwrap_or(path.as_os_str())
+		.to_string_lossy()
+		.into();
+	let mut node = scan_dir(path, name, 0, state, None);
+	// The links are only needed during the walk, and the state is kept for as
+	// long as the tree is.
+	for shard in &state.links {
+		if let Ok(mut links) = shard.lock() {
+			*links = HashMap::new();
+		}
+	}
 	let displaced = state
 		.displaced
 		.lock()
@@ -429,14 +444,11 @@ fn entry_dev_id(_meta: &fs::Metadata) -> Option<u64> {
 
 fn scan_dir(
 	path: &Path,
+	name: Box<str>,
 	depth: u64,
 	state: &ScanState,
 	parent_perf: Option<&Arc<PerfNodeShared>>,
 ) -> VfsNode {
-	let display_name = path
-		.file_name()
-		.map(|n| n.to_string_lossy().into_owned())
-		.unwrap_or_else(|| path.to_string_lossy().into_owned());
 	let display_path = path.to_string_lossy().into_owned();
 
 	// Update currentPath so the JS side polling `progress()` sees roughly
@@ -450,7 +462,7 @@ fn scan_dir(
 	// Register an in-progress perf node so live snapshots of state.live_perf
 	// see this directory immediately. Settled below before we return.
 	let my_perf = if state.perf {
-		let node = PerfNodeShared::new(display_name.clone(), display_path.clone(), depth);
+		let node = PerfNodeShared::new(name.to_string(), display_path.clone(), depth);
 		match parent_perf {
 			Some(parent) => parent.attach_child(&node),
 			None => {
@@ -469,10 +481,10 @@ fn scan_dir(
 			n.settle(0.0, 0);
 		}
 		return VfsNode::Directory {
-			name: display_name,
+			name,
 			size: 0,
 			mtime: 0,
-			files: vec![],
+			files: Box::default(),
 		};
 	}
 
@@ -492,10 +504,10 @@ fn scan_dir(
 				n.settle(readdir_ms, 0);
 			}
 			return VfsNode::Directory {
-				name: display_name,
+				name,
 				size: 0,
 				mtime: 0,
-				files: vec![],
+				files: Box::default(),
 			};
 		}
 	};
@@ -504,7 +516,7 @@ fn scan_dir(
 		.map(|t| t.elapsed().as_secs_f64() * 1000.0)
 		.unwrap_or(0.0);
 
-	let mut children: Vec<VfsNode> = entries
+	let mut children: Box<[VfsNode]> = entries
 		.into_par_iter()
 		.filter_map(|entry| classify(entry, depth + 1, state, my_perf.as_ref()))
 		.collect();
@@ -518,7 +530,7 @@ fn scan_dir(
 	}
 
 	VfsNode::Directory {
-		name: display_name,
+		name,
 		size,
 		mtime,
 		files: children,
@@ -554,7 +566,7 @@ fn classify(
 		}
 	};
 
-	let entry_name = entry.file_name().to_string_lossy().into_owned();
+	let entry_name: Box<str> = entry.file_name().to_string_lossy().into();
 	let mtime = meta
 		.modified()
 		.ok()
@@ -580,11 +592,7 @@ fn classify(
 		if should_skip_dir(&entry_path, depth, entry_dev_id(&meta), state) {
 			return None;
 		}
-		let node = scan_dir(&entry_path, depth, state, parent_perf);
-		// scan_dir derives the name from the path's basename; for entries
-		// we already know the parent-yielded name, which is what the
-		// renderer uses. Rewrite to be safe.
-		Some(rename(node, entry_name))
+		Some(scan_dir(&entry_path, entry_name, depth, state, parent_perf))
 	} else if ft.is_symlink() {
 		state.counts.symlinks.fetch_add(1, Ordering::Relaxed);
 		None
@@ -702,24 +710,6 @@ fn retry_interrupted<T>(mut f: impl FnMut() -> io::Result<T>) -> io::Result<T> {
 			Err(err) if err.kind() == io::ErrorKind::Interrupted && tries < 5 => tries += 1,
 			result => return result,
 		}
-	}
-}
-
-fn rename(node: VfsNode, new_name: String) -> VfsNode {
-	match node {
-		VfsNode::Directory {
-			size, mtime, files, ..
-		} => VfsNode::Directory {
-			name: new_name,
-			size,
-			mtime,
-			files,
-		},
-		VfsNode::File { size, mtime, .. } => VfsNode::File {
-			name: new_name,
-			size,
-			mtime,
-		},
 	}
 }
 
@@ -1009,12 +999,7 @@ mod tests {
 
 		let result = scan(&dir, ScanConfig::default()).unwrap();
 		if let VfsNode::Directory { files, .. } = &result.root {
-			let names: Vec<&str> = files
-				.iter()
-				.map(|n| match n {
-					VfsNode::File { name, .. } | VfsNode::Directory { name, .. } => name.as_str(),
-				})
-				.collect();
+			let names: Vec<&str> = files.iter().map(VfsNode::name).collect();
 			assert_eq!(names, vec!["big.bin", "mid.bin", "small.bin"]);
 		} else {
 			panic!("root should be a directory");

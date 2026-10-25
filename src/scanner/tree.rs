@@ -124,7 +124,7 @@ fn walk_to_cursor<'a>(root: &'a VfsNode, cursor: &[String]) -> Option<(&'a VfsNo
 		};
 		let mut found = None;
 		for file in files {
-			if matches!(file, VfsNode::Directory { name, .. } if name == piece) {
+			if matches!(file, VfsNode::Directory { name, .. } if **name == **piece) {
 				found = Some(file);
 				break;
 			}
@@ -303,12 +303,15 @@ fn remove_from(dir: &mut VfsNode, dirs: &[String], last: &str) -> Option<u64> {
 		Some((next, rest)) => {
 			let child = files
 				.iter_mut()
-				.find(|f| matches!(f, VfsNode::Directory { name, .. } if name == next))?;
+				.find(|f| matches!(f, VfsNode::Directory { name, .. } if **name == **next))?;
 			remove_from(child, rest, last)?
 		}
 		None => {
 			let index = files.iter().position(|f| f.name() == last)?;
-			files.remove(index).size()
+			let mut rest = std::mem::take(files).into_vec();
+			let removed = rest.remove(index);
+			*files = rest.into_boxed_slice();
+			removed.size()
 		}
 	};
 	*size = size.saturating_sub(removed);
@@ -332,7 +335,7 @@ mod tests {
 			name: name.into(),
 			size: files.iter().map(VfsNode::size).sum(),
 			mtime: 0,
-			files,
+			files: files.into(),
 		}
 	}
 

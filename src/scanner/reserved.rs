@@ -42,7 +42,8 @@ pub fn take(root: &mut VfsNode) -> Vec<Reserved> {
 		return Vec::new();
 	};
 	let mut reserved = Vec::new();
-	files.retain(|node| {
+	let mut kept = std::mem::take(files).into_vec();
+	kept.retain(|node| {
 		let Some(kind) = kind_of(node) else {
 			return true;
 		};
@@ -56,6 +57,7 @@ pub fn take(root: &mut VfsNode) -> Vec<Reserved> {
 		}
 		false
 	});
+	*files = kept.into_boxed_slice();
 	reserved
 }
 
@@ -76,7 +78,7 @@ mod tests {
 			name: name.into(),
 			size: files.iter().map(VfsNode::size).sum(),
 			mtime: 0,
-			files,
+			files: files.into(),
 		}
 	}
 
