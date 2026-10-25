@@ -40,21 +40,23 @@ function buildTemplate(): MenuItemConstructorOptions[] {
 		// macOS expects an "appMenu" role with the app's name as label. The
 		// system uses it for About / Quit / Hide / Services bindings; without
 		// it Cmd-Q goes through Electron's defaults and the About entry won't
-		// show up where users look for it.
+		// show up where users look for it. The name is spelled out, here and
+		// in the items that would take it from app.name: that's package.json's,
+		// which is lowercase.
 		...(isMac
 			? ([
 					{
-						label: app.name,
+						label: "Observatory",
 						submenu: [
-							{ label: `About ${app.name}`, click: () => showAboutWindow() },
+							{ label: "About Observatory", click: () => showAboutWindow() },
 							{ type: "separator" },
 							{ role: "services" },
 							{ type: "separator" },
-							{ role: "hide" },
+							{ role: "hide", label: "Hide Observatory" },
 							{ role: "hideOthers" },
 							{ role: "unhide" },
 							{ type: "separator" },
-							{ role: "quit" },
+							{ role: "quit", label: "Quit Observatory" },
 						],
 					},
 				] satisfies MenuItemConstructorOptions[])
