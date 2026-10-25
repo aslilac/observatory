@@ -35,7 +35,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
-use std::time::{Instant, SystemTime};
+use std::time::{Duration, Instant, SystemTime};
 use string_interner::{StringInterner, backend::StringBackend, symbol::SymbolU32};
 
 #[cfg(unix)]
@@ -85,21 +85,21 @@ pub type Name = SymbolU32;
 pub type Names = StringInterner<StringBackend<Name>>;
 
 // A whole disk is millions of these, so they're kept small: names that
-// point into the tree's `Names`, and a boxed slice of children rather than a
-// `Vec`, which carries a capacity field and room to grow that a finished scan
-// never uses.
+// point into the tree's `Names`, mtimes in whole seconds (to 2106), and a
+// boxed slice of children rather than a `Vec`, which carries a capacity field
+// and room to grow that a finished scan never uses.
 #[derive(Debug, Clone)]
 pub enum VfsNode {
 	Directory {
 		name: Name,
 		size: u64,
-		mtime: u64,
+		mtime: u32,
 		files: Box<[VfsNode]>,
 	},
 	File {
 		name: Name,
 		size: u64,
-		mtime: u64,
+		mtime: u32,
 	},
 }
 
@@ -116,11 +116,22 @@ impl VfsNode {
 		}
 	}
 
-	pub fn mtime(&self) -> u64 {
+	// In seconds since 1970.
+	pub fn mtime(&self) -> u32 {
 		match self {
 			VfsNode::Directory { mtime, .. } | VfsNode::File { mtime, .. } => *mtime,
 		}
 	}
+
+	// In milliseconds, as JSON has it for JS's `Date`.
+	pub fn mtime_ms(&self) -> u64 {
+		u64::from(self.mtime()) * 1000
+	}
+}
+
+// A time since 1970 as a node keeps it, in whole seconds.
+fn seconds(since_1970: Duration) -> u32 {
+	u32::try_from(since_1970.as_secs()).unwrap_or(u32::MAX)
 }
 
 // A finished scan's nodes, and the names they have.
@@ -170,13 +181,13 @@ impl From<JsonNode> for Tree {
 				} => VfsNode::Directory {
 					name: names.get_or_intern(name),
 					size,
-					mtime,
+					mtime: seconds(Duration::from_millis(mtime)),
 					files: files.into_iter().map(|f| intern(f, names)).collect(),
 				},
 				JsonNode::File { name, size, mtime } => VfsNode::File {
 					name: names.get_or_intern(name),
 					size,
-					mtime,
+					mtime: seconds(Duration::from_millis(mtime)),
 				},
 			}
 		}
@@ -200,23 +211,21 @@ impl Serialize for Named<'_, VfsNode> {
 		let Named(node, names) = *self;
 		let name = names.resolve(node.name()).unwrap_or_default();
 		match node {
-			VfsNode::Directory {
-				size, mtime, files, ..
-			} => {
+			VfsNode::Directory { size, files, .. } => {
 				let mut s = serializer.serialize_struct("Directory", 5)?;
 				s.serialize_field("type", "directory")?;
 				s.serialize_field("name", name)?;
 				s.serialize_field("size", size)?;
-				s.serialize_field("mtime", mtime)?;
+				s.serialize_field("mtime", &node.mtime_ms())?;
 				s.serialize_field("files", &Named(&**files, names))?;
 				s.end()
 			}
-			VfsNode::File { size, mtime, .. } => {
+			VfsNode::File { size, .. } => {
 				let mut s = serializer.serialize_struct("File", 4)?;
 				s.serialize_field("type", "file")?;
 				s.serialize_field("name", name)?;
 				s.serialize_field("size", size)?;
-				s.serialize_field("mtime", mtime)?;
+				s.serialize_field("mtime", &node.mtime_ms())?;
 				s.end()
 			}
 		}
@@ -705,7 +714,7 @@ fn classify(
 		.modified()
 		.ok()
 		.and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
-		.map(|d| d.as_millis() as u64)
+		.map(seconds)
 		.unwrap_or(0);
 	let ft = meta.file_type();
 
@@ -1359,6 +1368,6 @@ mod tests {
 	#[test]
 	#[cfg(target_pointer_width = "64")]
 	fn nodes_stay_small() {
-		assert_eq!(std::mem::size_of::<VfsNode>(), 40);
+		assert_eq!(std::mem::size_of::<VfsNode>(), 32);
 	}
 }

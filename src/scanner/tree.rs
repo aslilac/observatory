@@ -86,18 +86,17 @@ pub fn render_slice<'a>(tree: &'a Tree, cursor: &[String]) -> Option<RenderSlice
 // any no larger than `min_size`. Directories at the cutoff come out empty.
 fn prune<'a>(tree: &'a Tree, node: &'a VfsNode, depth: u32, min_size: f64) -> Pruned<'a> {
 	let name = tree.name(node);
+	let mtime = node.mtime_ms();
 	match node {
-		VfsNode::File { size, mtime, .. } => Pruned::File {
+		VfsNode::File { size, .. } => Pruned::File {
 			name,
 			size: *size,
-			mtime: *mtime,
+			mtime,
 		},
-		VfsNode::Directory {
-			size, mtime, files, ..
-		} => Pruned::Directory {
+		VfsNode::Directory { size, files, .. } => Pruned::Directory {
 			name,
 			size: *size,
-			mtime: *mtime,
+			mtime,
 			files: if depth == 0 {
 				Vec::new()
 			} else {
