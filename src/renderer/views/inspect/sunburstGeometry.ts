@@ -11,6 +11,35 @@ export function layerRadii(layer: number): { ir: number; or: number } {
 	return { ir, or: ir + 31 };
 }
 
+// The radii of a ring that may be partway between two layers, as a wedge is
+// while the sunburst moves from one folder to another. Layer -1 is the
+// center circle, where the current folder sits, and anything further in
+// shrinks to nothing, so a parent folder sinks into the center as the user
+// opens one of its children.
+export function ringRadii(layer: number): { ir: number; or: number } {
+	if (layer <= -2) {
+		return { ir: 0, or: 0 };
+	}
+	const lower = Math.floor(layer);
+	const t = layer - lower;
+	const a = wholeRingRadii(lower);
+	if (t === 0) {
+		return a;
+	}
+	const b = wholeRingRadii(lower + 1);
+	return { ir: a.ir + (b.ir - a.ir) * t, or: a.or + (b.or - a.or) * t };
+}
+
+function wholeRingRadii(layer: number): { ir: number; or: number } {
+	if (layer <= -2) {
+		return { ir: 0, or: 0 };
+	}
+	if (layer === -1) {
+		return { ir: 0, or: layerRadii(0).ir };
+	}
+	return layerRadii(layer);
+}
+
 // The narrowest wedge worth drawing, as arc length in viewBox units halfway
 // through its ring. The gap stroke eats about one unit of every wedge, so
 // anything thinner comes out as a smeared, antialiased hairline. Measured
