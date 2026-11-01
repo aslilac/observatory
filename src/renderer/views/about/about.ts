@@ -2,6 +2,7 @@
 // the window (site/scene/about.py crops it), and the sky behind it, laid out
 // by where the horizon, the sun and the pole fall on it.
 import layout from "../../../../build-resources/about/scene.json";
+import { version } from "../../../../package.json";
 import scene from "../../../../build-resources/about/scene.webp";
 import { drawStars } from "./sky";
 
@@ -26,6 +27,11 @@ root.setProperty("--render-h", `${renderHeight}px`);
 root.setProperty("--horizon-y", `${horizon}px`);
 root.setProperty("--sun-x", `${sun.x}px`);
 root.setProperty("--sun-y", `${sun.y}px`);
+
+const versionLabel = document.querySelector<HTMLElement>(".version");
+if (versionLabel) {
+	versionLabel.textContent = version;
+}
 
 const img = document.querySelector<HTMLImageElement>(".scene");
 if (img) {
