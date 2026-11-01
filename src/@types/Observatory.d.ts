@@ -45,6 +45,9 @@ declare global {
 		// macOS: opens Privacy & Security → Full Disk Access in System
 		// Settings.
 		function openFullDiskAccessSettings(): Promise<void>;
+		// macOS: whether the app has Full Disk Access. True everywhere else,
+		// where there's no such thing to grant.
+		function hasFullDiskAccess(): Promise<boolean>;
 		// Windows: starts the app again as an administrator, straight into a
 		// scan of `path`, once the user says yes when Windows asks; then this
 		// copy quits. Resolves false if they said no.
@@ -76,6 +79,9 @@ declare global {
 		function onScans(cb: (scans: ScanInfo[]) => void): () => void;
 		function onUpdate(cb: (update: Update | null) => void): () => void;
 		function onSetInspecting(cb: (path: string | null) => void): () => void;
+		// The menu asking to scan a path and go to it (File → Open Folder…,
+		// Open Recent).
+		function onOpenScan(cb: (path: string) => void): () => void;
 		function onNav(cb: (direction: "back" | "forward") => void): () => void;
 
 		// Downloaded, to be installed on the next start, or only out, to be

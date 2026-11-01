@@ -1,8 +1,7 @@
 import { app, Menu, type MenuItemConstructorOptions, shell } from "electron";
 import * as path from "node:path";
-import { setInspecting } from "./broadcast";
+import { openScan } from "./broadcast";
 import { selectDirectory } from "./dialog";
-import { startScan } from "./vfsManager";
 import { showAboutWindow } from "./viewManager";
 
 const isMac = process.platform === "darwin";
@@ -28,10 +27,7 @@ function recentItems(): MenuItemConstructorOptions[] {
 		label: recentLabel(scan.path),
 		sublabel: scan.path,
 		toolTip: scan.path,
-		click: () => {
-			startScan(scan.path);
-			setInspecting(scan.path);
-		},
+		click: () => openScan(scan.path),
 	}));
 }
 
@@ -69,11 +65,9 @@ function buildTemplate(): MenuItemConstructorOptions[] {
 					accelerator: "CmdOrCtrl+O",
 					click: () => {
 						void selectDirectory().then((picked) => {
-							if (!picked) {
-								return;
+							if (picked) {
+								openScan(picked);
 							}
-							startScan(picked);
-							setInspecting(picked);
 						});
 					},
 				},

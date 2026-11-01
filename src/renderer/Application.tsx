@@ -21,6 +21,10 @@ import {
 import { CleanupPanel } from "./views/cleanup/CleanupPanel";
 import { DragReceiver } from "./components/DragReceiver";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import {
+	FullDiskAccessPrompt,
+	useFullDiskAccessPrompt,
+} from "./components/FullDiskAccessPrompt";
 import { Inspect } from "./views/inspect/Inspect";
 import { PasteConfirm } from "./components/PasteConfirm";
 import { ScanFailed } from "./views/inspect/ScanFailed";
@@ -54,7 +58,7 @@ export const Application: React.FC = () => {
 	// stamp at start — no second push when the scan completes. Disks (real
 	// or the dev fake) are skipped because they're already pinned to the
 	// Disks section; only ad-hoc folder picks belong in the Folders list.
-	const onOpen = useCallback(
+	const openNow = useCallback(
 		(path: string) => {
 			void Ob.scanPath(path);
 			const isDisk =
@@ -66,6 +70,15 @@ export const Application: React.FC = () => {
 		},
 		[drives, pushRecent, setInspecting],
 	);
+
+	// On macOS, the first scan asks for Full Disk Access before it starts.
+	const access = useFullDiskAccessPrompt(openNow);
+	const requestAccess = access.request;
+	const onOpen = useCallback(
+		(path: string) => void requestAccess(path),
+		[requestAccess],
+	);
+	useEffect(() => Ob.onOpenScan(onOpen), [onOpen]);
 
 	// Waits for main to swap in the new scan before navigating, so the old
 	// result doesn't flash up first.
@@ -148,6 +161,12 @@ export const Application: React.FC = () => {
 				stat={paste.pasteStat}
 				onCancel={paste.cancel}
 				onConfirm={paste.confirm}
+			/>
+			<FullDiskAccessPrompt
+				open={access.pending !== null}
+				onGrant={access.grant}
+				onSkip={access.skip}
+				onCancel={access.cancel}
 			/>
 			<DragReceiver onDrop={onOpen} />
 		</div>

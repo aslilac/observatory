@@ -7,6 +7,7 @@ import {
 	shell,
 } from "electron";
 import * as fs from "node:fs/promises";
+import { join } from "node:path";
 import { broadcast } from "./broadcast";
 import { deleteFiles } from "./cleanup";
 import { buildFakeDisk } from "./fixtures";
@@ -63,6 +64,21 @@ ipcMain.handle("Ob.openFullDiskAccessSettings", () =>
 		"x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles",
 	),
 );
+// The same tell the scanner uses (has_full_disk_access in lib.rs): the user's
+// own privacy database is off limits without it.
+ipcMain.handle("Ob.hasFullDiskAccess", async () => {
+	if (process.platform !== "darwin") {
+		return true;
+	}
+	try {
+		await fs.readdir(
+			join(app.getPath("home"), "Library/Application Support/com.apple.TCC"),
+		);
+		return true;
+	} catch {
+		return false;
+	}
+});
 ipcMain.handle("Ob.restartAsAdmin", restartAsAdmin);
 ipcMain.handle("Ob.getUpdate", pass(getUpdate));
 ipcMain.handle("Ob.applyUpdate", pass(applyUpdate));

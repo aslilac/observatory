@@ -63,6 +63,7 @@ contextBridge.exposeInMainWorld("Ob", {
 	revealInFinder: (path: string) => invoke("Ob.revealInFinder", path),
 	openPath: (path: string) => invoke("Ob.openPath", path),
 	openFullDiskAccessSettings: () => invoke("Ob.openFullDiskAccessSettings"),
+	hasFullDiskAccess: () => invoke("Ob.hasFullDiskAccess"),
 	restartAsAdmin: (path: string) => invoke("Ob.restartAsAdmin", path),
 	setTitleBarTheme: (theme: "light" | "dark") =>
 		invoke("Ob.setTitleBarTheme", theme),
@@ -94,6 +95,8 @@ contextBridge.exposeInMainWorld("Ob", {
 	},
 	onSetInspecting: (cb: (path: string | null) => void) =>
 		subscribe<string | null>("Ob.setInspecting", cb),
+	onOpenScan: (cb: (path: string) => void) =>
+		subscribe<string>("Ob.openScan", cb),
 	onNav: (cb: (direction: "back" | "forward") => void) =>
 		subscribe<"back" | "forward">("Ob.nav", cb),
 });
