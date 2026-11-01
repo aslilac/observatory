@@ -30,9 +30,16 @@ interface UAData {
 	): Promise<{ architecture?: string; bitness?: string }>;
 }
 
+const userAgentData = () =>
+	(navigator as Navigator & { userAgentData?: UAData }).userAgentData;
+
+// just the OS, which doesn't have to wait for the browser
+export function detectOs(): Os {
+	return whichOs(navigator.userAgent, userAgentData());
+}
+
 export async function detect(): Promise<Platform> {
-	const uad = (navigator as Navigator & { userAgentData?: UAData })
-		.userAgentData;
+	const uad = userAgentData();
 	const os = whichOs(navigator.userAgent, uad);
 	if (os !== "macos" && os !== "windows" && os !== "linux") {
 		return { os, arch: undefined };

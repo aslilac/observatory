@@ -16,10 +16,10 @@
 //   [data-unsupported="mobile 32-bit" hidden]   shown if there isn't, and why
 
 import release from "virtual:release";
-import { detect, type Platform } from "./platform";
+import { detect, detectOs, type Platform } from "./platform";
+import { platformTabs, type Desktop } from "./platformTabs";
 import { formatSize, type Asset, type Release } from "./release";
 
-type Desktop = "macos" | "windows" | "linux";
 const NAMES: Record<Desktop, string> = {
 	macos: "macOS",
 	windows: "Windows",
@@ -168,6 +168,11 @@ function copyButtons(): void {
 
 async function main(): Promise<void> {
 	copyButtons();
+	// on the downloads page, open this computer's platform (or the one linked to)
+	const os = detectOs();
+	const tabs = platformTabs(
+		os === "windows" || os === "linux" ? os : "macos",
+	);
 	const platform = await detect();
 	const r = release;
 	const choice = r && choose(platform, r);
@@ -183,10 +188,9 @@ async function main(): Promise<void> {
 	)) {
 		offer(button, choice, r);
 	}
-	// on the downloads page: this computer's build, first in the list
-	const card = document.getElementById(choice.os);
-	card?.classList.add("yours");
-	card?.parentElement?.prepend(card);
+	// on the downloads page: this computer's build, marked in the list
+	tabs?.markYours(choice.os);
+	if (!tabs?.picked) tabs?.select(choice.os);
 	document
 		.querySelector(`li[data-asset="${choice.key}"]`)
 		?.classList.add("yours");

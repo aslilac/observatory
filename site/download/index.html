@@ -18,6 +18,10 @@
 			content="A cross platform disk usage analyzer with a modern UI"
 		/>
 		<link rel="stylesheet" href="/src/style.css" />
+		<!-- so the platform panels start closed, not all open until the tabs are set up -->
+		<script>
+			document.documentElement.classList.add("js");
+		</script>
 	</head>
 	<body>
 		<header class="topbar">
@@ -111,19 +115,33 @@
 
 			<section class="dl-platforms" id="platforms">
 				<div class="wrap">
-					<div class="dl-grid">
+					<!-- src/platformTabs.ts makes these tabs, with one panel open below
+					     them. Without it, they're links to the panels, all shown. -->
+					<div class="os-tabs" data-os-tabs aria-label="Platforms">
+						<a class="os-tab" href="#macos" id="tab-macos">
+							<img src="../images/icon-macos.png" alt="" width="56" height="56" />
+							<span class="name">macOS</span>
+							<span class="req">Apple silicon &middot; macOS 12 or later</span>
+							<span class="yours-badge">This computer</span>
+						</a>
+						<a class="os-tab" href="#windows" id="tab-windows">
+							<img src="../images/icon-windows.png" alt="" width="56" height="56" />
+							<span class="name">Windows</span>
+							<span class="req">64-bit &middot; Windows 10 or later</span>
+							<span class="yours-badge">This computer</span>
+						</a>
+						<a class="os-tab" href="#linux" id="tab-linux">
+							<img src="../images/icon-linux.png" alt="" width="56" height="56" />
+							<span class="name">Linux</span>
+							<span class="req">x64 and arm64</span>
+							<span class="yours-badge">This computer</span>
+						</a>
+					</div>
+					<div class="dl-panels">
 						<article class="os" id="macos">
 							<header>
-								<img
-									src="../images/icon-macos.png"
-									alt=""
-									width="56"
-									height="56"
-								/>
-								<div>
-									<h2>macOS</h2>
-									<p>Apple silicon &middot; macOS 12 or later</p>
-								</div>
+								<h2>macOS</h2>
+								<p>Apple silicon &middot; macOS 12 or later</p>
 							</header>
 							<ul class="files">
 								<li data-asset="darwin-arm64.zip">
@@ -155,16 +173,8 @@
 
 						<article class="os" id="windows">
 							<header>
-								<img
-									src="../images/icon-windows.png"
-									alt=""
-									width="56"
-									height="56"
-								/>
-								<div>
-									<h2>Windows</h2>
-									<p>64-bit &middot; Windows 10 or later</p>
-								</div>
+								<h2>Windows</h2>
+								<p>64-bit &middot; Windows 10 or later</p>
 							</header>
 							<ul class="files">
 								<li data-asset="win32-x64.exe">
@@ -230,16 +240,8 @@
 
 						<article class="os" id="linux">
 							<header>
-								<img
-									src="../images/icon-linux.png"
-									alt=""
-									width="56"
-									height="56"
-								/>
-								<div>
-									<h2>Linux</h2>
-									<p>x64 and arm64</p>
-								</div>
+								<h2>Linux</h2>
+								<p>x64 and arm64</p>
 							</header>
 							<ul class="files">
 								<li data-asset="linux-x64.flatpak">

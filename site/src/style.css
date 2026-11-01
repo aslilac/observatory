@@ -519,13 +519,96 @@ nav a[aria-current="page"] {
 	padding: 8px 0 72px;
 }
 
-/* one platform a row: its name across the top, then the files, and how to
-   install them beside the files */
-.dl-grid {
+/* A tab for each platform, three across, and the open one's panel across the page
+   below them (src/platformTabs.ts). Without the script, the tabs are links, and
+   every panel is shown, each under its name. */
+.os-tabs {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 16px;
+	margin-bottom: 20px;
+	scroll-margin-top: 24px;
+}
+
+.os-tab {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 2px;
+	padding: 24px 16px 20px;
+	text-align: center;
+	background: rgb(255 255 255 / 0.02);
+	border: 1px solid var(--line);
+	border-radius: 18px;
+	transition:
+		background-color 120ms ease,
+		border-color 120ms ease;
+}
+a.os-tab:not([aria-selected="true"]):hover {
+	background: rgb(255 255 255 / 0.045);
+	border-color: color-mix(in srgb, var(--muted) 45%, var(--line));
+}
+.os-tab:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+.os-tab img {
+	display: block;
+	margin-bottom: 10px;
+}
+.os-tab .name {
+	font-size: 20px;
+	font-weight: 600;
+	letter-spacing: -0.01em;
+}
+.os-tab .req {
+	font-size: 14px;
+	color: var(--faint);
+}
+/* this computer's, which is open to begin with */
+.os-tab .yours-badge {
+	display: none;
+	margin-top: 10px;
+	padding: 1px 9px;
+	font-size: 11px;
+	font-weight: 500;
+	color: var(--accent-deep);
+	border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--line));
+	border-radius: var(--rounded-full);
+}
+.os-tab.yours .yours-badge {
+	display: block;
+}
+
+/* the open one, with a notch pointing down at its panel */
+.os-tab[aria-selected="true"] {
+	background: linear-gradient(
+		to bottom,
+		rgb(58 109 240 / 0.08),
+		rgb(58 109 240 / 0.16)
+	);
+	border-color: var(--accent);
+}
+.os-tab[aria-selected="true"]::after {
+	content: "";
+	position: absolute;
+	left: 50%;
+	bottom: -8px;
+	width: 14px;
+	height: 14px;
+	background: #1b233c;
+	border: solid var(--accent);
+	border-width: 0 1px 1px 0;
+	transform: translateX(-50%) rotate(45deg);
+}
+
+.dl-panels {
 	display: grid;
 	gap: 24px;
 }
 
+/* a panel: the files, and how to install them beside the files */
 .os {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
@@ -544,19 +627,8 @@ nav a[aria-current="page"] {
 	border-radius: 18px;
 	scroll-margin-top: 24px;
 }
-.os.yours {
-	border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
-}
-
-/* Observatory's icon for each platform, drawn to that platform's own grid */
 .os header {
 	grid-area: head;
-	display: flex;
-	align-items: center;
-	gap: 16px;
-}
-.os header img {
-	flex: none;
 }
 .os h2 {
 	margin: 0;
@@ -574,11 +646,92 @@ nav a[aria-current="page"] {
 .os .how {
 	grid-area: how;
 }
+
+/* as tabs: one panel at a time (until the script runs, the first), and its name
+   is on its tab */
+.js:not(.os-tabbed) .dl-panels > .os:not(:first-child),
+.os-tabbed .dl-panels > .os:not(.open) {
+	display: none;
+}
+.js .os {
+	grid-template-areas: "files how";
+}
+.js .os header {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
+.os.open {
+	animation: os-open 180ms ease-out;
+}
+@keyframes os-open {
+	from {
+		opacity: 0;
+		transform: translateY(-4px);
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.os.open {
+		animation: none;
+	}
+}
+
 @media (max-width: 760px) {
 	.os {
 		grid-template-columns: minmax(0, 1fr);
 		grid-template-areas: "head" "files" "how";
 		gap: 20px;
+	}
+	.js .os {
+		grid-template-areas: "files" "how";
+	}
+}
+
+/* phones: the tabs are just the icon and name, and the panel says what it needs */
+@media (max-width: 640px) {
+	.os-tabs {
+		gap: 8px;
+	}
+	.os-tab {
+		padding: 16px 6px 14px;
+		border-radius: 14px;
+	}
+	.os-tab img {
+		width: 40px;
+		height: 40px;
+		margin-bottom: 6px;
+	}
+	.os-tab .name {
+		font-size: 15px;
+	}
+	.os-tab .req {
+		display: none;
+	}
+	.os-tab .yours-badge {
+		margin-top: 6px;
+		padding: 0 7px;
+		font-size: 10px;
+	}
+	.js .os {
+		grid-template-areas: "head" "files" "how";
+	}
+	.js .os header {
+		position: static;
+		width: auto;
+		height: auto;
+		overflow: visible;
+		clip-path: none;
+		white-space: normal;
+	}
+	.js .os h2 {
+		display: none;
+	}
+	.js .os header p {
+		margin: 0;
+		font-size: 14px;
 	}
 }
 
