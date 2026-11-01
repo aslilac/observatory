@@ -263,9 +263,9 @@ export const Inspect: React.FC<InspectProps> = ({ scan }) => {
 					size={shared.size}
 					position={shared.position}
 					rootSize={shared.rootSize}
-					depth={cursor.length}
 					reserved={reserved}
-					path={joinPath(inspecting, ...cursor)}
+					root={inspecting}
+					cursor={tree.cursor}
 					onNavigateUp={navigateUp}
 					onNavigateForward={navigateForward}
 					onMoveToCleanup={onMoveOne}
