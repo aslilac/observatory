@@ -11,31 +11,31 @@ Observatory checks all the boxes that no one else does.
 
 ## Build
 
-To build Observatory, you'll first need to install the latest versions of [Node](https://nodejs.org) and [Yarn](https://classic.yarnpkg.com).
+To build Observatory, you'll first need to install the latest versions of [Node](https://nodejs.org), [pnpm](https://pnpm.io/installation), and [Rust](https://rustup.rs).
 
 Install dependencies:
 
 ```shell
-yarn
-yarn build.native
+pnpm install
+pnpm build.native
 ```
 
 To run in development:
 
 ```shell
-yarn dev
+pnpm dev
 ```
 
 Test a production build:
 
 ```shell
-yarn preview
+pnpm preview
 ```
 
 Build an installer:
 
 ```shell
-yarn forge
+pnpm build.forge
 ```
 
 ## Performance comparisons

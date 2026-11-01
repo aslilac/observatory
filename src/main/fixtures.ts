@@ -81,7 +81,7 @@ export function buildFakeDisk(): Ob.VfsDirectory {
 					dir("Projects", [
 						dir("observatory", [
 							file("README.md", 6 * KB, 1),
-							file("yarn.lock", 920 * KB, 3),
+							file("pnpm-lock.yaml", 920 * KB, 3),
 							dir("node_modules", manyTinyFiles("dep", 60, 32 * KB)),
 							dir("src", [
 								file("index.ts", 8 * KB, 0),

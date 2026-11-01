@@ -14,10 +14,10 @@
 		"check.test.w": "vitest",
 		"check.types": "tsc -b .",
 		"fmt": "oxfmt",
-		"test": "yarn check.test",
+		"test": "pnpm check.test",
 		"build": "electron-vite build",
 		"build.native": "node scripts/build-native.mjs",
-		"build.forge": "yarn build.native && yarn build && electron-forge make",
+		"build.forge": "pnpm build.native && pnpm build && electron-forge make",
 		"dev": "electron-vite dev",
 		"preview": "electron-vite preview"
 	},

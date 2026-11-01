@@ -1,5 +1,5 @@
 // Loader and TypeScript types for the napi-rs scanner. The .node lives at
-// `src/scanner/observatory_scan.node`; `yarn build.native` builds and
+// `src/scanner/observatory_scan.node`; `pnpm build.native` builds and
 // places it. Resolved relative to the Electron app path so dev (where
 // app.getAppPath() is the project root) and packaged builds
 // (asar.unpack: "**/*.node" puts it at app.asar.unpacked/src/scanner/
@@ -100,7 +100,7 @@ try {
 	const reason = e instanceof Error ? e.message : String(e);
 	throw new Error(
 		`failed to load native scanner at ${nativePath}: ${reason}\n` +
-			"run `yarn build.native` to build it",
+			"run `pnpm build.native` to build it",
 	);
 }
 

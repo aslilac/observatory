@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Download Observatory</title>
+		<meta
+			name="description"
+			content="Download Observatory, the disk-usage analyzer, for macOS on Apple silicon, Windows, and Linux."
+		/>
+		<meta name="color-scheme" content="light dark" />
+		<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+		<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+		<meta name="theme-color" content="#0d1033" />
+		<meta property="og:title" content="Download Observatory" />
+		<meta
+			property="og:description"
+			content="A cross platform disk usage analyzer with a modern UI"
+		/>
+		<link rel="stylesheet" href="/src/style.css" />
+	</head>
+	<body>
+		<header class="topbar">
+			<div class="wrap">
+				<a class="brand" href="../">
+					<img src="../images/logo.svg" alt="" width="32" height="32" />
+					<span>Observatory</span>
+				</a>
+				<nav>
+					<a href="https://github.com/aslilac/observatory">Source</a>
+					<a href="./" aria-current="page">Download</a>
+				</nav>
+			</div>
+		</header>
+
+		<!-- The links and sizes come from the latest release on GitHub, written in
+		     when the site is built (release-plugin.ts). src/download.ts adds the
+		     button for this computer's build, and marks it in the list. -->
+		<main class="downloads">
+			<section class="dl-head">
+				<div class="wrap">
+					<img
+						class="dl-icon"
+						src="/apple-touch-icon.png"
+						alt=""
+						width="96"
+						height="96"
+					/>
+					<h1>Download Observatory</h1>
+					<p class="dl-release">
+						<span><span data-release="version">latest</span></span>
+						<time data-release="date" hidden></time>
+						<span
+							><a
+								data-release="notes"
+								href="https://github.com/aslilac/observatory/releases"
+								>Release notes</a
+							></span
+						>
+					</p>
+
+					<div class="dl-pick" data-download-pick hidden>
+						<a
+							class="btn primary big"
+							href="#platforms"
+							data-download
+							aria-describedby="dl-note"
+						>
+							<svg class="icon" viewBox="0 0 16 16" aria-hidden="true">
+								<path d="M8 2.5v8M4.5 7.5 8 11l3.5-3.5M3 13.5h10" />
+							</svg>
+							<span data-label>Download</span>
+						</a>
+						<p class="download-note" id="dl-note" hidden>
+							<span data-text></span>
+						</p>
+					</div>
+
+					<div class="dl-unsupported" data-unsupported="mobile" hidden>
+						<p>
+							Observatory is a desktop app, for macOS, Windows, and Linux. Open
+							this page on your computer to download it.
+						</p>
+					</div>
+					<div class="dl-unsupported" data-unsupported="chromeos" hidden>
+						<p>
+							Observatory doesn't run on ChromeOS itself, but the Linux build
+							runs in ChromeOS's Linux development environment.
+						</p>
+					</div>
+					<div class="dl-unsupported" data-unsupported="intel-mac" hidden>
+						<p>
+							For now, Observatory is only built for Macs with Apple silicon. On
+							an Intel Mac, you can <a href="#source">build it from source</a>.
+						</p>
+					</div>
+					<div class="dl-unsupported" data-unsupported="32-bit" hidden>
+						<p>
+							Observatory needs a 64-bit computer, and this one looks to be
+							32-bit.
+						</p>
+					</div>
+					<div class="dl-unsupported" data-unsupported="other" hidden>
+						<p>
+							There isn't a build of Observatory for this computer yet, but you
+							may be able to <a href="#source">build it from source</a>.
+						</p>
+					</div>
+				</div>
+			</section>
+
+			<section class="dl-platforms" id="platforms">
+				<div class="wrap">
+					<div class="dl-grid">
+						<article class="os" id="macos">
+							<header>
+								<img
+									src="../images/icon-macos.png"
+									alt=""
+									width="56"
+									height="56"
+								/>
+								<div>
+									<h2>macOS</h2>
+									<p>Apple silicon &middot; macOS 12 or later</p>
+								</div>
+							</header>
+							<ul class="files">
+								<li data-asset="darwin-arm64.zip">
+									<a href="https://github.com/aslilac/observatory/releases">
+										<span class="what">App</span>
+										<span class="kind">.zip</span>
+										<span class="size"></span>
+										<svg class="icon" viewBox="0 0 16 16" aria-hidden="true">
+											<path d="M8 2.5v8M4.5 7.5 8 11l3.5-3.5M3 13.5h10" />
+										</svg>
+									</a>
+								</li>
+							</ul>
+							<div class="how">
+								<p>
+									Unzip it, then drag Observatory into your Applications folder.
+								</p>
+								<div class="heads-up">
+									<p>
+										Observatory isn't notarized by Apple yet, so macOS won't
+										open it at first. To let it run, run this in Terminal:
+									</p>
+									<pre
+										data-copy
+									><code>xattr -dr com.apple.quarantine /Applications/Observatory.app</code></pre>
+								</div>
+							</div>
+						</article>
+
+						<article class="os" id="windows">
+							<header>
+								<img
+									src="../images/icon-windows.png"
+									alt=""
+									width="56"
+									height="56"
+								/>
+								<div>
+									<h2>Windows</h2>
+									<p>64-bit &middot; Windows 10 or later</p>
+								</div>
+							</header>
+							<ul class="files">
+								<li data-asset="win32-x64.exe">
+									<a href="https://github.com/aslilac/observatory/releases">
+										<span class="what">Installer</span>
+										<span class="kind">x64</span>
+										<span class="size"></span>
+										<svg class="icon" viewBox="0 0 16 16" aria-hidden="true">
+											<path d="M8 2.5v8M4.5 7.5 8 11l3.5-3.5M3 13.5h10" />
+										</svg>
+									</a>
+								</li>
+								<li data-asset="win32-arm64.exe">
+									<a href="https://github.com/aslilac/observatory/releases">
+										<span class="what">Installer</span>
+										<span class="kind">arm64</span>
+										<span class="size"></span>
+										<svg class="icon" viewBox="0 0 16 16" aria-hidden="true">
+											<path d="M8 2.5v8M4.5 7.5 8 11l3.5-3.5M3 13.5h10" />
+										</svg>
+									</a>
+								</li>
+								<li data-asset="win32-x64.zip">
+									<a href="https://github.com/aslilac/observatory/releases">
+										<span class="what">Portable</span>
+										<span class="kind">x64</span>
+										<span class="size"></span>
+										<svg class="icon" viewBox="0 0 16 16" aria-hidden="true">
+											<path d="M8 2.5v8M4.5 7.5 8 11l3.5-3.5M3 13.5h10" />
+										</svg>
+									</a>
+								</li>
+								<li data-asset="win32-arm64.zip">
+									<a href="https://github.com/aslilac/observatory/releases">
+										<span class="what">Portable</span>
+										<span class="kind">arm64</span>
+										<span class="size"></span>
+										<svg class="icon" viewBox="0 0 16 16" aria-hidden="true">
+											<path d="M8 2.5v8M4.5 7.5 8 11l3.5-3.5M3 13.5h10" />
+										</svg>
+									</a>
+								</li>
+							</ul>
+							<div class="how">
+								<p>
+									The installer sets Observatory up for your account, with no
+									admin rights needed, and opens it. Or unzip the portable build
+									anywhere and run <code>Observatory.exe</code>.
+								</p>
+								<div class="heads-up">
+									<p>
+										Observatory isn't code-signed yet, so SmartScreen may stop
+										the installer. Choose <strong>More info</strong>, then
+										<strong>Run anyway</strong>.
+									</p>
+								</div>
+								<!-- until a release has an Arm build -->
+								<p class="aside" data-unless-asset="win32-arm64.exe">
+									On Windows 11 on Arm, the x64 build runs under emulation.
+								</p>
+							</div>
+						</article>
+
+						<article class="os" id="linux">
+							<header>
+								<img
+									src="../images/icon-linux.png"
+									alt=""
+									width="56"
+									height="56"
+								/>
+								<div>
+									<h2>Linux</h2>
+									<p>x64 and arm64</p>
+								</div>
+							</header>
+							<ul class="files">
+								<li data-asset="linux-x64.flatpak">
+									<a href="https://github.com/aslilac/observatory/releases">
+										<span class="what">Flatpak</span>
+										<span class="kind">x64</span>
+										<span class="size"></span>
+										<svg class="icon" viewBox="0 0 16 16" aria-hidden="true">
+											<path d="M8 2.5v8M4.5 7.5 8 11l3.5-3.5M3 13.5h10" />
+										</svg>
+									</a>
+								</li>
+								<li data-asset="linux-arm64.flatpak">
+									<a href="https://github.com/aslilac/observatory/releases">
+										<span class="what">Flatpak</span>
+										<span class="kind">arm64</span>
+										<span class="size"></span>
+										<svg class="icon" viewBox="0 0 16 16" aria-hidden="true">
+											<path d="M8 2.5v8M4.5 7.5 8 11l3.5-3.5M3 13.5h10" />
+										</svg>
+									</a>
+								</li>
+								<li data-asset="linux-x64.zip">
+									<a href="https://github.com/aslilac/observatory/releases">
+										<span class="what">.zip</span>
+										<span class="kind">x64</span>
+										<span class="size"></span>
+										<svg class="icon" viewBox="0 0 16 16" aria-hidden="true">
+											<path d="M8 2.5v8M4.5 7.5 8 11l3.5-3.5M3 13.5h10" />
+										</svg>
+									</a>
+								</li>
+								<li data-asset="linux-arm64.zip">
+									<a href="https://github.com/aslilac/observatory/releases">
+										<span class="what">.zip</span>
+										<span class="kind">arm64</span>
+										<span class="size"></span>
+										<svg class="icon" viewBox="0 0 16 16" aria-hidden="true">
+											<path d="M8 2.5v8M4.5 7.5 8 11l3.5-3.5M3 13.5h10" />
+										</svg>
+									</a>
+								</li>
+							</ul>
+							<div class="how">
+								<p>
+									Open the Flatpak with your software center, or install it from
+									a terminal, in the folder you downloaded it to:
+								</p>
+								<pre
+									data-copy
+								><code>flatpak install --user <span data-asset-name="linux-x64.flatpak">Observatory-linux-x64.flatpak</span></code></pre>
+								<p>
+									The .zip is the app on its own: unzip it anywhere, and run
+									<code>Observatory</code> inside.
+								</p>
+							</div>
+						</article>
+					</div>
+				</div>
+			</section>
+
+			<section class="dl-more" id="source">
+				<div class="wrap">
+					<div class="dl-more-grid">
+						<div>
+							<h2>Build it yourself</h2>
+							<p>
+								Observatory is open source, under the MPL-2.0. With Node, pnpm,
+								and Rust installed, clone the repository and run:
+							</p>
+							<pre
+								data-copy
+							><code>pnpm install &amp;&amp; pnpm build.forge</code></pre>
+							<p>
+								The
+								<a href="https://github.com/aslilac/observatory#build"
+									>README</a
+								>
+								has the details.
+							</p>
+						</div>
+						<div>
+							<h2>Every release</h2>
+							<p>
+								Older versions, and the notes for each release, are on
+								<a href="https://github.com/aslilac/observatory/releases"
+									>GitHub</a
+								>.
+							</p>
+						</div>
+					</div>
+				</div>
+			</section>
+		</main>
+
+		<footer>
+			<div class="wrap">
+				<p>
+					MPL-2.0 licensed &middot; made by
+					<a href="https://github.com/aslilac">Kayla Washburn-Love</a>
+				</p>
+			</div>
+		</footer>
+		<script type="module" src="/src/download.ts"></script>
+	</body>
+</html>

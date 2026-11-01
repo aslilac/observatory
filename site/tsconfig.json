@@ -14,7 +14,8 @@
 		"noImplicitReturns": true,
 		"noUnusedLocals": true,
 		"noFallthroughCasesInSwitch": true,
-		"skipLibCheck": true
+		"skipLibCheck": true,
+		"allowImportingTsExtensions": true
 	},
-	"include": ["src", "vite.config.ts"]
+	"include": ["src", "vite.config.ts", "release-plugin.ts"]
 }

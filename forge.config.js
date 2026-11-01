@@ -1,5 +1,6 @@
 const fs = require("node:fs/promises");
 const path = require("node:path");
+const { version } = require("./package.json");
 
 // What goes into app.asar: the bundles, the native scanner (and none of
 // its sources or cargo's build dir), and the runtime dependencies. Forge
@@ -93,11 +94,14 @@ module.exports = {
 		{
 			name: "@electron-forge/maker-squirrel",
 			platforms: ["win32"],
-			config: {
+			config: (arch) => ({
 				iconUrl:
 					"https://raw.githubusercontent.com/aslilac/observatory/trunk/build-resources/icon.ico",
 				setupIcon: "./build-resources/icon.ico",
-			},
+				// Forge gives every arch's installer the same name. Naming it
+				// like the zips lets the x64 and arm64 ones share a release.
+				setupExe: `Observatory-win32-${arch}-${version}-Setup.exe`,
+			}),
 		},
 		{
 			name: "@electron-forge/maker-zip",

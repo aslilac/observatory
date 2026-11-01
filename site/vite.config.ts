@@ -1,11 +1,20 @@
-// The landing page. Vite and TypeScript come from the repo root's node_modules.
+import { fileURLToPath } from "node:url";
+import { release } from "./release-plugin.ts";
+
+const page = (path: string) => fileURLToPath(new URL(path, import.meta.url));
+
 export default {
-	// relative URLs, so dist/ works wherever it's served from (a domain's root, or
-	// a GitHub Pages project path)
 	base: "./",
+	plugins: [release()],
 	build: {
 		outDir: "dist",
 		emptyOutDir: true,
+		rolldownOptions: {
+			input: {
+				index: page("./index.html"),
+				download: page("./download/index.html"),
+			},
+		},
 	},
 	server: { port: 5180 },
 	preview: { port: 5181 },

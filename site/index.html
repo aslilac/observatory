@@ -30,7 +30,7 @@
 				</a>
 				<nav>
 					<a href="https://github.com/aslilac/observatory">Source</a>
-					<a href="https://github.com/aslilac/observatory/releases">Download</a>
+					<a href="./download/">Download</a>
 				</nav>
 			</div>
 		</header>
@@ -93,19 +93,25 @@
 						bewildering settings panel.
 					</p>
 					<div class="cta">
+						<!-- src/download.ts makes this a link to this computer's build -->
 						<a
 							class="btn primary"
-							href="https://github.com/aslilac/observatory/releases"
-							>Get the latest release</a
+							href="./download/"
+							data-download
+							aria-describedby="hero-download-note"
 						>
+							<svg class="icon" viewBox="0 0 16 16" aria-hidden="true">
+								<path d="M8 2.5v8M4.5 7.5 8 11l3.5-3.5M3 13.5h10" />
+							</svg>
+							<span data-label>Download</span>
+						</a>
 						<a class="btn ghost" href="https://github.com/aslilac/observatory"
 							>View on GitHub</a
 						>
 					</div>
-					<p class="platforms">
-						<span>macOS</span>
-						<span>Linux</span>
-						<span>Windows</span>
+					<p class="download-note" id="hero-download-note" hidden>
+						<span data-text></span> &middot;
+						<a href="./download/" data-more>Other downloads</a>
 					</p>
 				</div>
 			</section>
@@ -155,11 +161,12 @@
 							</p>
 						</article>
 						<article>
-							<h2>Honest about scope</h2>
+							<h2>Fast on big disks</h2>
 							<p>
-								Observatory is open source and very much in motion — the
-								scanning engine is being rewritten in Rust to close the gap with
-								native tools. Speed today is "fine"; soon, "fast."
+								The scanner is written in Rust and reads the disk on every core
+								at once: five million files, about a terabyte, in around half a
+								minute. The scan stays in native memory, so even a huge disk
+								browses smoothly.
 							</p>
 						</article>
 					</div>
@@ -170,17 +177,25 @@
 				<div class="wrap">
 					<h2>Grab a build</h2>
 					<p>
-						Releases live on GitHub. Pick the artifact for your platform —
-						<code>.dmg</code> for macOS, <code>.exe</code> for Windows,
-						<code>.zip</code> for Linux. Or build from source with
-						<code>yarn build.forge</code>.
+						For macOS on Apple silicon, Windows, and Linux. Free, and open
+						source.
 					</p>
 					<p>
 						<a
 							class="btn primary"
-							href="https://github.com/aslilac/observatory/releases"
-							>Latest release &rarr;</a
+							href="./download/"
+							data-download
+							aria-describedby="grab-download-note"
 						>
+							<svg class="icon" viewBox="0 0 16 16" aria-hidden="true">
+								<path d="M8 2.5v8M4.5 7.5 8 11l3.5-3.5M3 13.5h10" />
+							</svg>
+							<span data-label>Download</span>
+						</a>
+					</p>
+					<p class="download-note" id="grab-download-note" hidden>
+						<span data-text></span> &middot;
+						<a href="./download/" data-more>Other downloads</a>
 					</p>
 				</div>
 			</section>
@@ -195,5 +210,6 @@
 			</div>
 		</footer>
 		<script type="module" src="/src/stars.ts"></script>
+		<script type="module" src="/src/download.ts"></script>
 	</body>
 </html>

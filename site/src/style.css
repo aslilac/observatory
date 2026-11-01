@@ -30,6 +30,10 @@
 	box-sizing: border-box;
 }
 
+[hidden] {
+	display: none !important;
+}
+
 html,
 body {
 	margin: 0;
@@ -107,6 +111,9 @@ nav {
 	display: flex;
 	gap: 24px;
 	font-size: 14px;
+}
+nav a[aria-current="page"] {
+	border-bottom-color: var(--accent);
 }
 
 /* --- hero: the observatory under a turning sky ---
@@ -320,30 +327,41 @@ nav {
 .btn.ghost:hover {
 	background: rgb(255 255 255 / 0.1);
 }
+.btn.big {
+	padding: 13px 26px;
+	font-size: 16px;
+}
 
-.platforms {
-	display: flex;
-	gap: 14px;
+/* a line icon (the download arrow) */
+.icon {
+	width: 16px;
+	height: 16px;
+	flex: none;
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 1.6;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+}
+/* on a download button, only once it downloads (src/download.ts) */
+.btn .icon {
+	display: none;
+	margin-left: -2px;
+}
+.btn[data-ready] .icon {
+	display: block;
+}
+
+/* under a download button: which build it is */
+.download-note {
 	margin: 0;
-	font-family: var(--mono);
-	font-size: 12px;
-	color: #ece8ff;
-	text-shadow: 0 1px 10px rgb(13 16 51 / 0.9);
-	text-transform: uppercase;
-	letter-spacing: 0.08em;
+	font-size: 13px;
+	color: var(--muted);
 }
-.platforms span {
-	display: inline-flex;
-	align-items: center;
-	gap: 8px;
-}
-.platforms span::before {
-	content: "";
-	width: 6px;
-	height: 6px;
-	border-radius: 50%;
-	background: var(--accent);
-	display: inline-block;
+.hero .download-note {
+	margin: -12px 0 22px;
+	color: var(--sky-text);
+	text-shadow: 0 1px 12px rgb(13 16 51 / 0.9);
 }
 
 /* --- screenshot --- */
@@ -409,6 +427,307 @@ nav {
 	color: var(--muted);
 }
 
+/* --- downloads page --- */
+
+/* the sky at dusk, fading into the page */
+.dl-head {
+	position: relative;
+	isolation: isolate;
+	padding: 136px 0 64px;
+	text-align: center;
+	background:
+		radial-gradient(
+			ellipse 60% 50% at 50% 74%,
+			rgb(206 108 160 / 0.2),
+			rgb(150 84 160 / 0.08) 30%,
+			transparent 52%
+		),
+		linear-gradient(
+			to bottom,
+			var(--sky-top) 0,
+			#171a4e 45%,
+			#211d57 70%,
+			var(--bg) 100%
+		);
+}
+.dl-head::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	background: url("../images/stars.svg") center top / 960px 420px;
+	mask-image: linear-gradient(to bottom, #000 25%, transparent 85%);
+}
+
+.dl-icon {
+	display: block;
+	margin: 0 auto 22px;
+	border-radius: 22.5%;
+	box-shadow:
+		0 12px 40px rgb(0 0 0 / 0.45),
+		0 0 0 1px rgb(255 255 255 / 0.08);
+}
+
+.dl-head h1 {
+	font-size: clamp(34px, 5vw, 52px);
+	line-height: 1.08;
+	letter-spacing: -0.025em;
+	margin: 0 0 10px;
+}
+
+.dl-release {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 0 10px;
+	margin: 0 0 32px;
+	font-family: var(--mono);
+	font-size: 13px;
+	color: var(--sky-text);
+}
+.dl-release > * + *::before {
+	content: "\00b7";
+	margin-right: 10px;
+	color: var(--faint);
+}
+
+.dl-pick {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 12px;
+}
+.dl-pick .download-note {
+	color: var(--sky-text);
+}
+
+.dl-unsupported {
+	max-width: 520px;
+	margin: 0 auto;
+	padding: 14px 20px;
+	font-size: 15px;
+	color: var(--sky-text);
+	background: rgb(13 16 51 / 0.5);
+	border: 1px solid rgb(255 255 255 / 0.16);
+	border-radius: 14px;
+}
+.dl-unsupported p {
+	margin: 0;
+}
+
+.dl-platforms {
+	padding: 8px 0 72px;
+}
+
+/* one platform a row: its name across the top, then the files, and how to
+   install them beside the files */
+.dl-grid {
+	display: grid;
+	gap: 24px;
+}
+
+.os {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+	grid-template-areas:
+		"head head"
+		"files how";
+	align-items: start;
+	gap: 24px 48px;
+	padding: 32px;
+	background: linear-gradient(
+		to bottom,
+		rgb(255 255 255 / 0.035),
+		rgb(255 255 255 / 0.01)
+	);
+	border: 1px solid var(--line);
+	border-radius: 18px;
+	scroll-margin-top: 24px;
+}
+.os.yours {
+	border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+}
+
+/* Observatory's icon for each platform, drawn to that platform's own grid */
+.os header {
+	grid-area: head;
+	display: flex;
+	align-items: center;
+	gap: 16px;
+}
+.os header img {
+	flex: none;
+}
+.os h2 {
+	margin: 0;
+	font-size: 22px;
+	letter-spacing: -0.01em;
+}
+.os header p {
+	margin: 4px 0 0;
+	font-size: 15px;
+	color: var(--faint);
+}
+.os .files {
+	grid-area: files;
+}
+.os .how {
+	grid-area: how;
+}
+@media (max-width: 760px) {
+	.os {
+		grid-template-columns: minmax(0, 1fr);
+		grid-template-areas: "head" "files" "how";
+		gap: 20px;
+	}
+}
+
+.files {
+	display: grid;
+	gap: 8px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+.files:not(:has(li))::before {
+	content: "Not in this release";
+	font-size: 14px;
+	color: var(--faint);
+}
+.files a {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 11px 14px;
+	background: rgb(255 255 255 / 0.02);
+	border: 1px solid var(--line);
+	border-radius: 12px;
+	transition:
+		border-color 120ms ease,
+		background-color 120ms ease;
+}
+.files a:hover {
+	background: rgb(58 109 240 / 0.1);
+	border-color: var(--accent);
+}
+.files .yours a {
+	background: rgb(58 109 240 / 0.14);
+	border-color: var(--accent);
+}
+.files .what {
+	font-size: 15px;
+	font-weight: 500;
+}
+.files .kind {
+	padding: 1px 7px;
+	font-family: var(--mono);
+	font-size: 11px;
+	color: var(--muted);
+	border: 1px solid var(--line);
+	border-radius: var(--rounded-full);
+}
+.files .size {
+	margin-left: auto;
+	font-family: var(--mono);
+	font-size: 12px;
+	color: var(--faint);
+}
+.files .icon {
+	color: var(--muted);
+}
+.files a:hover .icon,
+.files .yours .icon {
+	color: var(--text);
+}
+
+.how {
+	display: grid;
+	gap: 12px;
+	font-size: 15px;
+	line-height: 1.55;
+	color: var(--muted);
+}
+.how p {
+	margin: 0;
+}
+.how strong {
+	font-weight: 500;
+	color: var(--text);
+}
+.heads-up {
+	display: grid;
+	gap: 10px;
+	padding: 12px 14px;
+	background: rgb(255 207 77 / 0.05);
+	border: 1px solid rgb(255 207 77 / 0.16);
+	border-radius: 12px;
+}
+.how .aside {
+	font-size: 13px;
+	color: var(--faint);
+}
+
+pre {
+	margin: 0;
+	padding: 10px 12px;
+	font-family: var(--mono);
+	font-size: 12.5px;
+	line-height: 1.5;
+	color: var(--text);
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+	background: #0d0d11;
+	/* holds the copy button, which the first line wraps around */
+	display: flow-root;
+	border: 1px solid var(--line-soft);
+	border-radius: 10px;
+}
+pre code {
+	padding: 0;
+	font-size: inherit;
+	background: none;
+}
+pre .copy {
+	float: right;
+	margin: -4px -6px 4px 12px;
+	padding: 3px 9px;
+	font: 500 11px/1.4 var(--sans);
+	color: var(--muted);
+	background: var(--line-soft);
+	border: 1px solid var(--line);
+	border-radius: 6px;
+	cursor: pointer;
+}
+pre .copy:hover {
+	color: var(--text);
+	border-color: var(--muted);
+}
+
+.dl-more {
+	padding: 56px 0 72px;
+	border-top: 1px solid var(--line-soft);
+}
+.dl-more-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+	gap: 32px 48px;
+}
+.dl-more h2 {
+	margin: 0 0 8px;
+	font-size: 17px;
+	font-weight: 600;
+	letter-spacing: -0.01em;
+}
+.dl-more p {
+	margin: 0 0 12px;
+	font-size: 15px;
+	color: var(--muted);
+}
+.dl-more pre {
+	max-width: 420px;
+	margin: 0 0 12px;
+}
+
 /* --- footer --- */
 
 footer {
@@ -449,6 +768,22 @@ footer a {
 	}
 	.grab {
 		padding: 56px 0 72px;
+	}
+	.dl-head {
+		padding: 104px 0 48px;
+	}
+	/* the release notes on a line of their own, not after a stray dot */
+	.dl-release > :last-child {
+		flex-basis: 100%;
+	}
+	.dl-release > :last-child::before {
+		content: none;
+	}
+	.os {
+		padding: 20px;
+	}
+	.dl-more {
+		padding: 40px 0 56px;
 	}
 }
 

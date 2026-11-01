@@ -48,6 +48,9 @@ jobs:
           - os: windows-latest
             target: win32-x64
 
+          - os: windows-11-arm
+            target: win32-arm64
+
     name: Package.${{ matrix.release.target }}
 
     runs-on: ${{ matrix.release.os }}
