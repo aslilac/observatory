@@ -815,10 +815,6 @@ a.os-tab:not([aria-selected="true"]):hover {
 	border: 1px solid rgb(255 207 77 / 0.16);
 	border-radius: 12px;
 }
-.how .aside {
-	font-size: 13px;
-	color: var(--faint);
-}
 
 pre {
 	margin: 0;

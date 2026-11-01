@@ -11,8 +11,6 @@
 //                                       the release doesn't have that file, the
 //                                       <li> is left out.
 //   data-asset-name="linux-x64.flatpak" the element's text becomes the file's name
-//   data-unless-asset="win32-arm64.exe" the element is left out if the release has
-//                                       that file
 //   data-release="version" | "date"     the element's text becomes the version or
 //                                       the date (and a date is unhidden)
 //   data-release="notes"                its href becomes the release's page
@@ -68,10 +66,6 @@ export function fill(html: string, r: Release): string {
 							`$1${formatSize(a.size)}`,
 						);
 				},
-			)
-			.replace(
-				/<(\w+)\b[^>]*\bdata-unless-asset="([^"]+)"[^>]*>[\s\S]*?<\/\1>/g,
-				(el, _tag: string, key: string) => (r.assets[key] ? "" : el),
 			)
 			.replace(
 				/(<[^>]*\bdata-asset-name="([^"]+)"[^>]*>)[^<]*/g,

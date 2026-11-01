@@ -57,28 +57,20 @@ function options(p: Platform): Option[] {
 		]);
 	}
 	if (os === "windows") {
-		// Windows 11 on Arm runs x64 apps too, for a release without an Arm build
-		const builds =
-			arch === "x64"
-				? [{ arch: "x64", name: "64-bit", how: "" }]
-				: arch === "arm64"
-					? [
-							{ arch: "arm64", name: "Arm", how: "" },
-							{ arch: "x64", name: "x64", how: ", emulated on Arm" },
-						]
-					: [];
-		return builds.flatMap((b) => [
+		if (arch !== "x64" && arch !== "arm64") return [];
+		const name = arch === "arm64" ? "Arm" : "64-bit";
+		return [
 			{
-				key: `win32-${b.arch}.exe`,
-				detail: `${b.name} installer${b.how}`,
+				key: `win32-${arch}.exe`,
+				detail: `${name} installer`,
 				after: "Run the installer, and Observatory opens when it's done.",
 			},
 			{
-				key: `win32-${b.arch}.zip`,
-				detail: `${b.name} portable build${b.how}`,
+				key: `win32-${arch}.zip`,
+				detail: `${name} portable build`,
 				after: "Unzip it anywhere, and run Observatory.exe.",
 			},
-		]);
+		];
 	}
 	if (os === "linux" && arch !== "x86" && arch !== "arm32") {
 		const a = arch ?? "x64";
