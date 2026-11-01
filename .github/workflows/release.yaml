@@ -104,10 +104,8 @@ jobs:
       - run: pnpm exec electron-forge make
         name: Package
 
-      # On Windows, also what Squirrel updates from, through
-      # update.electronjs.org: the list of packages, x64's, since the
-      # service takes a release's one for every arch (see
-      # src/main/updates.ts), and the package on it.
+      # On Windows, also what Squirrel updates from: its list of packages,
+      # and the package on it.
       - uses: actions/upload-artifact@v7
         name: Upload
         with:
@@ -115,8 +113,8 @@ jobs:
           path: |
             out/make/zip/**/*.zip
             out/make/squirrel.windows/**/*.exe
-            out/make/squirrel.windows/x64/RELEASES
-            out/make/squirrel.windows/x64/*.nupkg
+            out/make/squirrel.windows/**/RELEASES
+            out/make/squirrel.windows/**/*.nupkg
           if-no-files-found: error
 
   flatpak:
@@ -168,11 +166,20 @@ jobs:
     name: Publish
 
     needs:
+      - version
       - package
       - flatpak
 
     permissions:
       contents: write
+
+    # The bucket releases.mckayla.dev serves, over its S3 API.
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.RELEASES_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.RELEASES_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: ${{ vars.RELEASES_REGION || 'us-east-1' }}
+      RELEASES_BUCKET: ${{ vars.RELEASES_BUCKET }}
+      RELEASES_ENDPOINT: ${{ vars.RELEASES_ENDPOINT }}
 
     steps:
       - uses: actions/download-artifact@v8
@@ -187,8 +194,56 @@ jobs:
           files: |
             dist/**/*.zip
             dist/**/*.exe
-            dist/**/RELEASES
-            dist/**/*.nupkg
             dist/**/*.flatpak
           fail_on_unmatched_files: true
           generate_release_notes: true
+
+      # What the app updates from (see src/main/updates.ts): each Mac zip
+      # with a manifest for Squirrel.Mac, each Windows arch's Squirrel
+      # package and list, and latest.json for everywhere else. The builds go
+      # up first, and what points at them last, so an app never finds a
+      # version that isn't there yet. Those few are never cached, and the
+      # builds are cached for good, since a version's never rebuilt.
+      - run: |
+          version='${{ needs.version.outputs.version }}'
+          base="https://releases.mckayla.dev/observatory"
+          put() {
+            aws s3 cp --endpoint-url "$RELEASES_ENDPOINT" --acl public-read \
+              "$@" --cache-control 'public, max-age=31536000, immutable'
+          }
+          point() {
+            aws s3 cp --endpoint-url "$RELEASES_ENDPOINT" --acl public-read \
+              "$@" --cache-control no-cache
+          }
+          s3="s3://$RELEASES_BUCKET/observatory"
+          manifests="$(mktemp -d)"
+
+          for zip in $(find dist -path '*/zip/darwin/*' -name '*.zip'); do
+            arch="$(basename "$(dirname "$zip")")"
+            name="$(basename "$zip")"
+            put "$zip" "$s3/darwin/$arch/$name"
+            mkdir -p "$manifests/darwin/$arch"
+            jq -n --arg version "$version" --arg url "$base/darwin/$arch/$name" \
+              --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+              '{currentRelease: $version, releases: [{version: $version, updateTo: {
+                version: $version, name: "Observatory \($version)",
+                pub_date: $date, notes: "", url: $url}}]}' \
+              > "$manifests/darwin/$arch/RELEASES.json"
+          done
+
+          for list in $(find dist -path '*/squirrel.windows/*' -name RELEASES); do
+            dir="$(dirname "$list")"
+            arch="$(basename "$dir")"
+            for nupkg in "$dir"/*.nupkg; do
+              put "$nupkg" "$s3/win32/$arch/$(basename "$nupkg")"
+            done
+            mkdir -p "$manifests/win32/$arch"
+            cp "$list" "$manifests/win32/$arch/RELEASES"
+          done
+
+          jq -n --arg version "$version" \
+            --arg url "https://github.com/$GITHUB_REPOSITORY/releases/tag/v$version" \
+            '{version: $version, url: $url}' > "$manifests/latest.json"
+          point "$manifests" "$s3" --recursive
+        if: env.RELEASES_BUCKET != ''
+        name: Feed

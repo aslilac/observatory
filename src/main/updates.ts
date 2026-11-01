@@ -6,17 +6,21 @@ import { promisify } from "node:util";
 import { broadcast } from "./broadcast";
 import { isNewer } from "./version";
 
-// New versions come out as GitHub releases (.github/workflows/release.yaml).
-// Where it can, the app updates itself: Squirrel asks update.electronjs.org,
-// which reads those releases, downloads the new version, and it's there
-// from the next start. That's Windows, installed with the Setup.exe, and
-// macOS, if the app's signed with a Developer ID (Squirrel.Mac only takes
-// an update signed by the same team). Everywhere else (Linux, the zips, an
-// ad hoc signature, Windows on Arm), it says when a new version is out,
-// and opens its release page to download it from. Prereleases don't count,
-// either way.
+// Each release goes up to a bucket as well as GitHub, laid out for Squirrel
+// (the publish job in .github/workflows/release.yaml):
+//
+//   darwin/arm64/RELEASES.json   Squirrel.Mac's static manifest, and the zip
+//   win32/<arch>/RELEASES        Squirrel.Windows' list, and the .nupkg
+//   latest.json                  { version, url }, the release's GitHub page
+//
+// Where it can, the app updates itself from there: Squirrel downloads the new
+// version, and it's there from the next start. That's Windows, installed
+// with the Setup.exe, and macOS, if the app's signed with a certificate
+// (Squirrel.Mac only takes an update signed the same way). Everywhere else
+// (Linux, the zips, an ad hoc signature), it says when a new version is out,
+// and opens its release page to download it from.
 
-const REPO = "aslilac/observatory";
+const FEED = "https://releases.mckayla.dev/observatory";
 const HOUR = 60 * 60 * 1000;
 
 let update: Ob.Update | null = null;
@@ -45,7 +49,7 @@ export function startUpdates() {
 		return;
 	}
 	void updatesItself().then((squirrel) => {
-		const check = squirrel ? startSquirrel() : checkReleases;
+		const check = squirrel ? startSquirrel() : checkLatest;
 		const checkUnlessDownloaded = () => {
 			if (update?.status !== "downloaded") {
 				void check();
@@ -64,23 +68,20 @@ async function updatesItself(): Promise<boolean> {
 	switch (process.platform) {
 		case "win32":
 			// The Setup.exe puts Squirrel's Update.exe next to the folder the
-			// app runs from. Each release has one list of Squirrel packages,
-			// update.electronjs.org takes it for every arch, and it's x64's.
-			return (
-				process.arch === "x64" &&
-				fs.existsSync(path.resolve(process.execPath, "../../Update.exe"))
-			);
+			// app runs from.
+			return fs.existsSync(path.resolve(process.execPath, "../../Update.exe"));
 		case "darwin":
-			return signedByTeam();
+			return signedWithCertificate();
 		default:
 			return false;
 	}
 }
 
-// Apple silicon needs every app signed, but an ad hoc signature names no
-// team, and then each version is signed by no one in particular: Squirrel.Mac
-// would download an update only to turn it down.
-async function signedByTeam(): Promise<boolean> {
+// Apple silicon needs every app signed, but an ad hoc signature is only of
+// that one build, so each version looks like a different app: Squirrel.Mac
+// would download an update only to turn it down. A certificate's signature
+// names who signed it.
+async function signedWithCertificate(): Promise<boolean> {
 	const bundle = path.resolve(process.execPath, "../../..");
 	try {
 		const { stderr } = await promisify(execFile)("codesign", [
@@ -88,7 +89,7 @@ async function signedByTeam(): Promise<boolean> {
 			"--verbose=2",
 			bundle,
 		]);
-		return /^TeamIdentifier=(?!not set$)/m.test(stderr);
+		return /^Authority=/m.test(stderr);
 	} catch {
 		return false;
 	}
@@ -100,35 +101,34 @@ function startSquirrel() {
 	});
 	// Then it can at least say there's a new version.
 	autoUpdater.on("error", () => {
-		void checkReleases();
+		void checkLatest();
 	});
-	autoUpdater.setFeedURL({
-		url: `https://update.electronjs.org/${REPO}/${process.platform}-${process.arch}/${app.getVersion()}`,
-	});
+	const feed = `${FEED}/${process.platform}/${process.arch}`;
+	autoUpdater.setFeedURL(
+		process.platform === "darwin"
+			? { url: `${feed}/RELEASES.json`, serverType: "json" }
+			: { url: feed },
+	);
 	return () => autoUpdater.checkForUpdates();
 }
 
-// GitHub's latest release is the newest that isn't a prerelease. Until
-// there is one, it's not found.
-async function checkReleases() {
+async function checkLatest() {
 	try {
-		const response = await net.fetch(
-			`https://api.github.com/repos/${REPO}/releases/latest`,
-			{ headers: { accept: "application/vnd.github+json" } },
-		);
+		const response = await net.fetch(`${FEED}/latest.json`, {
+			cache: "no-cache",
+		});
 		if (!response.ok) {
 			return;
 		}
-		const release = (await response.json()) as {
-			tag_name: string;
-			html_url: string;
-		};
-		const version = release.tag_name.replace(/^v/, "");
-		if (update?.status !== "downloaded" && isNewer(version, app.getVersion())) {
-			releasePage = release.html_url;
-			setUpdate({ status: "available", version });
+		const latest = (await response.json()) as { version: string; url: string };
+		if (
+			update?.status !== "downloaded" &&
+			isNewer(latest.version, app.getVersion())
+		) {
+			releasePage = latest.url;
+			setUpdate({ status: "available", version: latest.version });
 		}
 	} catch {
-		// offline, or GitHub's having a moment: there's the next check
+		// offline, or the bucket's having a moment: there's the next check
 	}
 }

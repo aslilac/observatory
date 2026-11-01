@@ -56,8 +56,9 @@ module.exports = {
 		},
 		name: "Observatory",
 		// Signed with a Developer ID and notarized, when release.yaml has the
-		// secrets for it: Squirrel.Mac only updates an app a team signed (see
-		// src/main/updates.ts). Otherwise the app's signed ad hoc.
+		// secrets for it: Squirrel.Mac only updates an app signed with a
+		// certificate (see src/main/updates.ts). Otherwise the app's signed
+		// ad hoc.
 		...(process.env.APPLE_TEAM_ID
 			? {
 					osxSign: {},
