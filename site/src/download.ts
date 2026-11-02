@@ -46,7 +46,7 @@ function options(p: Platform): Option[] {
 		const own =
 			arch === "x64"
 				? { arch: "x64", detail: "Intel" }
-				: { arch: "arm64", detail: "Apple silicon" };
+				: { arch: "arm64", detail: "Apple Silicon" };
 		return [own, { arch: "universal", detail: "Universal" }].flatMap((b) => [
 			{
 				key: `darwin-${b.arch}.dmg`,
@@ -162,9 +162,7 @@ async function main(): Promise<void> {
 	copyButtons();
 	// on the downloads page, open this computer's platform (or the one linked to)
 	const os = detectOs();
-	const tabs = platformTabs(
-		os === "windows" || os === "linux" ? os : "macos",
-	);
+	const tabs = platformTabs(os === "windows" || os === "linux" ? os : "macos");
 	const platform = await detect();
 	const r = release;
 	const choice = r && choose(platform, r);
