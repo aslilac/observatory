@@ -28,9 +28,63 @@ root.setProperty("--horizon-y", `${horizon}px`);
 root.setProperty("--sun-x", `${sun.x}px`);
 root.setProperty("--sun-y", `${sun.y}px`);
 
+// Main hands over what this copy is and what it's on (environment.ts).
+// Opened some other way, there's just the version it was built as.
+const environment = readEnvironment();
+
 const versionLabel = document.querySelector<HTMLElement>(".version");
 if (versionLabel) {
-	versionLabel.textContent = version;
+	versionLabel.textContent = environment?.version ?? version;
+}
+
+const list = document.querySelector<HTMLElement>(".details");
+const copy = document.querySelector<HTMLButtonElement>(".copy");
+if (environment && list && copy) {
+	for (const { label, value } of environment.details) {
+		const term = document.createElement("dt");
+		term.textContent = label;
+		const description = document.createElement("dd");
+		description.textContent = value;
+		description.title = value;
+		list.append(term, description);
+	}
+	// As it'd go in a bug report.
+	const text = [
+		{ label: "Version", value: environment.version },
+		...environment.details,
+	]
+		.map(({ label, value }) => `${label}: ${value}`)
+		.join("\n");
+	copy.hidden = false;
+	copy.addEventListener("click", () => {
+		void navigator.clipboard.writeText(text).then(() => {
+			copy.textContent = "Copied";
+			setTimeout(() => {
+				copy.textContent = "Copy";
+			}, 1500);
+		});
+	});
+}
+
+// The stars dim behind the words, which the list makes taller.
+const words = [...document.querySelectorAll<HTMLElement>("main > *")]
+	.filter((element) => !element.hidden)
+	.map((element) => element.getBoundingClientRect());
+if (words.length > 0) {
+	const top = words[0]!.top;
+	const bottom = words.at(-1)!.bottom;
+	root.setProperty("--words-y", `${(top + bottom) / 2}px`);
+	root.setProperty("--words-ry", `${0.6 * (bottom - top)}px`);
+	root.setProperty("--words-rx", environment ? "250px" : "210px");
+}
+
+function readEnvironment(): Ob.Environment | null {
+	const query = new URLSearchParams(location.search).get("environment");
+	try {
+		return query ? (JSON.parse(query) as Ob.Environment) : null;
+	} catch {
+		return null;
+	}
 }
 
 const img = document.querySelector<HTMLImageElement>(".scene");

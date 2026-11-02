@@ -136,6 +136,20 @@ declare global {
 			| { status: "downloaded" }
 			| { status: "available"; version: string };
 
+		// What the about window shows and a bug report is filled in with
+		// (src/main/environment.ts): the version, with the commit it's of,
+		// and the build, OS, and architecture (and on Linux the kernel,
+		// desktop, and Flatpak runtime).
+		export interface Environment {
+			version: string;
+			details: Detail[];
+		}
+
+		export interface Detail {
+			label: string;
+			value: string;
+		}
+
 		export interface PhysicalDrive {
 			mountPath: string;
 			description: string;

@@ -10,6 +10,7 @@ import {
 import * as path from "node:path";
 import { broadcast, openScan } from "./broadcast";
 import { selectDirectory } from "./dialog";
+import { reportIssue } from "./environment";
 import { showAboutWindow } from "./viewManager";
 
 const isMac = process.platform === "darwin";
@@ -92,7 +93,10 @@ function buildTemplate(): MenuItemConstructorOptions[] {
 					{
 						label: "Observatory",
 						submenu: [
-							{ label: "About Observatory", click: () => showAboutWindow() },
+							{
+								label: "About Observatory",
+								click: () => void showAboutWindow(),
+							},
 							{ type: "separator" },
 							{ role: "services" },
 							{ type: "separator" },
@@ -217,16 +221,16 @@ function buildTemplate(): MenuItemConstructorOptions[] {
 				},
 				{
 					label: "Report an Issue",
-					click: () =>
-						void shell.openExternal(
-							"https://github.com/aslilac/observatory/issues",
-						),
+					click: () => void reportIssue(),
 				},
 				...(isMac
 					? []
 					: ([
 							{ type: "separator" },
-							{ label: "About Observatory", click: () => showAboutWindow() },
+							{
+								label: "About Observatory",
+								click: () => void showAboutWindow(),
+							},
 						] satisfies MenuItemConstructorOptions[])),
 			],
 		},

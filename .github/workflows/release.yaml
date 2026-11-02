@@ -145,6 +145,11 @@ jobs:
       - uses: actions/checkout@v7
         name: Checkout
 
+      # The build's copy of the checkout leaves .git out, so the commit
+      # (for the about window and bug reports) goes in .commit.
+      - name: Commit
+        run: git rev-parse HEAD > .commit
+
       # The manifest builds the checkout around it, so flatpak-builder's own
       # directories go where its skip list leaves them out. Releases start
       # from scratch, without a cache.

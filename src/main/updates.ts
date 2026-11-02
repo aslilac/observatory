@@ -67,9 +67,7 @@ export function startUpdates() {
 async function updatesItself(): Promise<boolean> {
 	switch (process.platform) {
 		case "win32":
-			// The Setup.exe puts Squirrel's Update.exe next to the folder the
-			// app runs from.
-			return fs.existsSync(path.resolve(process.execPath, "../../Update.exe"));
+			return installedWithSetup();
 		case "darwin":
 			return signedWithCertificate();
 		default:
@@ -77,11 +75,17 @@ async function updatesItself(): Promise<boolean> {
 	}
 }
 
+// The Setup.exe puts Squirrel's Update.exe next to the folder the app runs
+// from. The portable zip has none.
+export function installedWithSetup(): boolean {
+	return fs.existsSync(path.resolve(process.execPath, "../../Update.exe"));
+}
+
 // Apple silicon needs every app signed, but an ad hoc signature is only of
 // that one build, so each version looks like a different app: Squirrel.Mac
 // would download an update only to turn it down. A certificate's signature
 // names who signed it.
-async function signedWithCertificate(): Promise<boolean> {
+export async function signedWithCertificate(): Promise<boolean> {
 	const bundle = path.resolve(process.execPath, "../../..");
 	try {
 		const { stderr } = await promisify(execFile)("codesign", [

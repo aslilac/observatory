@@ -6,6 +6,7 @@ import {
 	type TitleBarOverlayOptions,
 } from "electron";
 import * as path from "node:path";
+import { getEnvironment } from "./environment";
 
 // electron-vite sets this during development with the URL of the Vite dev
 // server. Empty in packaged builds — use the bundled HTML on disk instead.
@@ -99,53 +100,69 @@ export function createWindow(inspect: string | null = null) {
 
 let aboutWindow: BrowserWindow | null = null;
 
-export function showAboutWindow() {
-	if (!aboutWindow) {
-		aboutWindow = new BrowserWindow({
-			// Match about.css's --color-background (the top of its sky) so the
-			// window doesn't flash the system default while it's loading.
-			backgroundColor: "#0d1033",
-			width: 480,
-			height: 540,
-			show: false,
-			titleBarStyle: "hiddenInset",
-			autoHideMenuBar: true,
-			fullscreenable: false,
-			minimizable: false,
-			maximizable: false,
-			resizable: false,
-		});
-
-		// Load the about page — Vite dev server in dev, bundled HTML in prod.
-		if (RENDERER_DEV_URL) {
-			void aboutWindow.loadURL(`${RENDERER_DEV_URL}/views/about/about.html`);
-		} else {
-			void aboutWindow.loadFile(
-				path.join(__dirname, "../renderer/views/about/about.html"),
-			);
-		}
-
-		// Route external links (target=_blank or otherwise) to the user's
-		// default browser instead of replacing the about page.
-		aboutWindow.webContents.setWindowOpenHandler(({ url }) => {
-			void shell.openExternal(url);
-			return { action: "deny" };
-		});
-		aboutWindow.webContents.on("will-navigate", (event, url) => {
-			if (url !== aboutWindow?.webContents.getURL()) {
-				event.preventDefault();
-				void shell.openExternal(url);
-			}
-		});
-
-		aboutWindow.on("closed", () => {
-			aboutWindow = null;
-		});
-
-		aboutWindow.on("ready-to-show", () => {
-			aboutWindow?.show();
-		});
-	} else {
+export async function showAboutWindow() {
+	if (aboutWindow) {
 		aboutWindow.show();
+		return;
 	}
+	// The page lists what this copy is and what it's on (environment.ts),
+	// which it's handed in its query, as the main window is its scan.
+	const environment = await getEnvironment();
+	// It may have been opened again while that was being read.
+	const opened = aboutWindow as BrowserWindow | null;
+	if (opened) {
+		opened.show();
+		return;
+	}
+	const query = { environment: JSON.stringify(environment) };
+	aboutWindow = new BrowserWindow({
+		// Match about.css's --color-background (the top of its sky) so the
+		// window doesn't flash the system default while it's loading.
+		backgroundColor: "#0d1033",
+		width: 480,
+		// The scene keeps to the bottom, and the sky grows for each line
+		// of the list (about.css's .details).
+		height: 560 + 17 * environment.details.length,
+		show: false,
+		titleBarStyle: "hiddenInset",
+		autoHideMenuBar: true,
+		fullscreenable: false,
+		minimizable: false,
+		maximizable: false,
+		resizable: false,
+	});
+
+	// Load the about page — Vite dev server in dev, bundled HTML in prod.
+	if (RENDERER_DEV_URL) {
+		const search = new URLSearchParams(query).toString();
+		void aboutWindow.loadURL(
+			`${RENDERER_DEV_URL}/views/about/about.html?${search}`,
+		);
+	} else {
+		void aboutWindow.loadFile(
+			path.join(__dirname, "../renderer/views/about/about.html"),
+			{ query },
+		);
+	}
+
+	// Route external links (target=_blank or otherwise) to the user's
+	// default browser instead of replacing the about page.
+	aboutWindow.webContents.setWindowOpenHandler(({ url }) => {
+		void shell.openExternal(url);
+		return { action: "deny" };
+	});
+	aboutWindow.webContents.on("will-navigate", (event, url) => {
+		if (url !== aboutWindow?.webContents.getURL()) {
+			event.preventDefault();
+			void shell.openExternal(url);
+		}
+	});
+
+	aboutWindow.on("closed", () => {
+		aboutWindow = null;
+	});
+
+	aboutWindow.on("ready-to-show", () => {
+		aboutWindow?.show();
+	});
 }

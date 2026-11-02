@@ -91,7 +91,8 @@ body {
 
 /* sky.ts puts the stars in here, on a canvas centred on the pole. They set
    into the haze above the horizon, and dim behind the words so the trails
-   don't run through them. */
+   don't run through them (about.ts says where they are: --words-y, and
+   --words-rx and --words-ry, the ellipse they're in). */
 .stars {
 	position: absolute;
 	inset: 0;
@@ -104,7 +105,8 @@ body {
 			transparent var(--horizon-y)
 		),
 		radial-gradient(
-			ellipse 210px 105px at 50% 138px,
+			ellipse var(--words-rx, 210px) var(--words-ry, 105px) at 50%
+				var(--words-y, 138px),
 			rgb(0 0 0 / 0.22) 40%,
 			#000
 		);
@@ -192,6 +194,55 @@ a:hover {
 .dot {
 	margin: 0 10px;
 	color: var(--color-faint);
+}
+
+/* Which build this is and what it's on, for a bug report: labels and
+   values, centred together. Selectable, unlike the rest of the window. */
+.details {
+	display: grid;
+	grid-template-columns: max-content minmax(0, max-content);
+	justify-content: center;
+	column-gap: 10px;
+	margin: 22px auto 0;
+	font-size: 11px;
+	line-height: 17px;
+	user-select: text;
+	-webkit-app-region: no-drag;
+}
+
+.details dt {
+	text-align: right;
+	color: var(--color-faint);
+}
+
+.details dd {
+	margin: 0;
+	overflow: hidden;
+	text-align: left;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--color-muted);
+}
+
+.copy {
+	margin-top: 6px;
+	padding: 0;
+	border: 0;
+	background: none;
+	font: inherit;
+	font-size: 11px;
+	color: var(--color-accent);
+	cursor: pointer;
+	transition: opacity 120ms ease;
+	-webkit-app-region: no-drag;
+}
+
+.copy:hover {
+	opacity: 0.75;
+}
+
+.copy[hidden] {
+	display: none;
 }
 
 .copyright {
