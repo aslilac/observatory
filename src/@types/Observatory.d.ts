@@ -40,6 +40,9 @@ declare global {
 		function publishRecentScans(
 			recents: ReadonlyArray<{ path: string; scannedAt: number }>,
 		): Promise<void>;
+		// Where the window is, for what the application menu has enabled and
+		// checked (src/main/menu.ts). Published again whenever it changes.
+		function publishMenuState(state: MenuState): Promise<void>;
 		function revealInFinder(path: string): Promise<void>;
 		function openPath(path: string): Promise<string>;
 		// macOS: opens Privacy & Security → Full Disk Access in System
@@ -83,6 +86,29 @@ declare global {
 		// Open Recent).
 		function onOpenScan(cb: (path: string) => void): () => void;
 		function onNav(cb: (direction: "back" | "forward") => void): () => void;
+		// The application menu asking for something about what's on screen
+		// (View → Find…, File → Rescan, …).
+		function onMenuCommand(cb: (command: MenuCommand) => void): () => void;
+
+		export type MenuCommand =
+			| "rescan"
+			| "reveal"
+			| "find"
+			| "toggle-cleanup"
+			| "toggle-theme"
+			| "home";
+		export interface MenuState {
+			canBack: boolean;
+			canForward: boolean;
+			// The scan on screen, unless it's still going: Rescan.
+			scan: string | null;
+			// The folder on screen, on disk: Show in Folder.
+			folder: string | null;
+			// Whether the find field is there: View → Find….
+			canFind: boolean;
+			cleanupOpen: boolean;
+			theme: "light" | "dark";
+		}
 
 		// The menus along the menu bar ("File", "Edit", …).
 		export type AppMenu = Array<Extract<AppMenuItem, { kind: "submenu" }>>;

@@ -6,6 +6,7 @@ import {
 	useMemo,
 } from "react";
 
+import { useAppMenu } from "./appMenu";
 import { useNavigation } from "./navigation";
 import { perfEnabled, perfLog, perfMeasure } from "./perf";
 import { basename } from "./paths";
@@ -86,6 +87,13 @@ export const Application: React.FC = () => {
 		},
 		[setInspecting],
 	);
+
+	useAppMenu({
+		scan: inspectingScan,
+		theme,
+		onToggleTheme: toggleTheme,
+		onRescan,
+	});
 
 	const paste = usePasteToScan(onOpen);
 

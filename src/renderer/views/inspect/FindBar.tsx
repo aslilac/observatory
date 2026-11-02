@@ -79,6 +79,8 @@ export const FindBar: React.FC<FindBarProps> = ({
 						</span>
 					)}
 					<Autocomplete.Input
+						// for View → Find… (src/renderer/appMenu.ts)
+						data-find
 						onFocus={() => onSuggestingChange(true)}
 						onKeyDown={(e) => {
 							// The first Escape closes the suggestions, the next

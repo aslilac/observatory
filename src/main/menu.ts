@@ -39,6 +39,46 @@ function recentItems(): MenuItemConstructorOptions[] {
 	}));
 }
 
+// Where the window is, published by the renderer (Ob.publishMenuState) as
+// it changes, for what's enabled and checked.
+let state: Ob.MenuState = {
+	canBack: false,
+	canForward: false,
+	scan: null,
+	folder: null,
+	canFind: false,
+	cleanupOpen: false,
+	theme: "light",
+};
+
+export function setMenuState(next: Ob.MenuState) {
+	state = next;
+	applyMenu();
+}
+
+// The app does it: they're about what's on screen, which it knows.
+function command(name: Ob.MenuCommand): MenuItemConstructorOptions["click"] {
+	return (_item, window) => {
+		const target =
+			window instanceof BrowserWindow
+				? window
+				: BrowserWindow.getFocusedWindow();
+		target?.webContents.send("Ob.menuCommand", name);
+	};
+}
+
+function nav(
+	direction: "back" | "forward",
+): MenuItemConstructorOptions["click"] {
+	return (_item, window) => {
+		const target =
+			window instanceof BrowserWindow
+				? window
+				: BrowserWindow.getFocusedWindow();
+		target?.webContents.send("Ob.nav", direction);
+	};
+}
+
 function buildTemplate(): MenuItemConstructorOptions[] {
 	return [
 		// macOS expects an "appMenu" role with the app's name as label. The
@@ -81,12 +121,92 @@ function buildTemplate(): MenuItemConstructorOptions[] {
 				},
 				{ label: "Open Recent", submenu: recentItems() },
 				{ type: "separator" },
+				{
+					label: "Rescan",
+					accelerator: "CmdOrCtrl+R",
+					enabled: state.scan !== null,
+					click: command("rescan"),
+				},
+				{
+					label: isMac ? "Reveal in Finder" : "Show in Folder",
+					enabled: state.folder !== null,
+					click: command("reveal"),
+				},
+				{ type: "separator" },
 				isMac ? { role: "close" } : { role: "quit" },
 			],
 		},
-		{ role: "editMenu" },
-		{ role: "viewMenu" },
-		{ role: "windowMenu" },
+		// On macOS, the Edit menu is what makes ⌘C and ⌘V work in text
+		// fields. Elsewhere they work without it, and the only field is Find.
+		...(isMac
+			? ([{ role: "editMenu" }] satisfies MenuItemConstructorOptions[])
+			: []),
+		{
+			label: "View",
+			submenu: [
+				{
+					label: "Find…",
+					accelerator: "CmdOrCtrl+F",
+					enabled: state.canFind,
+					click: command("find"),
+				},
+				{
+					label: "Show Cleanup",
+					type: "checkbox",
+					checked: state.cleanupOpen,
+					click: command("toggle-cleanup"),
+				},
+				{
+					label: "Dark Mode",
+					type: "checkbox",
+					checked: state.theme === "dark",
+					click: command("toggle-theme"),
+				},
+				{ type: "separator" },
+				{ role: "resetZoom" },
+				{ role: "zoomIn" },
+				{ role: "zoomOut" },
+				{ type: "separator" },
+				{ role: "togglefullscreen" },
+				// For working on the app: Reload throws away where you are, and
+				// ⌘R / Ctrl+R is Rescan.
+				...(app.isPackaged
+					? []
+					: ([
+							{ type: "separator" },
+							{ role: "reload", accelerator: "F5" },
+							{ role: "forceReload", accelerator: "Shift+F5" },
+							{ role: "toggleDevTools" },
+						] satisfies MenuItemConstructorOptions[])),
+			],
+		},
+		{
+			label: "Go",
+			submenu: [
+				{
+					label: "Back",
+					accelerator: isMac ? "Cmd+[" : "Alt+Left",
+					enabled: state.canBack,
+					click: nav("back"),
+				},
+				{
+					label: "Forward",
+					accelerator: isMac ? "Cmd+]" : "Alt+Right",
+					enabled: state.canForward,
+					click: nav("forward"),
+				},
+				{ type: "separator" },
+				{
+					label: "Disks and Folders",
+					accelerator: "CmdOrCtrl+Shift+H",
+					click: command("home"),
+				},
+			],
+		},
+		// The title bar has minimize and close off macOS.
+		...(isMac
+			? ([{ role: "windowMenu" }] satisfies MenuItemConstructorOptions[])
+			: []),
 		{
 			role: "help",
 			submenu: [
@@ -115,9 +235,8 @@ function buildTemplate(): MenuItemConstructorOptions[] {
 
 function applyMenu() {
 	Menu.setApplicationMenu(Menu.buildFromTemplate(buildTemplate()));
-	if (!isMac) {
-		broadcast("Ob.appMenu", describeAppMenu());
-	}
+	// Only drawn off macOS, but there's no harm in sending it there too.
+	broadcast("Ob.appMenu", describeAppMenu());
 }
 
 // Windows and Linux: the window has no menu bar, so the title bar draws the

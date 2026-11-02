@@ -12,7 +12,12 @@ import { deleteFiles } from "./cleanup";
 import { buildFakeDisk } from "./fixtures";
 import { selectDirectory } from "./dialog";
 import { restartAsAdmin } from "./elevation";
-import { clickAppMenuItem, describeAppMenu, setRecentScans } from "./menu";
+import {
+	clickAppMenuItem,
+	describeAppMenu,
+	setMenuState,
+	setRecentScans,
+} from "./menu";
 import { applyUpdate, getUpdate } from "./updates";
 import { titleBarOverlay } from "./viewManager";
 import {
@@ -53,6 +58,7 @@ ipcMain.handle("Ob.findInScan", pass(findInScan));
 ipcMain.handle("Ob.summarizeFinders", pass(summarizeFinders));
 ipcMain.handle("Ob.getScanErrors", pass(getScanErrors));
 ipcMain.handle("Ob.publishRecentScans", pass(setRecentScans));
+ipcMain.handle("Ob.publishMenuState", pass(setMenuState));
 ipcMain.handle(
 	"Ob.revealInFinder",
 	pass((path: string) => shell.showItemInFolder(hostPath(path))),

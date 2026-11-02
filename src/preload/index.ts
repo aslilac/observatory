@@ -60,6 +60,8 @@ contextBridge.exposeInMainWorld("Ob", {
 	publishRecentScans: (
 		recents: ReadonlyArray<{ path: string; scannedAt: number }>,
 	) => invoke("Ob.publishRecentScans", recents),
+	publishMenuState: (state: Ob.MenuState) =>
+		invoke("Ob.publishMenuState", state),
 	revealInFinder: (path: string) => invoke("Ob.revealInFinder", path),
 	openPath: (path: string) => invoke("Ob.openPath", path),
 	openFullDiskAccessSettings: () => invoke("Ob.openFullDiskAccessSettings"),
@@ -102,4 +104,6 @@ contextBridge.exposeInMainWorld("Ob", {
 		subscribe<string>("Ob.openScan", cb),
 	onNav: (cb: (direction: "back" | "forward") => void) =>
 		subscribe<"back" | "forward">("Ob.nav", cb),
+	onMenuCommand: (cb: (command: Ob.MenuCommand) => void) =>
+		subscribe<Ob.MenuCommand>("Ob.menuCommand", cb),
 });
