@@ -25,7 +25,7 @@ export default {
 	},
 	renderer: {
 		root: resolve(__dirname, "src/renderer/"),
-		plugins: [react(), tailwindcss()],
+		plugins: [react({ compiler: true }), tailwindcss()],
 		resolve: { tsconfigPaths: true },
 		build: {
 			outDir: resolve(__dirname, "build/renderer/"),
