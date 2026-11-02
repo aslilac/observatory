@@ -113,10 +113,9 @@ export const Inspect: React.FC<InspectProps> = ({ scan }) => {
 
 	const onSortChange = useCallback((next: SortMode) => {
 		setSortMode(next);
-		// Non-default sorts are usually intentional searches for an item by
-		// name or recency, so expand by default; flipping back to size collapses
-		// to the top-N view again.
-		setShowAll(next !== "size");
+		// Every sort starts collapsed. Size sort shows the top N; the others
+		// show everything but what's too small to matter.
+		setShowAll(false);
 	}, []);
 
 	// Reset on scan switch only — navigating around inside a scan keeps whatever
@@ -129,15 +128,11 @@ export const Inspect: React.FC<InspectProps> = ({ scan }) => {
 		setShowAll(false);
 	}, [inspecting, clearFind]);
 
-	// Each new directory collapses the list back to top-N for size-sort so a
-	// previously-expanded view doesn't follow the user into a child folder.
-	// Non-size sorts stay expanded — a partial alphabetical or recency view would
-	// just be confusing.
+	// Each new directory collapses the list again, so a previously-expanded
+	// view doesn't follow the user into a child folder.
 	const cursorKey = cursor.join("/");
-	const sortModeRef = React.useRef(sortMode);
-	sortModeRef.current = sortMode;
 	useEffect(() => {
-		setShowAll(sortModeRef.current !== "size");
+		setShowAll(false);
 	}, [cursorKey]);
 
 	const toggleSelect = useCallback((item: SelectableItem) => {

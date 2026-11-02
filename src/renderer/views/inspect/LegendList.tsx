@@ -52,8 +52,19 @@ export const LegendList: React.FC<LegendListProps> = ({
 
 	const sorted = useMemo(() => sortFiles(files, sortMode), [files, sortMode]);
 
-	const collapse = sortMode === "size" && !showAll && sorted.length > TOP_N;
-	const visible = collapse ? sorted.slice(0, TOP_N) : sorted;
+	const visible = useMemo(() => {
+		if (showAll) {
+			return sorted;
+		}
+		// Empty things, and things under a thousandth of the largest, are noise
+		// next to what's taking up the space.
+		const largest = files.reduce((max, f) => Math.max(max, f.size), 0);
+		const significant = sorted.filter(
+			(f) => f.size > 0 && f.size * 1000 >= largest,
+		);
+		return sortMode === "size" ? significant.slice(0, TOP_N) : significant;
+	}, [files, sorted, sortMode, showAll]);
+	const collapse = visible.length < sorted.length;
 	const showDate = sortMode === "newest" || sortMode === "oldest";
 
 	return (
