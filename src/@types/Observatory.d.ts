@@ -56,13 +56,9 @@ declare global {
 		// controls (see viewManager.ts), which follow the app's theme rather
 		// than the OS's.
 		function setTitleBarTheme(theme: "light" | "dark"): Promise<void>;
-		// Windows and Linux: the application menu's top-level labels ("File",
-		// "Edit", …), for the title bar to draw, since the window has no menu
-		// bar.
-		function getAppMenu(): Promise<string[]>;
-		// Opens the application menu's `index`th submenu at (x, y), in CSS
-		// pixels from the window's top left.
-		function popupAppMenu(index: number, x: number, y: number): Promise<void>;
+		// Windows and Linux: runs the application menu's item `id` (from
+		// onAppMenu), as a click on it in a native menu bar would.
+		function clickAppMenuItem(id: string): Promise<void>;
 		// A new version of the app, if there's one out (see
 		// src/main/updates.ts).
 		function getUpdate(): Promise<Update | null>;
@@ -78,11 +74,35 @@ declare global {
 		function onDrives(cb: (drives: PhysicalDrive[]) => void): () => void;
 		function onScans(cb: (scans: ScanInfo[]) => void): () => void;
 		function onUpdate(cb: (update: Update | null) => void): () => void;
+		// Windows and Linux: the application menu, for the title bar to draw,
+		// since the window has no menu bar. Again whenever it changes (Open
+		// Recent).
+		function onAppMenu(cb: (menu: AppMenu) => void): () => void;
 		function onSetInspecting(cb: (path: string | null) => void): () => void;
 		// The menu asking to scan a path and go to it (File → Open Folder…,
 		// Open Recent).
 		function onOpenScan(cb: (path: string) => void): () => void;
 		function onNav(cb: (direction: "back" | "forward") => void): () => void;
+
+		// The menus along the menu bar ("File", "Edit", …).
+		export type AppMenu = Array<Extract<AppMenuItem, { kind: "submenu" }>>;
+		export type AppMenuItem =
+			| { kind: "separator" }
+			| {
+					kind: "item";
+					id: string; // for clickAppMenuItem
+					label: string;
+					sublabel?: string;
+					enabled: boolean;
+					checked?: boolean; // a checkbox or radio item
+					accelerator?: string; // "Ctrl+O"
+			  }
+			| {
+					kind: "submenu";
+					label: string;
+					enabled: boolean;
+					items: AppMenuItem[];
+			  };
 
 		// Downloaded, to be installed on the next start, or only out, to be
 		// downloaded from its release page.

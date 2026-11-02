@@ -4,7 +4,6 @@ import {
 	useEffect,
 	useLayoutEffect,
 	useMemo,
-	useState,
 } from "react";
 
 import { useNavigation } from "./navigation";
@@ -18,6 +17,7 @@ import {
 	useTheme,
 } from "./state";
 import { CleanupPanel } from "./views/cleanup/CleanupPanel";
+import { AppMenuBar } from "./components/AppMenuBar";
 import { DragReceiver } from "./components/DragReceiver";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import {
@@ -252,7 +252,7 @@ const TitleBar: React.FC<TitleBarProps> = ({ title, theme, onToggleTheme }) => {
 			// The menu starts after any window controls at the left.
 			style={{ paddingLeft: "env(titlebar-area-x, 0px)" }}
 		>
-			{!mac && <AppMenu />}
+			{!mac && <AppMenuBar />}
 			<div
 				className="pointer-events-none absolute truncate text-center"
 				// Centered, and as far in from both ends as the menu has been
@@ -272,35 +272,6 @@ const TitleBar: React.FC<TitleBarProps> = ({ title, theme, onToggleTheme }) => {
 				<UpdateButton />
 				<ThemeToggle theme={theme} onToggle={onToggleTheme} />
 			</div>
-		</div>
-	);
-};
-
-// Windows and Linux: the window has no menu bar (see
-// src/main/viewManager.ts), so the title bar names the application menu's
-// menus, and opens them where you click, as VS Code does. Their shortcuts
-// work either way.
-const AppMenu: React.FC = () => {
-	const [labels, setLabels] = useState<string[]>([]);
-	useEffect(() => {
-		void Ob.getAppMenu().then(setLabels);
-	}, []);
-
-	return (
-		<div className="flex h-full items-center pl-[6px] [-webkit-app-region:no-drag]">
-			{labels.map((label, i) => (
-				<button
-					key={label}
-					type="button"
-					className="h-[26px] cursor-default rounded-button px-[8px] font-normal text-muted hover:bg-fill hover:text-default"
-					onClick={(e) => {
-						const { left, bottom } = e.currentTarget.getBoundingClientRect();
-						void Ob.popupAppMenu(i, left, bottom);
-					}}
-				>
-					{label}
-				</button>
-			))}
 		</div>
 	);
 };

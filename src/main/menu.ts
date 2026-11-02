@@ -1,6 +1,14 @@
-import { app, Menu, type MenuItemConstructorOptions, shell } from "electron";
+import {
+	app,
+	BrowserWindow,
+	Menu,
+	type MenuItem,
+	type MenuItemConstructorOptions,
+	shell,
+	type WebContents,
+} from "electron";
 import * as path from "node:path";
-import { openScan } from "./broadcast";
+import { broadcast, openScan } from "./broadcast";
 import { selectDirectory } from "./dialog";
 import { showAboutWindow } from "./viewManager";
 
@@ -107,6 +115,100 @@ function buildTemplate(): MenuItemConstructorOptions[] {
 
 function applyMenu() {
 	Menu.setApplicationMenu(Menu.buildFromTemplate(buildTemplate()));
+	if (!isMac) {
+		broadcast("Ob.appMenu", describeAppMenu());
+	}
+}
+
+// Windows and Linux: the window has no menu bar, so the title bar draws the
+// application menu itself (AppMenuBar in the renderer). A native popup can't
+// stand in for it: it takes the mouse while it's open, so hovering the next
+// menu wouldn't switch to it. This is the menu as the title bar draws it,
+// each item named by where it is ("1.3" is the second menu's fourth item).
+export function describeAppMenu(): Ob.AppMenu {
+	return describeItems(Menu.getApplicationMenu()?.items ?? [], "").flatMap(
+		(item) => (item.kind === "submenu" ? [item] : []),
+	);
+}
+
+function describeItems(items: MenuItem[], prefix: string): Ob.AppMenuItem[] {
+	return items.flatMap((item, i): Ob.AppMenuItem[] => {
+		if (!item.visible) {
+			return [];
+		}
+		if (item.type === "separator") {
+			return [{ kind: "separator" }];
+		}
+		const id = `${prefix}${i}`;
+		// "&File" marks the F as the mnemonic, and "&&" is an ampersand.
+		const label = item.label.replace(/&(&?)/g, "$1");
+		if (item.submenu) {
+			return [
+				{
+					kind: "submenu",
+					label,
+					enabled: item.enabled,
+					items: describeItems(item.submenu.items, `${id}.`),
+				},
+			];
+		}
+		// Items with a role (Copy, Reload, …) have the role's shortcut, which
+		// Electron has but doesn't declare.
+		const accelerator =
+			item.accelerator ??
+			(
+				item as MenuItem & { getDefaultRoleAccelerator?: () => string | null }
+			).getDefaultRoleAccelerator?.();
+		return [
+			{
+				kind: "item",
+				id,
+				label,
+				...(item.sublabel ? { sublabel: item.sublabel } : {}),
+				enabled: item.enabled,
+				...(item.type === "checkbox" || item.type === "radio"
+					? { checked: item.checked }
+					: {}),
+				...(accelerator
+					? { accelerator: describeAccelerator(accelerator) }
+					: {}),
+			},
+		];
+	});
+}
+
+// "CmdOrCtrl+Shift+I" as Windows and Linux spell it: "Ctrl+Shift+I".
+function describeAccelerator(accelerator: string): string {
+	const names: Record<string, string> = {
+		CmdOrCtrl: "Ctrl",
+		CommandOrControl: "Ctrl",
+		Control: "Ctrl",
+		Option: "Alt",
+		Plus: "+",
+	};
+	return accelerator
+		.split("+")
+		.map((key) => names[key] ?? key)
+		.join("+");
+}
+
+// Runs the item the title bar's menu says was clicked, as a click on a
+// native menu would: its role (Copy, Reload, …) or its handler.
+export function clickAppMenuItem(id: string, sender: WebContents) {
+	let items = Menu.getApplicationMenu()?.items;
+	let item: MenuItem | undefined;
+	for (const i of id.split(".")) {
+		item = items?.[Number(i)];
+		items = item?.submenu?.items;
+	}
+	if (!item || !item.enabled || item.submenu) {
+		return;
+	}
+	item.click(
+		undefined,
+		BrowserWindow.fromWebContents(sender) ?? undefined,
+		sender,
+	);
 }
 
 export function setRecentScans(next: ReadonlyArray<RecentScan>) {

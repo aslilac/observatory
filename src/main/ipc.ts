@@ -3,7 +3,6 @@ import {
 	BrowserWindow,
 	type IpcMainInvokeEvent,
 	ipcMain,
-	Menu,
 	shell,
 } from "electron";
 import * as fs from "node:fs/promises";
@@ -13,7 +12,7 @@ import { deleteFiles } from "./cleanup";
 import { buildFakeDisk } from "./fixtures";
 import { selectDirectory } from "./dialog";
 import { restartAsAdmin } from "./elevation";
-import { setRecentScans } from "./menu";
+import { clickAppMenuItem, describeAppMenu, setRecentScans } from "./menu";
 import { applyUpdate, getUpdate } from "./updates";
 import { titleBarOverlay } from "./viewManager";
 import {
@@ -95,26 +94,9 @@ ipcMain.handle(
 		}
 	},
 );
-ipcMain.handle(
-	"Ob.getAppMenu",
-	() => Menu.getApplicationMenu()?.items.map((item) => item.label) ?? [],
-);
-ipcMain.handle(
-	"Ob.popupAppMenu",
-	(event: IpcMainInvokeEvent, index: number, x: number, y: number) => {
-		const window = BrowserWindow.fromWebContents(event.sender);
-		const submenu = Menu.getApplicationMenu()?.items[index]?.submenu;
-		if (!window || !submenu) {
-			return;
-		}
-		// CSS pixels, which View → Zoom scales.
-		const zoom = event.sender.getZoomFactor();
-		submenu.popup({
-			window,
-			x: Math.round(x * zoom),
-			y: Math.round(y * zoom),
-		});
-	},
+ipcMain.handle("Ob.getAppMenu", () => describeAppMenu());
+ipcMain.handle("Ob.clickAppMenuItem", (event: IpcMainInvokeEvent, id: string) =>
+	clickAppMenuItem(id, event.sender),
 );
 ipcMain.handle(
 	"Ob.statPath",

@@ -67,9 +67,7 @@ contextBridge.exposeInMainWorld("Ob", {
 	restartAsAdmin: (path: string) => invoke("Ob.restartAsAdmin", path),
 	setTitleBarTheme: (theme: "light" | "dark") =>
 		invoke("Ob.setTitleBarTheme", theme),
-	getAppMenu: () => invoke("Ob.getAppMenu"),
-	popupAppMenu: (index: number, x: number, y: number) =>
-		invoke("Ob.popupAppMenu", index, x, y),
+	clickAppMenuItem: (id: string) => invoke("Ob.clickAppMenuItem", id),
 	getUpdate: () => invoke("Ob.getUpdate"),
 	applyUpdate: () => invoke("Ob.applyUpdate"),
 	devLoadFakeDisk: () => invoke("Ob.devLoadFakeDisk"),
@@ -91,6 +89,11 @@ contextBridge.exposeInMainWorld("Ob", {
 		void invoke("Ob.getUpdate").then((update) =>
 			cb(update as Ob.Update | null),
 		);
+		return unsub;
+	},
+	onAppMenu: (cb: (menu: Ob.AppMenu) => void) => {
+		const unsub = subscribe<Ob.AppMenu>("Ob.appMenu", cb);
+		void invoke("Ob.getAppMenu").then((menu) => cb(menu as Ob.AppMenu));
 		return unsub;
 	},
 	onSetInspecting: (cb: (path: string | null) => void) =>
