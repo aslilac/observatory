@@ -14,7 +14,6 @@ import {
 	useDrives,
 	usePasteToScan,
 	useRecentScans,
-	useCleanupQueue,
 	useScans,
 	useTheme,
 } from "./state";
@@ -44,7 +43,6 @@ export const Application: React.FC = () => {
 	} = useRecentScans();
 	const { theme, toggle: toggleTheme } = useTheme();
 	const { inspecting, cursor, setInspecting } = useNavigation();
-	const { panelOpen: cleanupOpen } = useCleanupQueue();
 	const inspectingScan = useMemo(
 		() =>
 			inspecting ? (scans.find((s) => s.path === inspecting) ?? null) : null,
@@ -135,7 +133,7 @@ export const Application: React.FC = () => {
 			className={`relative grid h-screen grid-rows-[36px_1fr] bg-background ${Ob.platform}`}
 		>
 			<TitleBar title={title} theme={theme} onToggleTheme={toggleTheme} />
-			<div className="flex min-h-0 overflow-hidden">
+			<div className="relative flex min-h-0 overflow-hidden">
 				<div className="flex min-w-0 flex-1 flex-col overflow-hidden">
 					<ErrorBoundary key={inspecting ?? "menu"}>
 						<Profiler id="screen" onRender={handleProfilerRender}>
@@ -153,7 +151,7 @@ export const Application: React.FC = () => {
 						</Profiler>
 					</ErrorBoundary>
 				</div>
-				{cleanupOpen && <CleanupPanel />}
+				<CleanupPanel />
 			</div>
 			<PasteConfirm
 				open={paste.pastePath !== null}

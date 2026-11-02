@@ -11,11 +11,13 @@ import { RowMenu } from "#/components/ContextMenu";
 import { useCleanupDragging, useCleanupDrop } from "./cleanupDrag";
 import { CleanupModal } from "./CleanupModal";
 
-// What's been moved to cleanup, beside whatever the window is showing, so
-// you can keep browsing while you fill it, and drop things straight onto
-// it. Opened and closed from the CleanupChip in the toolbar.
+// What's been moved to cleanup, in a drawer that slides out over whatever
+// the window is showing, so you can keep browsing while you fill it, and
+// drop things straight onto it. It hangs below the toolbar, so the
+// CleanupChip that opens and closes it stays in reach.
 export const CleanupPanel: React.FC = () => {
-	const { items, totalSize, remove, clear, setPanelOpen } = useCleanupQueue();
+	const { items, totalSize, remove, clear, panelOpen, setPanelOpen } =
+		useCleanupQueue();
 	const dragging = useCleanupDragging();
 	const { over, dropProps } = useCleanupDrop();
 	const [confirming, setConfirming] = useState(false);
@@ -26,7 +28,8 @@ export const CleanupPanel: React.FC = () => {
 
 	return (
 		<aside
-			className={`flex w-[300px] flex-shrink-0 flex-col border-l border-line-soft ${over ? "bg-fill" : "bg-background"}`}
+			inert={!panelOpen}
+			className={`absolute top-[44px] right-0 bottom-0 z-[5] flex w-[300px] flex-col border-l border-line-soft transition-transform duration-200 ease-out motion-reduce:transition-none ${panelOpen ? "translate-x-0 shadow-[-12px_0_30px_-12px_rgba(0,0,0,0.25)]" : "translate-x-full"} ${over ? "bg-fill" : "bg-background"}`}
 			{...dropProps}
 		>
 			<div className="flex h-[44px] flex-shrink-0 items-center gap-[8px] border-b border-line-soft pr-[8px] pl-[14px]">
