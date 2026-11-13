@@ -146,9 +146,11 @@ jobs:
         name: Checkout
 
       # The build's copy of the checkout leaves .git out, so the commit
-      # (for the about window and bug reports) goes in .commit.
+      # (for the about window and bug reports) goes in .commit. It's from
+      # Actions rather than git, which won't read a checkout the container's
+      # user doesn't own.
       - name: Commit
-        run: git rev-parse HEAD > .commit
+        run: echo "$GITHUB_SHA" > .commit
 
       # The manifest builds the checkout around it, so flatpak-builder's own
       # directories go where its skip list leaves them out. Releases start
