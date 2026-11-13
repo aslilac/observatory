@@ -66,16 +66,24 @@ if (environment && list && copy) {
 	});
 }
 
-// The stars dim behind the words, which the list makes taller.
+// The stars dim behind the words, which the list makes taller. The blocks
+// span the window, so it's their text that's measured.
 const words = [...document.querySelectorAll<HTMLElement>("main > *")]
 	.filter((element) => !element.hidden)
-	.map((element) => element.getBoundingClientRect());
+	.map((element) => {
+		const range = document.createRange();
+		range.selectNodeContents(element);
+		return range.getBoundingClientRect();
+	});
 if (words.length > 0) {
 	const top = words[0]!.top;
 	const bottom = words.at(-1)!.bottom;
+	const left = Math.min(...words.map((rect) => rect.left));
+	const right = Math.max(...words.map((rect) => rect.right));
+	root.setProperty("--words-x", `${(left + right) / 2}px`);
 	root.setProperty("--words-y", `${(top + bottom) / 2}px`);
-	root.setProperty("--words-ry", `${0.6 * (bottom - top)}px`);
-	root.setProperty("--words-rx", environment ? "250px" : "210px");
+	root.setProperty("--words-rx", `${0.9 * (right - left)}px`);
+	root.setProperty("--words-ry", `${0.85 * (bottom - top)}px`);
 }
 
 function readEnvironment(): Ob.Environment | null {

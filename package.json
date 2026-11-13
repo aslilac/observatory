@@ -1,7 +1,7 @@
 {
 	"private": true,
 	"name": "observatory",
-	"version": "1.0.0-beta.2",
+	"version": "1.0.0-beta.3",
 	"description": "A cross platform disk usage analyzer with a modern UI",
 	"license": "MPL-2.0",
 	"author": "McKayla Washburn-Love <kayla@tree.camp>",
@@ -16,10 +16,11 @@
 		"fmt": "oxfmt",
 		"test": "pnpm check.test",
 		"build": "electron-vite build",
-		"build.native": "node scripts/build-native.mjs",
+		"build.native": "node ./scripts/build-native.mjs",
 		"build.forge": "pnpm build.native && pnpm build && electron-forge make",
 		"dev": "electron-vite dev",
-		"preview": "electron-vite preview"
+		"preview": "electron-vite preview",
+		"postinstall": "node ./scripts/install-electron.mjs && node ./scripts/build-native.mjs"
 	},
 	"dependencies": {
 		"electron-squirrel-startup": "^1.0.1"

@@ -10,8 +10,8 @@
 	--color-background: #0d1033;
 	--color-ground: #15151a;
 	--color-default: #f1ede2;
-	--color-muted: rgba(241, 237, 226, 0.62);
-	--color-faint: rgba(241, 237, 226, 0.42);
+	--color-muted: rgba(241, 237, 226, 0.76);
+	--color-faint: rgba(241, 237, 226, 0.56);
 	--color-accent: #9fb6ff;
 }
 
@@ -26,7 +26,7 @@ body {
 	height: 100vh;
 	overflow: hidden;
 	font-family: var(--font-sans);
-	font-size: 14px;
+	font-size: 15px;
 	font-weight: 300;
 	line-height: 1.5;
 	color: var(--color-default);
@@ -92,7 +92,7 @@ body {
 /* sky.ts puts the stars in here, on a canvas centred on the pole. They set
    into the haze above the horizon, and dim behind the words so the trails
    don't run through them (about.ts says where they are: --words-y, and
-   --words-rx and --words-ry, the ellipse they're in). */
+   --words-x, --words-rx and --words-ry, the ellipse they're in). */
 .stars {
 	position: absolute;
 	inset: 0;
@@ -105,9 +105,9 @@ body {
 			transparent var(--horizon-y)
 		),
 		radial-gradient(
-			ellipse var(--words-rx, 210px) var(--words-ry, 105px) at 50%
-				var(--words-y, 138px),
-			rgb(0 0 0 / 0.22) 40%,
+			ellipse var(--words-rx, 300px) var(--words-ry, 200px) at
+				var(--words-x, 200px) var(--words-y, 200px),
+			rgb(0 0 0 / 0.12) 50%,
 			#000
 		);
 	mask-composite: intersect;
@@ -141,11 +141,14 @@ body {
 	height: var(--scene-h);
 }
 
-/* The ground runs into the dark under the copyright. */
-body::after {
+/* The ground runs into the dark under the copyright. It's ::before, ahead
+   of the copyright, because it inherits the body's drag, and the later
+   region wins: after it, it'd cover the link's no-drag. */
+body::before {
 	content: "";
 	position: absolute;
 	inset: auto 0 0;
+	z-index: 1;
 	height: 84px;
 	background: linear-gradient(to bottom, transparent, var(--color-ground) 85%);
 	pointer-events: none;
@@ -154,34 +157,36 @@ body::after {
 main {
 	position: relative;
 	padding: 52px 24px 0;
-	text-align: center;
-	text-shadow: 0 1px 12px rgb(13 16 51 / 0.6);
+	text-align: left;
+	text-shadow:
+		0 1px 2px rgb(13 16 51 / 0.5),
+		0 1px 12px rgb(13 16 51 / 0.7);
 }
 
 h1 {
 	margin: 0;
-	font-size: 28px;
+	font-size: 30px;
 	font-weight: 600;
 	letter-spacing: -0.5px;
 	color: var(--color-default);
 }
 
 .version {
+	font-weight: 400;
 	margin: 2px 0 14px;
 	font-variant-numeric: tabular-nums;
-	font-size: 11px;
+	font-size: 13px;
 	color: var(--color-muted);
 }
 
 .tagline {
-	max-width: 280px;
-	margin: 0 auto 16px;
+	margin: 0 0 10px;
 	color: var(--color-muted);
 }
 
 a {
 	color: var(--color-accent);
-	font-size: 13px;
+	font-size: 14px;
 	text-decoration: none;
 	transition: opacity 120ms ease;
 	-webkit-app-region: no-drag;
@@ -197,21 +202,20 @@ a:hover {
 }
 
 /* Which build this is and what it's on, for a bug report: labels and
-   values, centred together. Selectable, unlike the rest of the window. */
+   values. Selectable, unlike the rest of the window. */
 .details {
+	font-weight: 400;
 	display: grid;
 	grid-template-columns: max-content minmax(0, max-content);
-	justify-content: center;
 	column-gap: 10px;
-	margin: 22px auto 0;
-	font-size: 11px;
-	line-height: 17px;
+	margin: 22px 0 0;
+	font-size: 13px;
+	line-height: 20px;
 	user-select: text;
 	-webkit-app-region: no-drag;
 }
 
 .details dt {
-	text-align: right;
 	color: var(--color-faint);
 }
 
@@ -225,12 +229,12 @@ a:hover {
 }
 
 .copy {
-	margin-top: 6px;
+	margin-top: 10px;
 	padding: 0;
 	border: 0;
 	background: none;
 	font: inherit;
-	font-size: 11px;
+	font-size: 13px;
 	color: var(--color-accent);
 	cursor: pointer;
 	transition: opacity 120ms ease;
@@ -246,14 +250,14 @@ a:hover {
 }
 
 .copyright {
+	font-weight: 400;
 	position: absolute;
-	inset: auto 0 14px;
+	inset: auto 24px 20px;
 	z-index: 1;
-	text-align: center;
-	font-size: 11px;
+	font-size: 13px;
 	color: var(--color-faint);
 }
 
 .copyright a {
-	font-size: 11px;
+	font-size: 13px;
 }

@@ -122,7 +122,7 @@ export async function showAboutWindow() {
 		width: 480,
 		// The scene keeps to the bottom, and the sky grows for each line
 		// of the list (about.css's .details).
-		height: 560 + 17 * environment.details.length,
+		height: 560 + 20 * environment.details.length,
 		show: false,
 		titleBarStyle: "hiddenInset",
 		autoHideMenuBar: true,
