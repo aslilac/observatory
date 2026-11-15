@@ -7,17 +7,6 @@ use gpui::{
 	div, prelude::*, px, svg, white,
 };
 
-/// The weight of what stands out a little from the text around it: the
-/// names of disks and folders, a button's label. The Electron app sets these
-/// in Inter's medium. macOS's own font has a medium too, but Windows' doesn't
-/// and Linux desktops' mostly don't, and asking for one there gets regular,
-/// so they take the next weight up.
-pub const MEDIUM: FontWeight = if cfg!(target_os = "macos") {
-	FontWeight::MEDIUM
-} else {
-	FontWeight::SEMIBOLD
-};
-
 /// One of the icons in `icons/`, by lucide's name for it.
 pub fn icon(name: &str, size: f32, color: Hsla) -> Svg {
 	svg()
@@ -52,7 +41,7 @@ pub fn button(
 		.rounded(px(6.))
 		.cursor_pointer()
 		.text_size(px(if small { 12. } else { 13. }))
-		.font_weight(MEDIUM)
+		.font_weight(FontWeight::MEDIUM)
 		.h(px(if small { 26. } else { 30. }))
 		.px(px(if small { 10. } else { 14. }))
 		.child(label.into());
@@ -181,6 +170,7 @@ impl Render for Tip {
 			.py(px(4.))
 			.rounded(px(6.))
 			.bg(gpui::black().opacity(0.85))
+			.font(crate::fonts::inter())
 			.text_color(white())
 			.text_size(px(11.))
 			.child(self.0)

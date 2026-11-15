@@ -40,7 +40,8 @@ impl Render for DragPreview {
 			.bg(p.default)
 			.text_color(p.background)
 			.text_size(px(12.))
-			.font_weight(crate::controls::MEDIUM)
+			.font(crate::fonts::inter())
+			.font_weight(FontWeight::MEDIUM)
 			.shadow_md()
 			.child(self.label.clone())
 	}
@@ -171,7 +172,7 @@ impl Workspace {
 				.child(icon("trash", 22., p.faint))
 				.child(
 					div()
-						.font_weight(crate::controls::MEDIUM)
+						.font_weight(FontWeight::MEDIUM)
 						.child("Nothing to clean up"),
 				)
 				.child(

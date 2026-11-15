@@ -6,6 +6,7 @@ mod assets;
 mod chrome;
 mod cleanup;
 mod controls;
+mod fonts;
 mod inspect;
 mod issues;
 mod lists;
@@ -53,6 +54,7 @@ fn main() {
 	Application::new()
 		.with_assets(assets::Assets)
 		.run(|cx: &mut App| {
+			fonts::register(cx);
 			text_input::bind_keys(cx);
 			menus::bind_keys(cx);
 

@@ -32,6 +32,7 @@ impl Render for Workspace {
 			.flex_col()
 			.bg(p.background)
 			.text_color(p.default)
+			.font(crate::fonts::inter())
 			.text_size(px(13.))
 			.line_height(px(18.))
 			.on_drop(cx.listener(|this, paths: &ExternalPaths, window, cx| {
@@ -124,7 +125,7 @@ impl Workspace {
 					.flex()
 					.justify_center()
 					.text_size(px(12.))
-					.font_weight(crate::controls::MEDIUM)
+					.font_weight(FontWeight::MEDIUM)
 					.text_color(p.muted)
 					.child(div().truncate().child(title)),
 			)
