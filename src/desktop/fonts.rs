@@ -9,7 +9,9 @@ use std::borrow::Cow;
 use std::sync::Arc;
 
 pub fn register(cx: &mut App) {
-	let fonts: [&'static [u8]; 3] = [
+	let fonts: [&'static [u8]; 4] = [
+		// Light is the About window's.
+		include_bytes!("fonts/Inter-Light.ttf"),
 		include_bytes!("fonts/Inter-Regular.ttf"),
 		include_bytes!("fonts/Inter-Medium.ttf"),
 		include_bytes!("fonts/Inter-SemiBold.ttf"),

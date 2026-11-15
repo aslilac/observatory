@@ -388,6 +388,7 @@ impl Render for About {
 			.text_color(rgb(DEFAULT))
 			.text_size(px(15.))
 			.line_height(px(22.5))
+			.font(crate::fonts::inter())
 			.font_weight(FontWeight::LIGHT)
 			// The whole window is something to move it by, as the Electron
 			// one's is, but for its links.
