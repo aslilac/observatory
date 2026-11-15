@@ -118,6 +118,10 @@ pub struct Workspace {
 
 	// A newer version than this one, once one's been found.
 	pub update: Option<Update>,
+
+	// The edge of the window the pointer is at, where the app resizes its
+	// own window (see window_frame.rs).
+	pub resize_edge: Option<gpui::ResizeEdge>,
 }
 
 impl Focusable for Workspace {
@@ -237,6 +241,7 @@ impl Workspace {
 			popup: None,
 			app_menu_open: None,
 			update: None,
+			resize_edge: None,
 		};
 		this.watch_for_updates(window, cx);
 		this.read_recent_usage(cx);

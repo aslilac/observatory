@@ -5,11 +5,12 @@
 // every so often as the stars turn; this puts it behind everything else.
 
 use crate::menus::{REPOSITORY, environment};
+use crate::window_frame::{close_button, draws_close_button};
 use gpui::{
 	App, Bounds, ClipboardItem, Context, FontWeight, Global, Hsla, MouseButton, MouseDownEvent,
 	ObjectFit, Pixels, RenderImage, SharedString, TitlebarOptions, Window, WindowBounds,
-	WindowHandle, WindowOptions, canvas, div, img, linear_color_stop, linear_gradient, prelude::*,
-	px, rgb, rgba, size,
+	WindowControlArea, WindowDecorations, WindowHandle, WindowOptions, canvas, div, img,
+	linear_color_stop, linear_gradient, prelude::*, px, rgb, rgba, size,
 };
 use image::{Frame, RgbaImage};
 use observatory_core::sky::{Ellipse, Order, Sky, scene_height};
@@ -61,9 +62,12 @@ pub fn open(cx: &mut App) {
 				window_bounds: Some(WindowBounds::Windowed(bounds)),
 				titlebar: Some(TitlebarOptions {
 					title: Some("About Observatory".into()),
-					appears_transparent: cfg!(target_os = "macos"),
+					appears_transparent: true,
 					traffic_light_position: None,
 				}),
+				// No title bar but what the app draws, which here is only
+				// the button that closes it (see window_frame.rs).
+				window_decorations: Some(WindowDecorations::Client),
 				is_resizable: false,
 				is_minimizable: false,
 				..Default::default()
@@ -223,6 +227,7 @@ fn link(id: &'static str, label: &'static str, url: &'static str) -> impl IntoEl
 		.cursor_pointer()
 		.hover(|style| style.opacity(0.75))
 		.child(label)
+		.occlude()
 		.on_mouse_down(MouseButton::Left, press_is_mine)
 		.on_click(move |_, _, cx| cx.open_url(url))
 }
@@ -376,6 +381,7 @@ impl Render for About {
 					.cursor_pointer()
 					.hover(|style| style.opacity(0.75))
 					.child(if self.copied { "Copied" } else { "Copy" })
+					.occlude()
 					.on_mouse_down(MouseButton::Left, press_is_mine)
 					.on_click(cx.listener(|this, _, _, cx| this.copy(cx))),
 			);
@@ -391,7 +397,12 @@ impl Render for About {
 			.font(crate::fonts::inter())
 			.font_weight(FontWeight::LIGHT)
 			// The whole window is something to move it by, as the Electron
-			// one's is, but for its links.
+			// one's is, but for its links. Windows does the moving, told
+			// that all of it is as good as a title bar; elsewhere a press
+			// starts it.
+			.when(cfg!(windows), |this| {
+				this.window_control_area(WindowControlArea::Drag)
+			})
 			.on_mouse_down(MouseButton::Left, |_, window, cx| move_window(window, cx))
 			.children(self.picture.clone().map(|picture| {
 				img(picture)
@@ -439,5 +450,17 @@ impl Render for About {
 					.child(link("author", "McKayla Washburn-Love", AUTHOR))
 					.child("♥"),
 			)
+			// Off macOS, where nothing else does, the app draws the button
+			// that closes the window.
+			.when(draws_close_button(window), |this| {
+				this.child(
+					div()
+						.absolute()
+						.top_0()
+						.right_0()
+						.h(px(36.))
+						.child(close_button(muted(), rgba(0xffffff1f).into())),
+				)
+			})
 	}
 }

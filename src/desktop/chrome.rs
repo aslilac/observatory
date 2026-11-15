@@ -5,10 +5,13 @@
 use crate::controls::{icon, icon_button, tip};
 use crate::menus;
 use crate::popup::{Popup, PopupItem};
+use crate::window_frame::{
+	caption_buttons, has_native_title_bar, moves_window, resize_cursor, resize_edge,
+};
 use crate::workspace::{Screen, Workspace};
 use gpui::{
-	AnyElement, Context, Corner, ExternalPaths, FontWeight, MenuItem, MouseButton,
-	NavigationDirection, Window, div, point, prelude::*, px,
+	AnyElement, Context, Corner, ExternalPaths, FontWeight, HitboxBehavior, MenuItem, MouseButton,
+	MouseMoveEvent, NavigationDirection, Window, canvas, div, point, prelude::*, px,
 };
 
 pub const TITLE_BAR_HEIGHT: f32 = 36.;
@@ -62,6 +65,34 @@ impl Render for Workspace {
 			.children(self.render_cleanup_modal(cx))
 			.children(self.render_ask(cx))
 			.children(self.render_popup(cx))
+			// Where the app decorates its own window (Linux), its edges are
+			// what it's resized by: a press on one is that and nothing else,
+			// and the pointer says so while it's over one.
+			.on_mouse_move(cx.listener(|this, event: &MouseMoveEvent, window, cx| {
+				let edge = resize_edge(window, event.position);
+				if edge != this.resize_edge {
+					this.resize_edge = edge;
+					cx.notify();
+				}
+			}))
+			.capture_any_mouse_down(|event, window, cx| {
+				if event.button == MouseButton::Left
+					&& let Some(edge) = resize_edge(window, event.position)
+				{
+					window.start_window_resize(edge);
+					cx.stop_propagation();
+				}
+			})
+			.children(self.resize_edge.map(|edge| {
+				canvas(
+					|bounds, window, _| window.insert_hitbox(bounds, HitboxBehavior::Normal),
+					move |_, hitbox, window, _| {
+						window.set_cursor_style(resize_cursor(edge), &hitbox)
+					},
+				)
+				.absolute()
+				.size_full()
+			}))
 	}
 }
 
@@ -94,25 +125,26 @@ impl Workspace {
 		let p = self.palette;
 		let mac = cfg!(target_os = "macos");
 		let title = self.title_bar_text();
-		div()
+		// The window's own buttons, off macOS, where they're the app's to
+		// draw. They go right to the bar's end.
+		let buttons = caption_buttons(window, p.muted, p.fill);
+		let bar = div()
 			.id("title-bar")
 			.flex()
 			.flex_none()
 			.items_center()
 			.h(px(TITLE_BAR_HEIGHT))
-			.pr(px(8.))
+			.when(buttons.is_none(), |this| this.pr(px(8.)))
 			.border_b_1()
-			.border_color(p.line_soft)
+			.border_color(p.line_soft);
+		// The bar is what the window's moved by. What's in it to press takes
+		// its own presses (`occlude`).
+		moves_window(bar, window)
 			.map(|this| {
 				if mac {
 					// The traffic lights sit in the bar, unless the window's
 					// full screen.
 					this.when(!window.is_fullscreen(), |this| this.pl(px(76.)))
-						.on_click(|event, window, _| {
-							if event.click_count() == 2 {
-								window.titlebar_double_click();
-							}
-						})
 				} else {
 					// No native menu bar: the bar draws the menus itself.
 					this.pl(px(6.)).children(self.render_app_menus(cx))
@@ -127,7 +159,11 @@ impl Workspace {
 					.text_size(px(12.))
 					.font_weight(FontWeight::MEDIUM)
 					.text_color(p.muted)
-					.child(div().truncate().child(title)),
+					// A desktop that draws a title bar of its own has the
+					// title in it already.
+					.when(!has_native_title_bar(window), |this| {
+						this.child(div().truncate().child(title))
+					}),
 			)
 			.children(self.render_update_button(cx))
 			// What's only for working on the app, in builds that aren't for
@@ -135,6 +171,7 @@ impl Workspace {
 			.when(cfg!(debug_assertions), |this| {
 				this.child(
 					icon_button("developer", "wrench", true, &p)
+						.occlude()
 						.tooltip(tip("Developer"))
 						.on_click(cx.listener(|this, event: &gpui::ClickEvent, _, cx| {
 							cx.stop_propagation();
@@ -151,13 +188,16 @@ impl Workspace {
 				)
 			})
 			.child(
-				icon_button("theme", if p.dark { "sun" } else { "moon" }, true, &p).on_click(
-					cx.listener(|this, _, _, cx| {
+				icon_button("theme", if p.dark { "sun" } else { "moon" }, true, &p)
+					.occlude()
+					.on_click(cx.listener(|this, _, _, cx| {
 						cx.stop_propagation();
 						this.toggle_dark(cx);
-					}),
-				),
+					})),
 			)
+			.when_some(buttons, |this, buttons| {
+				this.child(div().flex_none().w(px(8.))).child(buttons)
+			})
 			.into_any_element()
 	}
 
@@ -181,6 +221,7 @@ impl Workspace {
 				let open = self.app_menu_open == Some(index);
 				div()
 					.id(("app-menu", index))
+					.occlude()
 					.px(px(8.))
 					.h(px(24.))
 					.flex()

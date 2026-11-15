@@ -24,11 +24,12 @@ mod sunburst;
 mod text_input;
 mod updating;
 mod welcome;
+mod window_frame;
 mod workspace;
 
 use gpui::{
-	App, Application, Bounds, TitlebarOptions, WindowBounds, WindowOptions, point, prelude::*, px,
-	size,
+	App, Application, Bounds, TitlebarOptions, WindowBounds, WindowDecorations, WindowOptions,
+	point, prelude::*, px, size,
 };
 use workspace::Workspace;
 
@@ -69,13 +70,14 @@ fn main() {
 					WindowOptions {
 						window_bounds: Some(WindowBounds::Windowed(bounds)),
 						window_min_size: Some(size(px(800.), px(560.))),
-						// On macOS the window has one bar, the app's own, with
-						// the traffic lights in it.
+						// The window has one bar, the app's own, with the
+						// window's buttons in it (see window_frame.rs).
 						titlebar: Some(TitlebarOptions {
 							title: Some("Observatory".into()),
-							appears_transparent: cfg!(target_os = "macos"),
+							appears_transparent: true,
 							traffic_light_position: Some(point(px(12.), px(12.))),
 						}),
+						window_decorations: Some(WindowDecorations::Client),
 						..Default::default()
 					},
 					|window, cx| cx.new(|cx| Workspace::new(window, cx)),

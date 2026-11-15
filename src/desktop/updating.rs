@@ -131,6 +131,8 @@ impl Workspace {
 				)
 			}
 		};
-		Some(button.mr(px(4.)).into_any_element())
+		// In the title bar, which the window's moved by: a press here is the
+		// button's.
+		Some(button.occlude().mr(px(4.)).into_any_element())
 	}
 }
