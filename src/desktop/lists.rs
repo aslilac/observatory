@@ -1,5 +1,5 @@
 // What's beside the sunburst: the list of what's in the folder (its
-// legend), the same as a tree, or what find found.
+// legend), or what find found.
 
 use crate::cleanup::draggable;
 use crate::controls::{ButtonKind, button, checkbox, icon, icon_button, tip};
@@ -17,7 +17,6 @@ use observatory_core::format::{grouped, now_ms, plural, readable_date, readable_
 use observatory_core::listing::listing;
 use observatory_core::paths::{basename, join_path};
 use observatory_core::tree::{Item, Node};
-use std::sync::Arc;
 
 // A dot of one of the sunburst's colors, or a ring for what has none.
 fn dot(color: Option<Hsla>, outline: Hsla) -> Div {
@@ -263,134 +262,6 @@ impl Workspace {
 			})
 			.children(footer)
 			.into_any_element()
-	}
-
-	/// The folder as a tree: each folder opens in place to show what's in
-	/// it, fetched when it's first opened.
-	pub fn render_folder_tree(&self, root: &str, cx: &mut Context<Self>) -> AnyElement {
-		let p = self.palette;
-		let Some(tree) = &self.tree else {
-			return div().into_any_element();
-		};
-		let mut rows = vec![
-			div()
-				.flex()
-				.items_center()
-				.gap(px(8.))
-				.px(px(8.))
-				.py(px(7.))
-				.child(icon("chevron-down", 13., p.faint))
-				.child(
-					div()
-						.flex_1()
-						.min_w_0()
-						.truncate()
-						.font_weight(FontWeight::SEMIBOLD)
-						.child(tree.cursor.last().unwrap_or(&tree.name).clone()),
-				)
-				.child(size_column(tree.size, p.muted))
-				.into_any_element(),
-		];
-		let mut names = Vec::new();
-		self.tree_rows(&mut rows, root, &tree.tree, &mut names, cx);
-		div().flex().flex_col().children(rows).into_any_element()
-	}
-
-	// The rows for `nodes`, the children of the folder at `names` below the
-	// cursor, and under each that's open, its own.
-	fn tree_rows(
-		&self,
-		rows: &mut Vec<AnyElement>,
-		root: &str,
-		nodes: &[Arc<Node>],
-		names: &mut Vec<String>,
-		cx: &mut Context<Self>,
-	) {
-		let p = self.palette;
-		let cursor = self.cursor();
-		for node in nodes {
-			names.push(node.name.clone());
-			let depth = names.len();
-			let key = names.join("/");
-			let open = node.directory && self.expanded.contains(&key);
-			let item = Item {
-				path: join_path(root, cursor.iter().chain(names.iter())),
-				name: node.name.clone(),
-				size: node.size,
-				directory: node.directory,
-			};
-			let index = rows.len();
-			let directory = node.directory;
-			let (toggle_key, toggle_names) = (key.clone(), names.clone());
-			let (into, for_click) = (names.clone(), item.clone());
-			// Only the top level has wedges of its own colors to match.
-			let swatch = (depth == 1).then(|| {
-				let hue = self.hues.get(&node.name).copied().unwrap_or(0.0);
-				let kind = if directory {
-					Kind::Directory
-				} else {
-					Kind::File
-				};
-				dot(
-					Some(hsla(sunburst_color(hue, cursor.len(), kind, p.dark))),
-					p.line,
-				)
-			});
-			rows.push(
-				self.item_row(("tree", index), &item, cx)
-					.py(px(5.))
-					.pl(px(8. + 16. * depth as f32))
-					.child(if directory {
-						icon_button(
-							("tree-toggle", index),
-							if open {
-								"chevron-down"
-							} else {
-								"chevron-right"
-							},
-							true,
-							&p,
-						)
-						.size(px(16.))
-						.on_click(cx.listener(move |this, _, _, cx| {
-							cx.stop_propagation();
-							this.toggle_branch(&toggle_key, &toggle_names, cx);
-						}))
-						.into_any_element()
-					} else {
-						div().flex_none().w(px(16.)).into_any_element()
-					})
-					.child(self.item_checkbox(("tree-check", index), &item, cx))
-					.children(swatch)
-					.child(self.item_name(&item))
-					.child(size_column(node.size, p.muted))
-					.on_click(cx.listener(move |this, _, window, cx| {
-						if directory {
-							this.enter(&into, window, cx);
-						} else {
-							this.toggle_selected(&for_click, cx);
-						}
-					}))
-					.into_any_element(),
-			);
-			if open {
-				match self.branches.get(&key) {
-					Some(children) if !children.is_empty() => {
-						self.tree_rows(rows, root, children, names, cx)
-					}
-					_ => rows.push(
-						div()
-							.pl(px(8. + 16. * (depth + 1) as f32 + 24.))
-							.py(px(5.))
-							.text_size(px(12.))
-							.text_color(p.faint)
-							.child("Empty")
-							.into_any_element(),
-					),
-				}
-			}
-			names.pop();
-		}
 	}
 
 	/// What the query found, in the list's place, largest first.

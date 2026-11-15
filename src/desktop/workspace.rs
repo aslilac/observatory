@@ -24,17 +24,11 @@ use observatory_core::reserved::{ReservedGroup, group_reserved};
 use observatory_core::scans::{Change, FAKE, Progress, ScanInfo, Scans, Status};
 use observatory_core::store::Store;
 use observatory_core::sunburst::{Hit, LayoutInput, Sunburst, View, layout_wedges};
-use observatory_core::tree::{Item, Node, RenderTree};
+use observatory_core::tree::{Item, RenderTree};
 use observatory_core::{Finder, Found, Query, Summary, access, color, fake_disk};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub enum ViewMode {
-	List,
-	Tree,
-}
 
 /// What the pointer is over in the sunburst, and where it is.
 #[derive(Clone, Copy, PartialEq)]
@@ -78,15 +72,10 @@ pub struct Workspace {
 	pub hover: Option<Hover>,
 	pub hover_since: Instant,
 
-	pub mode: ViewMode,
 	pub sort: SortMode,
 	pub show_all: bool,
 	// What's checked, in the order it was.
 	pub selection: Vec<Item>,
-	// The folder tree: which rows are open (by their path below the cursor),
-	// and the children fetched for them.
-	pub expanded: HashSet<String>,
-	pub branches: HashMap<String, Vec<Arc<Node>>>,
 
 	// Find: what a finder finds, or what has a name, in place of the list
 	// while there's a query. It looks in the folder that was showing when
@@ -227,12 +216,9 @@ impl Workspace {
 			sunburst_bounds: Bounds::default(),
 			hover: None,
 			hover_since: Instant::now(),
-			mode: ViewMode::List,
 			sort: SortMode::Size,
 			show_all: false,
 			selection: Vec::new(),
-			expanded: HashSet::new(),
-			branches: HashMap::new(),
 			find_input,
 			finder: None,
 			find_scope: None,
@@ -383,12 +369,9 @@ impl Workspace {
 		if !same_folder {
 			// Each folder starts collapsed again.
 			self.show_all = false;
-			self.expanded.clear();
-			self.branches.clear();
 		} else {
 			// The same folder of a scan that's changed (something was
-			// deleted): what was fetched or found is out of date.
-			self.branches.clear();
+			// deleted): what was found is out of date.
 			self.run_find(false, cx);
 		}
 		self.hover = None;
@@ -732,29 +715,6 @@ impl Workspace {
 	pub fn move_selected_to_cleanup(&mut self, cx: &mut Context<Self>) {
 		let items = std::mem::take(&mut self.selection);
 		self.move_to_cleanup(items, cx);
-	}
-
-	// The folder tree.
-
-	/// Opens or shuts the row at `key` (its names below the cursor, joined
-	/// by slashes), fetching what's in it the first time.
-	pub fn toggle_branch(&mut self, key: &str, names: &[String], cx: &mut Context<Self>) {
-		if !self.expanded.remove(key) {
-			self.expanded.insert(key.to_string());
-			if !self.branches.contains_key(key)
-				&& let Some((root, cursor, _)) = &self.shown
-			{
-				let mut below = cursor.clone();
-				below.extend(names.iter().cloned());
-				let children = self
-					.scans
-					.render_tree(root, &below)
-					.map(|tree| tree.tree)
-					.unwrap_or_default();
-				self.branches.insert(key.to_string(), children);
-			}
-		}
-		cx.notify();
 	}
 
 	// Find.

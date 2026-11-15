@@ -3,7 +3,7 @@
 
 use crate::controls::{ButtonKind, button, icon, icon_button, tip};
 use crate::popup::{PopupItem, SORT_MENU};
-use crate::workspace::{ViewMode, Workspace};
+use crate::workspace::Workspace;
 use gpui::{
 	AnyElement, App, Context, Corner, Focusable, FontWeight, MouseButton, Window, deferred, div,
 	prelude::*, px, relative,
@@ -82,8 +82,6 @@ impl Workspace {
 		let find_bar = self.render_find_bar(finding, cx);
 		let side = if finding {
 			self.render_find_results(cx)
-		} else if self.mode == ViewMode::Tree {
-			self.render_folder_tree(&scan.path, cx)
 		} else {
 			self.render_legend(&scan.path, cx)
 		};
@@ -129,8 +127,7 @@ impl Workspace {
 	}
 
 	// The field over the sunburst, with what it suggests under it while it
-	// has the focus, and at its right how the list is sorted and whether
-	// it's a list or a tree.
+	// has the focus, and at its right how the list is sorted.
 	fn render_find_bar(&self, finding: bool, cx: &mut Context<Self>) -> AnyElement {
 		let p = self.palette;
 		let scope_name = self.scope_name();
@@ -198,25 +195,23 @@ impl Workspace {
 			.suggesting
 			.then(|| self.render_suggestions(&scope_name, cx));
 
-		let sort = (!finding && self.mode == ViewMode::List).then(|| {
+		let sort = (!finding).then(|| {
 			let fill = p.fill;
+			// As tall as the field it's beside, and outlined like it.
 			let button = div()
 				.id("sort")
 				.flex()
 				.flex_none()
 				.items_center()
-				.gap(px(4.))
-				.h(px(32.))
-				.px(px(10.))
+				.justify_center()
+				.size(px(32.))
 				.rounded(px(8.))
 				.border_1()
 				.border_color(p.line)
-				.text_size(px(12.))
-				.text_color(p.muted)
 				.cursor_pointer()
 				.hover(move |style| style.bg(fill))
-				.child(format!("Sort: {}", self.sort.label()))
-				.child(icon("chevron-down", 12., p.faint));
+				.child(icon("list-filter", 15., p.muted))
+				.tooltip(tip("Sort"));
 			self.opens_menu(
 				button,
 				SORT_MENU,
@@ -237,43 +232,6 @@ impl Workspace {
 			)
 		});
 
-		let mode_button = |mode: ViewMode, name: &'static str, says: &'static str| {
-			let on = self.mode == mode;
-			div()
-				.id(name)
-				.flex()
-				.items_center()
-				.justify_center()
-				.w(px(32.))
-				.h(px(26.))
-				.rounded(px(6.))
-				.cursor_pointer()
-				.when(on, |this| this.bg(p.fill_strong))
-				.child(icon(name, 14., if on { p.default } else { p.muted }))
-				.tooltip(tip(says))
-				.on_click(cx.listener(move |this, _, _, cx| {
-					if this.mode != mode {
-						this.mode = mode;
-						// The tree has no place for what find found.
-						this.clear_find(cx);
-						cx.notify();
-					}
-				}))
-		};
-		// As tall as the field and the sort button it's beside.
-		let modes = div()
-			.flex()
-			.flex_none()
-			.items_center()
-			.gap(px(2.))
-			.h(px(32.))
-			.px(px(2.))
-			.rounded(px(8.))
-			.border_1()
-			.border_color(p.line)
-			.child(mode_button(ViewMode::List, "list", "List"))
-			.child(mode_button(ViewMode::Tree, "list-tree", "Tree"));
-
 		div()
 			.flex()
 			.flex_none()
@@ -290,7 +248,6 @@ impl Workspace {
 					.children(suggestions),
 			)
 			.children(sort)
-			.child(modes)
 			.into_any_element()
 	}
 
