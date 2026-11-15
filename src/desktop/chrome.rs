@@ -124,7 +124,7 @@ impl Workspace {
 					.flex()
 					.justify_center()
 					.text_size(px(12.))
-					.font_weight(FontWeight::MEDIUM)
+					.font_weight(crate::controls::MEDIUM)
 					.text_color(p.muted)
 					.child(div().truncate().child(title)),
 			)

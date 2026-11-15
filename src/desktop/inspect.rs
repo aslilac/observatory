@@ -5,8 +5,8 @@ use crate::controls::{ButtonKind, button, icon, icon_button, tip};
 use crate::popup::PopupItem;
 use crate::workspace::{ViewMode, Workspace};
 use gpui::{
-	AnyElement, App, ClickEvent, Context, Focusable, FontWeight, MouseButton, Window, deferred,
-	div, prelude::*, px, relative,
+	AnyElement, App, ClickEvent, Context, Focusable, MouseButton, Window, deferred, div,
+	prelude::*, px, relative,
 };
 use observatory_core::Finder;
 use observatory_core::finders::{FINDERS, finder_info};
@@ -386,7 +386,7 @@ impl Workspace {
 				.child(
 					div()
 						.flex_1()
-						.font_weight(FontWeight::MEDIUM)
+						.font_weight(crate::controls::MEDIUM)
 						.child(format!(
 							"{} selected · {}",
 							self.selection.len(),

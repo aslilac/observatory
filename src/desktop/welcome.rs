@@ -4,7 +4,7 @@
 use crate::controls::{eyebrow, icon};
 use crate::popup::place_menu;
 use crate::workspace::Workspace;
-use gpui::{AnyElement, Context, FontWeight, MouseButton, MouseDownEvent, div, prelude::*, px};
+use gpui::{AnyElement, Context, MouseButton, MouseDownEvent, div, prelude::*, px};
 use observatory_core::drives::{Usage, place_name};
 use observatory_core::format::{describe_drive, readable_size};
 use observatory_core::scans::Status;
@@ -207,7 +207,9 @@ impl Workspace {
 					.rounded(px(6.))
 					.map(|this| {
 						if row.dashed {
-							this.border_1().border_dashed().border_color(p.line)
+							// In the color the Electron app's is: `line` is too
+							// faint for the dashes to read as an outline.
+							this.border_1().border_dashed().border_color(p.faint)
 						} else {
 							this.bg(p.fill)
 						}
@@ -223,7 +225,7 @@ impl Workspace {
 					.child(
 						div()
 							.truncate()
-							.font_weight(FontWeight::MEDIUM)
+							.font_weight(crate::controls::MEDIUM)
 							.child(row.title),
 					)
 					.child(
@@ -292,7 +294,7 @@ impl Workspace {
 						.gap(px(4.))
 						.text_size(px(11.))
 						.line_height(px(15.))
-						.children(status.map(|status| status.font_weight(FontWeight::MEDIUM)))
+						.children(status.map(|status| status.font_weight(crate::controls::MEDIUM)))
 						.child(div().text_color(p.muted).child(if scan.is_some() {
 							format!("· {of_volume}")
 						} else {
