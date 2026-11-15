@@ -454,25 +454,38 @@ impl Workspace {
 			.into_any_element()
 	}
 
-	// The card shut: what opens it, what things are dropped on, and how a
-	// deletion's going meanwhile.
+	// The card shut: what opens it, and how a deletion's going meanwhile. It's
+	// the landing pad at rest, the same size and in the same place, so a drag
+	// changes its edge and its words and nothing jumps.
 	fn render_pill(&self, cx: &mut Context<Self>) -> AnyElement {
 		let p = self.palette;
-		let fill = p.fill;
-		let badge = |text: String| {
-			div()
-				.px(px(10.))
-				.h(px(22.))
-				.flex()
-				.items_center()
-				.rounded_full()
-				.bg(p.default)
-				.text_color(p.background)
-				.text_size(px(11.))
-				.font_weight(FontWeight::SEMIBOLD)
-				.child(text)
+		let (mark, title, says) = match &self.deletion {
+			Some(run) if run.running => (
+				spinner("pill-spinner", 15., p.muted),
+				match run.mode {
+					_ if run.stopping() => "Stopping",
+					DeleteMode::Delete => "Reclaiming",
+					DeleteMode::Trash => "Moving to the Trash",
+				},
+				format!(
+					"{} of {} · {}",
+					run.gone.len() + run.failed.len(),
+					run.items.len(),
+					readable_size(run.freed)
+				),
+			),
+			_ => (
+				icon("trash", 15., p.default).into_any_element(),
+				"Cleanup",
+				format!(
+					"{} queued · {}",
+					self.store.cleanup().len(),
+					readable_size(self.store.cleanup_size())
+				),
+			),
 		};
-		let pill = div()
+		let muted = p.muted;
+		div()
 			.id("cleanup-pill")
 			.absolute()
 			.bottom(px(14.))
@@ -480,52 +493,60 @@ impl Workspace {
 			.occlude()
 			.flex()
 			.items_center()
-			.gap(px(8.))
-			.h(px(34.))
-			.pl(px(14.))
-			.pr(px(6.))
-			.rounded_full()
+			.gap(px(12.))
+			.w(px(236.))
+			.px(px(16.))
+			.py(px(14.))
+			.rounded(px(14.))
 			.bg(p.background)
 			.border_1()
-			.border_color(p.default)
+			.border_color(p.line)
 			.shadow_lg()
 			.text_size(px(12.))
-			.font_weight(FontWeight::MEDIUM)
 			.cursor_pointer()
-			.hover(move |style| style.bg(fill))
-			.drag_over::<DraggedItems>(move |style, _, _, _| style.bg(fill))
+			.hover(move |style| style.border_color(muted))
+			// Only seen while deleting, when a drag doesn't bring out the pad.
+			.drag_over::<DraggedItems>(|style, _, _, _| style.border_color(reclaim_color()))
 			.on_drop(cx.listener(|this, dragged: &DraggedItems, _, cx| {
 				this.move_to_cleanup(dragged.0.clone(), cx)
 			}))
 			.on_click(cx.listener(|this, _, _, cx| {
 				this.cleanup_open = true;
 				cx.notify();
-			}));
-		let pill = match &self.deletion {
-			Some(run) if run.running => pill
-				.child(spinner("pill-spinner", 14., p.muted))
-				.child(match run.mode {
-					_ if run.stopping() => "Stopping",
-					DeleteMode::Delete => "Reclaiming",
-					DeleteMode::Trash => "Moving to the Trash",
-				})
-				.child(div().text_color(p.muted).child(format!(
-					"{} of {}",
-					run.gone.len() + run.failed.len(),
-					run.items.len()
-				)))
-				.child(badge(readable_size(run.freed))),
-			_ => pill
-				.child(icon("trash", 13., p.default))
-				.child("Cleanup")
-				.child(
-					div()
-						.text_color(p.muted)
-						.child(self.store.cleanup().len().to_string()),
-				)
-				.child(badge(readable_size(self.store.cleanup_size()))),
-		};
-		pill.into_any_element()
+			}))
+			.child(
+				div()
+					.flex()
+					.flex_none()
+					.items_center()
+					.justify_center()
+					.size(px(34.))
+					.rounded_full()
+					.bg(p.fill)
+					.child(mark),
+			)
+			.child(
+				div()
+					.flex_1()
+					.min_w_0()
+					.child(
+						div()
+							.text_size(px(13.))
+							.font_weight(FontWeight::SEMIBOLD)
+							.child(title),
+					)
+					.child(
+						div()
+							.mt(px(2.))
+							.truncate()
+							.text_size(px(11.))
+							.line_height(px(15.))
+							.text_color(p.muted)
+							.child(says),
+					),
+			)
+			.child(icon("chevron-right", 14., p.muted))
+			.into_any_element()
 	}
 
 	// The card: what it's about at the top with its buttons, and the rest
