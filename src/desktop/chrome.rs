@@ -212,6 +212,28 @@ impl Workspace {
 		}
 	}
 
+	// Opens one of the title bar's menus, under its name.
+	fn open_app_menu(&mut self, index: usize, cx: &mut Context<Self>) {
+		let menus = menus::app_menus(self.store.recent_scans(), self.palette.dark);
+		let Some(menu) = menus.get(index) else {
+			return;
+		};
+		let left = self
+			.app_menu_bounds
+			.get(&index)
+			.map_or(px(0.), |bounds| bounds.origin.x);
+		self.app_menu_open = Some(index);
+		self.popup = Some(Popup {
+			position: point(left, px(TITLE_BAR_HEIGHT - 4.)),
+			corner: Corner::TopLeft,
+			items: popup_items(&menu.items),
+		});
+		cx.notify();
+	}
+
+	// The menu bar, where the app draws it. It works as one does: a press
+	// opens a menu (or shuts the one that's open), and with one open, the
+	// pointer going over another's name switches to that.
 	fn render_app_menus(&self, cx: &mut Context<Self>) -> Vec<AnyElement> {
 		let p = self.palette;
 		menus::app_menus(self.store.recent_scans(), p.dark)
@@ -219,8 +241,10 @@ impl Workspace {
 			.enumerate()
 			.map(|(index, menu)| {
 				let open = self.app_menu_open == Some(index);
+				let workspace = cx.entity();
 				div()
 					.id(("app-menu", index))
+					.relative()
 					.occlude()
 					.px(px(8.))
 					.h(px(24.))
@@ -232,15 +256,38 @@ impl Workspace {
 					.when(open, |this| this.bg(p.fill))
 					.hover(move |style| style.bg(p.fill))
 					.child(menu.name.clone())
-					.on_click(cx.listener(move |this, event: &gpui::ClickEvent, _, cx| {
-						let items = popup_items(&menu.items);
-						this.app_menu_open = Some(index);
-						this.popup = Some(Popup {
-							position: point(event.position().x - px(8.), px(TITLE_BAR_HEIGHT - 4.)),
-							corner: Corner::TopLeft,
-							items,
-						});
-						cx.notify();
+					// Where the name is, which is where its menu opens, and
+					// where a press isn't one outside the open menu.
+					.child(
+						canvas(
+							move |bounds, _, cx| {
+								workspace.update(cx, |this, _| {
+									this.app_menu_bounds.insert(index, bounds);
+								})
+							},
+							|_, _, _, _| {},
+						)
+						.absolute()
+						.top_0()
+						.left_0()
+						.size_full(),
+					)
+					.on_mouse_down(
+						MouseButton::Left,
+						cx.listener(move |this, _, _, cx| {
+							if this.app_menu_open == Some(index) {
+								this.app_menu_open = None;
+								this.popup = None;
+								cx.notify();
+							} else {
+								this.open_app_menu(index, cx);
+							}
+						}),
+					)
+					.on_hover(cx.listener(move |this, over: &bool, _, cx| {
+						if *over && this.app_menu_open.is_some_and(|open| open != index) {
+							this.open_app_menu(index, cx);
+						}
 					}))
 					.into_any_element()
 			})

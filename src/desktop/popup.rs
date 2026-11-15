@@ -6,8 +6,8 @@ use crate::controls::icon;
 use crate::menus::REVEAL;
 use crate::workspace::Workspace;
 use gpui::{
-	AnyElement, ClipboardItem, Context, Corner, Edges, Pixels, Point, SharedString, Window,
-	anchored, deferred, div, prelude::*, px,
+	AnyElement, ClipboardItem, Context, Corner, Edges, MouseDownEvent, Pixels, Point, SharedString,
+	Window, anchored, deferred, div, prelude::*, px,
 };
 use observatory_core::scans::FAKE;
 use observatory_core::tree::Item;
@@ -219,7 +219,16 @@ impl Workspace {
 			.shadow_lg()
 			.text_size(px(12.))
 			.text_color(p.default)
-			.on_mouse_down_out(cx.listener(|this, _, _, cx| {
+			.on_mouse_down_out(cx.listener(|this, event: &MouseDownEvent, _, cx| {
+				// A press on one of the title bar's menus is that menu's to
+				// answer: it shuts this one, or opens its own in its place.
+				let on_menu_bar = this
+					.app_menu_bounds
+					.values()
+					.any(|bounds| bounds.contains(&event.position));
+				if on_menu_bar {
+					return;
+				}
 				this.popup = None;
 				this.app_menu_open = None;
 				cx.notify();
