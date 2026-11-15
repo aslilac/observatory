@@ -11,7 +11,8 @@ use crate::window_frame::ALL_CORNERS;
 use crate::workspace::Workspace;
 use gpui::{
 	Animation, AnimationExt, AnyElement, Context, Corner, Div, FontWeight, MouseButton,
-	MouseDownEvent, Pixels, Point, Stateful, Window, div, prelude::*, px,
+	MouseDownEvent, Pixels, Point, Stateful, Transformation, Window, div, percentage, prelude::*,
+	px,
 };
 use observatory_core::cleanup::{DeleteMode, DeleteResult, delete_files};
 use observatory_core::format::{plural, readable_size};
@@ -456,7 +457,13 @@ impl Workspace {
 					.flex()
 					.items_center()
 					.gap(px(10.))
-					.child(icon("loader-circle", 16., p.muted))
+					// It turns for as long as the deleting takes, which is
+					// on another thread.
+					.child(icon("loader-circle", 16., p.muted).with_animation(
+						"cleanup-deleting",
+						Animation::new(Duration::from_secs(1)).repeat(),
+						|icon, t| icon.with_transformation(Transformation::rotate(percentage(t))),
+					))
 					.child(title(
 						match mode {
 							DeleteMode::Trash => "Moving to the Trash…",
