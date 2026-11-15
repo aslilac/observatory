@@ -6,8 +6,8 @@ use crate::controls::icon;
 use crate::menus::REVEAL;
 use crate::workspace::Workspace;
 use gpui::{
-	AnyElement, ClipboardItem, Context, Corner, Edges, MouseDownEvent, Pixels, Point, SharedString,
-	Window, anchored, deferred, div, prelude::*, px,
+	AnyElement, ClipboardItem, Context, Corner, Edges, Pixels, Point, SharedString, Window,
+	anchored, deferred, div, prelude::*, px,
 };
 use observatory_core::scans::FAKE;
 use observatory_core::tree::Item;
@@ -165,59 +165,73 @@ impl Workspace {
 
 	pub fn render_popup(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
 		let popup = self.popup.as_ref()?;
+		Some(
+			deferred(
+				anchored()
+					.position(popup.position)
+					.anchor(popup.corner)
+					.snap_to_window_with_margin(Edges::all(px(8.) + self.frame.margin()))
+					.child(self.render_menu(&popup.items, cx)),
+			)
+			.with_priority(3)
+			.into_any_element(),
+		)
+	}
+
+	/// A menu of `items`, for whoever puts it somewhere: at a point (the one
+	/// above), or under the thing that opened it (the title bar's menus). It
+	/// shuts on a press anywhere else.
+	pub fn render_menu(&self, items: &[PopupItem], cx: &mut Context<Self>) -> AnyElement {
 		let p = self.palette;
-		let rows =
-			popup
-				.items
-				.iter()
-				.enumerate()
-				.map(|(index, item)| match item {
-					PopupItem::Heading(label) => div()
-						.px(px(10.))
-						.pt(px(4.))
-						.pb(px(2.))
-						.text_size(px(11.))
-						.font_weight(gpui::FontWeight::MEDIUM)
-						.text_color(p.faint)
-						.child(label.clone())
-						.into_any_element(),
-					PopupItem::Separator => div()
-						.my(px(4.))
-						.mx(px(6.))
-						.h(px(1.))
-						.bg(p.line_soft)
-						.into_any_element(),
-					PopupItem::Action {
-						label,
-						checked,
-						run,
-					} => {
-						let run = run.clone();
-						div()
-							.id(("popup-item", index))
-							.flex()
-							.items_center()
-							.gap(px(8.))
-							.h(px(26.))
-							.px(px(10.))
-							.rounded(px(5.))
-							.cursor_pointer()
-							.hover(move |style| style.bg(p.fill))
-							.when_some(*checked, |this, checked| {
-								this.child(div().w(px(12.)).when(checked, |this| {
-									this.child(icon("check", 12., p.default))
-								}))
-							})
-							.child(label.clone())
-							.on_click(cx.listener(move |this, _, window, cx| {
-								this.popup = None;
-								this.app_menu_open = None;
-								run(this, window, cx);
-								cx.notify();
-							}))
-							.into_any_element()
-					}
-				});
+		let rows = items.iter().enumerate().map(|(index, item)| match item {
+			PopupItem::Heading(label) => div()
+				.px(px(10.))
+				.pt(px(4.))
+				.pb(px(2.))
+				.text_size(px(11.))
+				.font_weight(gpui::FontWeight::MEDIUM)
+				.text_color(p.faint)
+				.child(label.clone())
+				.into_any_element(),
+			PopupItem::Separator => div()
+				.my(px(4.))
+				.mx(px(6.))
+				.h(px(1.))
+				.bg(p.line_soft)
+				.into_any_element(),
+			PopupItem::Action {
+				label,
+				checked,
+				run,
+			} => {
+				let run = run.clone();
+				div()
+					.id(("popup-item", index))
+					.flex()
+					.items_center()
+					.gap(px(8.))
+					.h(px(26.))
+					.px(px(10.))
+					.rounded(px(5.))
+					.cursor_pointer()
+					.hover(move |style| style.bg(p.fill))
+					.when_some(*checked, |this, checked| {
+						this.child(
+							div()
+								.w(px(12.))
+								.when(checked, |this| this.child(icon("check", 12., p.default))),
+						)
+					})
+					.child(label.clone())
+					.on_click(cx.listener(move |this, _, window, cx| {
+						this.popup = None;
+						this.app_menu_open = None;
+						run(this, window, cx);
+						cx.notify();
+					}))
+					.into_any_element()
+			}
+		});
 		let menu = div()
 			.id("popup")
 			.occlude()
@@ -230,14 +244,11 @@ impl Workspace {
 			.shadow_lg()
 			.text_size(px(12.))
 			.text_color(p.default)
-			.on_mouse_down_out(cx.listener(|this, event: &MouseDownEvent, _, cx| {
-				// A press on one of the title bar's menus is that menu's to
-				// answer: it shuts this one, or opens its own in its place.
-				let on_menu_bar = this
-					.app_menu_bounds
-					.values()
-					.any(|bounds| bounds.contains(&event.position));
-				if on_menu_bar {
+			.on_mouse_down_out(cx.listener(|this, _, _, cx| {
+				// A press on one of the title bar's menus' names is that
+				// name's to answer: it shuts its menu, or opens it in place
+				// of whichever is open.
+				if this.app_menu_hovered.is_some() {
 					return;
 				}
 				this.popup = None;
@@ -245,16 +256,6 @@ impl Workspace {
 				cx.notify();
 			}))
 			.children(rows);
-		Some(
-			deferred(
-				anchored()
-					.position(popup.position)
-					.anchor(popup.corner)
-					.snap_to_window_with_margin(Edges::all(px(8.) + self.frame.margin()))
-					.child(menu),
-			)
-			.with_priority(3)
-			.into_any_element(),
-		)
+		menu.into_any_element()
 	}
 }

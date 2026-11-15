@@ -11,15 +11,16 @@ use crate::window_frame::{
 };
 use crate::workspace::{Screen, Workspace};
 use gpui::{
-	AnyElement, Context, Corner, ExternalPaths, FontWeight, HitboxBehavior, MenuItem, MouseButton,
-	MouseMoveEvent, NavigationDirection, Window, canvas, div, point, prelude::*, px,
+	AnyElement, Context, Corner, Edges, ExternalPaths, FontWeight, HitboxBehavior, MenuItem,
+	MouseButton, MouseMoveEvent, NavigationDirection, Window, anchored, canvas, deferred, div,
+	point, prelude::*, px,
 };
 
 pub const TITLE_BAR_HEIGHT: f32 = 36.;
 pub const TOOLBAR_HEIGHT: f32 = 44.;
 
 // What stands for the primary menu's button among the menu bar's menus, in
-// `app_menu_open` and `app_menu_bounds`.
+// `app_menu_open` and `app_menu_hovered`.
 const PRIMARY_MENU: usize = usize::MAX;
 
 impl Render for Workspace {
@@ -254,56 +255,50 @@ impl Workspace {
 
 	/// Opens the primary menu under its button, or shuts it if it's open.
 	pub fn toggle_primary_menu(&mut self, cx: &mut Context<Self>) {
-		if self.app_menu_open == Some(PRIMARY_MENU) {
-			self.app_menu_open = None;
-			self.popup = None;
-			cx.notify();
-			return;
-		}
-		// F10 before the button's been drawn has nowhere to open it.
-		let Some(bounds) = self.app_menu_bounds.get(&PRIMARY_MENU) else {
-			return;
-		};
-		self.app_menu_open = Some(PRIMARY_MENU);
-		self.popup = Some(Popup {
-			position: point(bounds.right(), bounds.bottom() + px(4.)),
-			corner: Corner::TopRight,
-			items: popup_items(&menus::primary_menu(
-				self.store.recent_scans(),
-				self.palette.dark,
-			)),
-		});
+		self.popup = None;
+		self.app_menu_open = (self.app_menu_open != Some(PRIMARY_MENU)).then_some(PRIMARY_MENU);
 		cx.notify();
 	}
 
 	// The button the menus are behind, at the end of the toolbar, where
-	// there's no menu bar (Linux).
+	// there's no menu bar (Linux). Its menu is drawn from inside it, as the
+	// menu bar's are, with its right edge under the button's.
 	fn render_primary_menu_button(&self, cx: &mut Context<Self>) -> AnyElement {
 		let p = self.palette;
-		let workspace = cx.entity();
+		let open = self.app_menu_open == Some(PRIMARY_MENU);
 		icon_button("primary-menu", "menu", true, &p)
 			.relative()
 			.occlude()
 			.tooltip(tip("Main Menu"))
-			.when(self.app_menu_open == Some(PRIMARY_MENU), |this| {
-				this.bg(p.fill)
-			})
-			// Where the button is, which is where its menu opens, and where
-			// a press isn't one outside the open menu.
-			.child(
-				canvas(
-					move |bounds, _, cx| {
-						workspace.update(cx, |this, _| {
-							this.app_menu_bounds.insert(PRIMARY_MENU, bounds);
-						})
-					},
-					|_, _, _, _| {},
+			.when(open, |this| {
+				let items = popup_items(&menus::primary_menu(
+					self.store.recent_scans(),
+					self.palette.dark,
+				));
+				this.bg(p.fill).child(
+					div().absolute().right_0().top(px(30.)).child(
+						deferred(
+							anchored()
+								.anchor(Corner::TopRight)
+								.snap_to_window_with_margin(Edges::all(
+									px(8.) + self.frame.margin(),
+								))
+								.child(self.render_menu(&items, cx)),
+						)
+						.with_priority(3),
+					),
 				)
-				.absolute()
-				.top_0()
-				.left_0()
-				.size_full(),
-			)
+			})
+			// The pointer being on the button is what tells a press on it
+			// from a press outside the open menu.
+			.on_hover(cx.listener(|this, over: &bool, _, cx| {
+				if *over {
+					this.app_menu_hovered = Some(PRIMARY_MENU);
+				} else if this.app_menu_hovered == Some(PRIMARY_MENU) {
+					this.app_menu_hovered = None;
+				}
+				cx.notify();
+			}))
 			.on_mouse_down(
 				MouseButton::Left,
 				cx.listener(|this, _, _, cx| this.toggle_primary_menu(cx)),
@@ -322,28 +317,11 @@ impl Workspace {
 		}
 	}
 
-	// Opens one of the title bar's menus, under its name.
-	fn open_app_menu(&mut self, index: usize, cx: &mut Context<Self>) {
-		let menus = menus::app_menus(self.store.recent_scans(), self.palette.dark);
-		let Some(menu) = menus.get(index) else {
-			return;
-		};
-		let left = self
-			.app_menu_bounds
-			.get(&index)
-			.map_or(px(0.), |bounds| bounds.origin.x);
-		self.app_menu_open = Some(index);
-		self.popup = Some(Popup {
-			position: point(left, px(TITLE_BAR_HEIGHT - 4.)),
-			corner: Corner::TopLeft,
-			items: popup_items(&menu.items),
-		});
-		cx.notify();
-	}
-
 	// The menu bar, where the app draws it. It works as one does: a press
-	// opens a menu (or shuts the one that's open), and with one open, the
-	// pointer going over another's name switches to that.
+	// on a name opens its menu (or shuts it, if it's the one open), and with
+	// one open, the pointer going over another's name switches to that. The
+	// open menu is drawn from inside its name, so it sits under it wherever
+	// that is.
 	fn render_app_menus(&self, cx: &mut Context<Self>) -> Vec<AnyElement> {
 		let p = self.palette;
 		menus::app_menus(self.store.recent_scans(), p.dark)
@@ -351,7 +329,6 @@ impl Workspace {
 			.enumerate()
 			.map(|(index, menu)| {
 				let open = self.app_menu_open == Some(index);
-				let workspace = cx.entity();
 				div()
 					.id(("app-menu", index))
 					.relative()
@@ -366,38 +343,39 @@ impl Workspace {
 					.when(open, |this| this.bg(p.fill))
 					.hover(move |style| style.bg(p.fill))
 					.child(menu.name.clone())
-					// Where the name is, which is where its menu opens, and
-					// where a press isn't one outside the open menu.
-					.child(
-						canvas(
-							move |bounds, _, cx| {
-								workspace.update(cx, |this, _| {
-									this.app_menu_bounds.insert(index, bounds);
-								})
-							},
-							|_, _, _, _| {},
+					.when(open, |this| {
+						this.child(
+							div().absolute().left_0().top(px(28.)).child(
+								deferred(
+									anchored()
+										.snap_to_window_with_margin(Edges::all(px(8.)))
+										.child(self.render_menu(&popup_items(&menu.items), cx)),
+								)
+								.with_priority(3),
+							),
 						)
-						.absolute()
-						.top_0()
-						.left_0()
-						.size_full(),
-					)
+					})
 					.on_mouse_down(
 						MouseButton::Left,
 						cx.listener(move |this, _, _, cx| {
-							if this.app_menu_open == Some(index) {
-								this.app_menu_open = None;
-								this.popup = None;
-								cx.notify();
-							} else {
-								this.open_app_menu(index, cx);
-							}
+							this.popup = None;
+							this.app_menu_open =
+								(this.app_menu_open != Some(index)).then_some(index);
+							cx.notify();
 						}),
 					)
 					.on_hover(cx.listener(move |this, over: &bool, _, cx| {
-						if *over && this.app_menu_open.is_some_and(|open| open != index) {
-							this.open_app_menu(index, cx);
+						// Which name the pointer's on is what tells a press
+						// on one from a press outside the open menu.
+						if *over {
+							this.app_menu_hovered = Some(index);
+							if this.app_menu_open.is_some_and(|open| open != index) {
+								this.app_menu_open = Some(index);
+							}
+						} else if this.app_menu_hovered == Some(index) {
+							this.app_menu_hovered = None;
 						}
+						cx.notify();
 					}))
 					.into_any_element()
 			})
