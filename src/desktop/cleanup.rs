@@ -11,7 +11,7 @@ use crate::window_frame::ALL_CORNERS;
 use crate::workspace::Workspace;
 use gpui::{
 	Animation, AnimationExt, AnyElement, Context, Corner, Div, FontWeight, MouseButton,
-	MouseDownEvent, Stateful, Window, div, prelude::*, px,
+	MouseDownEvent, Pixels, Point, Stateful, Window, div, prelude::*, px,
 };
 use observatory_core::cleanup::{DeleteMode, DeleteResult, delete_files};
 use observatory_core::format::{plural, readable_size};
@@ -29,22 +29,32 @@ pub struct DraggedItems(pub Vec<Item>);
 struct DragPreview {
 	label: String,
 	palette: Palette,
+	// Where in what's dragged the pointer took hold of it. gpui keeps the
+	// preview that far up and left of the pointer, as if it were the thing
+	// itself; the label is a small stand-in, so it's set back in by as much
+	// to stay at the pointer, wherever in a row or the sunburst that was.
+	held: Point<Pixels>,
 }
 
 impl Render for DragPreview {
 	fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
 		let p = self.palette;
 		div()
-			.px(px(10.))
-			.py(px(5.))
-			.rounded(px(6.))
-			.bg(p.default)
-			.text_color(p.background)
-			.text_size(px(12.))
-			.font(crate::fonts::inter())
-			.font_weight(FontWeight::MEDIUM)
-			.shadow_md()
-			.child(self.label.clone())
+			.pl(self.held.x + px(12.))
+			.pt(self.held.y + px(8.))
+			.child(
+				div()
+					.px(px(10.))
+					.py(px(5.))
+					.rounded(px(6.))
+					.bg(p.default)
+					.text_color(p.background)
+					.text_size(px(12.))
+					.font(crate::fonts::inter())
+					.font_weight(FontWeight::MEDIUM)
+					.shadow_md()
+					.child(self.label.clone()),
+			)
 	}
 }
 
@@ -54,10 +64,11 @@ pub fn draggable(element: Stateful<Div>, items: Vec<Item>, p: Palette) -> Statef
 		[item] => item.name.clone(),
 		items => plural(items.len() as u64, "item"),
 	};
-	element.on_drag(DraggedItems(items), move |_, _, _, cx| {
+	element.on_drag(DraggedItems(items), move |_, held, _, cx| {
 		cx.new(|_| DragPreview {
 			label: label.clone(),
 			palette: p,
+			held,
 		})
 	})
 }
@@ -427,10 +438,16 @@ impl Workspace {
 								})),
 							)
 							.child(
-								button("cleanup-confirm", "Delete", ButtonKind::Danger, false, &p)
-									.on_click(cx.listener(|this, _, window, cx| {
-										this.delete_queued(DeleteMode::Delete, window, cx)
-									})),
+								button(
+									"cleanup-confirm",
+									"Delete permanently",
+									ButtonKind::Danger,
+									false,
+									&p,
+								)
+								.on_click(cx.listener(|this, _, window, cx| {
+									this.delete_queued(DeleteMode::Delete, window, cx)
+								})),
 							),
 					)
 			}
