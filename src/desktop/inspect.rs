@@ -122,7 +122,7 @@ impl Workspace {
 		} else {
 			self.render_legend(&scan.path, cx)
 		};
-		let bottom = self.render_status(cx);
+		let selection = self.render_selection_bar(cx);
 		let sunburst = self.render_sunburst(cx);
 
 		div()
@@ -132,20 +132,34 @@ impl Workspace {
 			.child(toolbar)
 			.child(find_bar)
 			.child(
-				div().flex_1().min_h_0().flex().child(sunburst).child(
-					div()
-						.id("side")
-						.flex_none()
-						.w(relative(1. / 3.))
-						.min_w(px(340.))
-						.max_w(px(600.))
-						.h_full()
-						.overflow_y_scroll()
-						.p(px(16.))
-						.child(side),
-				),
+				div()
+					.flex_1()
+					.min_h_0()
+					.flex()
+					.child(
+						// What's checked floats over the sunburst's side, clear
+						// of the corner cleanup speaks from.
+						div()
+							.relative()
+							.flex_1()
+							.min_w_0()
+							.flex()
+							.child(sunburst)
+							.children(selection),
+					)
+					.child(
+						div()
+							.id("side")
+							.flex_none()
+							.w(relative(1. / 3.))
+							.min_w(px(340.))
+							.max_w(px(600.))
+							.h_full()
+							.overflow_y_scroll()
+							.p(px(16.))
+							.child(side),
+					),
 			)
-			.child(bottom)
 			.into_any_element()
 	}
 
@@ -367,67 +381,65 @@ impl Workspace {
 		.into_any_element()
 	}
 
-	// Along the bottom: what's checked and what to do with it, or else how
-	// big the folder is.
-	fn render_status(&self, cx: &mut Context<Self>) -> AnyElement {
+	// What's checked and what to do with it, floating at the bottom while
+	// anything is. There's no bar there otherwise: how big the folder is is
+	// in the middle of the sunburst, and what's reserved and free is in the
+	// list.
+	fn render_selection_bar(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
+		if self.selection.is_empty() {
+			return None;
+		}
 		let p = self.palette;
+		let size: u64 = self.selection.iter().map(|item| item.size).sum();
 		let bar = div()
+			.id("selection")
+			.occlude()
 			.flex()
-			.flex_none()
 			.items_center()
-			.px(px(16.))
-			.border_t_1()
-			.border_color(p.line_soft);
-		if !self.selection.is_empty() {
-			let size: u64 = self.selection.iter().map(|item| item.size).sum();
-			return bar
-				.h(px(44.))
-				.gap(px(8.))
-				.child(
-					div()
-						.flex_1()
-						.font_weight(FontWeight::MEDIUM)
-						.child(format!(
-							"{} selected · {}",
-							self.selection.len(),
-							readable_size(size)
-						)),
+			.gap(px(10.))
+			.pl(px(14.))
+			.pr(px(8.))
+			.py(px(8.))
+			.rounded(px(10.))
+			.bg(p.background)
+			.border_1()
+			.border_color(p.line)
+			.shadow_lg()
+			.child(
+				div()
+					.font_weight(FontWeight::MEDIUM)
+					.child(format!("{} selected", self.selection.len())),
+			)
+			.child(div().text_color(p.muted).child(readable_size(size)))
+			.child(
+				button(
+					"selection-cleanup",
+					"Move to cleanup",
+					ButtonKind::Primary,
+					true,
+					&p,
 				)
-				.child(
-					button("selection-cancel", "Cancel", ButtonKind::Default, true, &p).on_click(
-						cx.listener(|this, _, _, cx| {
-							this.selection.clear();
-							cx.notify();
-						}),
-					),
-				)
-				.child(
-					button(
-						"selection-cleanup",
-						"Move to cleanup",
-						ButtonKind::Primary,
-						true,
-						&p,
-					)
-					.on_click(cx.listener(|this, _, _, cx| this.move_selected_to_cleanup(cx))),
-				)
-				.into_any_element();
-		}
-		let mut says = Vec::new();
-		if let Some(tree) = &self.tree {
-			says.push(readable_size(tree.size));
-			let reserved: u64 = self.reserved.iter().map(|group| group.size).sum();
-			if reserved > 0 {
-				says.push(format!("{} reserved", readable_size(reserved)));
-			}
-			if tree.capacity != tree.size {
-				says.push(format!("{} capacity", readable_size(tree.capacity)));
-			}
-		}
-		bar.h(px(32.))
-			.text_size(px(11.))
-			.text_color(p.muted)
-			.child(says.join(" · "))
-			.into_any_element()
+				.ml(px(6.))
+				.on_click(cx.listener(|this, _, _, cx| this.move_selected_to_cleanup(cx))),
+			)
+			.child(
+				icon_button("selection-cancel", "x", true, &p)
+					.tooltip(tip("Clear the selection"))
+					.on_click(cx.listener(|this, _, _, cx| {
+						this.selection.clear();
+						cx.notify();
+					})),
+			);
+		Some(
+			div()
+				.absolute()
+				.bottom(px(14.))
+				.left_0()
+				.right_0()
+				.flex()
+				.justify_center()
+				.child(bar)
+				.into_any_element(),
+		)
 	}
 }
