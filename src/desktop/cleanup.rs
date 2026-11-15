@@ -11,9 +11,9 @@ use crate::workspace::Workspace;
 use futures::StreamExt;
 use futures::channel::mpsc;
 use gpui::{
-	Animation, AnimationExt, AnyElement, Context, Div, FontWeight, Hsla, MouseButton,
-	MouseDownEvent, Pixels, Point, Stateful, Transformation, Window, div, percentage, prelude::*,
-	px, relative,
+	Animation, AnimationExt, AnyElement, Context, Div, DragMoveEvent, FontWeight, Hsla,
+	MouseButton, MouseDownEvent, Pixels, Point, Stateful, Transformation, Window, div, percentage,
+	prelude::*, px, relative,
 };
 use observatory_core::cleanup::{DeleteMode, Step, delete_files};
 use observatory_core::color::{Color, Kind, sunburst_color};
@@ -340,17 +340,123 @@ impl Workspace {
 			// How it went is said whether or not the card was open.
 			Some(run) if !run.running => self.render_deleted(run, cx),
 			Some(run) if self.cleanup_open => self.render_deleting(run, cx),
-			Some(_) => self.render_pill(dragging, cx),
+			Some(_) => self.render_pill(cx),
 			None if self.cleanup_confirming && queued => self.render_confirmation(cx),
 			None if self.cleanup_open => self.render_queue(cx),
-			None if queued || dragging => self.render_pill(dragging, cx),
+			None if dragging => self.render_landing(cx),
+			None if queued => self.render_pill(cx),
 			None => return None,
 		})
 	}
 
+	// What the pill opens out into while something's being dragged: somewhere
+	// to land it, bigger than the pill and with a quiet dashed edge. With the
+	// drag over it, it fills in and says what the queue would come to.
+	fn render_landing(&self, cx: &mut Context<Self>) -> AnyElement {
+		let p = self.palette;
+		let over = self.drop_over;
+		let warm = reclaim_color();
+		let queued = self.store.cleanup_size();
+		let count = self.store.cleanup().len() as u64;
+		let says = match (over, count) {
+			(false, 0) => "Nothing queued yet".to_string(),
+			(false, _) => format!("{count} queued · {}", readable_size(queued)),
+			(true, 0) => format!("+ {}", readable_size(self.dragging_size)),
+			(true, _) => format!(
+				"{} → {}",
+				readable_size(queued),
+				readable_size(queued + self.dragging_size)
+			),
+		};
+		div()
+			.id("cleanup-landing")
+			.absolute()
+			.bottom(px(14.))
+			.left(px(14.))
+			.occlude()
+			.flex()
+			.items_center()
+			.gap(px(12.))
+			.w(px(236.))
+			.px(px(16.))
+			.py(px(14.))
+			.rounded(px(14.))
+			.border_1()
+			.shadow_lg()
+			.text_size(px(12.))
+			.map(|this| {
+				if over {
+					let mut tint = warm;
+					tint.a = 0.22;
+					this.border_color(warm).bg(p.background.blend(tint))
+				} else {
+					this.border_dashed().border_color(p.muted).bg(p.background)
+				}
+			})
+			// Whether the drag's over it: gpui says where the pointer is and
+			// where this is with every move of a drag.
+			.on_drag_move(
+				cx.listener(|this, event: &DragMoveEvent<DraggedItems>, _, cx| {
+					let over = event.bounds.contains(&event.event.position);
+					if over != this.drop_over {
+						this.drop_over = over;
+						cx.notify();
+					}
+				}),
+			)
+			.on_drop(cx.listener(|this, dragged: &DraggedItems, _, cx| {
+				this.move_to_cleanup(dragged.0.clone(), cx)
+			}))
+			.child(
+				div()
+					.flex()
+					.flex_none()
+					.items_center()
+					.justify_center()
+					.size(px(34.))
+					.rounded_full()
+					.bg(if over { warm } else { p.fill })
+					.child(icon(
+						"trash",
+						15.,
+						// Dark on the warm disc, whichever theme it is.
+						if over {
+							hsla(Color::oklch(0.2, 0.0, 0.0))
+						} else {
+							p.default
+						},
+					)),
+			)
+			.child(
+				div()
+					.flex_1()
+					.min_w_0()
+					.child(
+						div()
+							.text_size(px(13.))
+							.font_weight(FontWeight::SEMIBOLD)
+							.child(if over {
+								"Let go to add"
+							} else {
+								"Drop to clean up"
+							}),
+					)
+					.child(
+						div()
+							.mt(px(2.))
+							.truncate()
+							.text_size(px(11.))
+							.line_height(px(15.))
+							.text_color(p.muted)
+							.child(says),
+					),
+			)
+			.into_any_element()
+	}
+
 	// The card shut: what opens it, what things are dropped on, and how a
 	// deletion's going meanwhile.
-	fn render_pill(&self, dragging: bool, cx: &mut Context<Self>) -> AnyElement {
+	fn render_pill(&self, cx: &mut Context<Self>) -> AnyElement {
 		let p = self.palette;
 		let fill = p.fill;
 		let badge = |text: String| {
@@ -409,11 +515,6 @@ impl Workspace {
 					run.items.len()
 				)))
 				.child(badge(readable_size(run.freed))),
-			_ if dragging => pill
-				.pr(px(14.))
-				.border_dashed()
-				.child(icon("trash", 13., p.default))
-				.child("Drop to clean up"),
 			_ => pill
 				.child(icon("trash", 13., p.default))
 				.child("Cleanup")
@@ -437,7 +538,6 @@ impl Workspace {
 		cx: &mut Context<Self>,
 	) -> AnyElement {
 		let p = self.palette;
-		let meter = p.meter;
 		div()
 			.id("cleanup")
 			.absolute()
@@ -453,7 +553,7 @@ impl Workspace {
 			.border_color(p.line)
 			.shadow_lg()
 			.text_size(px(12.))
-			.drag_over::<DraggedItems>(move |style, _, _, _| style.border_color(meter))
+			.drag_over::<DraggedItems>(|style, _, _, _| style.border_color(reclaim_color()))
 			.on_drop(cx.listener(|this, dragged: &DraggedItems, _, cx| {
 				this.move_to_cleanup(dragged.0.clone(), cx)
 			}))

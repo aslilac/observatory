@@ -31,6 +31,7 @@ impl Render for Workspace {
 		let frame = self.frame;
 		if !cx.has_active_drag() {
 			self.dragging_items = false;
+			self.drop_over = false;
 		}
 		let screen = match self.screen() {
 			Screen::Welcome => self.render_welcome(window, cx),
@@ -54,13 +55,24 @@ impl Render for Workspace {
 				this.dropped(paths, window, cx)
 			}))
 			// Something of the app's own being dragged brings out somewhere
-			// to drop it (the cleanup pill).
-			.on_drag_move(cx.listener(|this, _: &DragMoveEvent<DraggedItems>, _, cx| {
-				if !this.dragging_items {
-					this.dragging_items = true;
-					cx.notify();
-				}
-			}))
+			// to drop it (cleanup's landing pad), which says how much would
+			// be added.
+			.on_drag_move(
+				cx.listener(|this, event: &DragMoveEvent<DraggedItems>, _, cx| {
+					if !this.dragging_items {
+						let size = event
+							.drag(cx)
+							.0
+							.iter()
+							.filter(|item| !this.store.in_cleanup(&item.path))
+							.map(|item| item.size)
+							.sum();
+						this.dragging_items = true;
+						this.dragging_size = size;
+						cx.notify();
+					}
+				}),
+			)
 			// The mouse's own back and forward buttons.
 			.on_mouse_down(
 				MouseButton::Navigate(NavigationDirection::Back),

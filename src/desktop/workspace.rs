@@ -102,6 +102,10 @@ pub struct Workspace {
 	pub cleanup_open: bool,
 	// Files or folders of a scan are being dragged.
 	pub dragging_items: bool,
+	// How much they come to that isn't queued already, and whether they're
+	// over where cleanup takes them.
+	pub dragging_size: u64,
+	pub drop_over: bool,
 	pub cleanup_confirming: bool,
 	pub deletion: Option<Deletion>,
 	pub issues: Option<IssuesModal>,
@@ -240,6 +244,8 @@ impl Workspace {
 			polling: None,
 			cleanup_open: false,
 			dragging_items: false,
+			dragging_size: 0,
+			drop_over: false,
 			cleanup_confirming: false,
 			deletion: None,
 			issues: None,
