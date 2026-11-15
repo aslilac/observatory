@@ -1,0 +1,240 @@
+// The menu that pops up at the pointer (a row's or a wedge's right-click
+// menu) or under a button (the sort picker, the title bar's menus). There's
+// one at a time, and it's the workspace's.
+
+use crate::controls::icon;
+use crate::menus::REVEAL;
+use crate::workspace::Workspace;
+use gpui::{
+	AnyElement, ClipboardItem, Context, Corner, Edges, Pixels, Point, SharedString, Window,
+	anchored, deferred, div, prelude::*, px,
+};
+use observatory_core::scans::FAKE;
+use observatory_core::tree::Item;
+use std::path::Path;
+use std::rc::Rc;
+
+type Run = Rc<dyn Fn(&mut Workspace, &mut Window, &mut Context<Workspace>)>;
+
+pub enum PopupItem {
+	Action {
+		label: SharedString,
+		// Some for a menu whose items are checked or not.
+		checked: Option<bool>,
+		run: Run,
+	},
+	Separator,
+}
+
+impl PopupItem {
+	pub fn action(
+		label: impl Into<SharedString>,
+		run: impl Fn(&mut Workspace, &mut Window, &mut Context<Workspace>) + 'static,
+	) -> Self {
+		Self::Action {
+			label: label.into(),
+			checked: None,
+			run: Rc::new(run),
+		}
+	}
+
+	pub fn checked(self, is: bool) -> Self {
+		match self {
+			Self::Action { label, run, .. } => Self::Action {
+				label,
+				checked: Some(is),
+				run,
+			},
+			separator => separator,
+		}
+	}
+}
+
+pub struct Popup {
+	pub position: Point<Pixels>,
+	// Which of its corners sits at `position`.
+	pub corner: Corner,
+	pub items: Vec<PopupItem>,
+}
+
+// Showing a place in the file manager, and copying where it is: what every
+// menu about a file or folder has.
+fn location_items(path: &str) -> Vec<PopupItem> {
+	let (reveal, copy) = (path.to_string(), path.to_string());
+	vec![
+		PopupItem::action(REVEAL, move |_, _, cx| cx.reveal_path(Path::new(&reveal))),
+		PopupItem::action("Copy path", move |_, _, cx| {
+			cx.write_to_clipboard(ClipboardItem::new_string(copy.clone()))
+		}),
+	]
+}
+
+/// Right-click items for a file or folder in a list, or its wedge.
+pub fn item_menu(item: &Item) -> Vec<PopupItem> {
+	let mut items = Vec::new();
+	let real = !item.path.starts_with(FAKE);
+	// "Open" on a folder would land in the file manager showing what's in
+	// it, which is what revealing it does: it's only there for files.
+	if real && !item.directory {
+		let path = item.path.clone();
+		items.push(PopupItem::action("Open", move |_, _, cx| {
+			cx.open_with_system(Path::new(&path))
+		}));
+	}
+	if real {
+		items.extend(location_items(&item.path));
+		items.push(PopupItem::Separator);
+	}
+	let item = item.clone();
+	items.push(PopupItem::action("Move to cleanup", move |this, _, cx| {
+		this.move_to_cleanup(vec![item.clone()], cx)
+	}));
+	items
+}
+
+/// Right-click items for something in the cleanup panel.
+pub fn queued_menu(path: &str) -> Vec<PopupItem> {
+	let mut items = Vec::new();
+	if !path.starts_with(FAKE) {
+		items.extend(location_items(path));
+		items.push(PopupItem::Separator);
+	}
+	let path = path.to_string();
+	items.push(PopupItem::action(
+		"Remove from cleanup",
+		move |this, _, cx| {
+			this.store.remove_from_cleanup(&path);
+			cx.notify();
+		},
+	));
+	items
+}
+
+/// Right-click items for a disk or a recent folder on the welcome screen.
+/// `rescan` is for a place with a scan to replace; `recent` for one the menu
+/// can take off the list.
+pub fn place_menu(path: &str, rescan: bool, recent: bool) -> Vec<PopupItem> {
+	let mut items = Vec::new();
+	if rescan {
+		let path = path.to_string();
+		items.push(PopupItem::action("Rescan", move |this, window, cx| {
+			this.rescan(&path, window, cx);
+			this.go_to(
+				observatory_core::navigation::Place {
+					inspecting: Some(path.clone()),
+					cursor: Vec::new(),
+				},
+				window,
+				cx,
+			);
+		}));
+		items.push(PopupItem::Separator);
+	}
+	items.extend(location_items(path));
+	if recent {
+		let path = path.to_string();
+		items.push(PopupItem::Separator);
+		items.push(PopupItem::action(
+			"Remove from recents",
+			move |this, _, cx| {
+				this.store.remove_recent(&path);
+				this.publish_menus(cx);
+				cx.notify();
+			},
+		));
+	}
+	items
+}
+
+impl Workspace {
+	pub fn show_popup(
+		&mut self,
+		position: Point<Pixels>,
+		items: Vec<PopupItem>,
+		cx: &mut Context<Self>,
+	) {
+		self.popup = Some(Popup {
+			position,
+			corner: Corner::TopLeft,
+			items,
+		});
+		cx.notify();
+	}
+
+	pub fn render_popup(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
+		let popup = self.popup.as_ref()?;
+		let p = self.palette;
+		let rows =
+			popup
+				.items
+				.iter()
+				.enumerate()
+				.map(|(index, item)| match item {
+					PopupItem::Separator => div()
+						.my(px(4.))
+						.mx(px(6.))
+						.h(px(1.))
+						.bg(p.line_soft)
+						.into_any_element(),
+					PopupItem::Action {
+						label,
+						checked,
+						run,
+					} => {
+						let run = run.clone();
+						div()
+							.id(("popup-item", index))
+							.flex()
+							.items_center()
+							.gap(px(8.))
+							.h(px(26.))
+							.px(px(10.))
+							.rounded(px(5.))
+							.cursor_pointer()
+							.hover(move |style| style.bg(p.fill))
+							.when_some(*checked, |this, checked| {
+								this.child(div().w(px(12.)).when(checked, |this| {
+									this.child(icon("check", 12., p.default))
+								}))
+							})
+							.child(label.clone())
+							.on_click(cx.listener(move |this, _, window, cx| {
+								this.popup = None;
+								this.app_menu_open = None;
+								run(this, window, cx);
+								cx.notify();
+							}))
+							.into_any_element()
+					}
+				});
+		let menu = div()
+			.id("popup")
+			.occlude()
+			.min_w(px(180.))
+			.p(px(4.))
+			.rounded(px(8.))
+			.bg(p.background)
+			.border_1()
+			.border_color(p.line)
+			.shadow_lg()
+			.text_size(px(12.))
+			.text_color(p.default)
+			.on_mouse_down_out(cx.listener(|this, _, _, cx| {
+				this.popup = None;
+				this.app_menu_open = None;
+				cx.notify();
+			}))
+			.children(rows);
+		Some(
+			deferred(
+				anchored()
+					.position(popup.position)
+					.anchor(popup.corner)
+					.snap_to_window_with_margin(Edges::all(px(8.)))
+					.child(menu),
+			)
+			.with_priority(3)
+			.into_any_element(),
+		)
+	}
+}

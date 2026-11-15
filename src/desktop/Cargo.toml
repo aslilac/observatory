@@ -16,3 +16,5 @@ observatory-core = { path = "../core" }
 # than by the build, which would need Xcode's separate Metal Toolchain.
 gpui = { version = "0.2.2", features = ["runtime_shaders"] }
 futures = "0.3"
+unicode-segmentation = "1"
+anyhow = "1"

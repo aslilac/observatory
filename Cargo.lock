@@ -3735,9 +3735,11 @@ dependencies = [
 name = "observatory"
 version = "1.0.0"
 dependencies = [
+ "anyhow",
  "futures",
  "gpui",
  "observatory-core",
+ "unicode-segmentation",
 ]
 
 [[package]]
