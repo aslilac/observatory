@@ -82,7 +82,9 @@ jobs:
             target/macos/*.zip
           if-no-files-found: error
 
-  # The program by itself, in a zip. The Store's package is still to come.
+  # The portable build: the program by itself, in a zip, with its icon in it
+  # (src/desktop/build.rs). The Store's package is still to come, and goes
+  # out beside this, not in place of it.
   windows:
     strategy:
       fail-fast: false
@@ -116,6 +118,62 @@ jobs:
           Copy-Item target/release/observatory.exe out/Observatory.exe
           Compress-Archive -Path out/Observatory.exe `
             -DestinationPath "Observatory-${{ matrix.release.target }}-${{ needs.version.outputs.version }}.zip"
+        name: Package
+
+      - uses: actions/upload-artifact@v7
+        name: Upload
+        with:
+          name: package-${{ matrix.release.target }}
+          path: "*.zip"
+          if-no-files-found: error
+
+  # The program by itself, in a zip, for anywhere the Flatpak isn't wanted.
+  # It isn't static, and can't be: it draws with the GPU, whose driver is
+  # the system's own and loaded when it runs. So it's built on the oldest
+  # Ubuntu there is to build on, to ask for no newer a C library than it
+  # has to, and expects what a desktop has anyway (Wayland or X11,
+  # xkbcommon, fontconfig, Vulkan).
+  linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        release:
+          - os: ubuntu-22.04
+            target: linux-x64
+
+          - os: ubuntu-22.04-arm
+            target: linux-arm64
+
+    name: Package.${{ matrix.release.target }}
+
+    runs-on: ${{ matrix.release.os }}
+
+    needs:
+      - version
+
+    steps:
+      - uses: actions/checkout@v7
+        name: Checkout
+
+      - uses: dtolnay/rust-toolchain@stable
+        name: Configure Rust
+
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev \
+            libx11-xcb-dev libxcb1-dev libfontconfig1-dev libfreetype-dev libvulkan-dev
+        name: Install
+
+      - run: cargo build --release --locked -p observatory
+        name: Build
+
+      # With zip rather than an action, which keeps it a program that can
+      # be run.
+      - run: |
+          mkdir out
+          cp target/release/observatory out/observatory
+          cd out
+          zip "../Observatory-${{ matrix.release.target }}-${{ needs.version.outputs.version }}.zip" observatory
         name: Package
 
       - uses: actions/upload-artifact@v7
@@ -184,6 +242,7 @@ jobs:
       - version
       - macos
       - windows
+      - linux
       - flatpak
 
     permissions:

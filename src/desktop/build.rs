@@ -47,4 +47,30 @@ fn main() {
 		.or_else(|| Some(std::fs::read_to_string(&stamped).ok()?.trim().to_string()))
 		.unwrap_or_default();
 	println!("cargo:rustc-env=OBSERVATORY_COMMIT={commit}");
+
+	windows_resources(&top);
 }
+
+// On Windows, the icon and what the program says it is go into the exe
+// itself: Explorer shows the icon, gpui gives the window and the taskbar
+// the one numbered 1 (which this is), and Task Manager reads the name.
+#[cfg(windows)]
+fn windows_resources(top: &Path) {
+	if std::env::var("CARGO_CFG_TARGET_OS").as_deref() != Ok("windows") {
+		return;
+	}
+	let icon = top.join("build-resources/icon.ico");
+	println!("cargo:rerun-if-changed={}", icon.display());
+	let mut resources = winresource::WindowsResource::new();
+	resources
+		.set_icon(&icon.to_string_lossy())
+		.set("ProductName", "Observatory")
+		.set("FileDescription", "Observatory")
+		.set("LegalCopyright", "© 2019-2026 McKayla Washburn-Love");
+	resources
+		.compile()
+		.expect("the icon couldn't be built into the program");
+}
+
+#[cfg(not(windows))]
+fn windows_resources(_: &Path) {}
