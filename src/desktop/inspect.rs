@@ -85,6 +85,7 @@ impl Workspace {
 			self.render_legend(&scan.path, cx)
 		};
 		let selection = self.render_selection_bar(cx);
+		let selecting = selection.is_some();
 		let sunburst = self.render_sunburst(cx);
 
 		div()
@@ -94,33 +95,29 @@ impl Workspace {
 			.child(toolbar)
 			.child(find_bar)
 			.child(
-				div()
-					.flex_1()
-					.min_h_0()
-					.flex()
-					.child(
-						// What's checked floats over the sunburst's side, clear
-						// of the corner cleanup speaks from.
-						div()
-							.relative()
-							.flex_1()
-							.min_w_0()
-							.flex()
-							.child(sunburst)
-							.children(selection),
-					)
-					.child(
-						div()
-							.id("side")
-							.flex_none()
-							.w(relative(1. / 3.))
-							.min_w(px(340.))
-							.max_w(px(600.))
-							.h_full()
-							.overflow_y_scroll()
-							.p(px(16.))
-							.child(side),
-					),
+				div().flex_1().min_h_0().flex().child(sunburst).child(
+					// What's checked floats at the bottom of the list it's
+					// checked in; cleanup has the other corner.
+					div()
+						.relative()
+						.flex_none()
+						.w(relative(1. / 3.))
+						.min_w(px(340.))
+						.max_w(px(600.))
+						.h_full()
+						.child(
+							div()
+								.id("side")
+								.size_full()
+								.overflow_y_scroll()
+								.p(px(16.))
+								// Room to scroll the last rows out from
+								// under it.
+								.when(selecting, |this| this.pb(px(72.)))
+								.child(side),
+						)
+						.children(selection),
+				),
 			)
 			.into_any_element()
 	}

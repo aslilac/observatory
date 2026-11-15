@@ -1,5 +1,5 @@
 // Cleanup: the queue of things the user means to get rid of. It floats in
-// the window's bottom-right corner, over whatever screen is showing, so they
+// the window's bottom-left corner, over whatever screen is showing, so they
 // can keep browsing while they fill it: a pill that opens into a card, which
 // is the queue, then the question before anything goes, then the deleting
 // and how it went.
@@ -307,7 +307,7 @@ impl Workspace {
 		Some((disk.title(), disk.usage.clone()?))
 	}
 
-	/// Cleanup, floating in the window's bottom-right corner. Shut, it's a
+	/// Cleanup, floating in the window's bottom-left corner. Shut, it's a
 	/// pill, there while anything's queued (or being dragged, or deleted).
 	/// Open, it's a card that's the queue, then the question before anything
 	/// goes, then how the deleting's going, then how it went.
@@ -348,7 +348,7 @@ impl Workspace {
 			.id("cleanup-pill")
 			.absolute()
 			.bottom(px(14.))
-			.right(px(14.))
+			.left(px(14.))
 			.occlude()
 			.flex()
 			.items_center()
@@ -420,7 +420,7 @@ impl Workspace {
 			.id("cleanup")
 			.absolute()
 			.bottom(px(14.))
-			.right(px(14.))
+			.left(px(14.))
 			.w(px(CARD_WIDTH))
 			.occlude()
 			.flex()
