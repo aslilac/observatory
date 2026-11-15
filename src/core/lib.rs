@@ -19,6 +19,7 @@ pub mod scans;
 pub mod sky;
 pub mod store;
 pub mod sunburst;
+pub mod system;
 pub mod tree;
 pub mod version;
 

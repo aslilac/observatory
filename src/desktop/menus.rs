@@ -9,6 +9,7 @@ use gpui::{
 use observatory_core::paths::basename;
 use observatory_core::scans::FAKE;
 use observatory_core::store::RecentScan;
+use observatory_core::system;
 use std::path::Path;
 
 actions!(
@@ -277,23 +278,29 @@ pub fn environment() -> Vec<(&'static str, String)> {
 	vec![
 		("Version", env!("CARGO_PKG_VERSION").to_string()),
 		("Build", "gpui".to_string()),
-		(
-			"OS",
-			format!("{} ({})", std::env::consts::OS, std::env::consts::ARCH),
-		),
+		("System", system::describe_system()),
+		("Architecture", system::describe_architecture().to_string()),
 	]
 }
 
+// A new issue, with a table of what this copy is and what it's on under
+// where the report goes.
 fn report_url() -> String {
-	let mut body = String::from("%0A%0A%7C%20%20%7C%20%20%7C%0A%7C---%7C---%7C%0A");
+	let mut body = String::from("\n\n|  |  |\n|---|---|\n");
 	for (label, value) in environment() {
-		let value = value
-			.replace(' ', "%20")
-			.replace('(', "%28")
-			.replace(')', "%29");
-		body.push_str(&format!("%7C%20{label}%20%7C%20{value}%20%7C%0A"));
+		body.push_str(&format!("| {label} | {value} |\n"));
 	}
-	format!("{REPOSITORY}/issues/new?body={body}")
+	// Everything but letters, digits, and the few marks a URL leaves alone.
+	let mut query = String::new();
+	for byte in body.bytes() {
+		match byte {
+			b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' => {
+				query.push(byte as char)
+			}
+			byte => query.push_str(&format!("%{byte:02X}")),
+		}
+	}
+	format!("{REPOSITORY}/issues/new?body={query}")
 }
 
 type Cx<'a> = Context<'a, Workspace>;
