@@ -65,6 +65,21 @@ pub fn place_name(drives: &[Drive], path: &str) -> String {
 	}
 }
 
+/// The drive `path` is on: the one mounted nearest above it.
+pub fn drive_of<'a>(drives: &'a [Drive], path: &str) -> Option<&'a Drive> {
+	drives
+		.iter()
+		.filter(|drive| {
+			let mount = drive.mount_path.as_str();
+			// Whole names only: "/Volumes/Backup" isn't on "/Volumes/Back".
+			path == mount
+				|| path.strip_prefix(mount).is_some_and(|rest| {
+					mount.ends_with(['/', '\\']) || rest.starts_with(['/', '\\'])
+				})
+		})
+		.max_by_key(|drive| drive.mount_path.len())
+}
+
 // What the OS reports for the volume holding `path` (any path on it, not
 // just its mount point), so disks and folders can show how full their
 // volume is without scanning it. `used` is whole-volume: on APFS, `/` is a
@@ -197,6 +212,22 @@ mod tests {
 				available: 1_000_000 - used,
 			}),
 		}
+	}
+
+	#[test]
+	fn a_path_is_on_the_drive_mounted_nearest_above_it() {
+		let at = |mount: &str| Drive {
+			mount_path: mount.into(),
+			..drive(1)
+		};
+		let drives = [at("/"), at("/Volumes/Back"), at("C:\\")];
+		let on = |path: &str| drive_of(&drives, path).map(|drive| drive.mount_path.as_str());
+		assert_eq!(on("/Users/sam/file"), Some("/"));
+		assert_eq!(on("/Volumes/Back/file"), Some("/Volumes/Back"));
+		assert_eq!(on("/Volumes/Back"), Some("/Volumes/Back"));
+		assert_eq!(on("/Volumes/Backup/file"), Some("/"));
+		assert_eq!(on("C:\\Users\\sam"), Some("C:\\"));
+		assert_eq!(on("D:\\file"), None);
 	}
 
 	#[test]

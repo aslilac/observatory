@@ -2,6 +2,7 @@
 // puts under it (on Linux, the one bar), and the layers (the cleanup drawer, modals, menus) that go
 // over whichever screen is showing.
 
+use crate::cleanup::DraggedItems;
 use crate::controls::{icon, icon_button, tip};
 use crate::menus;
 use crate::popup::{DEVELOPER_MENU, PopupItem};
@@ -11,9 +12,9 @@ use crate::window_frame::{
 };
 use crate::workspace::{Screen, Workspace};
 use gpui::{
-	AnyElement, Context, Corner, Edges, ExternalPaths, FontWeight, HitboxBehavior, MenuItem,
-	MouseButton, MouseMoveEvent, NavigationDirection, Window, anchored, canvas, deferred, div,
-	prelude::*, px,
+	AnyElement, Context, Corner, DragMoveEvent, Edges, ExternalPaths, FontWeight, HitboxBehavior,
+	MenuItem, MouseButton, MouseMoveEvent, NavigationDirection, Window, anchored, canvas, deferred,
+	div, prelude::*, px,
 };
 
 pub const TITLE_BAR_HEIGHT: f32 = 36.;
@@ -28,6 +29,9 @@ impl Render for Workspace {
 		let p = self.palette;
 		self.frame = Frame::of(window);
 		let frame = self.frame;
+		if !cx.has_active_drag() {
+			self.dragging_items = false;
+		}
 		let screen = match self.screen() {
 			Screen::Welcome => self.render_welcome(window, cx),
 			Screen::Scanning(scan) => self.render_scanning(&scan, window, cx),
@@ -49,6 +53,14 @@ impl Render for Workspace {
 			.on_drop(cx.listener(|this, paths: &ExternalPaths, window, cx| {
 				this.dropped(paths, window, cx)
 			}))
+			// Something of the app's own being dragged brings out somewhere
+			// to drop it (the cleanup pill).
+			.on_drag_move(cx.listener(|this, _: &DragMoveEvent<DraggedItems>, _, cx| {
+				if !this.dragging_items {
+					this.dragging_items = true;
+					cx.notify();
+				}
+			}))
 			// The mouse's own back and forward buttons.
 			.on_mouse_down(
 				MouseButton::Navigate(NavigationDirection::Back),
@@ -69,8 +81,7 @@ impl Render for Workspace {
 					.flex()
 					.flex_col()
 					.child(screen)
-					.children(self.render_cleanup_panel(cx))
-					.children(self.render_cleanup_notice(cx)),
+					.children(self.render_cleanup(cx)),
 			)
 			.children(self.render_issues(cx))
 			.children(self.render_ask(cx))

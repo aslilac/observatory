@@ -1,29 +1,29 @@
-// Cleanup: the queue of things the user means to get rid of. The chip in
-// the toolbar opens the panel, a drawer over whatever screen is showing, so
-// they can keep browsing while they fill it; the modal asks before anything
-// goes.
+// Cleanup: the queue of things the user means to get rid of. It floats in
+// the window's bottom-right corner, over whatever screen is showing, so they
+// can keep browsing while they fill it: a pill that opens into a card, which
+// is the queue, then the question before anything goes, then the deleting
+// and how it went.
 
-use crate::chrome::TOOLBAR_HEIGHT;
-use crate::controls::{ButtonKind, button, chip, icon, icon_button};
-use crate::palette::Palette;
+use crate::controls::{ButtonKind, button, icon, icon_button, tip};
+use crate::palette::{Palette, hsla};
 use crate::popup::queued_menu;
 use crate::workspace::Workspace;
 use futures::StreamExt;
 use futures::channel::mpsc;
 use gpui::{
-	Animation, AnimationExt, AnyElement, Context, Corner, Div, FontWeight, MouseButton,
+	Animation, AnimationExt, AnyElement, Context, Div, FontWeight, Hsla, MouseButton,
 	MouseDownEvent, Pixels, Point, Stateful, Transformation, Window, div, percentage, prelude::*,
 	px, relative,
 };
 use observatory_core::cleanup::{DeleteMode, Step, delete_files};
+use observatory_core::color::{Color, Kind, sunburst_color};
+use observatory_core::drives::{Drive, Usage, drive_of};
 use observatory_core::format::{plural, readable_size};
 use observatory_core::paths::basename;
 use observatory_core::tree::Item;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
-
-const PANEL_WIDTH: f32 = 300.;
 
 /// What a drag out of a list or the sunburst carries.
 #[derive(Clone)]
@@ -77,18 +77,19 @@ pub fn draggable(element: Stateful<Div>, items: Vec<Item>, p: Palette) -> Statef
 	})
 }
 
-/// One go at deleting what's queued, from the confirmation until its
-/// notification is dismissed. Nothing waits on it: the notification sits in
-/// the window's corner while the user carries on.
+/// One go at deleting what's queued, from the question's answer until the
+/// card's said how it went. Nothing waits on it: the card (or the pill, with
+/// the card shut) follows it while the user carries on.
 pub struct Deletion {
 	// When it began, which is also which one it is, to a timer that outlives
 	// it.
 	started: Instant,
 	mode: DeleteMode,
-	// How many it set out to delete, and how it's gone so far.
-	total: usize,
-	deleted: usize,
-	// How much what's gone took up.
+	// What it set out to delete: each path and its size.
+	items: Vec<(String, u64)>,
+	// Those that are gone.
+	gone: Vec<String>,
+	// How much they took up.
 	freed: u64,
 	// The paths that are still there, each with why.
 	failed: Vec<(String, String)>,
@@ -97,244 +98,52 @@ pub struct Deletion {
 	// Set to have it start no more.
 	stop: Arc<AtomicBool>,
 	running: bool,
-	// Whether what failed is listed.
-	details: bool,
-	// The pointer's over the notification, which keeps it from going away.
+	// The pointer's over the card, which keeps it from going away.
 	hovered: bool,
+	// The disk it's all on and how full that was beforehand, if it's one
+	// disk.
+	disk: Option<(String, Usage)>,
 }
 
 impl Deletion {
 	fn stopping(&self) -> bool {
 		self.stop.load(Ordering::Relaxed)
 	}
+
+	fn size(&self) -> u64 {
+		self.items.iter().map(|(_, size)| size).sum()
+	}
 }
 
-// How long the notification of a deletion that went well stays.
+// How long the card of a deletion that went well stays.
 const NOTICE: Duration = Duration::from_secs(6);
-const NOTICE_WIDTH: f32 = 320.;
+const CARD_WIDTH: f32 = 340.;
+// How many of what's queued have a segment of their own in the bar, before
+// the rest share one.
+const SEGMENTS: usize = 24;
+
+// The color something queued has in the card: its dot's, and its segment's in
+// the bar. It's the path's own, so it keeps it while the queue changes.
+fn queued_color(path: &str, p: &Palette) -> Hsla {
+	// FNV-1a, for a hue.
+	let hash = path.bytes().fold(0xcbf29ce484222325u64, |hash, byte| {
+		(hash ^ byte as u64).wrapping_mul(0x100000001b3)
+	});
+	hsla(sunburst_color(
+		(hash % 360) as f64,
+		0,
+		Kind::Directory,
+		p.dark,
+	))
+}
+
+// What cleanup takes off a disk is drawn in this, between what's used and
+// what's free.
+fn reclaim_color() -> Hsla {
+	hsla(Color::oklch(0.78, 0.16, 30.0))
+}
 
 impl Workspace {
-	pub fn render_cleanup_chip(&self, cx: &mut Context<Self>) -> AnyElement {
-		let p = self.palette;
-		let count = self.store.cleanup().len();
-		let meter = p.meter;
-		chip("cleanup-chip", &p)
-			.when(self.cleanup_open, |this| this.bg(p.fill))
-			.child(icon("trash", 13., p.muted))
-			.child("Cleanup")
-			.when(count > 0, |this| {
-				this.child(
-					div()
-						.text_color(p.muted)
-						.child(readable_size(self.store.cleanup_size())),
-				)
-			})
-			// Dropping on the chip is as good as on the panel.
-			.drag_over::<DraggedItems>(move |style, _, _, _| {
-				style.border_dashed().border_color(meter)
-			})
-			.on_drop(cx.listener(|this, dragged: &DraggedItems, _, cx| {
-				this.move_to_cleanup(dragged.0.clone(), cx)
-			}))
-			.on_click(cx.listener(|this, _, _, cx| {
-				this.cleanup_open = !this.cleanup_open;
-				cx.notify();
-			}))
-			.into_any_element()
-	}
-
-	pub fn render_cleanup_panel(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
-		if !self.cleanup_open {
-			return None;
-		}
-		let p = self.palette;
-		let meter = p.meter;
-		// Largest first: what's worth the most to be rid of.
-		let mut queued: Vec<&Item> = self.store.cleanup().iter().map(|it| &it.item).collect();
-		queued.sort_by_key(|item| std::cmp::Reverse(item.size));
-
-		let rows = queued.iter().enumerate().map(|(index, item)| {
-			let (path, menu_path) = (item.path.clone(), item.path.clone());
-			div()
-				.id(("queued", index))
-				.flex()
-				.items_center()
-				.gap(px(8.))
-				.px(px(8.))
-				.py(px(6.))
-				.rounded(px(5.))
-				.hover(move |style| style.bg(p.fill))
-				.child(icon(
-					if item.directory { "folder" } else { "file" },
-					13.,
-					p.faint,
-				))
-				.child(div().flex_1().min_w_0().truncate().child(item.name.clone()))
-				.child(
-					div()
-						.flex_none()
-						.text_size(px(12.))
-						.text_color(p.muted)
-						.child(readable_size(item.size)),
-				)
-				.child(
-					icon_button(("unqueue", index), "x", true, &p)
-						.size(px(20.))
-						.on_click(cx.listener(move |this, _, _, cx| {
-							this.store.remove_from_cleanup(&path);
-							cx.notify();
-						})),
-				)
-				.on_mouse_down(
-					MouseButton::Right,
-					cx.listener(move |this, event: &MouseDownEvent, _, cx| {
-						this.show_popup(event.position, queued_menu(&menu_path), cx)
-					}),
-				)
-		});
-
-		let body = if queued.is_empty() {
-			div()
-				.flex_1()
-				.flex()
-				.flex_col()
-				.items_center()
-				.justify_center()
-				.gap(px(6.))
-				.p(px(24.))
-				.child(icon("trash", 22., p.faint))
-				.child(
-					div()
-						.font_weight(FontWeight::MEDIUM)
-						.child("Nothing to clean up"),
-				)
-				.child(
-					div()
-						.text_center()
-						.text_size(px(12.))
-						.text_color(p.muted)
-						.child(if cx.has_active_drag() {
-							"Drop it here to move it to cleanup."
-						} else {
-							"Drag files and folders here, or right-click one and choose \
-							 Move to cleanup."
-						}),
-				)
-				.into_any_element()
-		} else {
-			div()
-				.id("cleanup-items")
-				.flex_1()
-				.min_h_0()
-				.overflow_y_scroll()
-				.p(px(8.))
-				.children(rows)
-				.into_any_element()
-		};
-
-		let panel = div()
-			.id("cleanup-panel")
-			.absolute()
-			.top(px(TOOLBAR_HEIGHT))
-			.bottom_0()
-			.right_0()
-			.w(px(PANEL_WIDTH))
-			.flex()
-			.flex_col()
-			.occlude()
-			.bg(p.background)
-			.border_l_1()
-			.border_color(p.line)
-			.shadow_lg()
-			// It goes down to the window's corner.
-			.map(|this| self.frame.round(this, &[Corner::BottomRight]))
-			.drag_over::<DraggedItems>(move |style, _, _, _| style.border_color(meter))
-			.on_drop(cx.listener(|this, dragged: &DraggedItems, _, cx| {
-				this.move_to_cleanup(dragged.0.clone(), cx)
-			}))
-			.child(
-				div()
-					.flex()
-					.flex_none()
-					.items_center()
-					.justify_between()
-					.h(px(40.))
-					.pl(px(16.))
-					.pr(px(8.))
-					.border_b_1()
-					.border_color(p.line_soft)
-					.child(div().font_weight(FontWeight::SEMIBOLD).child("Cleanup"))
-					.child(
-						icon_button("cleanup-close", "x", true, &p).on_click(cx.listener(
-							|this, _, _, cx| {
-								this.cleanup_open = false;
-								cx.notify();
-							},
-						)),
-					),
-			)
-			.child(body)
-			.when(!queued.is_empty(), |this| {
-				this.child(
-					div()
-						.flex()
-						.flex_none()
-						.items_center()
-						.gap(px(8.))
-						.p(px(12.))
-						.border_t_1()
-						.border_color(p.line_soft)
-						.child(
-							div()
-								.flex_1()
-								.flex()
-								.flex_col()
-								.child(
-									div()
-										.font_weight(FontWeight::SEMIBOLD)
-										.child(readable_size(self.store.cleanup_size())),
-								)
-								.child(
-									div()
-										.text_size(px(11.))
-										.text_color(p.muted)
-										.child(plural(queued.len() as u64, "item")),
-								),
-						)
-						.child(
-							button("cleanup-clear", "Clear", ButtonKind::Default, true, &p)
-								.on_click(cx.listener(|this, _, _, cx| {
-									this.store.clear_cleanup();
-									cx.notify();
-								})),
-						)
-						.child(
-							// One deletion at a time.
-							button("cleanup-delete", "Delete…", ButtonKind::Danger, true, &p)
-								.when(self.deleting(), |this| this.opacity(0.5).cursor_default())
-								.on_click(cx.listener(|this, _, _, cx| {
-									if !this.deleting() {
-										// In place of how the last one went.
-										this.deletion = None;
-										this.cleanup_confirming = true;
-										cx.notify();
-									}
-								})),
-						),
-				)
-			});
-		// It slides out from the window's edge.
-		Some(
-			panel
-				.with_animation(
-					"cleanup-slide",
-					Animation::new(Duration::from_millis(180)).with_easing(gpui::ease_out_quint()),
-					|panel, t| panel.right(px(-PANEL_WIDTH * (1. - t))),
-				)
-				.into_any_element(),
-		)
-	}
-
 	/// Whether a deletion is under way.
 	pub fn deleting(&self) -> bool {
 		self.deletion.as_ref().is_some_and(|run| run.running)
@@ -387,15 +196,15 @@ impl Workspace {
 		self.deletion = Some(Deletion {
 			started,
 			mode,
-			total: queued.len(),
-			deleted: 0,
+			items: queued.clone(),
+			gone: Vec::new(),
 			freed: 0,
 			failed: Vec::new(),
 			current: None,
 			stop: stop.clone(),
 			running: true,
-			details: false,
 			hovered: false,
+			disk: self.disk_of(queued.iter().map(|(path, _)| path.as_str())),
 		});
 		cx.notify();
 		let scans = self.scans.clone();
@@ -416,7 +225,7 @@ impl Workspace {
 					match step {
 						Step::Starting(path) => run.current = Some(path),
 						Step::Deleted(path) => {
-							run.deleted += 1;
+							run.gone.push(path.clone());
 							run.freed += queued
 								.iter()
 								.find(|(queued, _)| *queued == path)
@@ -445,7 +254,14 @@ impl Workspace {
 					run.current = None;
 					// What failed is for the user to see, and stays until
 					// they've dismissed it.
-					!run.failed.is_empty()
+					let stays = !run.failed.is_empty();
+					if !stays {
+						// With the card that says how it went, cleanup's
+						// done: what comes after it is the pill, if
+						// anything's still queued.
+						this.cleanup_open = false;
+					}
+					stays
 				})
 				.unwrap_or(true);
 			if stays {
@@ -476,304 +292,375 @@ impl Workspace {
 		.detach();
 	}
 
-	/// What cleanup has to say in the window's corner: the question before
-	/// anything goes, then how the deleting is going, or how it went.
-	pub fn render_cleanup_notice(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
-		if self.cleanup_confirming {
-			return Some(self.render_confirmation(cx));
-		}
-		let p = self.palette;
-		let run = self.deletion.as_ref()?;
-		let trash = run.mode == DeleteMode::Trash;
-		let (total, deleted) = (run.total as u64, run.deleted as u64);
-		let dealt_with = run.deleted + run.failed.len();
-		let left = run.total - dealt_with;
-
-		let title = match (run.running, trash) {
-			(true, _) if run.stopping() => "Stopping…".to_string(),
-			(true, false) => format!("Deleting {}…", plural(total, "item")),
-			(true, true) => format!("Moving {} to the Trash…", plural(total, "item")),
-			(false, _) if deleted == 0 => "Nothing was deleted".to_string(),
-			(false, _) => {
-				let count = if deleted == total {
-					plural(total, "item")
-				} else {
-					format!("{deleted} of {}", plural(total, "item"))
-				};
-				if trash {
-					format!("Moved {count} to the Trash")
-				} else {
-					format!("Deleted {count}")
-				}
+	// The disk everything in `paths` is on and how full it is, if that's one
+	// disk, and one that says.
+	fn disk_of<'a>(&self, paths: impl Iterator<Item = &'a str>) -> Option<(String, Usage)> {
+		let mut disk: Option<&Drive> = None;
+		for path in paths {
+			let drive = drive_of(&self.drives, path)?;
+			if disk.is_some_and(|disk| disk.mount_path != drive.mount_path) {
+				return None;
 			}
-		};
-		let lead = if run.running {
-			icon("loader-circle", 18., p.muted)
-				.with_animation(
-					"deletion-spinner",
-					Animation::new(Duration::from_secs(1)).repeat(),
-					|icon, t| icon.with_transformation(Transformation::rotate(percentage(t))),
-				)
-				.into_any_element()
-		} else {
-			// A tick when it all went, and a mark when some didn't.
+			disk = Some(drive);
+		}
+		let disk = disk?;
+		Some((disk.title(), disk.usage.clone()?))
+	}
+
+	/// Cleanup, floating in the window's bottom-right corner. Shut, it's a
+	/// pill, there while anything's queued (or being dragged, or deleted).
+	/// Open, it's a card that's the queue, then the question before anything
+	/// goes, then how the deleting's going, then how it went.
+	pub fn render_cleanup(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
+		let queued = !self.store.cleanup().is_empty();
+		let dragging = self.dragging_items && cx.has_active_drag();
+		Some(match &self.deletion {
+			// How it went is said whether or not the card was open.
+			Some(run) if !run.running => self.render_deleted(run, cx),
+			Some(run) if self.cleanup_open => self.render_deleting(run, cx),
+			Some(_) => self.render_pill(dragging, cx),
+			None if self.cleanup_confirming && queued => self.render_confirmation(cx),
+			None if self.cleanup_open => self.render_queue(cx),
+			None if queued || dragging => self.render_pill(dragging, cx),
+			None => return None,
+		})
+	}
+
+	// The card shut: what opens it, what things are dropped on, and how a
+	// deletion's going meanwhile.
+	fn render_pill(&self, dragging: bool, cx: &mut Context<Self>) -> AnyElement {
+		let p = self.palette;
+		let fill = p.fill;
+		let badge = |text: String| {
 			div()
+				.px(px(10.))
+				.h(px(22.))
 				.flex()
 				.items_center()
-				.justify_center()
-				.size(px(18.))
 				.rounded_full()
 				.bg(p.default)
 				.text_color(p.background)
 				.text_size(px(11.))
 				.font_weight(FontWeight::SEMIBOLD)
-				.map(|this| {
-					if run.failed.is_empty() && left == 0 {
-						this.child(icon("check", 11., p.background))
-					} else {
-						this.child("!")
-					}
+				.child(text)
+		};
+		let pill = div()
+			.id("cleanup-pill")
+			.absolute()
+			.bottom(px(14.))
+			.right(px(14.))
+			.occlude()
+			.flex()
+			.items_center()
+			.gap(px(8.))
+			.h(px(34.))
+			.pl(px(14.))
+			.pr(px(6.))
+			.rounded_full()
+			.bg(p.background)
+			.border_1()
+			.border_color(p.default)
+			.shadow_lg()
+			.text_size(px(12.))
+			.font_weight(FontWeight::MEDIUM)
+			.cursor_pointer()
+			.hover(move |style| style.bg(fill))
+			.drag_over::<DraggedItems>(move |style, _, _, _| style.bg(fill))
+			.on_drop(cx.listener(|this, dragged: &DraggedItems, _, cx| {
+				this.move_to_cleanup(dragged.0.clone(), cx)
+			}))
+			.on_click(cx.listener(|this, _, _, cx| {
+				this.cleanup_open = true;
+				cx.notify();
+			}));
+		let pill = match &self.deletion {
+			Some(run) if run.running => pill
+				.child(spinner("pill-spinner", 14., p.muted))
+				.child(match run.mode {
+					_ if run.stopping() => "Stopping",
+					DeleteMode::Delete => "Reclaiming",
+					DeleteMode::Trash => "Moving to the Trash",
 				})
-				.into_any_element()
-		};
-		let action = if !run.running {
-			Some(
-				icon_button("deletion-dismiss", "x", true, &p)
-					.size(px(20.))
-					.on_click(cx.listener(|this, _, _, cx| {
-						this.deletion = None;
-						cx.notify();
-					})),
-			)
-		} else if !run.stopping() && left > 1 {
-			// Stopping is between one and the next, so there's nothing to
-			// stop on the last.
-			Some(
-				button("deletion-stop", "Stop", ButtonKind::Default, true, &p)
-					.h(px(22.))
-					.on_click(cx.listener(|this, _, _, cx| {
-						if let Some(run) = &this.deletion {
-							run.stop.store(true, Ordering::Relaxed);
-						}
-						cx.notify();
-					})),
-			)
-		} else {
-			None
-		};
-		let line = || div().mt(px(2.)).text_color(p.muted);
-
-		let body = if run.running {
-			let so_far = format!("{dealt_with} of {total}");
-			div()
-				.child(line().child(if trash || run.freed == 0 {
-					so_far
-				} else {
-					format!("{so_far} · {} freed so far", readable_size(run.freed))
-				}))
+				.child(div().text_color(p.muted).child(format!(
+					"{} of {}",
+					run.gone.len() + run.failed.len(),
+					run.items.len()
+				)))
+				.child(badge(readable_size(run.freed))),
+			_ if dragging => pill
+				.pr(px(14.))
+				.border_dashed()
+				.child(icon("trash", 13., p.default))
+				.child("Drop to clean up"),
+			_ => pill
+				.child(icon("trash", 13., p.default))
+				.child("Cleanup")
 				.child(
 					div()
-						.mt(px(8.))
-						.h(px(4.))
-						.rounded(px(2.))
-						.bg(p.fill_strong)
-						.overflow_hidden()
-						.child(
-							div()
-								.h_full()
-								.w(relative(dealt_with as f32 / run.total as f32))
-								.bg(p.default),
-						),
-				)
-				.child(
-					div()
-						.mt(px(6.))
-						.h(px(15.))
-						.truncate()
-						.text_size(px(11.))
-						.line_height(px(15.))
 						.text_color(p.muted)
-						.children(run.current.clone()),
+						.child(self.store.cleanup().len().to_string()),
 				)
-		} else {
-			let failures = run.failed.iter().map(|(path, why)| {
-				div()
-					.py(px(5.))
-					.child(div().truncate().child(basename(path).to_string()))
-					.child(
-						div()
-							.text_size(px(11.))
-							.line_height(px(15.))
-							.text_color(p.danger_fg)
-							.child(why.clone()),
-					)
-			});
-			div()
-				.when(deleted > 0, |this| {
-					this.child(line().child(if trash {
-						format!("Empty the Trash to free {}", readable_size(run.freed))
-					} else {
-						format!("That freed {}", readable_size(run.freed))
-					}))
-				})
-				// Stopped before it got to these.
-				.when(left > 0, |this| {
-					this.child(line().child(format!(
-						"{} still in cleanup",
-						match left {
-							1 => "1 item is".to_string(),
-							left => format!("{left} items are"),
-						}
-					)))
-				})
-				.when(!run.failed.is_empty(), |this| {
-					this.child(
-						div()
-							.mt(px(6.))
-							.flex()
-							.items_center()
-							.gap(px(8.))
-							.child(div().flex_1().text_color(p.danger_fg).child(format!(
-								"{} couldn't be deleted",
-								plural(run.failed.len() as u64, "item")
-							)))
-							.child(
-								div()
-									.id("deletion-details")
-									.flex_none()
-									.cursor_pointer()
-									.font_weight(FontWeight::MEDIUM)
-									.underline()
-									.child(if run.details {
-										"Hide details"
-									} else {
-										"Show details"
-									})
-									.on_click(cx.listener(|this, _, _, cx| {
-										if let Some(run) = &mut this.deletion {
-											run.details = !run.details;
-										}
-										cx.notify();
-									})),
-							),
-					)
-				})
-				.when(run.details && !run.failed.is_empty(), |this| {
-					this.child(
-						div()
-							.id("deletion-failures")
-							.mt(px(8.))
-							.max_h(px(160.))
-							.overflow_y_scroll()
-							.px(px(10.))
-							.rounded(px(6.))
-							.border_1()
-							.border_color(p.danger_border)
-							.bg(p.danger_bg)
-							.children(failures),
-					)
-					.child(
-						div().mt(px(10.)).flex().justify_end().child(
-							button("deletion-retry", "Try again", ButtonKind::Default, true, &p)
-								.on_click(cx.listener(|this, _, window, cx| {
-									this.delete_failed(window, cx)
-								})),
-						),
-					)
-				})
+				.child(badge(readable_size(self.store.cleanup_size()))),
 		};
-
-		Some(self.notice(lead, title, action, body, cx))
+		pill.into_any_element()
 	}
 
-	// A notification in the window's bottom-right corner: what leads it (a
-	// spinner, a tick), its title with a button at the end, and the rest
-	// under that.
-	fn notice(
+	// The card: what it's about at the top with its buttons, and the rest
+	// under that. Whatever's dropped on it is queued.
+	fn card(
 		&self,
-		lead: AnyElement,
 		title: String,
-		action: Option<Stateful<Div>>,
+		actions: Vec<AnyElement>,
 		body: Div,
 		cx: &mut Context<Self>,
 	) -> AnyElement {
 		let p = self.palette;
-		let notice = div()
-			.id("cleanup-notice")
+		let meter = p.meter;
+		div()
+			.id("cleanup")
 			.absolute()
 			.bottom(px(14.))
-			// Beside the cleanup panel, not over it.
-			.right(px(14. + if self.cleanup_open { PANEL_WIDTH } else { 0. }))
-			.w(px(NOTICE_WIDTH))
+			.right(px(14.))
+			.w(px(CARD_WIDTH))
 			.occlude()
 			.flex()
-			.items_start()
-			.gap(px(10.))
-			.pl(px(14.))
-			.pr(px(12.))
-			.py(px(12.))
-			.rounded(px(10.))
+			.flex_col()
+			.rounded(px(12.))
 			.bg(p.background)
 			.border_1()
 			.border_color(p.line)
 			.shadow_lg()
 			.text_size(px(12.))
+			.drag_over::<DraggedItems>(move |style, _, _, _| style.border_color(meter))
+			.on_drop(cx.listener(|this, dragged: &DraggedItems, _, cx| {
+				this.move_to_cleanup(dragged.0.clone(), cx)
+			}))
+			// The pointer on it keeps the word on how a deletion went from
+			// going away.
 			.on_hover(cx.listener(|this, over: &bool, _, _| {
 				if let Some(run) = &mut this.deletion {
 					run.hovered = *over;
 				}
 			}))
-			.child(div().flex_none().mt(px(1.)).child(lead))
 			.child(
 				div()
-					.flex_1()
-					.min_w_0()
+					.flex()
+					.items_center()
+					.gap(px(4.))
+					.h(px(34.))
+					.pl(px(16.))
+					.pr(px(8.))
 					.child(
 						div()
-							.flex()
-							.items_center()
-							.gap(px(8.))
-							.h(px(20.))
-							.child(
-								div()
-									.flex_1()
-									.min_w_0()
-									.truncate()
-									.text_size(px(13.))
-									.font_weight(FontWeight::SEMIBOLD)
-									.child(title),
-							)
-							.children(action),
+							.flex_1()
+							.min_w_0()
+							.truncate()
+							.text_size(px(10.))
+							.font_weight(FontWeight::SEMIBOLD)
+							.text_color(p.muted)
+							.child(title),
 					)
-					.child(body),
-			);
-		notice.into_any_element()
+					.children(actions),
+			)
+			.child(body)
+			.into_any_element()
 	}
 
-	// Asks before anything goes, and how it should. It's in the corner like
-	// what follows it, and holds nothing up: what would go is what's listed
-	// in the cleanup panel, which is what it was asked from.
-	fn render_confirmation(&self, cx: &mut Context<Self>) -> AnyElement {
-		let p = self.palette;
-		let count = self.store.cleanup().len() as u64;
-		let cancel = icon_button("cleanup-cancel", "x", true, &p)
-			.size(px(20.))
-			.on_click(cx.listener(|this, _, _, cx| {
-				this.cleanup_confirming = false;
+	// The x at the card's top: `does` is what it does there.
+	fn card_x(
+		&self,
+		says: &'static str,
+		does: impl Fn(&mut Self) + 'static,
+		cx: &mut Context<Self>,
+	) -> AnyElement {
+		icon_button("cleanup-x", "x", true, &self.palette)
+			.size(px(22.))
+			.tooltip(tip(says))
+			.on_click(cx.listener(move |this, _, _, cx| {
+				does(this);
 				cx.notify();
-			}));
+			}))
+			.into_any_element()
+	}
+
+	// What's queued, largest first: what's worth the most to be rid of.
+	fn queued_by_size(&self) -> Vec<(String, u64)> {
+		let mut queued: Vec<(String, u64)> = self
+			.store
+			.cleanup()
+			.iter()
+			.map(|queued| (queued.item.path.clone(), queued.item.size))
+			.collect();
+		queued.sort_by_key(|(_, size)| std::cmp::Reverse(*size));
+		queued
+	}
+
+	// How much is queued, and what share of its disk that is.
+	fn queued_total(&self, queued: &[(String, u64)]) -> Div {
+		let size: u64 = queued.iter().map(|(_, size)| size).sum();
+		let share = self
+			.disk_of(queued.iter().map(|(path, _)| path.as_str()))
+			.filter(|(_, usage)| usage.total > 0)
+			.map(|(name, usage)| {
+				format!("{:.1}% of {name}", size as f64 / usage.total as f64 * 100.)
+			});
+		total(
+			readable_size(size),
+			[
+				plural(queued.len() as u64, "item"),
+				share.unwrap_or_default(),
+			],
+			&self.palette,
+		)
+	}
+
+	// The card open on the queue.
+	fn render_queue(&self, cx: &mut Context<Self>) -> AnyElement {
+		let p = self.palette;
+		let shut = self.card_x("Close", |this| this.cleanup_open = false, cx);
+		let queued = self.queued_by_size();
+		if queued.is_empty() {
+			let dragging = self.dragging_items && cx.has_active_drag();
+			let body = div().px(px(16.)).pb(px(16.)).child(
+				div()
+					.px(px(16.))
+					.py(px(22.))
+					.rounded(px(10.))
+					.border_1()
+					.border_dashed()
+					.border_color(p.line)
+					.flex()
+					.flex_col()
+					.items_center()
+					.gap(px(4.))
+					.child(
+						div()
+							.text_size(px(13.))
+							.font_weight(FontWeight::SEMIBOLD)
+							.child("Nothing to clean up yet"),
+					)
+					.child(div().text_center().text_color(p.muted).child(if dragging {
+						"Drop it here to move it to cleanup."
+					} else {
+						"Drag files and folders here, or right-click one and choose Move to \
+						 cleanup. Nothing is deleted until you say so."
+					})),
+			);
+			return self.card("CLEANUP".into(), vec![shut], body, cx);
+		}
+
+		let mut rows = Vec::new();
+		for (index, (path, size)) in queued.iter().enumerate() {
+			let (remove, menu) = (path.clone(), path.clone());
+			let fill = p.fill;
+			rows.push(
+				div()
+					.id(("queued", index))
+					.flex()
+					.items_center()
+					.gap(px(8.))
+					.pl(px(8.))
+					.pr(px(2.))
+					.h(px(26.))
+					.rounded(px(5.))
+					.hover(move |style| style.bg(fill))
+					.child(
+						div()
+							.flex_none()
+							.size(px(8.))
+							.rounded(px(2.))
+							.bg(queued_color(path, &p)),
+					)
+					.child(
+						div()
+							.flex_1()
+							.min_w_0()
+							.truncate()
+							.child(basename(path).to_string()),
+					)
+					.child(
+						div()
+							.flex_none()
+							.text_size(px(11.))
+							.text_color(p.muted)
+							.child(readable_size(*size)),
+					)
+					.child(
+						icon_button(("unqueue", index), "x", true, &p)
+							.size(px(20.))
+							.on_click(cx.listener(move |this, _, _, cx| {
+								this.store.remove_from_cleanup(&remove);
+								cx.notify();
+							})),
+					)
+					.on_mouse_down(
+						MouseButton::Right,
+						cx.listener(move |this, event: &MouseDownEvent, _, cx| {
+							this.show_popup(event.position, queued_menu(&menu), cx)
+						}),
+					),
+			);
+		}
+		let deleting = self.deleting();
 		let body = div()
-			.child(div().mt(px(2.)).text_color(p.muted).child(format!(
-				"{} in all. Deleting permanently frees the space right away and can't be \
-				 undone; the Trash keeps it until it's emptied.",
-				readable_size(self.store.cleanup_size())
-			)))
+			.child(self.queued_total(&queued))
+			.child(reclaim_bar(&queued, None, &p))
 			.child(
 				div()
-					.mt(px(10.))
-					.flex()
-					.justify_end()
-					.gap(px(6.))
+					.id("cleanup-items")
+					.mt(px(8.))
+					.px(px(8.))
+					.max_h(px(160.))
+					.overflow_y_scroll()
+					.children(rows),
+			)
+			.child(
+				footer(&p)
+					.child(
+						button("cleanup-clear", "Clear", ButtonKind::Default, true, &p).on_click(
+							cx.listener(|this, _, _, cx| {
+								this.store.clear_cleanup();
+								cx.notify();
+							}),
+						),
+					)
+					.child(
+						// One deletion at a time.
+						button("cleanup-delete", "Delete…", ButtonKind::Primary, true, &p)
+							.when(deleting, |this| this.opacity(0.5).cursor_default())
+							.on_click(cx.listener(|this, _, _, cx| {
+								if !this.deleting() {
+									this.cleanup_confirming = true;
+									cx.notify();
+								}
+							})),
+					),
+			);
+		self.card("YOU'LL RECLAIM".into(), vec![shut], body, cx)
+	}
+
+	// The card asking before anything goes, and how it should: what there
+	// is, and what the disk would look like without it.
+	fn render_confirmation(&self, cx: &mut Context<Self>) -> AnyElement {
+		let p = self.palette;
+		let queued = self.queued_by_size();
+		let size: u64 = queued.iter().map(|(_, size)| size).sum();
+		let back = self.card_x(
+			"Back to the queue",
+			|this| this.cleanup_confirming = false,
+			cx,
+		);
+		let disk = self.disk_of(queued.iter().map(|(path, _)| path.as_str()));
+		let body = div()
+			.child(self.queued_total(&queued))
+			.child(reclaim_bar(&queued, None, &p))
+			.children(disk.map(|(_, usage)| disk_bar(&usage, size, true, &p)))
+			.child(div().px(px(16.)).pt(px(10.)).text_color(p.muted).child(
+				"Deleting permanently frees the space right away and can't be undone. The \
+				 Trash keeps it until it's emptied.",
+			))
+			.child(
+				footer(&p)
 					.child(
 						button(
 							"cleanup-trash",
@@ -799,12 +686,367 @@ impl Workspace {
 						})),
 					),
 			);
-		self.notice(
-			icon("trash", 16., p.muted).into_any_element(),
-			format!("Delete {}?", plural(count, "item")),
-			Some(cancel),
-			body,
-			cx,
-		)
+		let title = format!(
+			"DELETE {}?",
+			plural(queued.len() as u64, "item").to_uppercase()
+		);
+		self.card(title, vec![back], body, cx)
 	}
+
+	// The card while things are deleted: the total counts up, and the bar
+	// fills in an item at a time.
+	fn render_deleting(&self, run: &Deletion, cx: &mut Context<Self>) -> AnyElement {
+		let p = self.palette;
+		let dealt_with = run.gone.len() + run.failed.len();
+		let left = run.items.len() - dealt_with;
+		let mut actions = Vec::new();
+		// Stopping is between one and the next, so there's nothing to stop
+		// on the last.
+		if !run.stopping() && left > 1 {
+			actions.push(
+				button("cleanup-stop", "Stop", ButtonKind::Default, true, &p)
+					.h(px(22.))
+					.mr(px(4.))
+					.on_click(cx.listener(|this, _, _, cx| {
+						if let Some(run) = &this.deletion {
+							run.stop.store(true, Ordering::Relaxed);
+						}
+						cx.notify();
+					}))
+					.into_any_element(),
+			);
+		}
+		actions.push(self.card_x("Close", |this| this.cleanup_open = false, cx));
+		let body = div()
+			.child(total(
+				readable_size(run.freed),
+				[
+					format!("of {}", readable_size(run.size())),
+					format!("{dealt_with} of {}", plural(run.items.len() as u64, "item")),
+				],
+				&p,
+			))
+			.child(reclaim_bar(&run.items, Some(&run.gone), &p))
+			.child(
+				div()
+					.flex()
+					.items_center()
+					.gap(px(8.))
+					.px(px(16.))
+					.pt(px(10.))
+					.pb(px(14.))
+					.child(spinner("cleanup-spinner", 14., p.muted))
+					.child(
+						div()
+							.flex_1()
+							.min_w_0()
+							.h(px(15.))
+							.truncate()
+							.text_size(px(11.))
+							.line_height(px(15.))
+							.text_color(p.muted)
+							.children(run.current.clone()),
+					),
+			);
+		let title = match run.mode {
+			_ if run.stopping() => "STOPPING",
+			DeleteMode::Delete => "RECLAIMING",
+			DeleteMode::Trash => "MOVING TO THE TRASH",
+		};
+		self.card(title.into(), actions, body, cx)
+	}
+
+	// The card once the deleting's done: what was reclaimed and what the
+	// disk has now, or else what's still there and why.
+	fn render_deleted(&self, run: &Deletion, cx: &mut Context<Self>) -> AnyElement {
+		let p = self.palette;
+		let trash = run.mode == DeleteMode::Trash;
+		let (count, deleted) = (run.items.len(), run.gone.len());
+		// Not deleted: what failed, and what it was stopped before.
+		let left = count - deleted;
+		let dismiss = self.card_x("Dismiss", |this| this.deletion = None, cx);
+		let title = match (deleted, trash) {
+			(0, _) => "NOTHING WAS DELETED",
+			(_, true) => "MOVED TO THE TRASH",
+			(_, false) => "RECLAIMED",
+		};
+
+		if left == 0 {
+			let says = match (&run.disk, trash) {
+				(_, true) => format!(
+					"{} moved. Empty the Trash to reclaim the space.",
+					plural(deleted as u64, "item")
+				),
+				(Some((name, usage)), false) => format!(
+					"{} deleted. {name} now has {} free.",
+					plural(deleted as u64, "item"),
+					readable_size(usage.available + run.freed)
+				),
+				(None, false) => format!("{} deleted.", plural(deleted as u64, "item")),
+			};
+			let body = div()
+				.child(
+					div()
+						.flex()
+						.items_center()
+						.gap(px(10.))
+						.px(px(16.))
+						.pt(px(2.))
+						.child(
+							div()
+								.flex()
+								.flex_none()
+								.items_center()
+								.justify_center()
+								.size(px(28.))
+								.rounded_full()
+								.bg(p.default)
+								.child(icon("check", 16., p.background)),
+						)
+						.child(
+							div()
+								.text_size(px(28.))
+								.line_height(px(32.))
+								.font_weight(FontWeight::SEMIBOLD)
+								.child(readable_size(run.freed)),
+						),
+				)
+				.child(div().px(px(16.)).pt(px(6.)).text_color(p.muted).child(says))
+				.children(
+					run.disk
+						.as_ref()
+						.map(|(_, usage)| disk_bar(usage, run.freed, trash, &p)),
+				)
+				.child(div().h(px(14.)));
+			return self.card(title.into(), vec![dismiss], body, cx);
+		}
+
+		let failures = run.failed.iter().map(|(path, why)| {
+			div()
+				.py(px(5.))
+				.child(div().truncate().child(basename(path).to_string()))
+				.child(
+					div()
+						.text_size(px(11.))
+						.line_height(px(15.))
+						.text_color(p.danger_fg)
+						.child(why.clone()),
+				)
+		});
+		let body = div()
+			.child(total(
+				readable_size(run.freed),
+				[
+					format!("of {}", readable_size(run.size())),
+					format!("{deleted} of {}", plural(count as u64, "item")),
+				],
+				&p,
+			))
+			.when(!run.failed.is_empty(), |this| {
+				this.child(
+					div()
+						.id("cleanup-failures")
+						.mx(px(16.))
+						.mt(px(10.))
+						.max_h(px(140.))
+						.overflow_y_scroll()
+						.px(px(10.))
+						.rounded(px(6.))
+						.border_1()
+						.border_color(p.danger_border)
+						.bg(p.danger_bg)
+						.children(failures),
+				)
+			})
+			.child(
+				div()
+					.px(px(16.))
+					.pt(px(8.))
+					.text_color(p.muted)
+					.child(match left {
+						1 => "This one is still in cleanup.".to_string(),
+						left => format!("These {left} are still in cleanup."),
+					}),
+			)
+			.child(
+				footer(&p)
+					.child(
+						button(
+							"cleanup-back",
+							"Back to the queue",
+							ButtonKind::Default,
+							true,
+							&p,
+						)
+						.on_click(cx.listener(|this, _, _, cx| {
+							this.deletion = None;
+							this.cleanup_open = true;
+							cx.notify();
+						})),
+					)
+					.when(!run.failed.is_empty(), |this| {
+						this.child(
+							button("cleanup-retry", "Try again", ButtonKind::Primary, true, &p)
+								.on_click(cx.listener(|this, _, window, cx| {
+									this.delete_failed(window, cx)
+								})),
+						)
+					}),
+			);
+		self.card(title.into(), vec![dismiss], body, cx)
+	}
+}
+
+// What turns while something's under way.
+fn spinner(id: &'static str, size: f32, color: Hsla) -> AnyElement {
+	icon("loader-circle", size, color)
+		.with_animation(
+			id,
+			Animation::new(Duration::from_secs(1)).repeat(),
+			|icon, t| icon.with_transformation(Transformation::rotate(percentage(t))),
+		)
+		.into_any_element()
+}
+
+// The card's big number, and what it's a number of beside it.
+fn total(size: String, beside: [String; 2], p: &Palette) -> Div {
+	let [first, second] = beside;
+	div()
+		.flex()
+		.items_end()
+		.gap(px(10.))
+		.px(px(16.))
+		.child(
+			div()
+				.flex_none()
+				.text_size(px(28.))
+				.line_height(px(32.))
+				.font_weight(FontWeight::SEMIBOLD)
+				.child(size),
+		)
+		.child(
+			div()
+				.flex_1()
+				.min_w_0()
+				.pb(px(2.))
+				.flex()
+				.flex_col()
+				.items_end()
+				.text_size(px(11.))
+				.line_height(px(15.))
+				.text_color(p.muted)
+				.child(div().truncate().child(first))
+				.child(div().max_w_full().truncate().child(second)),
+		)
+}
+
+// What's queued as a bar, a segment each by size, in the colors their rows
+// have. While they're deleted (`gone` is which have been), those that are
+// gone are solid and the rest wait, pale.
+fn reclaim_bar(items: &[(String, u64)], gone: Option<&[String]>, p: &Palette) -> Div {
+	let size: u64 = items.iter().map(|(_, size)| size).sum();
+	let segment = |share: u64, color: Hsla| {
+		div()
+			.h_full()
+			.w(relative(share as f32 / size.max(1) as f32))
+			.border_r_1()
+			.border_color(p.background)
+			.bg(color)
+	};
+	let colored = items.iter().take(SEGMENTS).map(|(path, share)| {
+		let mut color = queued_color(path, p);
+		if let Some(gone) = gone {
+			if gone.contains(path) {
+				color = p.default;
+			} else {
+				color.a = 0.45;
+			}
+		}
+		segment(*share, color)
+	});
+	// Past that many, they'd be slivers: the rest are one.
+	let rest: u64 = items.iter().skip(SEGMENTS).map(|(_, size)| size).sum();
+	div()
+		.mx(px(16.))
+		.mt(px(10.))
+		.h(px(8.))
+		.flex()
+		.rounded(px(4.))
+		.overflow_hidden()
+		.bg(p.fill_strong)
+		.children(colored)
+		.when(rest > 0, |this| this.child(segment(rest, p.faint)))
+}
+
+// The disk, with what cleanup takes off it (`reclaim`) between what's used
+// and what's free. `pending` is while it's still there: before deleting, or
+// in the Trash.
+fn disk_bar(usage: &Usage, reclaim: u64, pending: bool, p: &Palette) -> Div {
+	let whole = usage.total.max(1) as f32;
+	let used = usage.used.saturating_sub(reclaim);
+	let free = usage.available + reclaim;
+	let mut color = reclaim_color();
+	if pending {
+		color.a = 0.5;
+	}
+	div()
+		.mx(px(16.))
+		.mt(px(12.))
+		.px(px(12.))
+		.py(px(10.))
+		.rounded(px(8.))
+		.border_1()
+		.border_color(p.line_soft)
+		.child(
+			div()
+				.h(px(6.))
+				.flex()
+				.rounded(px(3.))
+				.overflow_hidden()
+				.bg(p.fill_strong)
+				.child(
+					div()
+						.h_full()
+						.w(relative(used as f32 / whole))
+						.bg(p.default),
+				)
+				.child(div().h_full().w(relative(reclaim as f32 / whole)).bg(color)),
+		)
+		.child(
+			div()
+				.mt(px(6.))
+				.flex()
+				.justify_between()
+				.gap(px(8.))
+				.text_size(px(10.))
+				.line_height(px(14.))
+				.text_color(p.muted)
+				.child(format!("used {}", readable_size(used)))
+				.child(format!("− {}", readable_size(reclaim)))
+				.child(if pending {
+					format!(
+						"free {} → {}",
+						readable_size(usage.available),
+						readable_size(free)
+					)
+				} else {
+					format!("free {}", readable_size(free))
+				}),
+		)
+}
+
+// The buttons along the card's bottom.
+fn footer(p: &Palette) -> Div {
+	div()
+		.mt(px(12.))
+		.flex()
+		.items_center()
+		.justify_end()
+		.gap(px(6.))
+		.px(px(12.))
+		.py(px(10.))
+		.border_t_1()
+		.border_color(p.line_soft)
+		.bg(p.fill)
+		.rounded_b(px(11.))
 }

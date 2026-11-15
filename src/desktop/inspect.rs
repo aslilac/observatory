@@ -76,7 +76,6 @@ impl Workspace {
 
 		let mut chips = Vec::new();
 		chips.extend(self.render_issues_chip(scan, cx));
-		chips.push(self.render_cleanup_chip(cx));
 		let toolbar = self.render_toolbar(None, chips, window, cx);
 
 		let find_bar = self.render_find_bar(finding, cx);

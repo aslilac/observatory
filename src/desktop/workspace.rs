@@ -97,6 +97,8 @@ pub struct Workspace {
 
 	// What's open over the window.
 	pub cleanup_open: bool,
+	// Files or folders of a scan are being dragged.
+	pub dragging_items: bool,
 	pub cleanup_confirming: bool,
 	pub deletion: Option<Deletion>,
 	pub issues: Option<IssuesModal>,
@@ -232,6 +234,7 @@ impl Workspace {
 			progress: None,
 			polling: None,
 			cleanup_open: false,
+			dragging_items: false,
 			cleanup_confirming: false,
 			deletion: None,
 			issues: None,

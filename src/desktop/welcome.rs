@@ -128,7 +128,7 @@ impl Workspace {
 			);
 		}
 
-		let chips = vec![self.render_cleanup_chip(cx)];
+		let chips = Vec::new();
 		div()
 			.flex()
 			.flex_col()

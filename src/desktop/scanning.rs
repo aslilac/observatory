@@ -28,7 +28,7 @@ impl Workspace {
 				this.go_home(window, cx);
 			}))
 			.into_any_element();
-		let chips = vec![self.render_cleanup_chip(cx)];
+		let chips = Vec::new();
 
 		let count = self
 			.progress
@@ -161,7 +161,7 @@ impl Workspace {
 			),
 		};
 		let path = scan.path.clone();
-		let chips = vec![self.render_cleanup_chip(cx)];
+		let chips = Vec::new();
 		div()
 			.flex()
 			.flex_col()
