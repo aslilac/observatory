@@ -3,6 +3,7 @@
 use crate::scans::Scans;
 use std::io;
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DeleteMode {
@@ -19,23 +20,53 @@ pub struct DeleteResult {
 	pub failed: Vec<(String, String)>,
 }
 
+/// What's said of a deletion while it goes, a path at a time.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Step {
+	/// This one's next.
+	Starting(String),
+	/// It's gone, and out of the scans' trees.
+	Deleted(String),
+	/// It's still there, and why.
+	Failed(String, String),
+}
+
 // Delete each path for good, or move it to the system Trash. Best-effort and
 // per-path: one bad path doesn't abort the rest. Something that's already
 // gone counts as deleted, so it leaves the queue. What's gone is taken out of
-// every scan's tree too, so the views stop showing what no longer exists.
+// every scan's tree as it goes, so the views stop showing what no longer
+// exists.
+//
+// `tell` hears of each path before and after. Once `stop` is set, no more
+// are started: the one in hand is finished (a folder is never left half
+// deleted on purpose), and the rest are in neither list of the result.
 //
 // Deleting a big folder takes a while: not something to call where a frame
 // is waiting.
-pub fn delete_files(scans: &Scans, paths: &[String], mode: DeleteMode) -> DeleteResult {
+pub fn delete_files(
+	scans: &Scans,
+	paths: &[String],
+	mode: DeleteMode,
+	stop: &AtomicBool,
+	mut tell: impl FnMut(Step),
+) -> DeleteResult {
 	let mut result = DeleteResult::default();
 	for target in paths {
-		match delete(Path::new(target), mode) {
-			Ok(()) => result.deleted.push(target.clone()),
-			Err(error) => result.failed.push((target.clone(), error)),
+		if stop.load(Ordering::Relaxed) {
+			break;
 		}
-	}
-	for target in &result.deleted {
-		scans.remove_path(target);
+		tell(Step::Starting(target.clone()));
+		match delete(Path::new(target), mode) {
+			Ok(()) => {
+				scans.remove_path(target);
+				result.deleted.push(target.clone());
+				tell(Step::Deleted(target.clone()));
+			}
+			Err(error) => {
+				result.failed.push((target.clone(), error.clone()));
+				tell(Step::Failed(target.clone(), error));
+			}
+		}
 	}
 	result
 }
@@ -86,6 +117,7 @@ mod tests {
 		let path = |name: &str| dir.join(name).to_string_lossy().into_owned();
 
 		let scans = Scans::new(|_| {});
+		let mut steps = Vec::new();
 		let result = delete_files(
 			&scans,
 			&[
@@ -96,7 +128,14 @@ mod tests {
 				"relative/path".to_string(),
 			],
 			DeleteMode::Delete,
+			&AtomicBool::new(false),
+			|step| steps.push(step),
 		);
+		// Each is announced, then said to be gone or not.
+		assert_eq!(steps.len(), 10);
+		assert_eq!(steps[0], Step::Starting(path("folder")));
+		assert_eq!(steps[1], Step::Deleted(path("folder")));
+		assert!(matches!(&steps[7], Step::Failed(path, _) if path == "/"));
 		assert_eq!(
 			result.deleted,
 			[path("folder"), path("file"), path("never-was")]
@@ -108,6 +147,35 @@ mod tests {
 			.collect();
 		assert_eq!(failed, ["/", "relative/path"]);
 		assert!(!dir.join("folder").exists() && !dir.join("file").exists());
+		let _ = std::fs::remove_dir_all(&dir);
+	}
+
+	#[test]
+	fn stops_before_the_next_one() {
+		let dir = std::env::temp_dir().join(format!("observatory-stop-{}", std::process::id()));
+		std::fs::create_dir_all(&dir).unwrap();
+		for name in ["one", "two", "three"] {
+			std::fs::write(dir.join(name), "x").unwrap();
+		}
+		let path = |name: &str| dir.join(name).to_string_lossy().into_owned();
+
+		let scans = Scans::new(|_| {});
+		let stop = AtomicBool::new(false);
+		let result = delete_files(
+			&scans,
+			&[path("one"), path("two"), path("three")],
+			DeleteMode::Delete,
+			&stop,
+			// Asked to stop while the first is in hand.
+			|step| {
+				if matches!(step, Step::Starting(_)) {
+					stop.store(true, Ordering::Relaxed);
+				}
+			},
+		);
+		assert_eq!(result.deleted, [path("one")]);
+		assert!(result.failed.is_empty());
+		assert!(dir.join("two").exists() && dir.join("three").exists());
 		let _ = std::fs::remove_dir_all(&dir);
 	}
 }

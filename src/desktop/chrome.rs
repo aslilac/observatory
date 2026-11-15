@@ -69,7 +69,8 @@ impl Render for Workspace {
 					.flex()
 					.flex_col()
 					.child(screen)
-					.children(self.render_cleanup_panel(cx)),
+					.children(self.render_cleanup_panel(cx))
+					.children(self.render_deletion(cx)),
 			)
 			.children(self.render_issues(cx))
 			.children(self.render_cleanup_modal(cx))

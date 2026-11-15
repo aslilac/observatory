@@ -3,7 +3,7 @@
 // Workspace` blocks in the files named for them; what's here is the state
 // and what changes it.
 
-use crate::cleanup::CleanupModal;
+use crate::cleanup::Deletion;
 use crate::issues::IssuesModal;
 use crate::palette::Palette;
 use crate::popup::Popup;
@@ -108,7 +108,8 @@ pub struct Workspace {
 
 	// What's open over the window.
 	pub cleanup_open: bool,
-	pub cleanup_modal: Option<CleanupModal>,
+	pub cleanup_confirming: bool,
+	pub deletion: Option<Deletion>,
 	pub issues: Option<IssuesModal>,
 	pub ask: Option<Ask>,
 	pub popup: Option<Popup>,
@@ -245,7 +246,8 @@ impl Workspace {
 			progress: None,
 			polling: None,
 			cleanup_open: false,
-			cleanup_modal: None,
+			cleanup_confirming: false,
+			deletion: None,
 			issues: None,
 			ask: None,
 			popup: None,
@@ -872,10 +874,8 @@ impl Workspace {
 	/// what's found, then what's checked.
 	pub fn escape(&mut self, window: &mut Window, cx: &mut Context<Self>) {
 		if self.popup.take().is_some() || self.app_menu_open.take().is_some() {
-		} else if let Some(modal) = &self.cleanup_modal {
-			if !modal.busy() {
-				self.cleanup_modal = None;
-			}
+		} else if self.cleanup_confirming {
+			self.cleanup_confirming = false;
 		} else if self.ask.take().is_some() || self.issues.take().is_some() {
 		} else if self.suggesting {
 			window.focus(&self.focus);
