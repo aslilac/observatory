@@ -8,8 +8,9 @@ use crate::popup::item_menu;
 use crate::shapes::{circle, filled};
 use crate::workspace::{Hover, Workspace};
 use gpui::{
-	AnyElement, Bounds, ClickEvent, Context, Edges, FontWeight, Hsla, MouseButton, MouseDownEvent,
-	MouseMoveEvent, Pixels, Point, anchored, canvas, deferred, div, point, prelude::*, px,
+	AnyElement, Bounds, ClickEvent, Context, Edges, Font, FontWeight, Hsla, MouseButton,
+	MouseDownEvent, MouseMoveEvent, Pixels, Point, SharedString, TextRun, anchored, canvas,
+	deferred, div, point, prelude::*, px,
 };
 use observatory_core::color::{Color, Kind};
 use observatory_core::format::readable_size;
@@ -98,14 +99,28 @@ impl Workspace {
 			.and_then(|wedge| wedge.item.as_ref())
 			.map(|item| self.dragged_with(item));
 		let tooltip = self.render_sunburst_tooltip();
-		let font_size = (17.0 * placed(self.sunburst_bounds).1).clamp(11., 22.);
+		// How big the folder is, in the middle. It's painted with the wedges,
+		// not laid out over them, so it's sized by the sunburst it's in
+		// rather than by where the last frame's was.
+		let label: SharedString = readable_size(size).into();
+		let label_run = TextRun {
+			len: label.len(),
+			font: Font {
+				weight: FontWeight::SEMIBOLD,
+				..crate::fonts::inter()
+			},
+			color: p.background,
+			background_color: None,
+			underline: None,
+			strikethrough: None,
+		};
 
 		let workspace = cx.entity();
 		let center_color = p.default;
 		let painting = canvas(
 			// Where it's drawn is where the pointer is looked up.
 			move |bounds, _, cx| workspace.update(cx, |this, _| this.sunburst_bounds = bounds),
-			move |bounds, _, window, _| {
+			move |bounds, _, window, cx| {
 				let (center, scale) = placed(bounds);
 				if scale <= 0. {
 					return;
@@ -127,6 +142,16 @@ impl Workspace {
 				if let Some(path) = filled(&[middle]) {
 					window.paint_path(path, center_color);
 				}
+				let font_size = px((17.0 * scale).clamp(11., 22.));
+				let line = window.text_system().shape_line(
+					label.clone(),
+					font_size,
+					std::slice::from_ref(&label_run),
+					None,
+				);
+				let line_height = font_size * 1.2;
+				let origin = point(center.x - line.width / 2., center.y - line_height / 2.);
+				let _ = line.paint(origin, line_height, window, cx);
 				if animating || hovered.is_some() {
 					window.request_animation_frame();
 				}
@@ -143,18 +168,6 @@ impl Workspace {
 			.min_h_0()
 			.when(clickable, |this| this.cursor_pointer())
 			.child(painting)
-			.child(
-				div()
-					.absolute()
-					.size_full()
-					.flex()
-					.items_center()
-					.justify_center()
-					.text_size(px(font_size))
-					.font_weight(FontWeight::SEMIBOLD)
-					.text_color(p.background)
-					.child(readable_size(size)),
-			)
 			.children(tooltip)
 			.on_mouse_move(cx.listener(|this, event: &MouseMoveEvent, _, cx| {
 				let hover = this.sunburst_hit(event.position).map(|hit| Hover {
