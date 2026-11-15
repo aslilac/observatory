@@ -16,6 +16,7 @@ pub mod navigation;
 pub mod paths;
 pub mod reserved;
 pub mod scans;
+pub mod sky;
 pub mod store;
 pub mod sunburst;
 pub mod tree;

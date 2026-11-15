@@ -1,6 +1,7 @@
 // Observatory, drawn with gpui. Everything it knows about disks, scans, and
 // the sunburst's shape is `observatory-core`'s; what's here is the window.
 
+mod about;
 mod assets;
 mod chrome;
 mod cleanup;
@@ -75,13 +76,17 @@ fn main() {
 				.expect("the window couldn't be opened");
 			menus::register(window, cx);
 
-			// There's one window: the app goes when it does.
-			cx.on_window_closed(|cx| {
-				if cx.windows().is_empty() {
+			// The app goes when its window does, whether or not the About
+			// window is still up.
+			cx.on_window_closed(move |cx| {
+				if window.update(cx, |_, _, _| ()).is_err() {
 					cx.quit();
 				}
 			})
 			.detach();
+			if std::env::args().any(|arg| arg == "--about") {
+				about::open(cx);
+			}
 
 			window
 				.update(cx, |workspace, window, cx| match start() {

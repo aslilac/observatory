@@ -3738,7 +3738,9 @@ dependencies = [
  "anyhow",
  "futures",
  "gpui",
+ "image",
  "observatory-core",
+ "smallvec",
  "unicode-segmentation",
 ]
 

@@ -48,10 +48,20 @@ icons![
 	"x",
 ];
 
+// The render of the observatory across the bottom of the About window, the
+// same crop the Electron app's has (`site/scene/about.py` makes it).
+const SCENE: (&str, &[u8]) = (
+	"about/scene.webp",
+	include_bytes!("../../build-resources/about/scene.webp"),
+);
+
 pub struct Assets;
 
 impl AssetSource for Assets {
 	fn load(&self, path: &str) -> Result<Option<Cow<'static, [u8]>>> {
+		if path == SCENE.0 {
+			return Ok(Some(Cow::Borrowed(SCENE.1)));
+		}
 		Ok(ICONS
 			.iter()
 			.find(|(name, _)| *name == path)

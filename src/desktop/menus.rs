@@ -4,8 +4,7 @@
 
 use crate::workspace::Workspace;
 use gpui::{
-	Action, App, ClipboardItem, Context, KeyBinding, Menu, MenuItem, PromptLevel, Window,
-	WindowHandle, actions,
+	Action, App, ClipboardItem, Context, KeyBinding, Menu, MenuItem, Window, WindowHandle, actions,
 };
 use observatory_core::paths::basename;
 use observatory_core::scans::FAKE;
@@ -52,7 +51,7 @@ pub struct OpenRecent {
 	pub path: String,
 }
 
-const REPOSITORY: &str = "https://github.com/aslilac/observatory";
+pub const REPOSITORY: &str = "https://github.com/aslilac/observatory";
 
 pub const REVEAL: &str = if cfg!(target_os = "macos") {
 	"Reveal in Finder"
@@ -237,7 +236,6 @@ pub fn register(window: WindowHandle<Workspace>, cx: &mut App) {
 		};
 	}
 	handle![
-		About => on_about,
 		OpenFolder => on_open_folder,
 		OpenRecent => on_open_recent,
 		Rescan => on_rescan,
@@ -256,10 +254,18 @@ pub fn register(window: WindowHandle<Workspace>, cx: &mut App) {
 		SuggestPick => on_suggest_pick,
 		PastePath => on_paste_path,
 		LoadDemoDisk => on_load_demo_disk,
-		Minimize => on_minimize,
-		Zoom => on_zoom,
-		CloseWindow => on_close_window,
 	];
+	// The Window menu's are about whichever window is in front, which may be
+	// the About window.
+	fn in_front(cx: &mut App, act: impl FnOnce(&mut Window)) {
+		if let Some(window) = cx.active_window() {
+			window.update(cx, |_, window, _| act(window)).ok();
+		}
+	}
+	cx.on_action(|_: &Minimize, cx| in_front(cx, |window| window.minimize_window()));
+	cx.on_action(|_: &Zoom, cx| in_front(cx, |window| window.zoom_window()));
+	cx.on_action(|_: &CloseWindow, cx| in_front(cx, |window| window.remove_window()));
+	cx.on_action(|_: &About, cx| crate::about::open(cx));
 	cx.on_action(|_: &VisitGitHub, cx| cx.open_url(REPOSITORY));
 	cx.on_action(|_: &ReportIssue, cx| cx.open_url(&report_url()));
 	cx.on_action(|_: &Hide, cx| cx.hide());
@@ -268,8 +274,9 @@ pub fn register(window: WindowHandle<Workspace>, cx: &mut App) {
 	cx.on_action(|_: &Quit, cx| cx.quit());
 }
 
-/// What this copy is and what it's on, for the About box and a new issue.
-fn environment() -> Vec<(&'static str, String)> {
+/// What this copy is and what it's on, for the About window and a new issue.
+/// The version comes first.
+pub fn environment() -> Vec<(&'static str, String)> {
 	vec![
 		("Version", env!("CARGO_PKG_VERSION").to_string()),
 		("Build", "gpui".to_string()),
@@ -303,21 +310,6 @@ impl Workspace {
 			return None;
 		}
 		Some(self.path_of(root, &place.cursor))
-	}
-
-	fn on_about(&mut self, _: &About, window: &mut Window, cx: &mut Cx) {
-		let detail = environment()
-			.into_iter()
-			.map(|(label, value)| format!("{label}: {value}"))
-			.collect::<Vec<_>>()
-			.join("\n");
-		let _ = window.prompt(
-			PromptLevel::Info,
-			"Observatory",
-			Some(&format!("See where your disk space went.\n\n{detail}")),
-			&["OK"],
-			cx,
-		);
 	}
 
 	fn on_open_folder(&mut self, _: &OpenFolder, window: &mut Window, cx: &mut Cx) {
@@ -402,17 +394,5 @@ impl Workspace {
 
 	fn on_load_demo_disk(&mut self, _: &LoadDemoDisk, window: &mut Window, cx: &mut Cx) {
 		self.load_demo_disk(window, cx);
-	}
-
-	fn on_minimize(&mut self, _: &Minimize, window: &mut Window, _: &mut Cx) {
-		window.minimize_window();
-	}
-
-	fn on_zoom(&mut self, _: &Zoom, window: &mut Window, _: &mut Cx) {
-		window.zoom_window();
-	}
-
-	fn on_close_window(&mut self, _: &CloseWindow, window: &mut Window, _: &mut Cx) {
-		window.remove_window();
 	}
 }

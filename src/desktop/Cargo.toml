@@ -18,3 +18,6 @@ gpui = { version = "0.2.2", features = ["runtime_shaders"] }
 futures = "0.3"
 unicode-segmentation = "1"
 anyhow = "1"
+# What gpui takes a picture as: the About window's sky is one.
+image = { version = "0.25", default-features = false }
+smallvec = "1"

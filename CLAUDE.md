@@ -117,7 +117,9 @@ An experiment in doing without Electron: the same app as a native Rust one, draw
 
 Commands, from the repo root:
 
-- `cargo run -p observatory` — the app. `-- --demo` opens the fake disk, `-- --scan=<path>` (or just a path) scans a folder.
+- `cargo run -p observatory` — the app. `-- --demo` opens the fake disk, `-- --scan=<path>` (or just a path) scans a folder, and `-- --about` opens the About window too.
 - `cargo test` — covers core as well as the scanner.
 
-Not carried over: the starry About window (it's a native alert), auto-update, zoom, the perf flame graph, and the Inter font (it uses the system's). Off macOS the title bar draws the menus from `app_menus()` itself, as the Electron app does; that and Windows' restart as administrator haven't been built or run yet.
+The About window (`about.rs`) is the Electron one again, but gpui has no radial gradients and can't turn a picture, so its sky isn't layers a compositor moves: `observatory_core::sky` works the whole thing out a pixel at a time (the sunset's gradients, then each star and its trail by where the pixel is around the pole, added up where trails cross, fading into the horizon and behind the words), following `about.css` and `sky.ts` number for number, mulberry32 stars included. `Sky::new` does everything that doesn't turn once; `frame(turns, order)` is a picture of it, which the window asks for about ten times a second on a background thread and swaps in as an image under the scene (`build-resources/about/scene.webp`, compiled in) and the words. It reads where things fall on the render from the same `scene.json`. `cargo run --release -p observatory-core --example sky -- sky.bmp [turns]` writes a frame to look at.
+
+Not carried over: auto-update, zoom, the perf flame graph, and the Inter font (it uses the system's). Off macOS the title bar draws the menus from `app_menus()` itself, as the Electron app does; that and Windows' restart as administrator haven't been built or run yet.
