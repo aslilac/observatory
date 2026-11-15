@@ -1,0 +1,10 @@
+[tools]
+node = "24.22.1"
+pnpm = "12.15.0"
+
+# Only required for building the 3D assets
+python = "3.15.2"
+uv = "0.13.6"
+
+[settings]
+lockfile = true
