@@ -2,6 +2,7 @@
 // menu) or under a button (the sort picker, the title bar's menus). There's
 // one at a time, and it's the workspace's.
 
+use crate::chrome::TITLE_BAR_HEIGHT;
 use crate::controls::icon;
 use crate::menus::REVEAL;
 use crate::workspace::Workspace;
@@ -20,6 +21,7 @@ type Run = Rc<dyn Fn(&mut Workspace, &mut Window, &mut Context<Workspace>)>;
 // `app_menu_open` and `app_menu_hovered` know them: the menu bar's are counted
 // from 0, and the primary menu is the last number there is.
 pub const DEVELOPER_MENU: usize = usize::MAX - 1;
+// The least of them: anything under it is one of the menu bar's.
 pub const SORT_MENU: usize = usize::MAX - 2;
 
 pub enum PopupItem {
@@ -180,6 +182,33 @@ impl Workspace {
 					.child(self.render_menu(&popup.items, cx)),
 			)
 			.with_priority(3)
+			.into_any_element(),
+		)
+	}
+
+	/// What's behind an open menu, and in front of everything else: nothing
+	/// seen, but it keeps the pointer from what's under it, so nothing there
+	/// lights up as if a press would reach it (it wouldn't: a press outside
+	/// a menu only shuts it). Under one of the menu bar's menus it leaves the
+	/// title bar out, since the pointer going over another menu's name is
+	/// what switches to it.
+	pub fn render_menu_backdrop(&self) -> Option<AnyElement> {
+		let in_menu_bar = self.app_menu_open.is_some_and(|menu| menu < SORT_MENU);
+		if self.popup.is_none() && self.app_menu_open.is_none() {
+			return None;
+		}
+		let top = if in_menu_bar { TITLE_BAR_HEIGHT } else { 0. };
+		Some(
+			deferred(
+				div()
+					.absolute()
+					.top(px(top))
+					.bottom_0()
+					.left_0()
+					.right_0()
+					.occlude(),
+			)
+			.with_priority(2)
 			.into_any_element(),
 		)
 	}

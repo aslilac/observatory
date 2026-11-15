@@ -74,6 +74,7 @@ impl Render for Workspace {
 			)
 			.children(self.render_issues(cx))
 			.children(self.render_ask(cx))
+			.children(self.render_menu_backdrop())
 			.children(self.render_popup(cx));
 		// Where the app decorates its own window (Linux), the window's drawn
 		// inside its shadow, and the shadow is what it's resized by: a press
