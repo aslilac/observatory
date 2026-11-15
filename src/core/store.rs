@@ -26,6 +26,20 @@ pub struct CleanupItem {
 	#[serde(flatten)]
 	pub item: Item,
 	pub added_at: u64,
+	/// What color it was in the sunburst when it was queued, if that was
+	/// known, so it's the same color in the queue.
+	#[serde(default)]
+	pub tint: Option<Tint>,
+}
+
+/// Where something's color comes from in a sunburst: see
+/// `color::sunburst_color`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Tint {
+	/// In whole degrees, which is as near as anyone can see.
+	pub hue: u16,
+	/// How far below the scan's root its folder is.
+	pub depth: u16,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -147,13 +161,23 @@ impl Store {
 		is_within(path, &self.queued)
 	}
 
-	/// Queues whatever of `items` isn't already. Says whether any were.
-	pub fn add_to_cleanup(&mut self, items: impl IntoIterator<Item = Item>) -> bool {
+	/// Queues whatever of `items` isn't already, each with the color `tint`
+	/// says it has. Says whether any were.
+	pub fn add_to_cleanup(
+		&mut self,
+		items: impl IntoIterator<Item = Item>,
+		tint: impl Fn(&Item) -> Option<Tint>,
+	) -> bool {
 		let added_at = now_ms();
 		let before = self.queued.len();
 		for item in items {
 			if self.queued.insert(item.path.clone()) {
-				self.remembered.cleanup.push(CleanupItem { item, added_at });
+				let tint = tint(&item);
+				self.remembered.cleanup.push(CleanupItem {
+					item,
+					added_at,
+					tint,
+				});
 			}
 		}
 		let added = self.queued.len() > before;
@@ -203,8 +227,8 @@ mod tests {
 		store.push_recent("/a");
 		store.push_recent("/b");
 		store.push_recent("/a");
-		assert!(store.add_to_cleanup([item("/a/x", 5), item("/a/y", 7)]));
-		assert!(!store.add_to_cleanup([item("/a/x", 5)]));
+		assert!(store.add_to_cleanup([item("/a/x", 5), item("/a/y", 7)], |_| None));
+		assert!(!store.add_to_cleanup([item("/a/x", 5)], |_| None));
 
 		let store = Store::at(Some(file.clone()));
 		assert_eq!(store.dark(), Some(true));

@@ -7,6 +7,7 @@
 // can come from any thread: the walk runs on one of its own, and so does the
 // poll of the drives.
 
+use crate::color::hues_by_position;
 use crate::drives::{self, Drive};
 use crate::paths::parts_below;
 use crate::tree::{RenderTree, assemble};
@@ -176,6 +177,22 @@ impl Scans {
 		let tree = tree.read().unwrap_or_else(PoisonError::into_inner);
 		let slice = tree::render_slice(&tree, cursor)?;
 		Some(assemble(&slice, cursor, drive.as_ref(), &reserved))
+	}
+
+	/// Where `target`'s color comes from in the sunburst of the scan of
+	/// `path`: its hue, and how far below the scan's root its folder is (see
+	/// `color::sunburst_color`). None if it isn't in that scan.
+	pub fn tint(&self, path: &str, target: &str) -> Option<(f64, usize)> {
+		let mut folder = parts_below(path, target);
+		let name = folder.pop()?;
+		let tree = self.render_tree(path, &folder)?;
+		let at = tree.list.iter().position(|node| node.name == name)?;
+		let hues = hues_by_position(
+			tree.list.iter().map(|node| node.size),
+			tree.position,
+			tree.root_size,
+		);
+		Some((*hues.get(at)?, folder.len()))
 	}
 
 	pub fn errors(&self, path: &str) -> Arc<Vec<ScanError>> {
@@ -489,6 +506,14 @@ mod tests {
 		let a = scans.render_tree(&path, &["a".to_string()]).unwrap();
 		assert_eq!((a.capacity, a.root_capacity, a.list.len()), (20, 100, 1));
 		assert!(scans.render_tree(&path, &["b".to_string()]).is_none());
+
+		// `a` is the first two thirds of the disk, so its hue is a third of
+		// the way round, and it's in the root.
+		let (hue, depth) = scans.tint(&path, "fake://disk/a").unwrap();
+		assert!((hue - 120.0).abs() < 1e-9);
+		assert_eq!(depth, 0);
+		assert!(scans.tint(&path, "fake://disk/never-was").is_none());
+		assert!(scans.tint(&path, "/somewhere/else").is_none());
 	}
 
 	#[test]

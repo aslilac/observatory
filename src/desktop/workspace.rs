@@ -22,7 +22,7 @@ use observatory_core::navigation::{Navigation, Place};
 use observatory_core::paths::join_path;
 use observatory_core::reserved::{ReservedGroup, group_reserved};
 use observatory_core::scans::{Change, FAKE, Progress, ScanInfo, Scans, Status};
-use observatory_core::store::Store;
+use observatory_core::store::{Store, Tint};
 use observatory_core::sunburst::{Hit, LayoutInput, Sunburst, View, layout_wedges};
 use observatory_core::tree::{Item, RenderTree};
 use observatory_core::{Finder, Found, Query, Summary, access, color, fake_disk};
@@ -716,7 +716,16 @@ impl Workspace {
 	}
 
 	pub fn move_to_cleanup(&mut self, items: Vec<Item>, cx: &mut Context<Self>) {
-		self.store.add_to_cleanup(items);
+		// Each keeps the color it has in the sunburst it's taken from.
+		let scans = &self.scans;
+		let root = self.shown.as_ref().map(|(root, ..)| root.as_str());
+		self.store.add_to_cleanup(items, |item| {
+			let (hue, depth) = scans.tint(root?, &item.path)?;
+			Some(Tint {
+				hue: hue.rem_euclid(360.).round() as u16,
+				depth: depth.min(u16::MAX as usize) as u16,
+			})
+		});
 		cx.notify();
 	}
 

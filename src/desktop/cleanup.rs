@@ -20,6 +20,7 @@ use observatory_core::color::{Color, Kind, sunburst_color};
 use observatory_core::drives::{Drive, Usage, drive_of};
 use observatory_core::format::{plural, readable_size};
 use observatory_core::paths::basename;
+use observatory_core::store::Store;
 use observatory_core::tree::Item;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -123,8 +124,29 @@ const CARD_WIDTH: f32 = 340.;
 const SEGMENTS: usize = 24;
 
 // The color something queued has in the card: its dot's, and its segment's in
-// the bar. It's the path's own, so it keeps it while the queue changes.
-fn queued_color(path: &str, p: &Palette) -> Hsla {
+// the bar. It's the one it had in the sunburst it was queued from. Where
+// that isn't known (it was queued by an earlier version), it's one made up
+// from its path, so it at least keeps it while the queue changes.
+fn queued_color(store: &Store, path: &str, p: &Palette) -> Hsla {
+	let queued = store
+		.cleanup()
+		.iter()
+		.find(|queued| queued.item.path == path);
+	if let Some(queued) = queued
+		&& let Some(tint) = queued.tint
+	{
+		let kind = if queued.item.directory {
+			Kind::Directory
+		} else {
+			Kind::File
+		};
+		return hsla(sunburst_color(
+			tint.hue as f64,
+			tint.depth as usize,
+			kind,
+			p.dark,
+		));
+	}
 	// FNV-1a, for a hue.
 	let hash = path.bytes().fold(0xcbf29ce484222325u64, |hash, byte| {
 		(hash ^ byte as u64).wrapping_mul(0x100000001b3)
@@ -569,7 +591,7 @@ impl Workspace {
 							.flex_none()
 							.size(px(8.))
 							.rounded(px(2.))
-							.bg(queued_color(path, &p)),
+							.bg(queued_color(&self.store, path, &p)),
 					)
 					.child(
 						div()
@@ -604,7 +626,7 @@ impl Workspace {
 		let deleting = self.deleting();
 		let body = div()
 			.child(self.queued_total(&queued))
-			.child(reclaim_bar(&queued, None, &p))
+			.child(reclaim_bar(&self.store, &queued, None, &p))
 			.child(
 				div()
 					.id("cleanup-items")
@@ -653,7 +675,7 @@ impl Workspace {
 		let disk = self.disk_of(queued.iter().map(|(path, _)| path.as_str()));
 		let body = div()
 			.child(self.queued_total(&queued))
-			.child(reclaim_bar(&queued, None, &p))
+			.child(reclaim_bar(&self.store, &queued, None, &p))
 			.children(disk.map(|(_, usage)| disk_bar(&usage, size, true, &p)))
 			.child(div().px(px(16.)).pt(px(10.)).text_color(p.muted).child(
 				"Deleting permanently frees the space right away and can't be undone. The \
@@ -726,7 +748,7 @@ impl Workspace {
 				],
 				&p,
 			))
-			.child(reclaim_bar(&run.items, Some(&run.gone), &p))
+			.child(reclaim_bar(&self.store, &run.items, Some(&run.gone), &p))
 			.child(
 				div()
 					.flex()
@@ -943,7 +965,12 @@ fn total(size: String, beside: [String; 2], p: &Palette) -> Div {
 // What's queued as a bar, a segment each by size, in the colors their rows
 // have. While they're deleted (`gone` is which have been), those that are
 // gone are solid and the rest wait, pale.
-fn reclaim_bar(items: &[(String, u64)], gone: Option<&[String]>, p: &Palette) -> Div {
+fn reclaim_bar(
+	store: &Store,
+	items: &[(String, u64)],
+	gone: Option<&[String]>,
+	p: &Palette,
+) -> Div {
 	let size: u64 = items.iter().map(|(_, size)| size).sum();
 	let segment = |share: u64, color: Hsla| {
 		div()
@@ -954,7 +981,7 @@ fn reclaim_bar(items: &[(String, u64)], gone: Option<&[String]>, p: &Palette) ->
 			.bg(color)
 	};
 	let colored = items.iter().take(SEGMENTS).map(|(path, share)| {
-		let mut color = queued_color(path, p);
+		let mut color = queued_color(store, path, p);
 		if let Some(gone) = gone {
 			if gone.contains(path) {
 				color = p.default;
