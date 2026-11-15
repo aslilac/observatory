@@ -18,6 +18,7 @@ mod scanning;
 mod shapes;
 mod sunburst;
 mod text_input;
+mod updating;
 mod welcome;
 mod workspace;
 

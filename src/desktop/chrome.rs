@@ -129,6 +129,7 @@ impl Workspace {
 					.text_color(p.muted)
 					.child(div().truncate().child(title)),
 			)
+			.children(self.render_update_button(cx))
 			// What's only for working on the app, in builds that aren't for
 			// release.
 			.when(cfg!(debug_assertions), |this| {

@@ -21,6 +21,7 @@ pub mod store;
 pub mod sunburst;
 pub mod system;
 pub mod tree;
+pub mod updates;
 pub mod version;
 
 // The scanner's own types, for what they're called here.

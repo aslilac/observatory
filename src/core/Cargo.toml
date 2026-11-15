@@ -12,6 +12,11 @@ path = "./lib.rs"
 name = "sky"
 path = "./examples/sky.rs"
 
+# Says what the updater would find, and checks a download as it would.
+[[example]]
+name = "update"
+path = "./examples/update.rs"
+
 [dependencies]
 observatory-scan = { path = "../scanner" }
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
@@ -20,3 +25,5 @@ fs4 = { version = "0.13", default-features = false, features = ["sync"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 trash = "5"
+# Asks the bucket and GitHub what the newest release is, and downloads it.
+ureq = "2"

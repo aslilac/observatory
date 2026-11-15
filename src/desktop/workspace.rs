@@ -8,6 +8,7 @@ use crate::issues::IssuesModal;
 use crate::palette::Palette;
 use crate::popup::Popup;
 use crate::text_input::{self, TextInput};
+use crate::updating::Update;
 use crate::{menus, prompts::Ask};
 use futures::StreamExt;
 use futures::channel::mpsc;
@@ -114,6 +115,9 @@ pub struct Workspace {
 	// Which of the title bar's menus is open, where there's no native menu
 	// bar.
 	pub app_menu_open: Option<usize>,
+
+	// A newer version than this one, once one's been found.
+	pub update: Option<Update>,
 }
 
 impl Focusable for Workspace {
@@ -232,7 +236,9 @@ impl Workspace {
 			ask: None,
 			popup: None,
 			app_menu_open: None,
+			update: None,
 		};
+		this.watch_for_updates(window, cx);
 		this.read_recent_usage(cx);
 		this.publish_menus(cx);
 		this.sync(window, cx);
