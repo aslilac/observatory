@@ -85,24 +85,26 @@ impl Workspace {
 		let checked = self.is_selected(&item.path);
 		let row = SharedString::from(item.path.clone());
 		let item = item.clone();
-		let default = p.default;
-		let checkbox = checkbox(id, checked, &p)
-			.when(!checked, |this| {
-				this.opacity(0.)
-					.group_hover(row, |style| style.opacity(1.))
-					.hover(move |style| style.opacity(1.).border_color(default))
-			})
-			.on_click(cx.listener(move |this, _, _, cx| {
-				cx.stop_propagation();
-				this.toggle_selected(&item, cx);
-			}));
+		let checkbox = checkbox(id, checked, &p).on_click(cx.listener(move |this, _, _, cx| {
+			cx.stop_propagation();
+			this.toggle_selected(&item, cx);
+		}));
+		// What's hidden and shown is this around it, not the checkbox, which
+		// has a hover style of its own. It reaches to the row's edge, so
+		// there's nowhere between the two for the pointer to lose both.
 		div()
 			.absolute()
 			.left(px(-CHECKBOX_MARGIN))
+			.w(px(CHECKBOX_MARGIN))
 			.top_0()
 			.bottom_0()
 			.flex()
 			.items_center()
+			.when(!checked, |this| {
+				this.opacity(0.)
+					.group_hover(row, |style| style.opacity(1.))
+					.hover(|style| style.opacity(1.))
+			})
 			.child(checkbox)
 	}
 
