@@ -275,9 +275,23 @@ pub fn register(window: WindowHandle<Workspace>, cx: &mut App) {
 /// What this copy is and what it's on, for the About window and a new issue.
 /// The version comes first.
 pub fn environment() -> Vec<(&'static str, String)> {
+	// "1.2.0 (53410bd)", or "(53410bd, modified)" when built from a checkout
+	// with changes. The commit's stamped in by build.rs.
+	let version = env!("CARGO_PKG_VERSION");
+	let version = match env!("OBSERVATORY_COMMIT").split_once('-') {
+		_ if env!("OBSERVATORY_COMMIT").is_empty() => version.to_string(),
+		Some((commit, _)) => format!("{version} ({}, modified)", &commit[..commit.len().min(7)]),
+		None => {
+			let commit = env!("OBSERVATORY_COMMIT");
+			format!("{version} ({})", &commit[..commit.len().min(7)])
+		}
+	};
 	vec![
-		("Version", env!("CARGO_PKG_VERSION").to_string()),
-		("Build", "gpui".to_string()),
+		("Version", version),
+		(
+			"Installation",
+			system::describe_installation(cfg!(debug_assertions)).to_string(),
+		),
 		("System", system::describe_system()),
 		("Architecture", system::describe_architecture().to_string()),
 	]

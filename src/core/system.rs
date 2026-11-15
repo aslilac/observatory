@@ -38,6 +38,55 @@ pub fn describe_system() -> String {
 	}
 }
 
+/// How this copy of the app got onto the machine, where there's more than
+/// one way: from the Microsoft Store or as a bare program on Windows, as a
+/// Flatpak or a bare program on Linux, and as an app on macOS. It says
+/// nothing of how the copy is signed. `development` is for a build that
+/// isn't for release, wherever it's run from.
+pub fn describe_installation(development: bool) -> &'static str {
+	if development {
+		return "Development";
+	}
+	#[cfg(target_os = "macos")]
+	{
+		let bundled = std::env::current_exe()
+			.is_ok_and(|exe| exe.to_string_lossy().contains(".app/Contents/MacOS/"));
+		if bundled { "App" } else { "Portable" }
+	}
+	#[cfg(windows)]
+	{
+		if windows_packaged() {
+			"Microsoft Store"
+		} else {
+			"Portable"
+		}
+	}
+	#[cfg(all(unix, not(target_os = "macos")))]
+	{
+		if std::path::Path::new("/.flatpak-info").exists() {
+			"Flatpak"
+		} else {
+			"Portable"
+		}
+	}
+}
+
+// Whether the app is running as a package (an MSIX), which is how the Store
+// installs it: only a packaged app has a package name to ask for.
+#[cfg(windows)]
+fn windows_packaged() -> bool {
+	const APPMODEL_ERROR_NO_PACKAGE: i32 = 15700;
+	#[link(name = "kernel32")]
+	unsafe extern "system" {
+		fn GetCurrentPackageFullName(length: *mut u32, name: *mut u16) -> i32;
+	}
+	let mut length = 0u32;
+	// SAFETY: with no buffer and a length of zero, the call only says
+	// whether there's a name and how long it is.
+	let status = unsafe { GetCurrentPackageFullName(&mut length, std::ptr::null_mut()) };
+	status != APPMODEL_ERROR_NO_PACKAGE
+}
+
 /// The processor the app was built for, as it's usually written: "arm64",
 /// "x64".
 pub fn describe_architecture() -> &'static str {
