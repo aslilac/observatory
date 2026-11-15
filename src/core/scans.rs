@@ -427,7 +427,7 @@ fn info(path: &str, entry: &Entry) -> ScanInfo {
 fn scan_drive(drives: &[Drive], path: &str) -> Option<ScanDrive> {
 	let drive = drives.iter().find(|drive| drive.mount_path == path)?;
 	Some(ScanDrive {
-		name: drive.description.clone(),
+		name: drive.title(),
 		capacity: drive.usage.map(|usage| usage.total),
 	})
 }

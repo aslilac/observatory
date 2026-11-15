@@ -242,10 +242,7 @@ impl Workspace {
 						.into_any_element(),
 				);
 				crumbs.push(rule());
-				let root = match &self.tree {
-					Some(tree) => tree.name.clone(),
-					None => observatory_core::paths::basename(path).to_string(),
-				};
+				let root = self.root_name(path);
 				let depth = place.cursor.len();
 				crumbs.push(
 					crumb(1, root, depth == 0)

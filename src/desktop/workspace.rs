@@ -15,10 +15,10 @@ use gpui::{
 	App, AppContext, Bounds, Context, Entity, ExternalPaths, FocusHandle, Focusable, Pixels, Point,
 	Task, Window, WindowAppearance,
 };
-use observatory_core::drives::{Drive, Usage, read_volume_usage};
+use observatory_core::drives::{Drive, Usage, place_name, read_volume_usage};
 use observatory_core::listing::SortMode;
 use observatory_core::navigation::{Navigation, Place};
-use observatory_core::paths::{basename, join_path};
+use observatory_core::paths::join_path;
 use observatory_core::reserved::{ReservedGroup, group_reserved};
 use observatory_core::scans::{Change, FAKE, Progress, ScanInfo, Scans, Status};
 use observatory_core::store::Store;
@@ -418,13 +418,20 @@ impl Workspace {
 		let Some(path) = &place.inspecting else {
 			return "Observatory".to_string();
 		};
-		let root = match &self.tree {
-			Some(tree) => tree.name.clone(),
-			None => basename(path).to_string(),
-		};
+		let root = self.root_name(path);
 		match place.cursor.last() {
 			Some(folder) => format!("{folder} — {root} — Observatory"),
 			None => format!("{root} — Observatory"),
+		}
+	}
+
+	/// What the scan of `path`, the one being looked at, is called: a
+	/// drive's name, or the folder's. A scan that's running or has failed is
+	/// called what it will be once it's done.
+	pub fn root_name(&self, path: &str) -> String {
+		match &self.tree {
+			Some(tree) => tree.name.clone(),
+			None => place_name(&self.drives, path),
 		}
 	}
 

@@ -5,9 +5,8 @@ use crate::controls::{eyebrow, icon};
 use crate::popup::place_menu;
 use crate::workspace::Workspace;
 use gpui::{AnyElement, Context, FontWeight, MouseButton, MouseDownEvent, div, prelude::*, px};
-use observatory_core::drives::Usage;
+use observatory_core::drives::{Usage, place_name};
 use observatory_core::format::{describe_drive, readable_size};
-use observatory_core::paths::basename;
 use observatory_core::scans::Status;
 use std::path::Path;
 
@@ -41,7 +40,7 @@ impl Workspace {
 						"hard-drive"
 					},
 					dashed: false,
-					title: drive.description.clone(),
+					title: drive.title(),
 					detail: describe_drive(drive),
 					meta: self.render_usage(&path, drive.usage, false),
 				};
@@ -105,7 +104,7 @@ impl Workspace {
 			let row = Row {
 				icon: "folder",
 				dashed: false,
-				title: basename(&path).to_string(),
+				title: place_name(&self.drives, &path),
 				detail: path.clone(),
 				meta: self.render_usage(&path, self.recent_usage.get(&path).copied(), true),
 			};

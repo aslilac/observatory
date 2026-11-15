@@ -35,6 +35,36 @@ pub struct Drive {
 	pub usage: Option<Usage>,
 }
 
+// The letter of the Windows drive whose root `path` is: "C:" for `C:\`.
+fn drive_letter(path: &str) -> Option<&str> {
+	let letter = path.get(..2)?;
+	let rest = &path[2..];
+	let bytes = letter.as_bytes();
+	(bytes[0].is_ascii_alphabetic() && bytes[1] == b':' && matches!(rest, "" | "\\" | "/"))
+		.then_some(letter)
+}
+
+impl Drive {
+	/// What the drive's called, wherever it's named. One with a letter has
+	/// it after its name, as Explorer does: "Local Disk (C:)".
+	pub fn title(&self) -> String {
+		match drive_letter(&self.mount_path) {
+			Some(letter) => format!("{} ({letter})", self.description),
+			None => self.description.clone(),
+		}
+	}
+}
+
+/// What a scan of `path` is called: the drive's title for a whole drive,
+/// and otherwise the folder's name. It's the same before, during and after
+/// the scan.
+pub fn place_name(drives: &[Drive], path: &str) -> String {
+	match drives.iter().find(|drive| drive.mount_path == path) {
+		Some(drive) => drive.title(),
+		None => crate::paths::basename(path).to_string(),
+	}
+}
+
 // What the OS reports for the volume holding `path` (any path on it, not
 // just its mount point), so disks and folders can show how full their
 // volume is without scanning it. `used` is whole-volume: on APFS, `/` is a
@@ -177,6 +207,31 @@ mod tests {
 		let mut renamed = drive(500_000);
 		renamed.description = "Other".into();
 		assert!(changed(&[drive(500_000)], &[renamed]));
+	}
+
+	#[test]
+	fn a_drive_with_a_letter_is_named_with_it() {
+		let mac = drive(1);
+		assert_eq!(mac.title(), "Macintosh HD");
+		let mut windows = drive(1);
+		windows.mount_path = "C:\\".into();
+		windows.description = "Local Disk".into();
+		assert_eq!(windows.title(), "Local Disk (C:)");
+
+		// A scan of a whole drive is called what the drive is; of a folder,
+		// what the folder is.
+		let drives = [mac, windows];
+		assert_eq!(place_name(&drives, "C:\\"), "Local Disk (C:)");
+		assert_eq!(place_name(&drives, "/"), "Macintosh HD");
+		assert_eq!(place_name(&drives, "/Users/kayla/"), "kayla");
+		// A backslash only comes between names on Windows.
+		if cfg!(windows) {
+			assert_eq!(place_name(&drives, "C:\\Users\\kayla"), "kayla");
+			// A drive that isn't listed (yet) is at least its letter.
+			assert_eq!(place_name(&drives, "D:\\"), "D:");
+		}
+		assert_eq!(drive_letter("C:\\Users"), None);
+		assert_eq!(drive_letter("/"), None);
 	}
 
 	#[test]

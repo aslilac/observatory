@@ -7,7 +7,6 @@ use crate::workspace::Workspace;
 use gpui::{AnyElement, Context, FontWeight, canvas, div, prelude::*, px};
 use observatory_core::ScanErrorKind;
 use observatory_core::format::compact_number;
-use observatory_core::paths::basename;
 use observatory_core::scans::ScanInfo;
 
 const SPINNER: f32 = 260.;
@@ -110,7 +109,7 @@ impl Workspace {
 							.mt(px(14.))
 							.text_size(px(16.))
 							.font_weight(FontWeight::SEMIBOLD)
-							.child(root_name(&scan.path)),
+							.child(self.root_name(&scan.path)),
 					)
 					.child(
 						div()
@@ -129,7 +128,7 @@ impl Workspace {
 
 	pub fn render_failed(&self, scan: &ScanInfo, cx: &mut Context<Self>) -> AnyElement {
 		let p = self.palette;
-		let root = root_name(&scan.path);
+		let root = self.root_name(&scan.path);
 		let kind = scan.error.as_ref().map(|error| &error.kind);
 		let (title, detail) = match kind {
 			Some(ScanErrorKind::Missing) => (
@@ -198,14 +197,5 @@ impl Workspace {
 					),
 			)
 			.into_any_element()
-	}
-}
-
-// What a scan's root is called before there's a tree to say: the folder's
-// name, or the path itself for a disk.
-fn root_name(path: &str) -> String {
-	match basename(path) {
-		"" => path.to_string(),
-		name => name.to_string(),
 	}
 }
