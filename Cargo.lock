@@ -3739,7 +3739,9 @@ dependencies = [
  "futures",
  "gpui",
  "image",
+ "objc",
  "observatory-core",
+ "raw-window-handle",
  "smallvec",
  "unicode-segmentation",
 ]

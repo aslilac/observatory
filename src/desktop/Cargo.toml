@@ -21,3 +21,9 @@ anyhow = "1"
 # What gpui takes a picture as: the About window's sky is one.
 image = { version = "0.25", default-features = false }
 smallvec = "1"
+
+# For moving the About window by a press anywhere in it, which gpui leaves
+# to AppKit on macOS.
+[target.'cfg(target_os = "macos")'.dependencies]
+objc = "0.2"
+raw-window-handle = "0.6"

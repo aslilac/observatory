@@ -6,9 +6,10 @@
 
 use crate::menus::{REPOSITORY, environment};
 use gpui::{
-	App, Bounds, ClipboardItem, Context, FontWeight, Global, Hsla, ObjectFit, Pixels, RenderImage,
-	SharedString, TitlebarOptions, Window, WindowBounds, WindowHandle, WindowOptions, canvas, div,
-	img, linear_color_stop, linear_gradient, prelude::*, px, rgb, rgba, size,
+	App, Bounds, ClipboardItem, Context, FontWeight, Global, Hsla, MouseButton, MouseDownEvent,
+	ObjectFit, Pixels, RenderImage, SharedString, TitlebarOptions, Window, WindowBounds,
+	WindowHandle, WindowOptions, canvas, div, img, linear_color_stop, linear_gradient, prelude::*,
+	px, rgb, rgba, size,
 };
 use image::{Frame, RgbaImage};
 use observatory_core::sky::{Ellipse, Order, Sky, scene_height};
@@ -222,7 +223,61 @@ fn link(id: &'static str, label: &'static str, url: &'static str) -> impl IntoEl
 		.cursor_pointer()
 		.hover(|style| style.opacity(0.75))
 		.child(label)
+		.on_mouse_down(MouseButton::Left, press_is_mine)
 		.on_click(move |_, _, cx| cx.open_url(url))
+}
+
+// A press on a link is a press on the link, not on the window behind it,
+// which a press anywhere else moves.
+fn press_is_mine(_: &MouseDownEvent, _: &mut Window, cx: &mut App) {
+	cx.stop_propagation();
+}
+
+// Starts moving the window with the pointer, from a press anywhere in it.
+// gpui does this itself on Linux, and has nothing for it on macOS, where
+// AppKit will move a window by the mouse-down it's handed.
+#[cfg(target_os = "macos")]
+// The objc crate's macros check for a cfg that rustc has never heard of.
+#[allow(unexpected_cfgs)]
+fn move_window(window: &mut Window, cx: &mut App) {
+	use objc::runtime::Object;
+	use objc::{class, msg_send, sel, sel_impl};
+	use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+
+	let Ok(handle) = HasWindowHandle::window_handle(window) else {
+		return;
+	};
+	let RawWindowHandle::AppKit(handle) = handle.as_raw() else {
+		return;
+	};
+	// The press being handled right now, and the window it's in, held onto
+	// until they're used.
+	let (native, press) = unsafe {
+		let view = handle.ns_view.as_ptr() as *mut Object;
+		let native: *mut Object = msg_send![view, window];
+		let app: *mut Object = msg_send![class!(NSApplication), sharedApplication];
+		let press: *mut Object = msg_send![app, currentEvent];
+		if native.is_null() || press.is_null() {
+			return;
+		}
+		let _: *mut Object = msg_send![native, retain];
+		let _: *mut Object = msg_send![press, retain];
+		(native, press)
+	};
+	// AppKit follows the pointer until the button's let go, and runs the
+	// app's other work while it does. That can't start from in here, in the
+	// middle of gpui's own handling of the press, so it's put off a moment.
+	cx.spawn(async move |_| unsafe {
+		let _: () = msg_send![native, performWindowDragWithEvent: press];
+		let _: () = msg_send![press, release];
+		let _: () = msg_send![native, release];
+	})
+	.detach();
+}
+
+#[cfg(not(target_os = "macos"))]
+fn move_window(window: &mut Window, _: &mut App) {
+	window.start_window_move();
 }
 
 impl Render for About {
@@ -321,6 +376,7 @@ impl Render for About {
 					.cursor_pointer()
 					.hover(|style| style.opacity(0.75))
 					.child(if self.copied { "Copied" } else { "Copy" })
+					.on_mouse_down(MouseButton::Left, press_is_mine)
 					.on_click(cx.listener(|this, _, _, cx| this.copy(cx))),
 			);
 
@@ -333,6 +389,9 @@ impl Render for About {
 			.text_size(px(15.))
 			.line_height(px(22.5))
 			.font_weight(FontWeight::LIGHT)
+			// The whole window is something to move it by, as the Electron
+			// one's is, but for its links.
+			.on_mouse_down(MouseButton::Left, |_, window, cx| move_window(window, cx))
 			.children(self.picture.clone().map(|picture| {
 				img(picture)
 					.absolute()
