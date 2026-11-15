@@ -402,6 +402,11 @@ impl Workspace {
 				.id(("crumb", index))
 				.flex_none()
 				.max_w(px(220.))
+				// Room for the background one gets under the pointer. It's
+				// what spaces them from the chevrons too, in place of a gap.
+				.px(px(6.))
+				.py(px(2.))
+				.rounded(px(5.))
 				.truncate()
 				.child(label)
 				.map(|this| {
@@ -412,7 +417,7 @@ impl Workspace {
 						this.occlude()
 							.text_color(p.muted)
 							.cursor_pointer()
-							.hover(move |style| style.text_color(p.default))
+							.hover(move |style| style.bg(p.fill).text_color(p.default))
 					}
 				})
 		};
@@ -439,7 +444,13 @@ impl Workspace {
 				let first = depth.saturating_sub(3);
 				if first > 0 {
 					crumbs.push(rule());
-					crumbs.push(div().text_color(p.faint).child("…").into_any_element());
+					crumbs.push(
+						div()
+							.px(px(6.))
+							.text_color(p.faint)
+							.child("…")
+							.into_any_element(),
+					);
 				}
 				for (at, name) in place.cursor.iter().enumerate().skip(first) {
 					let to = place.cursor[..=at].to_vec();
@@ -499,8 +510,6 @@ impl Workspace {
 				.overflow_hidden()
 				.flex()
 				.items_center()
-				.gap(px(6.))
-				.ml(px(4.))
 				.children(crumbs),
 		)
 		.children(right.map(own))
