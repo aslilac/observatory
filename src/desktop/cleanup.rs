@@ -578,6 +578,16 @@ impl Workspace {
 			.on_drop(cx.listener(|this, dragged: &DraggedItems, _, cx| {
 				this.move_to_cleanup(dragged.0.clone(), cx)
 			}))
+			// A press anywhere else shuts it, and still does whatever it would
+			// have: the card isn't in the way of the rest, so a row can be
+			// dragged from behind it and land on the pad.
+			.on_mouse_down_out(cx.listener(|this, _, _, cx| {
+				if this.cleanup_open || this.cleanup_confirming {
+					this.cleanup_open = false;
+					this.cleanup_confirming = false;
+					cx.notify();
+				}
+			}))
 			// The pointer on it keeps the word on how a deletion went from
 			// going away.
 			.on_hover(cx.listener(|this, over: &bool, _, _| {
