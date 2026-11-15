@@ -222,9 +222,9 @@ mod tests {
 
 	#[test]
 	fn oklch_matches_css() {
-		// oklch(0.6 0.17 258) is rgb(49, 123, 230) in a browser.
-		let [r, g, b] = Color::oklch(0.6, 0.17, 258.0).to_rgb8();
-		assert!(r.abs_diff(49) <= 2 && g.abs_diff(123) <= 2 && b.abs_diff(230) <= 2);
+		// sRGB's own red and blue, as CSS writes them in OKLCH.
+		assert_eq!(Color::oklch(0.627955, 0.257683, 29.2339).to_rgb8(), [255, 0, 0]);
+		assert_eq!(Color::oklch(0.452014, 0.313214, 264.052).to_rgb8(), [0, 0, 255]);
 		assert_eq!(Color::oklch(1.0, 0.0, 0.0).to_rgb8(), [255, 255, 255]);
 		assert_eq!(Color::oklch(0.0, 0.0, 0.0).to_rgb8(), [0, 0, 0]);
 	}
