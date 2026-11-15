@@ -15,6 +15,10 @@ use observatory_core::format::{plural, readable_size};
 use observatory_core::listing::SortMode;
 use observatory_core::scans::ScanInfo;
 
+// How wide the find field is in the toolbar, and what it suggests under it.
+const FIND_WIDTH: f32 = 280.;
+const SUGGESTIONS_WIDTH: f32 = 380.;
+
 // One of the things the find field offers while it has the focus.
 enum Suggestion {
 	/// Whatever has the typed text in its name.
@@ -77,9 +81,8 @@ impl Workspace {
 
 		let mut chips = Vec::new();
 		chips.extend(self.render_issues_chip(scan, cx));
-		let toolbar = self.render_toolbar(None, chips, window, cx);
-
-		let find_bar = self.render_find_bar(finding, cx);
+		let tools = self.render_find_tools(finding, cx);
+		let toolbar = self.render_toolbar(Some(tools), chips, window, cx);
 		let side = if finding {
 			self.render_find_results(cx)
 		} else {
@@ -94,7 +97,6 @@ impl Workspace {
 			.flex_col()
 			.size_full()
 			.child(toolbar)
-			.child(find_bar)
 			.child(
 				div().flex_1().min_h_0().flex().child(sunburst).child(
 					// What's checked floats at the bottom of the list it's
@@ -125,10 +127,30 @@ impl Workspace {
 			.into_any_element()
 	}
 
-	// The field over the sunburst, with what it suggests under it while it
-	// has the focus, and at its right how the list is sorted.
-	fn render_find_bar(&self, finding: bool, cx: &mut Context<Self>) -> AnyElement {
+	// What the toolbar has for the list: find, and how it's sorted. Find is
+	// a button until it's wanted. Then it's the field, there in the toolbar,
+	// with what it suggests under it while it has the focus; it's a button
+	// again once it's left with nothing in it.
+	fn render_find_tools(&self, finding: bool, cx: &mut Context<Self>) -> AnyElement {
 		let p = self.palette;
+		let fill = p.fill;
+		// Outlined, and as tall as the field one of them turns into.
+		let tool = |id: &'static str, name: &'static str, says: &'static str| {
+			div()
+				.id(id)
+				.flex()
+				.flex_none()
+				.items_center()
+				.justify_center()
+				.size(px(28.))
+				.rounded(px(7.))
+				.border_1()
+				.border_color(p.line)
+				.cursor_pointer()
+				.hover(move |style| style.bg(fill))
+				.child(icon(name, 15., p.muted))
+				.tooltip(tip(says))
+		};
 		let scope_name = self.scope_name();
 		self.find_input.update(cx, |input, _| {
 			input.placeholder = if self.finder.is_some() {
@@ -170,9 +192,10 @@ impl Workspace {
 			.flex()
 			.items_center()
 			.gap(px(8.))
-			.h(px(32.))
-			.px(px(10.))
-			.rounded(px(8.))
+			.w(px(FIND_WIDTH))
+			.h(px(28.))
+			.px(px(8.))
+			.rounded(px(7.))
 			.border_1()
 			.border_color(if self.suggesting { p.muted } else { p.line })
 			.child(icon("search", 14., p.muted))
@@ -195,24 +218,8 @@ impl Workspace {
 			.then(|| self.render_suggestions(&scope_name, cx));
 
 		let sort = (!finding).then(|| {
-			let fill = p.fill;
-			// As tall as the field it's beside, and outlined like it.
-			let button = div()
-				.id("sort")
-				.flex()
-				.flex_none()
-				.items_center()
-				.justify_center()
-				.size(px(32.))
-				.rounded(px(8.))
-				.border_1()
-				.border_color(p.line)
-				.cursor_pointer()
-				.hover(move |style| style.bg(fill))
-				.child(icon("list-filter", 15., p.muted))
-				.tooltip(tip("Sort"));
 			self.opens_menu(
-				button,
+				tool("sort", "list-filter", "Sort"),
 				SORT_MENU,
 				Corner::TopRight,
 				|this| {
@@ -231,21 +238,24 @@ impl Workspace {
 			)
 		});
 
+		let find = if self.find_open || self.suggesting || finding {
+			div()
+				.relative()
+				.flex_none()
+				.child(field)
+				.children(suggestions)
+				.into_any_element()
+		} else {
+			tool("find", "search", "Find")
+				.on_click(cx.listener(|this, _, window, cx| this.open_find(window, cx)))
+				.into_any_element()
+		};
 		div()
 			.flex()
 			.flex_none()
 			.items_center()
-			.gap(px(8.))
-			.px(px(16.))
-			.pt(px(12.))
-			.child(
-				div()
-					.relative()
-					.flex_1()
-					.min_w_0()
-					.child(field)
-					.children(suggestions),
-			)
+			.gap(px(6.))
+			.child(find)
 			.children(sort)
 			.into_any_element()
 	}
@@ -329,12 +339,14 @@ impl Workspace {
 						}),
 					)
 			});
+		// Under the field, wider than it, with their right edges in line:
+		// the field's at the toolbar's end.
 		deferred(
 			div()
 				.absolute()
-				.top(px(36.))
-				.left_0()
-				.w_full()
+				.top(px(32.))
+				.right_0()
+				.w(px(SUGGESTIONS_WIDTH))
 				.occlude()
 				.p(px(4.))
 				.rounded(px(8.))

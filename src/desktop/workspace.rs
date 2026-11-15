@@ -84,6 +84,9 @@ pub struct Workspace {
 	pub find_input: Entity<TextInput>,
 	pub finder: Option<Finder>,
 	pub find_scope: Option<Vec<String>>,
+	// The field has been asked for (it's a button in the toolbar until it
+	// is), and hasn't been left since.
+	pub find_open: bool,
 	pub suggesting: bool,
 	pub suggestion: usize,
 	pub found: Option<Arc<Found>>,
@@ -193,6 +196,7 @@ impl Workspace {
 		.detach();
 		cx.on_blur(&find_focus, window, |this, _, cx| {
 			this.suggesting = false;
+			this.find_open = false;
 			cx.notify();
 		})
 		.detach();
@@ -224,6 +228,7 @@ impl Workspace {
 			find_input,
 			finder: None,
 			find_scope: None,
+			find_open: false,
 			suggesting: false,
 			suggestion: 0,
 			found: None,
@@ -721,6 +726,15 @@ impl Workspace {
 	}
 
 	// Find.
+
+	/// Brings out the find field, which is a button in the toolbar until
+	/// it's wanted, and puts the cursor in it.
+	pub fn open_find(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+		self.find_open = true;
+		let focus = self.find_input.focus_handle(cx);
+		window.focus(&focus);
+		cx.notify();
+	}
 
 	pub fn find_text(&self, cx: &App) -> String {
 		self.find_input.read(cx).text().trim().to_string()

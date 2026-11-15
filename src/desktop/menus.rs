@@ -411,8 +411,7 @@ impl Workspace {
 
 	fn on_find(&mut self, _: &Find, window: &mut Window, cx: &mut Cx) {
 		if self.inspecting().is_some() {
-			let focus = gpui::Focusable::focus_handle(self.find_input.read(cx), cx);
-			window.focus(&focus);
+			self.open_find(window, cx);
 		}
 	}
 
