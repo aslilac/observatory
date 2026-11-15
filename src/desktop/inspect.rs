@@ -72,47 +72,12 @@ impl Workspace {
 		window: &mut Window,
 		cx: &mut Context<Self>,
 	) -> AnyElement {
-		let p = self.palette;
 		let finding = self.finding_something(cx);
 
-		let mode_button = |mode: ViewMode, name: &'static str, says: &'static str| {
-			let on = self.mode == mode;
-			div()
-				.id(name)
-				.flex()
-				.items_center()
-				.justify_center()
-				.w(px(30.))
-				.h(px(22.))
-				.rounded(px(4.))
-				.cursor_pointer()
-				.when(on, |this| this.bg(p.fill_strong))
-				.child(icon(name, 14., if on { p.default } else { p.muted }))
-				.tooltip(tip(says))
-				.on_click(cx.listener(move |this, _, _, cx| {
-					if this.mode != mode {
-						this.mode = mode;
-						// The tree has no place for what find found.
-						this.clear_find(cx);
-						cx.notify();
-					}
-				}))
-		};
-		let segmented = div()
-			.flex()
-			.flex_none()
-			.gap(px(2.))
-			.p(px(1.))
-			.rounded(px(6.))
-			.border_1()
-			.border_color(p.line)
-			.child(mode_button(ViewMode::List, "list", "List"))
-			.child(mode_button(ViewMode::Tree, "list-tree", "Tree"))
-			.into_any_element();
 		let mut chips = Vec::new();
 		chips.extend(self.render_issues_chip(scan, cx));
 		chips.push(self.render_cleanup_chip(cx));
-		let toolbar = self.render_toolbar(Some(segmented), chips, window, cx);
+		let toolbar = self.render_toolbar(None, chips, window, cx);
 
 		let find_bar = self.render_find_bar(finding, cx);
 		let side = if finding {
@@ -164,7 +129,8 @@ impl Workspace {
 	}
 
 	// The field over the sunburst, with what it suggests under it while it
-	// has the focus, and how the list is sorted at its right.
+	// has the focus, and at its right how the list is sorted and whether
+	// it's a list or a tree.
 	fn render_find_bar(&self, finding: bool, cx: &mut Context<Self>) -> AnyElement {
 		let p = self.palette;
 		let scope_name = self.scope_name();
@@ -243,6 +209,8 @@ impl Workspace {
 				.h(px(32.))
 				.px(px(10.))
 				.rounded(px(8.))
+				.border_1()
+				.border_color(p.line)
 				.text_size(px(12.))
 				.text_color(p.muted)
 				.cursor_pointer()
@@ -269,6 +237,43 @@ impl Workspace {
 			)
 		});
 
+		let mode_button = |mode: ViewMode, name: &'static str, says: &'static str| {
+			let on = self.mode == mode;
+			div()
+				.id(name)
+				.flex()
+				.items_center()
+				.justify_center()
+				.w(px(32.))
+				.h(px(26.))
+				.rounded(px(6.))
+				.cursor_pointer()
+				.when(on, |this| this.bg(p.fill_strong))
+				.child(icon(name, 14., if on { p.default } else { p.muted }))
+				.tooltip(tip(says))
+				.on_click(cx.listener(move |this, _, _, cx| {
+					if this.mode != mode {
+						this.mode = mode;
+						// The tree has no place for what find found.
+						this.clear_find(cx);
+						cx.notify();
+					}
+				}))
+		};
+		// As tall as the field and the sort button it's beside.
+		let modes = div()
+			.flex()
+			.flex_none()
+			.items_center()
+			.gap(px(2.))
+			.h(px(32.))
+			.px(px(2.))
+			.rounded(px(8.))
+			.border_1()
+			.border_color(p.line)
+			.child(mode_button(ViewMode::List, "list", "List"))
+			.child(mode_button(ViewMode::Tree, "list-tree", "Tree"));
+
 		div()
 			.flex()
 			.flex_none()
@@ -285,6 +290,7 @@ impl Workspace {
 					.children(suggestions),
 			)
 			.children(sort)
+			.child(modes)
 			.into_any_element()
 	}
 
