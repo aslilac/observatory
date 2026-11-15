@@ -258,6 +258,7 @@ impl Workspace {
 			frame: Default::default(),
 		};
 		this.watch_for_updates(window, cx);
+		this.forget_recent_drives(cx);
 		this.read_recent_usage(cx);
 		this.publish_menus(cx);
 		this.sync(window, cx);
@@ -268,6 +269,7 @@ impl Workspace {
 		match change {
 			Change::Drives => {
 				self.drives = self.scans.drives();
+				self.forget_recent_drives(cx);
 				cx.notify();
 			}
 			Change::Scans => self.sync(window, cx),
@@ -544,12 +546,38 @@ impl Workspace {
 		if !path.starts_with(FAKE) {
 			// A path that's already scanned, or scanning, is left as it is.
 			self.scans.start(path);
-			self.store.push_recent(path);
-			self.read_recent_usage(cx);
-			self.publish_menus(cx);
+			// The recents are folders: a disk is in the list of disks.
+			if !self.is_drive(path) {
+				self.store.push_recent(path);
+				self.read_recent_usage(cx);
+				self.publish_menus(cx);
+			}
 		}
 		self.nav.inspect(Some(path.to_string()));
 		self.sync(window, cx);
+	}
+
+	fn is_drive(&self, path: &str) -> bool {
+		self.drives.iter().any(|drive| drive.mount_path == path)
+	}
+
+	// Takes the disks out of the recents, where an earlier version put them
+	// (or where one's been mounted since at a folder that was scanned).
+	fn forget_recent_drives(&mut self, cx: &mut Context<Self>) {
+		let drives: Vec<String> = self
+			.store
+			.recent_scans()
+			.iter()
+			.filter(|recent| self.is_drive(&recent.path))
+			.map(|recent| recent.path.clone())
+			.collect();
+		if drives.is_empty() {
+			return;
+		}
+		for path in &drives {
+			self.store.remove_recent(path);
+		}
+		self.publish_menus(cx);
 	}
 
 	pub fn rescan(&mut self, path: &str, window: &mut Window, cx: &mut Context<Self>) {
