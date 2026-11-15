@@ -4,10 +4,9 @@
 // goes.
 
 use crate::chrome::TOOLBAR_HEIGHT;
-use crate::controls::{ButtonKind, button, chip, icon, icon_button, modal_card, scrim};
+use crate::controls::{ButtonKind, button, chip, icon, icon_button};
 use crate::palette::Palette;
 use crate::popup::queued_menu;
-use crate::window_frame::ALL_CORNERS;
 use crate::workspace::Workspace;
 use futures::StreamExt;
 use futures::channel::mpsc;
@@ -315,6 +314,8 @@ impl Workspace {
 								.when(self.deleting(), |this| this.opacity(0.5).cursor_default())
 								.on_click(cx.listener(|this, _, _, cx| {
 									if !this.deleting() {
+										// In place of how the last one went.
+										this.deletion = None;
 										this.cleanup_confirming = true;
 										cx.notify();
 									}
@@ -475,8 +476,12 @@ impl Workspace {
 		.detach();
 	}
 
-	/// How the deleting is going, or how it went, in the window's corner.
-	pub fn render_deletion(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
+	/// What cleanup has to say in the window's corner: the question before
+	/// anything goes, then how the deleting is going, or how it went.
+	pub fn render_cleanup_notice(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
+		if self.cleanup_confirming {
+			return Some(self.render_confirmation(cx));
+		}
 		let p = self.palette;
 		let run = self.deletion.as_ref()?;
 		let trash = run.mode == DeleteMode::Trash;
@@ -678,175 +683,128 @@ impl Workspace {
 				})
 		};
 
-		Some(
-			div()
-				.id("deletion")
-				.absolute()
-				.bottom(px(14.))
-				// Beside the cleanup panel, not over it.
-				.right(px(14. + if self.cleanup_open { PANEL_WIDTH } else { 0. }))
-				.w(px(NOTICE_WIDTH))
-				.occlude()
-				.flex()
-				.items_start()
-				.gap(px(10.))
-				.pl(px(14.))
-				.pr(px(12.))
-				.py(px(12.))
-				.rounded(px(10.))
-				.bg(p.background)
-				.border_1()
-				.border_color(p.line)
-				.shadow_lg()
-				.text_size(px(12.))
-				.on_hover(cx.listener(|this, over: &bool, _, _| {
-					if let Some(run) = &mut this.deletion {
-						run.hovered = *over;
-					}
-				}))
-				.child(div().flex_none().mt(px(1.)).child(lead))
-				.child(
-					div()
-						.flex_1()
-						.min_w_0()
-						.child(
-							div()
-								.flex()
-								.items_center()
-								.gap(px(8.))
-								.h(px(20.))
-								.child(
-									div()
-										.flex_1()
-										.min_w_0()
-										.truncate()
-										.text_size(px(13.))
-										.font_weight(FontWeight::SEMIBOLD)
-										.child(title),
-								)
-								.children(action),
-						)
-						.child(body),
-				)
-				.into_any_element(),
-		)
+		Some(self.notice(lead, title, action, body, cx))
 	}
 
-	/// Asks before anything goes, and how it should.
-	pub fn render_cleanup_modal(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
+	// A notification in the window's bottom-right corner: what leads it (a
+	// spinner, a tick), its title with a button at the end, and the rest
+	// under that.
+	fn notice(
+		&self,
+		lead: AnyElement,
+		title: String,
+		action: Option<Stateful<Div>>,
+		body: Div,
+		cx: &mut Context<Self>,
+	) -> AnyElement {
 		let p = self.palette;
-		if !self.cleanup_confirming {
-			return None;
-		}
-		let title = |text: String| {
-			div()
-				.text_size(px(16.))
-				.font_weight(FontWeight::SEMIBOLD)
-				.child(text)
-		};
-		let close = |this: &mut Self, cx: &mut Context<Self>| {
-			this.cleanup_confirming = false;
-			cx.notify();
-		};
-		let card = {
-			let queued = self.store.cleanup();
-			let rows = queued.iter().map(|queued| {
+		let notice = div()
+			.id("cleanup-notice")
+			.absolute()
+			.bottom(px(14.))
+			// Beside the cleanup panel, not over it.
+			.right(px(14. + if self.cleanup_open { PANEL_WIDTH } else { 0. }))
+			.w(px(NOTICE_WIDTH))
+			.occlude()
+			.flex()
+			.items_start()
+			.gap(px(10.))
+			.pl(px(14.))
+			.pr(px(12.))
+			.py(px(12.))
+			.rounded(px(10.))
+			.bg(p.background)
+			.border_1()
+			.border_color(p.line)
+			.shadow_lg()
+			.text_size(px(12.))
+			.on_hover(cx.listener(|this, over: &bool, _, _| {
+				if let Some(run) = &mut this.deletion {
+					run.hovered = *over;
+				}
+			}))
+			.child(div().flex_none().mt(px(1.)).child(lead))
+			.child(
 				div()
+					.flex_1()
+					.min_w_0()
+					.child(
+						div()
+							.flex()
+							.items_center()
+							.gap(px(8.))
+							.h(px(20.))
+							.child(
+								div()
+									.flex_1()
+									.min_w_0()
+									.truncate()
+									.text_size(px(13.))
+									.font_weight(FontWeight::SEMIBOLD)
+									.child(title),
+							)
+							.children(action),
+					)
+					.child(body),
+			);
+		notice.into_any_element()
+	}
+
+	// Asks before anything goes, and how it should. It's in the corner like
+	// what follows it, and holds nothing up: what would go is what's listed
+	// in the cleanup panel, which is what it was asked from.
+	fn render_confirmation(&self, cx: &mut Context<Self>) -> AnyElement {
+		let p = self.palette;
+		let count = self.store.cleanup().len() as u64;
+		let cancel = icon_button("cleanup-cancel", "x", true, &p)
+			.size(px(20.))
+			.on_click(cx.listener(|this, _, _, cx| {
+				this.cleanup_confirming = false;
+				cx.notify();
+			}));
+		let body = div()
+			.child(div().mt(px(2.)).text_color(p.muted).child(format!(
+				"{} in all. Deleting permanently frees the space right away and can't be \
+				 undone; the Trash keeps it until it's emptied.",
+				readable_size(self.store.cleanup_size())
+			)))
+			.child(
+				div()
+					.mt(px(10.))
 					.flex()
-					.items_center()
-					.gap(px(8.))
-					.py(px(4.))
-					.child(icon(
-						if queued.item.directory {
-							"folder"
-						} else {
-							"file"
-						},
-						13.,
-						p.faint,
-					))
+					.justify_end()
+					.gap(px(6.))
 					.child(
-						div()
-							.flex_1()
-							.min_w_0()
-							.truncate()
-							.child(queued.item.name.clone()),
+						button(
+							"cleanup-trash",
+							"Move to Trash",
+							ButtonKind::Default,
+							true,
+							&p,
+						)
+						.on_click(cx.listener(|this, _, window, cx| {
+							this.delete_queued(DeleteMode::Trash, window, cx)
+						})),
 					)
 					.child(
-						div()
-							.flex_none()
-							.text_size(px(12.))
-							.text_color(p.muted)
-							.child(readable_size(queued.item.size)),
-					)
-			});
-			modal_card(460., &p)
-				.child(title(format!(
-					"Delete {}?",
-					plural(queued.len() as u64, "item")
-				)))
-				.child(div().mt(px(4.)).text_color(p.muted).child(format!(
-					"{} in all. Deleting frees the space right away and can't be undone; \
-						 the Trash keeps it until it's emptied.",
-					readable_size(self.store.cleanup_size())
-				)))
-				.child(
-					div()
-						.id("cleanup-confirm-items")
-						.mt(px(14.))
-						.max_h(px(240.))
-						.overflow_y_scroll()
-						.px(px(10.))
-						.py(px(4.))
-						.rounded(px(6.))
-						.bg(p.fill)
-						.children(rows),
-				)
-				.child(
-					div()
-						.mt(px(20.))
-						.flex()
-						.justify_end()
-						.gap(px(8.))
-						.child(
-							button("cleanup-cancel", "Cancel", ButtonKind::Default, false, &p)
-								.on_click(cx.listener(move |this, _, _, cx| close(this, cx))),
+						button(
+							"cleanup-confirm",
+							"Delete permanently",
+							ButtonKind::Danger,
+							true,
+							&p,
 						)
-						.child(
-							button(
-								"cleanup-trash",
-								"Move to Trash",
-								ButtonKind::Default,
-								false,
-								&p,
-							)
-							.on_click(cx.listener(|this, _, window, cx| {
-								this.delete_queued(DeleteMode::Trash, window, cx)
-							})),
-						)
-						.child(
-							button(
-								"cleanup-confirm",
-								"Delete permanently",
-								ButtonKind::Danger,
-								false,
-								&p,
-							)
-							.on_click(cx.listener(|this, _, window, cx| {
-								this.delete_queued(DeleteMode::Delete, window, cx)
-							})),
-						),
-				)
-		};
-		Some(
-			self.frame
-				.round(scrim(&p), &ALL_CORNERS)
-				.on_mouse_down(
-					MouseButton::Left,
-					cx.listener(move |this, _, _, cx| close(this, cx)),
-				)
-				.child(card)
-				.into_any_element(),
+						.on_click(cx.listener(|this, _, window, cx| {
+							this.delete_queued(DeleteMode::Delete, window, cx)
+						})),
+					),
+			);
+		self.notice(
+			icon("trash", 16., p.muted).into_any_element(),
+			format!("Delete {}?", plural(count, "item")),
+			Some(cancel),
+			body,
+			cx,
 		)
 	}
 }

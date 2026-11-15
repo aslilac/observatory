@@ -70,10 +70,9 @@ impl Render for Workspace {
 					.flex_col()
 					.child(screen)
 					.children(self.render_cleanup_panel(cx))
-					.children(self.render_deletion(cx)),
+					.children(self.render_cleanup_notice(cx)),
 			)
 			.children(self.render_issues(cx))
-			.children(self.render_cleanup_modal(cx))
 			.children(self.render_ask(cx))
 			.children(self.render_popup(cx));
 		// Where the app decorates its own window (Linux), the window's drawn
