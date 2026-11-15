@@ -115,8 +115,8 @@ pub struct Workspace {
 	// Which of the title bar's menus is open, where there's no native menu
 	// bar.
 	pub app_menu_open: Option<usize>,
-	// Where each of those menus' names was last drawn.
-	pub app_menu_bounds: HashMap<usize, Bounds<Pixels>>,
+	// And which of their names the pointer is over.
+	pub app_menu_hovered: Option<usize>,
 
 	// A newer version than this one, once one's been found.
 	pub update: Option<Update>,
@@ -242,7 +242,7 @@ impl Workspace {
 			ask: None,
 			popup: None,
 			app_menu_open: None,
-			app_menu_bounds: HashMap::new(),
+			app_menu_hovered: None,
 			update: None,
 			resize_edge: None,
 		};
