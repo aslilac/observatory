@@ -2,7 +2,7 @@
 // puts under it, and the layers (the cleanup drawer, modals, menus) that go
 // over whichever screen is showing.
 
-use crate::controls::{icon, icon_button};
+use crate::controls::{icon, icon_button, tip};
 use crate::menus;
 use crate::popup::{Popup, PopupItem};
 use crate::workspace::{Screen, Workspace};
@@ -128,6 +128,26 @@ impl Workspace {
 					.text_color(p.muted)
 					.child(div().truncate().child(title)),
 			)
+			// What's only for working on the app, in builds that aren't for
+			// release.
+			.when(cfg!(debug_assertions), |this| {
+				this.child(
+					icon_button("developer", "wrench", true, &p)
+						.tooltip(tip("Developer"))
+						.on_click(cx.listener(|this, event: &gpui::ClickEvent, _, cx| {
+							cx.stop_propagation();
+							this.popup = Some(Popup {
+								position: point(event.position().x, px(TITLE_BAR_HEIGHT - 4.)),
+								corner: Corner::TopRight,
+								items: vec![PopupItem::action(
+									"Load fake disk",
+									|this, window, cx| this.load_demo_disk(window, cx),
+								)],
+							});
+							cx.notify();
+						})),
+				)
+			})
 			.child(
 				icon_button("theme", if p.dark { "sun" } else { "moon" }, true, &p).on_click(
 					cx.listener(|this, _, _, cx| {

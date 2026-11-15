@@ -1,7 +1,7 @@
 // The first screen: the disks there are to scan, and the folders that have
 // been.
 
-use crate::controls::{ButtonKind, button, eyebrow, icon};
+use crate::controls::{eyebrow, icon};
 use crate::popup::place_menu;
 use crate::workspace::Workspace;
 use gpui::{AnyElement, Context, FontWeight, MouseButton, MouseDownEvent, div, prelude::*, px};
@@ -151,23 +151,7 @@ impl Workspace {
 							.when(!disks.is_empty(), |this| {
 								this.child(self.render_section("DISKS", disks))
 							})
-							.child(self.render_section("FOLDERS", folders))
-							.when(cfg!(debug_assertions), |this| {
-								this.child(
-									div().flex().child(
-										button(
-											"demo-disk",
-											"Load fake disk",
-											ButtonKind::Default,
-											true,
-											&p,
-										)
-										.on_click(cx.listener(|this, _, window, cx| {
-											this.load_demo_disk(window, cx)
-										})),
-									),
-								)
-							}),
+							.child(self.render_section("FOLDERS", folders)),
 					),
 			)
 			.into_any_element()

@@ -31,7 +31,6 @@ actions!(
 		SuggestNext,
 		SuggestPick,
 		PastePath,
-		LoadDemoDisk,
 		VisitGitHub,
 		ReportIssue,
 		Minimize,
@@ -145,7 +144,6 @@ pub fn app_menus(recents: &[RecentScan], dark: bool) -> Vec<Menu> {
 			),
 			MenuItem::separator(),
 			MenuItem::action("Toggle Full Screen", ToggleFullScreen),
-			MenuItem::action("Load Demo Disk", LoadDemoDisk),
 		],
 	});
 	menus.push(Menu {
@@ -253,7 +251,6 @@ pub fn register(window: WindowHandle<Workspace>, cx: &mut App) {
 		SuggestNext => on_suggest_next,
 		SuggestPick => on_suggest_pick,
 		PastePath => on_paste_path,
-		LoadDemoDisk => on_load_demo_disk,
 	];
 	// The Window menu's are about whichever window is in front, which may be
 	// the About window.
@@ -390,9 +387,5 @@ impl Workspace {
 		if let Some(text) = cx.read_from_clipboard().and_then(|item| item.text()) {
 			self.pasted(&text, cx);
 		}
-	}
-
-	fn on_load_demo_disk(&mut self, _: &LoadDemoDisk, window: &mut Window, cx: &mut Cx) {
-		self.load_demo_disk(window, cx);
 	}
 }

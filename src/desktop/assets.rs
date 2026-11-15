@@ -45,6 +45,7 @@ icons![
 	"text-search",
 	"trash",
 	"weight",
+	"wrench",
 	"x",
 ];
 
