@@ -2,11 +2,11 @@
 // listed beside, and find over both.
 
 use crate::controls::{ButtonKind, button, icon, icon_button, tip};
-use crate::popup::PopupItem;
+use crate::popup::{PopupItem, SORT_MENU};
 use crate::workspace::{ViewMode, Workspace};
 use gpui::{
-	AnyElement, App, ClickEvent, Context, Focusable, FontWeight, MouseButton, Window, deferred,
-	div, prelude::*, px, relative,
+	AnyElement, App, Context, Corner, Focusable, FontWeight, MouseButton, Window, deferred, div,
+	prelude::*, px, relative,
 };
 use observatory_core::Finder;
 use observatory_core::finders::{FINDERS, finder_info};
@@ -234,7 +234,7 @@ impl Workspace {
 
 		let sort = (!finding && self.mode == ViewMode::List).then(|| {
 			let fill = p.fill;
-			div()
+			let button = div()
 				.id("sort")
 				.flex()
 				.flex_none()
@@ -248,9 +248,13 @@ impl Workspace {
 				.cursor_pointer()
 				.hover(move |style| style.bg(fill))
 				.child(format!("Sort: {}", self.sort.label()))
-				.child(icon("chevron-down", 12., p.faint))
-				.on_click(cx.listener(|this, event: &ClickEvent, _, cx| {
-					let items = SortMode::ALL
+				.child(icon("chevron-down", 12., p.faint));
+			self.opens_menu(
+				button,
+				SORT_MENU,
+				Corner::TopRight,
+				|this| {
+					SortMode::ALL
 						.into_iter()
 						.map(|mode| {
 							PopupItem::action(mode.label(), move |this, _, _| {
@@ -259,9 +263,10 @@ impl Workspace {
 							})
 							.checked(this.sort == mode)
 						})
-						.collect();
-					this.show_popup(event.position(), items, cx);
-				}))
+						.collect()
+				},
+				cx,
+			)
 		});
 
 		div()

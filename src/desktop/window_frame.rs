@@ -161,11 +161,6 @@ impl Frame {
 		])
 	}
 
-	/// Where the window starts, under its shadow.
-	pub fn top(&self) -> Pixels {
-		self.origin().y
-	}
-
 	/// How far into the window a popup has to stay: past the shadow.
 	pub fn margin(&self) -> Pixels {
 		if self.tiling.is_some() {

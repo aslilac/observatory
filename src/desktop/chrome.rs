@@ -4,7 +4,7 @@
 
 use crate::controls::{icon, icon_button, tip};
 use crate::menus;
-use crate::popup::{Popup, PopupItem};
+use crate::popup::{DEVELOPER_MENU, PopupItem};
 use crate::window_frame::{
 	Frame, HEADER_BAR, caption_buttons, has_native_title_bar, header_buttons, moves_window,
 	resize_cursor, resize_edge,
@@ -13,7 +13,7 @@ use crate::workspace::{Screen, Workspace};
 use gpui::{
 	AnyElement, Context, Corner, Edges, ExternalPaths, FontWeight, HitboxBehavior, MenuItem,
 	MouseButton, MouseMoveEvent, NavigationDirection, Window, anchored, canvas, deferred, div,
-	point, prelude::*, px,
+	prelude::*, px,
 };
 
 pub const TITLE_BAR_HEIGHT: f32 = 36.;
@@ -196,7 +196,7 @@ impl Workspace {
 						this.child(div().truncate().child(title))
 					}),
 			)
-			.children(self.render_bar_tools(TITLE_BAR_HEIGHT, cx))
+			.children(self.render_bar_tools(cx))
 			.when_some(buttons, |this, buttons| {
 				this.child(div().flex_none().w(px(8.))).child(buttons)
 			})
@@ -205,31 +205,30 @@ impl Workspace {
 
 	// What's at the end of the window's bar, whichever bar that is: the
 	// update, the developer's menu, and the theme (except on Linux, where
-	// it's in the primary menu). `bar` is how tall the bar
-	// is, for where a menu opens under it.
-	fn render_bar_tools(&self, bar: f32, cx: &mut Context<Self>) -> Vec<AnyElement> {
+	// it's in the primary menu).
+	fn render_bar_tools(&self, cx: &mut Context<Self>) -> Vec<AnyElement> {
 		let p = self.palette;
 		let mut tools = Vec::new();
 		tools.extend(self.render_update_button(cx));
 		// What's only for working on the app, in builds that aren't for
 		// release.
 		if cfg!(debug_assertions) {
+			let developer = icon_button("developer", "wrench", true, &p)
+				.occlude()
+				.tooltip(tip("Developer"));
 			tools.push(
-				icon_button("developer", "wrench", true, &p)
-					.occlude()
-					.tooltip(tip("Developer"))
-					.on_click(cx.listener(move |this, event: &gpui::ClickEvent, _, cx| {
-						cx.stop_propagation();
-						this.popup = Some(Popup {
-							position: point(event.position().x, this.frame.top() + px(bar - 4.)),
-							corner: Corner::TopRight,
-							items: vec![PopupItem::action("Load fake disk", |this, window, cx| {
-								this.load_demo_disk(window, cx)
-							})],
-						});
-						cx.notify();
-					}))
-					.into_any_element(),
+				self.opens_menu(
+					developer,
+					DEVELOPER_MENU,
+					Corner::TopRight,
+					|_| {
+						vec![PopupItem::action("Load fake disk", |this, window, cx| {
+							this.load_demo_disk(window, cx)
+						})]
+					},
+					cx,
+				)
+				.into_any_element(),
 			);
 		}
 		// Where there's a primary menu, the theme's in that instead.
@@ -516,7 +515,7 @@ impl Workspace {
 		.children(chips.into_iter().map(own))
 		.when(HEADER_BAR, |this| {
 			this.child(div().flex_none().w(px(2.)))
-				.children(self.render_bar_tools(TOOLBAR_HEIGHT, cx))
+				.children(self.render_bar_tools(cx))
 				.child(self.render_primary_menu_button(cx))
 		})
 		.when_some(header_buttons(window, false, color, cx), |this, buttons| {
