@@ -1,6 +1,6 @@
 [package]
 name = "observatory"
-version = "1.0.0"
+version = "1.0.0-beta.3"
 edition = "2024"
 authors = ["McKayla Washburn-Love <kayla@tree.camp>"]
 license = "MPL-2.0"
@@ -10,11 +10,16 @@ publish = false
 name = "observatory"
 path = "./main.rs"
 
+[features]
+default = ["runtime-shaders"]
+# The Metal shaders are compiled when the app starts rather than by the
+# build, which would need Xcode's separate Metal Toolchain. A build for
+# release turns it off where the toolchain's there (macos/build.sh).
+runtime-shaders = ["gpui/runtime_shaders"]
+
 [dependencies]
 observatory-core = { path = "../core" }
-# runtime_shaders: the Metal shaders are compiled when the app starts rather
-# than by the build, which would need Xcode's separate Metal Toolchain.
-gpui = { version = "0.2.2", features = ["runtime_shaders"] }
+gpui = "0.2.2"
 futures = "0.3"
 unicode-segmentation = "1"
 anyhow = "1"

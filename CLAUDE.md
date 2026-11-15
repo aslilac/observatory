@@ -119,6 +119,11 @@ Commands, from the repo root:
 
 - `cargo run -p observatory` — the app. `-- --demo` opens the fake disk, `-- --scan=<path>` (or just a path) scans a folder, and `-- --about` opens the About window too.
 - `cargo test` — covers core as well as the scanner.
+- `macos/build.sh` — packages it for macOS, Apple silicon only, into `target/macos/`: `Observatory.app` (the release binary without its symbols, `macos/Info.plist` with the version filled in, and the icons from `build-resources/`), a `.dmg` with the app beside a link to Applications, and a `.zip` of the app for an updater. There's no Forge here: the script is the packaging. It signs ad hoc, or with the team's Developer ID certificate (hardened runtime) when `APPLE_TEAM_ID` is set, and with `APPLE_ID` and `APPLE_APP_SPECIFIC_PASSWORD` too it notarizes and staples both the app and the dmg, the same variables the release workflow has. The version is the desktop crate's.
+
+gpui's Metal shaders are compiled by the build only when the desktop crate's default `runtime-shaders` feature is off, which needs Xcode's Metal Toolchain (`xcodebuild -downloadComponent MetalToolchain`); `macos/build.sh` turns it off when the toolchain's there, and otherwise the app compiles them each time it starts.
+
+What's only for working on the app (loading the fake disk) is behind a wrench in the title bar, beside the theme switch, in debug builds only.
 
 The About window (`about.rs`) is the Electron one again, but gpui has no radial gradients and can't turn a picture, so its sky isn't layers a compositor moves: `observatory_core::sky` works the whole thing out a pixel at a time (the sunset's gradients, then each star and its trail by where the pixel is around the pole, added up where trails cross, fading into the horizon and behind the words), following `about.css` and `sky.ts` number for number, mulberry32 stars included. `Sky::new` does everything that doesn't turn once; `frame(turns, order)` is a picture of it, which the window asks for about ten times a second on a background thread and swaps in as an image under the scene (`build-resources/about/scene.webp`, compiled in) and the words. It reads where things fall on the render from the same `scene.json`. `cargo run --release -p observatory-core --example sky -- sky.bmp [turns]` writes a frame to look at.
 
