@@ -5,9 +5,9 @@
 // squeeze shut at the edge, and its parents sink into the center. Wedges
 // only one view has fade, in from or out to where they'd be in the other.
 
+use super::Sweep;
 use super::geometry::{CENTER_RADIUS, covers, polar};
 use super::layout::{Wedge, wedge_key};
-use super::Sweep;
 use crate::color::Color;
 use std::collections::{HashMap, HashSet};
 use std::time::Duration;
@@ -323,15 +323,19 @@ impl Sunburst {
 	pub fn frame(&mut self, now: Duration) -> Vec<Drawn> {
 		self.advance(now);
 		let ghosts = self.motion.iter().flat_map(|motion| {
-			motion.tracks.iter().filter(|track| track.ghost).map(|track| {
-				let (pose, fill) = self.shown[&track.key];
-				Drawn {
-					sweep: pose.sweep,
-					opacity: pose.opacity,
-					fill,
-					wedge: None,
-				}
-			})
+			motion
+				.tracks
+				.iter()
+				.filter(|track| track.ghost)
+				.map(|track| {
+					let (pose, fill) = self.shown[&track.key];
+					Drawn {
+						sweep: pose.sweep,
+						opacity: pose.opacity,
+						fill,
+						wedge: None,
+					}
+				})
 		});
 		let wedges = self.wedges.iter().enumerate().map(|(index, wedge)| {
 			let pose = self.shown.get(&wedge.key).map_or(
@@ -395,7 +399,14 @@ mod tests {
 			|_| None,
 		)
 		.unwrap();
-		assert_eq!(m, ViewMapping { scale: 0.5, offset: 0.25, shift: 2.0 });
+		assert_eq!(
+			m,
+			ViewMapping {
+				scale: 0.5,
+				offset: 0.25,
+				shift: 2.0
+			}
+		);
 		// The new view's first ring is where the folder's children were.
 		assert_eq!(to_old_view(sweep(0.0, 1.0, 0.0), m), sweep(0.25, 0.75, 2.0));
 		// And the old view's wedges, from the new one: the folder itself fills
@@ -415,7 +426,14 @@ mod tests {
 			|key| (key == "/disk\0a").then_some(closed),
 		)
 		.unwrap();
-		assert_eq!(m, ViewMapping { scale: 2.0, offset: -0.5, shift: -1.0 });
+		assert_eq!(
+			m,
+			ViewMapping {
+				scale: 2.0,
+				offset: -0.5,
+				shift: -1.0
+			}
+		);
 		assert_eq!(to_old_view(closed, m), sweep(0.0, 1.0, -1.0));
 	}
 
@@ -466,7 +484,12 @@ mod tests {
 	fn the_first_view_appears_at_once() {
 		let (files, _) = disk();
 		let mut sunburst = Sunburst::new();
-		sunburst.show(view(&[], 1.0), wedges(&files, &[], 100), Duration::ZERO, false);
+		sunburst.show(
+			view(&[], 1.0),
+			wedges(&files, &[], 100),
+			Duration::ZERO,
+			false,
+		);
 		assert!(!sunburst.animating());
 		let frame = sunburst.frame(Duration::ZERO);
 		assert_eq!(frame.len(), 4);
@@ -478,9 +501,19 @@ mod tests {
 		let (files, inside) = disk();
 		let cursor = ["a".to_string()];
 		let mut sunburst = Sunburst::new();
-		sunburst.show(view(&[], 1.0), wedges(&files, &[], 100), Duration::ZERO, false);
+		sunburst.show(
+			view(&[], 1.0),
+			wedges(&files, &[], 100),
+			Duration::ZERO,
+			false,
+		);
 		let start = Duration::from_secs(1);
-		sunburst.show(view(&["a"], 1.0), wedges(&inside, &cursor, 60), start, false);
+		sunburst.show(
+			view(&["a"], 1.0),
+			wedges(&inside, &cursor, 60),
+			start,
+			false,
+		);
 		assert!(sunburst.animating());
 
 		// At the start everything's where it was: `big` in the second ring,
@@ -499,7 +532,12 @@ mod tests {
 		let big = frame.iter().find(|d| d.wedge == Some(0)).unwrap();
 		assert!((big.sweep.layer - 0.5).abs() < 1e-9);
 		assert!(big.sweep.x1 > 0.4 && big.sweep.x1 < 40.0 / 60.0);
-		assert!(frame.iter().filter(|d| d.wedge.is_none()).all(|g| g.opacity < 1.0));
+		assert!(
+			frame
+				.iter()
+				.filter(|d| d.wedge.is_none())
+				.all(|g| g.opacity < 1.0)
+		);
 
 		// And at the end only the new view is left.
 		let frame = sunburst.frame(start + DURATION);
@@ -513,8 +551,18 @@ mod tests {
 		let (files, inside) = disk();
 		let cursor = ["a".to_string()];
 		let mut sunburst = Sunburst::new();
-		sunburst.show(view(&[], 1.0), wedges(&files, &[], 100), Duration::ZERO, false);
-		sunburst.show(view(&["a"], 1.0), wedges(&inside, &cursor, 60), Duration::ZERO, true);
+		sunburst.show(
+			view(&[], 1.0),
+			wedges(&files, &[], 100),
+			Duration::ZERO,
+			false,
+		);
+		sunburst.show(
+			view(&["a"], 1.0),
+			wedges(&inside, &cursor, 60),
+			Duration::ZERO,
+			true,
+		);
 		assert!(!sunburst.animating());
 		assert_eq!(sunburst.frame(Duration::ZERO).len(), 2);
 	}
@@ -523,7 +571,12 @@ mod tests {
 	fn points_hit_wedges() {
 		let (files, _) = disk();
 		let mut sunburst = Sunburst::new();
-		sunburst.show(view(&[], 1.0), wedges(&files, &[], 100), Duration::ZERO, false);
+		sunburst.show(
+			view(&[], 1.0),
+			wedges(&files, &[], 100),
+			Duration::ZERO,
+			false,
+		);
 		assert_eq!(sunburst.hit(10.0, 10.0), Some(Hit::Center));
 		// Straight up is an eighth of a turn round: in `a`, then `big` a ring
 		// out, then nothing.

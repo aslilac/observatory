@@ -11,7 +11,9 @@ struct Version<'a> {
 fn parse(version: &str) -> Option<Version<'_>> {
 	let version = version.strip_prefix('v').unwrap_or(version);
 	// Build metadata says nothing about which came first.
-	let version = version.split_once('+').map_or(version, |(version, _)| version);
+	let version = version
+		.split_once('+')
+		.map_or(version, |(version, _)| version);
 	let (release, prerelease) = match version.split_once('-') {
 		Some((release, prerelease)) => (release, Some(prerelease)),
 		None => (version, None),
@@ -27,9 +29,8 @@ fn parse(version: &str) -> Option<Version<'_>> {
 		return None;
 	}
 	let prerelease: Vec<_> = prerelease.map_or_else(Vec::new, |p| p.split('.').collect());
-	let identifier = |id: &&str| {
-		!id.is_empty() && id.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-')
-	};
+	let identifier =
+		|id: &&str| !id.is_empty() && id.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-');
 	prerelease.iter().all(identifier).then_some(Version {
 		release,
 		prerelease,

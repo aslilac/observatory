@@ -135,7 +135,9 @@ pub fn full_date(epoch_ms: u64) -> String {
 }
 
 fn local(epoch_ms: u64) -> Option<chrono::DateTime<Local>> {
-	Local.timestamp_millis_opt(i64::try_from(epoch_ms).ok()?).single()
+	Local
+		.timestamp_millis_opt(i64::try_from(epoch_ms).ok()?)
+		.single()
 }
 
 pub fn now_ms() -> u64 {

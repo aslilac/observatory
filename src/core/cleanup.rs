@@ -97,8 +97,15 @@ mod tests {
 			],
 			DeleteMode::Delete,
 		);
-		assert_eq!(result.deleted, [path("folder"), path("file"), path("never-was")]);
-		let failed: Vec<_> = result.failed.iter().map(|(path, _)| path.as_str()).collect();
+		assert_eq!(
+			result.deleted,
+			[path("folder"), path("file"), path("never-was")]
+		);
+		let failed: Vec<_> = result
+			.failed
+			.iter()
+			.map(|(path, _)| path.as_str())
+			.collect();
 		assert_eq!(failed, ["/", "relative/path"]);
 		assert!(!dir.join("folder").exists() && !dir.join("file").exists());
 		let _ = std::fs::remove_dir_all(&dir);

@@ -30,7 +30,13 @@ impl Builder {
 
 	fn many_tiny_files(&self, prefix: &str, count: u64, per_file: u64) -> Vec<Value> {
 		(0..count)
-			.map(|i| self.file(&format!("{prefix}-{i}.cache"), per_file + ((i * 7) % 53) * KB, 30))
+			.map(|i| {
+				self.file(
+					&format!("{prefix}-{i}.cache"),
+					per_file + ((i * 7) % 53) * KB,
+					30,
+				)
+			})
 			.collect()
 	}
 }
@@ -121,7 +127,10 @@ pub fn build() -> String {
 											vec![
 												b.file("README.md", 6 * KB, 1),
 												b.file("pnpm-lock.yaml", 920 * KB, 3),
-												dir("node_modules", b.many_tiny_files("dep", 60, 32 * KB)),
+												dir(
+													"node_modules",
+													b.many_tiny_files("dep", 60, 32 * KB),
+												),
 												dir(
 													"src",
 													vec![
@@ -173,10 +182,16 @@ pub fn build() -> String {
 								dir(
 									"Caches",
 									vec![
-										dir("com.apple.Safari", b.many_tiny_files("cache", 200, 48 * KB)),
+										dir(
+											"com.apple.Safari",
+											b.many_tiny_files("cache", 200, 48 * KB),
+										),
 										dir(
 											"Google",
-											vec![dir("Chrome", b.many_tiny_files("entry", 150, 96 * KB))],
+											vec![dir(
+												"Chrome",
+												b.many_tiny_files("entry", 150, 96 * KB),
+											)],
 										),
 									],
 								),

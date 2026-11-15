@@ -209,23 +209,71 @@ mod tests {
 
 	#[test]
 	fn rings() {
-		assert_eq!(layer_radii(0), Radii { inner: 70.0, outer: 101.0 });
-		assert_eq!(layer_radii(4), Radii { inner: 194.0, outer: 225.0 });
-		assert_eq!(layer_radii(5), Radii { inner: 228.0, outer: 233.0 });
-		assert_eq!(layer_radii(6), Radii { inner: 236.0, outer: 241.0 });
+		assert_eq!(
+			layer_radii(0),
+			Radii {
+				inner: 70.0,
+				outer: 101.0
+			}
+		);
+		assert_eq!(
+			layer_radii(4),
+			Radii {
+				inner: 194.0,
+				outer: 225.0
+			}
+		);
+		assert_eq!(
+			layer_radii(5),
+			Radii {
+				inner: 228.0,
+				outer: 233.0
+			}
+		);
+		assert_eq!(
+			layer_radii(6),
+			Radii {
+				inner: 236.0,
+				outer: 241.0
+			}
+		);
 	}
 
 	#[test]
 	fn rings_between_layers() {
 		assert_eq!(ring_radii(1.0), layer_radii(1));
-		assert_eq!(ring_radii(-1.0), Radii { inner: 0.0, outer: 70.0 });
+		assert_eq!(
+			ring_radii(-1.0),
+			Radii {
+				inner: 0.0,
+				outer: 70.0
+			}
+		);
 		assert_eq!(ring_radii(-2.0), NOTHING);
 		assert_eq!(ring_radii(-3.5), NOTHING);
-		assert_eq!(ring_radii(0.5), Radii { inner: 85.5, outer: 116.5 });
+		assert_eq!(
+			ring_radii(0.5),
+			Radii {
+				inner: 85.5,
+				outer: 116.5
+			}
+		);
 		// Halfway into the center.
-		assert_eq!(ring_radii(-0.5), Radii { inner: 35.0, outer: 85.5 });
+		assert_eq!(
+			ring_radii(-0.5),
+			Radii {
+				inner: 35.0,
+				outer: 85.5
+			}
+		);
 		// Halfway to nothing.
-		assert_eq!(ring_radii(-1.5), Radii { inner: 0.0, outer: 35.0 });
+		assert_eq!(
+			ring_radii(-1.5),
+			Radii {
+				inner: 0.0,
+				outer: 35.0
+			}
+		);
 	}
 
 	#[test]
@@ -242,7 +290,11 @@ mod tests {
 
 	#[test]
 	fn outlines() {
-		let quarter = Sweep { x0: 0.0, x1: 0.25, layer: 0.0 };
+		let quarter = Sweep {
+			x0: 0.0,
+			x1: 0.25,
+			layer: 0.0,
+		};
 		let shapes = outline(quarter, 0.1);
 		assert_eq!(shapes.len(), 1);
 		// Every point is within the ring, give or take the gap.
@@ -251,15 +303,31 @@ mod tests {
 			assert!((70.0..=101.0).contains(&r), "{r}");
 		}
 
-		let shut = Sweep { x0: 0.5, x1: 0.5, layer: 0.0 };
+		let shut = Sweep {
+			x0: 0.5,
+			x1: 0.5,
+			layer: 0.0,
+		};
 		assert!(outline(shut, 0.1).is_empty());
-		let gone = Sweep { x0: 0.0, x1: 0.5, layer: -2.0 };
+		let gone = Sweep {
+			x0: 0.0,
+			x1: 0.5,
+			layer: -2.0,
+		};
 		assert!(outline(gone, 0.1).is_empty());
 
-		let whole = Sweep { x0: 0.0, x1: 1.0, layer: 1.0 };
+		let whole = Sweep {
+			x0: 0.0,
+			x1: 1.0,
+			layer: 1.0,
+		};
 		assert_eq!(outline(whole, 0.1).len(), 2);
 		// In the center there's no hole.
-		let center = Sweep { x0: 0.0, x1: 1.0, layer: -1.0 };
+		let center = Sweep {
+			x0: 0.0,
+			x1: 1.0,
+			layer: -1.0,
+		};
 		assert_eq!(outline(center, 0.1).len(), 1);
 	}
 
@@ -272,9 +340,21 @@ mod tests {
 
 		let (turns, radius) = polar(0.0, -80.0);
 		assert!((turns - 0.125).abs() < 1e-9);
-		let first = Sweep { x0: 0.0, x1: 0.25, layer: 0.0 };
-		let second = Sweep { x0: 0.25, x1: 0.5, layer: 0.0 };
-		let above = Sweep { x0: 0.0, x1: 0.25, layer: 1.0 };
+		let first = Sweep {
+			x0: 0.0,
+			x1: 0.25,
+			layer: 0.0,
+		};
+		let second = Sweep {
+			x0: 0.25,
+			x1: 0.5,
+			layer: 0.0,
+		};
+		let above = Sweep {
+			x0: 0.0,
+			x1: 0.25,
+			layer: 1.0,
+		};
 		assert!(covers(first, turns, radius));
 		assert!(!covers(second, turns, radius));
 		assert!(!covers(above, turns, radius));

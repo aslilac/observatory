@@ -86,11 +86,7 @@ pub fn hue_for_range(start: f64, size: f64) -> f64 {
 /// Hues for the immediate children of a directory that begins at `start`
 /// (a fraction of the root: `RenderTree::position`), one per size, in scan
 /// order. Empty if the root is.
-pub fn hues_by_position(
-	sizes: impl Iterator<Item = u64>,
-	start: f64,
-	root_size: u64,
-) -> Vec<f64> {
+pub fn hues_by_position(sizes: impl Iterator<Item = u64>, start: f64, root_size: u64) -> Vec<f64> {
 	if root_size == 0 {
 		return Vec::new();
 	}
@@ -223,8 +219,14 @@ mod tests {
 	#[test]
 	fn oklch_matches_css() {
 		// sRGB's own red and blue, as CSS writes them in OKLCH.
-		assert_eq!(Color::oklch(0.627955, 0.257683, 29.2339).to_rgb8(), [255, 0, 0]);
-		assert_eq!(Color::oklch(0.452014, 0.313214, 264.052).to_rgb8(), [0, 0, 255]);
+		assert_eq!(
+			Color::oklch(0.627955, 0.257683, 29.2339).to_rgb8(),
+			[255, 0, 0]
+		);
+		assert_eq!(
+			Color::oklch(0.452014, 0.313214, 264.052).to_rgb8(),
+			[0, 0, 255]
+		);
 		assert_eq!(Color::oklch(1.0, 0.0, 0.0).to_rgb8(), [255, 255, 255]);
 		assert_eq!(Color::oklch(0.0, 0.0, 0.0).to_rgb8(), [0, 0, 0]);
 	}

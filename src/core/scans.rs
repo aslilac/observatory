@@ -152,7 +152,10 @@ impl Scans {
 	fn tree(&self, path: &str) -> Option<Arc<RwLock<Tree>>> {
 		let entries = lock(&self.inner.entries);
 		let (_, entry) = entries.iter().find(|(p, _)| p == path)?;
-		entry.tree.clone().filter(|_| entry.status == Status::Complete)
+		entry
+			.tree
+			.clone()
+			.filter(|_| entry.status == Status::Complete)
 	}
 
 	/// What there is to draw of the folder at `cursor` in the scan of
@@ -479,7 +482,10 @@ mod tests {
 		assert_eq!((info.status, info.size), (Status::Complete, Some(30)));
 
 		let root = scans.render_tree(&path, &[]).unwrap();
-		assert_eq!((root.name.as_str(), root.capacity, root.size), ("Disk", 100, 30));
+		assert_eq!(
+			(root.name.as_str(), root.capacity, root.size),
+			("Disk", 100, 30)
+		);
 		let a = scans.render_tree(&path, &["a".to_string()]).unwrap();
 		assert_eq!((a.capacity, a.root_capacity, a.list.len()), (20, 100, 1));
 		assert!(scans.render_tree(&path, &["b".to_string()]).is_none());

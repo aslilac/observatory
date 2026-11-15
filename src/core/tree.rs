@@ -118,9 +118,7 @@ pub fn assemble(
 		root_capacity: capacity.unwrap_or(slice.root_size),
 		root_size: slice.root_size,
 		// Only the root has a capacity of its own: the drive's.
-		capacity: capacity
-			.filter(|_| cursor.is_empty())
-			.unwrap_or(slice.size),
+		capacity: capacity.filter(|_| cursor.is_empty()).unwrap_or(slice.size),
 		position: slice.position,
 		size: slice.size,
 		list,

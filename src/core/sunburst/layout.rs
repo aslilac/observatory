@@ -253,10 +253,24 @@ mod tests {
 		assert_eq!(keys, ["/disk/a", "/disk/a/big", "/disk/a/rest", "/disk/b"]);
 
 		let a = &wedges[0];
-		assert_eq!(a.sweep, Sweep { x0: 0.0, x1: 0.6, layer: 0.0 });
+		assert_eq!(
+			a.sweep,
+			Sweep {
+				x0: 0.0,
+				x1: 0.6,
+				layer: 0.0
+			}
+		);
 		assert_eq!(a.item.as_ref().unwrap().path, "/disk/a");
 		let big = &wedges[1];
-		assert_eq!(big.sweep, Sweep { x0: 0.0, x1: 0.4, layer: 1.0 });
+		assert_eq!(
+			big.sweep,
+			Sweep {
+				x0: 0.0,
+				x1: 0.4,
+				layer: 1.0
+			}
+		);
 		assert_eq!(big.path, ["a", "big"]);
 		let rest = &wedges[2];
 		assert_eq!(rest.kind, Kind::Imaginary);
@@ -300,7 +314,14 @@ mod tests {
 		});
 		assert_eq!(wedges.len(), 2);
 		assert_eq!(wedges[1].kind, Kind::Reserved);
-		assert_eq!(wedges[1].sweep, Sweep { x0: 0.5, x1: 0.7, layer: 0.0 });
+		assert_eq!(
+			wedges[1].sweep,
+			Sweep {
+				x0: 0.5,
+				x1: 0.7,
+				layer: 0.0
+			}
+		);
 		assert_eq!(wedges[1].node.name, "virtual memory");
 	}
 

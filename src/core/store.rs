@@ -126,7 +126,9 @@ impl Store {
 	}
 
 	pub fn remove_recent(&mut self, path: &str) {
-		self.remembered.recent_scans.retain(|entry| entry.path != path);
+		self.remembered
+			.recent_scans
+			.retain(|entry| entry.path != path);
 		self.save();
 	}
 
@@ -192,7 +194,8 @@ mod tests {
 
 	#[test]
 	fn remembers_across_runs() {
-		let file = std::env::temp_dir().join(format!("observatory-store-{}.json", std::process::id()));
+		let file =
+			std::env::temp_dir().join(format!("observatory-store-{}.json", std::process::id()));
 		let _ = std::fs::remove_file(&file);
 		let mut store = Store::at(Some(file.clone()));
 		assert_eq!(store.dark(), None);
@@ -205,7 +208,11 @@ mod tests {
 
 		let store = Store::at(Some(file.clone()));
 		assert_eq!(store.dark(), Some(true));
-		let recent: Vec<_> = store.recent_scans().iter().map(|r| r.path.as_str()).collect();
+		let recent: Vec<_> = store
+			.recent_scans()
+			.iter()
+			.map(|r| r.path.as_str())
+			.collect();
 		assert_eq!(recent, ["/a", "/b"]);
 		assert_eq!(store.cleanup_size(), 12);
 		assert!(store.in_cleanup("/a/x/deep/inside"));
@@ -227,7 +234,8 @@ mod tests {
 
 	#[test]
 	fn a_mangled_file_is_a_first_run() {
-		let file = std::env::temp_dir().join(format!("observatory-mangled-{}.json", std::process::id()));
+		let file =
+			std::env::temp_dir().join(format!("observatory-mangled-{}.json", std::process::id()));
 		std::fs::write(&file, "{ not json").unwrap();
 		let store = Store::at(Some(file.clone()));
 		assert!(store.recent_scans().is_empty());
