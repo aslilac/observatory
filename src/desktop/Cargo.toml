@@ -37,3 +37,8 @@ winresource = "0.1"
 [target.'cfg(target_os = "macos")'.dependencies]
 objc = "0.2"
 raw-window-handle = "0.6"
+
+# For which window buttons a GNOME desktop wants, and on which side, from the
+# desktop portal's settings. The same as gpui's, so nothing more is built.
+[target.'cfg(any(target_os = "linux", target_os = "freebsd"))'.dependencies]
+ashpd = { version = "0.11", default-features = false, features = ["async-std"] }

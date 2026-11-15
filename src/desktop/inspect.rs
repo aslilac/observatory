@@ -69,7 +69,7 @@ impl Workspace {
 	pub fn render_inspect(
 		&mut self,
 		scan: &ScanInfo,
-		_: &mut Window,
+		window: &mut Window,
 		cx: &mut Context<Self>,
 	) -> AnyElement {
 		let p = self.palette;
@@ -112,7 +112,7 @@ impl Workspace {
 		let mut chips = Vec::new();
 		chips.extend(self.render_issues_chip(scan, cx));
 		chips.push(self.render_cleanup_chip(cx));
-		let toolbar = self.render_toolbar(Some(segmented), chips, cx);
+		let toolbar = self.render_toolbar(Some(segmented), chips, window, cx);
 
 		let find_bar = self.render_find_bar(finding, cx);
 		let side = if finding {

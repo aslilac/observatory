@@ -1,12 +1,13 @@
 // The window around the screens: the title bar, the toolbar each screen
-// puts under it, and the layers (the cleanup drawer, modals, menus) that go
+// puts under it (on Linux, the one bar), and the layers (the cleanup drawer, modals, menus) that go
 // over whichever screen is showing.
 
 use crate::controls::{icon, icon_button, tip};
 use crate::menus;
 use crate::popup::{Popup, PopupItem};
 use crate::window_frame::{
-	caption_buttons, has_native_title_bar, moves_window, resize_cursor, resize_edge,
+	Frame, HEADER_BAR, caption_buttons, has_native_title_bar, header_buttons, moves_window,
+	resize_cursor, resize_edge,
 };
 use crate::workspace::{Screen, Workspace};
 use gpui::{
@@ -17,16 +18,22 @@ use gpui::{
 pub const TITLE_BAR_HEIGHT: f32 = 36.;
 pub const TOOLBAR_HEIGHT: f32 = 44.;
 
+// What stands for the primary menu's button among the menu bar's menus, in
+// `app_menu_open` and `app_menu_bounds`.
+const PRIMARY_MENU: usize = usize::MAX;
+
 impl Render for Workspace {
 	fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
 		let p = self.palette;
+		self.frame = Frame::of(window);
+		let frame = self.frame;
 		let screen = match self.screen() {
-			Screen::Welcome => self.render_welcome(cx),
-			Screen::Scanning(scan) => self.render_scanning(&scan, cx),
-			Screen::Failed(scan) => self.render_failed(&scan, cx),
+			Screen::Welcome => self.render_welcome(window, cx),
+			Screen::Scanning(scan) => self.render_scanning(&scan, window, cx),
+			Screen::Failed(scan) => self.render_failed(&scan, window, cx),
 			Screen::Inspect(scan) => self.render_inspect(&scan, window, cx),
 		};
-		div()
+		let workspace = div()
 			.id("workspace")
 			.track_focus(&self.focus)
 			.relative()
@@ -50,7 +57,9 @@ impl Render for Workspace {
 				MouseButton::Navigate(NavigationDirection::Forward),
 				cx.listener(|this, _, window, cx| this.go_forward(window, cx)),
 			)
-			.child(self.render_title_bar(window, cx))
+			.when(!HEADER_BAR, |this| {
+				this.child(self.render_title_bar(window, cx))
+			})
 			.child(
 				div()
 					.relative()
@@ -64,10 +73,14 @@ impl Render for Workspace {
 			.children(self.render_issues(cx))
 			.children(self.render_cleanup_modal(cx))
 			.children(self.render_ask(cx))
-			.children(self.render_popup(cx))
-			// Where the app decorates its own window (Linux), its edges are
-			// what it's resized by: a press on one is that and nothing else,
-			// and the pointer says so while it's over one.
+			.children(self.render_popup(cx));
+		// Where the app decorates its own window (Linux), the window's drawn
+		// inside its shadow, and the shadow is what it's resized by: a press
+		// there is that and nothing else, and the pointer says so while it's
+		// over it.
+		frame
+			.pad(div().id("window").size_full())
+			.child(frame.window(workspace))
 			.on_mouse_move(cx.listener(|this, event: &MouseMoveEvent, window, cx| {
 				let edge = resize_edge(window, event.position);
 				if edge != this.resize_edge {
@@ -97,9 +110,26 @@ impl Render for Workspace {
 }
 
 // A menu's items, as the popup has them. A submenu's are set in among the
-// rest, between rules.
+// rest, between rules, under its name.
 fn popup_items(items: &[MenuItem]) -> Vec<PopupItem> {
 	let mut popup = Vec::new();
+	add_popup_items(items, &mut popup);
+	// No rule at either end, or two together.
+	let mut tidy: Vec<PopupItem> = Vec::new();
+	for item in popup {
+		let rule = matches!(item, PopupItem::Separator);
+		if rule && matches!(tidy.last(), None | Some(PopupItem::Separator)) {
+			continue;
+		}
+		tidy.push(item);
+	}
+	if matches!(tidy.last(), Some(PopupItem::Separator)) {
+		tidy.pop();
+	}
+	tidy
+}
+
+fn add_popup_items(items: &[MenuItem], popup: &mut Vec<PopupItem>) {
 	for item in items {
 		match item {
 			MenuItem::Separator => popup.push(PopupItem::Separator),
@@ -111,13 +141,13 @@ fn popup_items(items: &[MenuItem]) -> Vec<PopupItem> {
 			}
 			MenuItem::Submenu(menu) => {
 				popup.push(PopupItem::Separator);
-				popup.extend(popup_items(&menu.items));
+				popup.push(PopupItem::Heading(menu.name.clone()));
+				add_popup_items(&menu.items, popup);
 				popup.push(PopupItem::Separator);
 			}
 			_ => {}
 		}
 	}
-	popup
 }
 
 impl Workspace {
@@ -165,39 +195,119 @@ impl Workspace {
 						this.child(div().truncate().child(title))
 					}),
 			)
-			.children(self.render_update_button(cx))
-			// What's only for working on the app, in builds that aren't for
-			// release.
-			.when(cfg!(debug_assertions), |this| {
-				this.child(
-					icon_button("developer", "wrench", true, &p)
-						.occlude()
-						.tooltip(tip("Developer"))
-						.on_click(cx.listener(|this, event: &gpui::ClickEvent, _, cx| {
-							cx.stop_propagation();
-							this.popup = Some(Popup {
-								position: point(event.position().x, px(TITLE_BAR_HEIGHT - 4.)),
-								corner: Corner::TopRight,
-								items: vec![PopupItem::action(
-									"Load fake disk",
-									|this, window, cx| this.load_demo_disk(window, cx),
-								)],
-							});
-							cx.notify();
-						})),
-				)
-			})
-			.child(
-				icon_button("theme", if p.dark { "sun" } else { "moon" }, true, &p)
-					.occlude()
-					.on_click(cx.listener(|this, _, _, cx| {
-						cx.stop_propagation();
-						this.toggle_dark(cx);
-					})),
-			)
+			.children(self.render_bar_tools(TITLE_BAR_HEIGHT, cx))
 			.when_some(buttons, |this, buttons| {
 				this.child(div().flex_none().w(px(8.))).child(buttons)
 			})
+			.into_any_element()
+	}
+
+	// What's at the end of the window's bar, whichever bar that is: the
+	// update, the developer's menu, and the theme (except on Linux, where
+	// it's in the primary menu). `bar` is how tall the bar
+	// is, for where a menu opens under it.
+	fn render_bar_tools(&self, bar: f32, cx: &mut Context<Self>) -> Vec<AnyElement> {
+		let p = self.palette;
+		let mut tools = Vec::new();
+		tools.extend(self.render_update_button(cx));
+		// What's only for working on the app, in builds that aren't for
+		// release.
+		if cfg!(debug_assertions) {
+			tools.push(
+				icon_button("developer", "wrench", true, &p)
+					.occlude()
+					.tooltip(tip("Developer"))
+					.on_click(cx.listener(move |this, event: &gpui::ClickEvent, _, cx| {
+						cx.stop_propagation();
+						this.popup = Some(Popup {
+							position: point(event.position().x, this.frame.top() + px(bar - 4.)),
+							corner: Corner::TopRight,
+							items: vec![PopupItem::action("Load fake disk", |this, window, cx| {
+								this.load_demo_disk(window, cx)
+							})],
+						});
+						cx.notify();
+					}))
+					.into_any_element(),
+			);
+		}
+		// Where there's a primary menu, the theme's in that instead.
+		if HEADER_BAR {
+			return tools;
+		}
+		tools.push(
+			icon_button("theme", if p.dark { "sun" } else { "moon" }, true, &p)
+				.occlude()
+				.tooltip(tip(if p.dark {
+					"Switch to Light Mode"
+				} else {
+					"Switch to Dark Mode"
+				}))
+				.on_click(cx.listener(|this, _, _, cx| {
+					cx.stop_propagation();
+					this.toggle_dark(cx);
+				}))
+				.into_any_element(),
+		);
+		tools
+	}
+
+	/// Opens the primary menu under its button, or shuts it if it's open.
+	pub fn toggle_primary_menu(&mut self, cx: &mut Context<Self>) {
+		if self.app_menu_open == Some(PRIMARY_MENU) {
+			self.app_menu_open = None;
+			self.popup = None;
+			cx.notify();
+			return;
+		}
+		// F10 before the button's been drawn has nowhere to open it.
+		let Some(bounds) = self.app_menu_bounds.get(&PRIMARY_MENU) else {
+			return;
+		};
+		self.app_menu_open = Some(PRIMARY_MENU);
+		self.popup = Some(Popup {
+			position: point(bounds.right(), bounds.bottom() + px(4.)),
+			corner: Corner::TopRight,
+			items: popup_items(&menus::primary_menu(
+				self.store.recent_scans(),
+				self.palette.dark,
+			)),
+		});
+		cx.notify();
+	}
+
+	// The button the menus are behind, at the end of the toolbar, where
+	// there's no menu bar (Linux).
+	fn render_primary_menu_button(&self, cx: &mut Context<Self>) -> AnyElement {
+		let p = self.palette;
+		let workspace = cx.entity();
+		icon_button("primary-menu", "menu", true, &p)
+			.relative()
+			.occlude()
+			.tooltip(tip("Main Menu"))
+			.when(self.app_menu_open == Some(PRIMARY_MENU), |this| {
+				this.bg(p.fill)
+			})
+			// Where the button is, which is where its menu opens, and where
+			// a press isn't one outside the open menu.
+			.child(
+				canvas(
+					move |bounds, _, cx| {
+						workspace.update(cx, |this, _| {
+							this.app_menu_bounds.insert(PRIMARY_MENU, bounds);
+						})
+					},
+					|_, _, _, _| {},
+				)
+				.absolute()
+				.top_0()
+				.left_0()
+				.size_full(),
+			)
+			.on_mouse_down(
+				MouseButton::Left,
+				cx.listener(|this, _, _, cx| this.toggle_primary_menu(cx)),
+			)
 			.into_any_element()
 	}
 
@@ -296,10 +406,14 @@ impl Workspace {
 
 	/// The bar under the title bar: back and forward, where the user is,
 	/// and whatever the screen puts at its right (`right`, then `chips`).
+	///
+	/// On Linux it's the window's one bar: the window's moved by it, and the
+	/// tools, the menus, and the window's buttons are in it too.
 	pub fn render_toolbar(
 		&self,
 		right: Option<AnyElement>,
 		chips: Vec<AnyElement>,
+		window: &mut Window,
 		cx: &mut Context<Self>,
 	) -> AnyElement {
 		let p = self.palette;
@@ -316,7 +430,9 @@ impl Workspace {
 					if last {
 						this.font_weight(FontWeight::SEMIBOLD).text_color(p.default)
 					} else {
-						this.text_color(p.muted)
+						// Not part of the bar, which may move the window.
+						this.occlude()
+							.text_color(p.muted)
 							.cursor_pointer()
 							.hover(move |style| style.text_color(p.default))
 					}
@@ -360,7 +476,17 @@ impl Workspace {
 				}
 			}
 		}
-		div()
+		// What's pressed in the bar is that and not a press on the bar, which
+		// may move the window.
+		let own = |element: AnyElement| {
+			div()
+				.flex_none()
+				.occlude()
+				.child(element)
+				.into_any_element()
+		};
+		let bar = div()
+			.id("toolbar")
 			.flex()
 			.flex_none()
 			.items_center()
@@ -368,28 +494,47 @@ impl Workspace {
 			.h(px(TOOLBAR_HEIGHT))
 			.px(px(10.))
 			.border_b_1()
-			.border_color(p.line_soft)
-			.child(
-				icon_button("back", "arrow-left", self.nav.can_back(), &p)
-					.on_click(cx.listener(|this, _, window, cx| this.go_back(window, cx))),
-			)
-			.child(
-				icon_button("forward", "arrow-right", self.nav.can_forward(), &p)
-					.on_click(cx.listener(|this, _, window, cx| this.go_forward(window, cx))),
-			)
-			.child(
-				div()
-					.flex_1()
-					.min_w_0()
-					.overflow_hidden()
-					.flex()
-					.items_center()
-					.gap(px(6.))
-					.ml(px(4.))
-					.children(crumbs),
-			)
-			.children(right)
-			.children(chips)
-			.into_any_element()
+			.border_color(p.line_soft);
+		let bar = if HEADER_BAR {
+			moves_window(bar, window)
+		} else {
+			bar
+		};
+		let color = p.default;
+		bar.when_some(header_buttons(window, true, color, cx), |this, buttons| {
+			this.child(buttons).child(div().flex_none().w(px(6.)))
+		})
+		.child(
+			icon_button("back", "arrow-left", self.nav.can_back(), &p)
+				.occlude()
+				.on_click(cx.listener(|this, _, window, cx| this.go_back(window, cx))),
+		)
+		.child(
+			icon_button("forward", "arrow-right", self.nav.can_forward(), &p)
+				.occlude()
+				.on_click(cx.listener(|this, _, window, cx| this.go_forward(window, cx))),
+		)
+		.child(
+			div()
+				.flex_1()
+				.min_w_0()
+				.overflow_hidden()
+				.flex()
+				.items_center()
+				.gap(px(6.))
+				.ml(px(4.))
+				.children(crumbs),
+		)
+		.children(right.map(own))
+		.children(chips.into_iter().map(own))
+		.when(HEADER_BAR, |this| {
+			this.child(div().flex_none().w(px(2.)))
+				.children(self.render_bar_tools(TOOLBAR_HEIGHT, cx))
+				.child(self.render_primary_menu_button(cx))
+		})
+		.when_some(header_buttons(window, false, color, cx), |this, buttons| {
+			this.child(div().flex_none().w(px(6.))).child(buttons)
+		})
+		.into_any_element()
 	}
 }

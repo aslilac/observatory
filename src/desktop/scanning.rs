@@ -4,7 +4,7 @@
 use crate::controls::{ButtonKind, button};
 use crate::shapes::{band, circle, filled, ring};
 use crate::workspace::Workspace;
-use gpui::{AnyElement, Context, FontWeight, canvas, div, prelude::*, px};
+use gpui::{AnyElement, Context, FontWeight, Window, canvas, div, prelude::*, px};
 use observatory_core::ScanErrorKind;
 use observatory_core::format::compact_number;
 use observatory_core::scans::ScanInfo;
@@ -14,7 +14,12 @@ const SPINNER: f32 = 260.;
 const TURN_SECONDS: f32 = 1.2;
 
 impl Workspace {
-	pub fn render_scanning(&self, scan: &ScanInfo, cx: &mut Context<Self>) -> AnyElement {
+	pub fn render_scanning(
+		&self,
+		scan: &ScanInfo,
+		window: &mut Window,
+		cx: &mut Context<Self>,
+	) -> AnyElement {
 		let p = self.palette;
 		let path = scan.path.clone();
 		let cancel = button("cancel-scan", "Cancel scan", ButtonKind::Default, true, &p)
@@ -93,7 +98,7 @@ impl Workspace {
 			.flex()
 			.flex_col()
 			.size_full()
-			.child(self.render_toolbar(Some(cancel), chips, cx))
+			.child(self.render_toolbar(Some(cancel), chips, window, cx))
 			.child(
 				div()
 					.flex_1()
@@ -126,7 +131,12 @@ impl Workspace {
 			.into_any_element()
 	}
 
-	pub fn render_failed(&self, scan: &ScanInfo, cx: &mut Context<Self>) -> AnyElement {
+	pub fn render_failed(
+		&self,
+		scan: &ScanInfo,
+		window: &mut Window,
+		cx: &mut Context<Self>,
+	) -> AnyElement {
 		let p = self.palette;
 		let root = self.root_name(&scan.path);
 		let kind = scan.error.as_ref().map(|error| &error.kind);
@@ -156,7 +166,7 @@ impl Workspace {
 			.flex()
 			.flex_col()
 			.size_full()
-			.child(self.render_toolbar(None, chips, cx))
+			.child(self.render_toolbar(None, chips, window, cx))
 			.child(
 				div()
 					.flex_1()

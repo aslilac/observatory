@@ -5,12 +5,15 @@
 // every so often as the stars turn; this puts it behind everything else.
 
 use crate::menus::{REPOSITORY, environment};
-use crate::window_frame::{close_button, draws_close_button};
+use crate::window_frame::{
+	ALL_CORNERS, ButtonLayout, Control, Frame as WindowFrame, HEADER_BAR, SHADOW_ROOM,
+	close_button, draws_close_button,
+};
 use gpui::{
-	App, Bounds, ClipboardItem, Context, FontWeight, Global, Hsla, MouseButton, MouseDownEvent,
-	ObjectFit, Pixels, RenderImage, SharedString, TitlebarOptions, Window, WindowBounds,
-	WindowControlArea, WindowDecorations, WindowHandle, WindowOptions, canvas, div, img,
-	linear_color_stop, linear_gradient, prelude::*, px, rgb, rgba, size,
+	App, Bounds, ClipboardItem, Context, Corner, FontWeight, Global, Hsla, MouseButton,
+	MouseDownEvent, ObjectFit, Pixels, RenderImage, SharedString, TitlebarOptions, Window,
+	WindowBounds, WindowControlArea, WindowDecorations, WindowHandle, WindowOptions, canvas, div,
+	img, linear_color_stop, linear_gradient, prelude::*, px, rgb, rgba, size,
 };
 use image::{Frame, RgbaImage};
 use observatory_core::sky::{Ellipse, Order, Sky, scene_height};
@@ -55,7 +58,15 @@ pub fn open(cx: &mut App) {
 	let details = environment();
 	// The version has a line of its own, under the name.
 	let lines = details.len().saturating_sub(1) as f32;
-	let bounds = Bounds::centered(None, size(px(WIDTH), px(HEIGHT + LINE * lines)), cx);
+	// With room for its shadow, where it has one.
+	let bounds = Bounds::centered(
+		None,
+		size(
+			px(WIDTH + SHADOW_ROOM),
+			px(HEIGHT + LINE * lines + SHADOW_ROOM),
+		),
+		cx,
+	);
 	let window = cx
 		.open_window(
 			WindowOptions {
@@ -153,11 +164,12 @@ impl About {
 	}
 
 	fn sky_key(&self, window: &Window) -> SkyKey {
-		let viewport = window.viewport_size();
+		let frame = WindowFrame::read(window);
+		let viewport = frame.inner(window.viewport_size());
 		// The stars dim in an ellipse around the words, a little short of
 		// their corners.
 		let words = self.words.map(|words| {
-			let center = words.center();
+			let center = words.center() - frame.origin();
 			Ellipse {
 				x: center.x.into(),
 				y: center.y.into(),
@@ -287,7 +299,8 @@ fn move_window(window: &mut Window, _: &mut App) {
 
 impl Render for About {
 	fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-		let viewport = window.viewport_size();
+		let frame = WindowFrame::of(window);
+		let viewport = frame.inner(window.viewport_size());
 		let version = self
 			.details
 			.first()
@@ -386,7 +399,7 @@ impl Render for About {
 					.on_click(cx.listener(|this, _, _, cx| this.copy(cx))),
 			);
 
-		div()
+		let about = div()
 			.relative()
 			.size_full()
 			.overflow_hidden()
@@ -405,25 +418,32 @@ impl Render for About {
 			})
 			.on_mouse_down(MouseButton::Left, |_, window, cx| move_window(window, cx))
 			.children(self.picture.clone().map(|picture| {
-				img(picture)
-					.absolute()
-					.top_0()
-					.left_0()
-					.size_full()
-					.object_fit(ObjectFit::Fill)
+				frame.round(
+					img(picture)
+						.absolute()
+						.top_0()
+						.left_0()
+						.size_full()
+						.object_fit(ObjectFit::Fill),
+					&ALL_CORNERS,
+				)
 			}))
 			.child(
-				img("about/scene.webp")
-					.absolute()
-					.bottom_0()
-					.left_0()
-					.w_full()
-					.h(px(scene_height(viewport.width.into())))
-					.object_fit(ObjectFit::Fill),
+				frame.round(
+					img("about/scene.webp")
+						.absolute()
+						.bottom_0()
+						.left_0()
+						.w_full()
+						.h(px(scene_height(viewport.width.into())))
+						.object_fit(ObjectFit::Fill),
+					&[Corner::BottomLeft, Corner::BottomRight],
+				),
 			)
 			// The ground runs into the dark under the copyright.
 			.child(
 				div()
+					.map(|this| frame.round(this, &[Corner::BottomLeft, Corner::BottomRight]))
 					.absolute()
 					.bottom_0()
 					.left_0()
@@ -453,14 +473,24 @@ impl Render for About {
 			// Off macOS, where nothing else does, the app draws the button
 			// that closes the window.
 			.when(draws_close_button(window), |this| {
-				this.child(
+				let button = close_button(muted(), rgba(0xffffff1f).into());
+				this.child(if HEADER_BAR {
+					// Round, as GNOME's are, at whichever end the desktop
+					// puts the close button.
+					let left = cx
+						.try_global::<ButtonLayout>()
+						.is_some_and(|layout| layout.left.contains(&Control::Close));
 					div()
 						.absolute()
-						.top_0()
-						.right_0()
-						.h(px(36.))
-						.child(close_button(muted(), rgba(0xffffff1f).into())),
-				)
-			})
+						.top(px(9.))
+						.when(left, |this| this.left(px(9.)))
+						.when(!left, |this| this.right(px(9.)))
+						.child(button)
+				} else {
+					div().absolute().top_0().right_0().h(px(36.)).child(button)
+				})
+			});
+		// Inside its shadow, where it has one.
+		frame.pad(div().size_full()).child(frame.window(about))
 	}
 }

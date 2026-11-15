@@ -276,7 +276,7 @@ impl Workspace {
 			deferred(
 				anchored()
 					.position(hover.position + point(px(15.), px(5.)))
-					.snap_to_window_with_margin(Edges::all(px(8.)))
+					.snap_to_window_with_margin(Edges::all(px(8.) + self.frame.margin()))
 					.child(tip),
 			)
 			.with_priority(2)

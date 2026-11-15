@@ -24,6 +24,8 @@ pub enum PopupItem {
 		run: Run,
 	},
 	Separator,
+	/// What the items after it are, up to the next rule.
+	Heading(SharedString),
 }
 
 impl PopupItem {
@@ -45,7 +47,7 @@ impl PopupItem {
 				checked: Some(is),
 				run,
 			},
-			separator => separator,
+			other => other,
 		}
 	}
 }
@@ -170,6 +172,15 @@ impl Workspace {
 				.iter()
 				.enumerate()
 				.map(|(index, item)| match item {
+					PopupItem::Heading(label) => div()
+						.px(px(10.))
+						.pt(px(4.))
+						.pb(px(2.))
+						.text_size(px(11.))
+						.font_weight(gpui::FontWeight::MEDIUM)
+						.text_color(p.faint)
+						.child(label.clone())
+						.into_any_element(),
 					PopupItem::Separator => div()
 						.my(px(4.))
 						.mx(px(6.))
@@ -239,7 +250,7 @@ impl Workspace {
 				anchored()
 					.position(popup.position)
 					.anchor(popup.corner)
-					.snap_to_window_with_margin(Edges::all(px(8.)))
+					.snap_to_window_with_margin(Edges::all(px(8.) + self.frame.margin()))
 					.child(menu),
 			)
 			.with_priority(3)

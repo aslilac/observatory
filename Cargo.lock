@@ -3736,6 +3736,7 @@ name = "observatory"
 version = "1.0.0-beta.3"
 dependencies = [
  "anyhow",
+ "ashpd 0.11.1",
  "futures",
  "gpui",
  "image",

@@ -7,10 +7,11 @@ use crate::chrome::TOOLBAR_HEIGHT;
 use crate::controls::{ButtonKind, button, chip, icon, icon_button, modal_card, scrim};
 use crate::palette::Palette;
 use crate::popup::queued_menu;
+use crate::window_frame::ALL_CORNERS;
 use crate::workspace::Workspace;
 use gpui::{
-	Animation, AnimationExt, AnyElement, Context, Div, FontWeight, MouseButton, MouseDownEvent,
-	Stateful, Window, div, prelude::*, px,
+	Animation, AnimationExt, AnyElement, Context, Corner, Div, FontWeight, MouseButton,
+	MouseDownEvent, Stateful, Window, div, prelude::*, px,
 };
 use observatory_core::cleanup::{DeleteMode, DeleteResult, delete_files};
 use observatory_core::format::{plural, readable_size};
@@ -213,6 +214,8 @@ impl Workspace {
 			.border_l_1()
 			.border_color(p.line)
 			.shadow_lg()
+			// It goes down to the window's corner.
+			.map(|this| self.frame.round(this, &[Corner::BottomRight]))
 			.drag_over::<DraggedItems>(move |style, _, _, _| style.border_color(meter))
 			.on_drop(cx.listener(|this, dragged: &DraggedItems, _, cx| {
 				this.move_to_cleanup(dragged.0.clone(), cx)
@@ -516,7 +519,8 @@ impl Workspace {
 		};
 		let busy = modal.busy();
 		Some(
-			scrim(&p)
+			self.frame
+				.round(scrim(&p), &ALL_CORNERS)
 				.on_mouse_down(
 					MouseButton::Left,
 					cx.listener(move |this, _, _, cx| {

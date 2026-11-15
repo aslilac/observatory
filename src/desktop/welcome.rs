@@ -4,7 +4,9 @@
 use crate::controls::{eyebrow, icon};
 use crate::popup::place_menu;
 use crate::workspace::Workspace;
-use gpui::{AnyElement, Context, FontWeight, MouseButton, MouseDownEvent, div, prelude::*, px};
+use gpui::{
+	AnyElement, Context, FontWeight, MouseButton, MouseDownEvent, Window, div, prelude::*, px,
+};
 use observatory_core::drives::{Usage, place_name};
 use observatory_core::format::{describe_drive, readable_size};
 use observatory_core::scans::Status;
@@ -23,7 +25,7 @@ struct Row {
 }
 
 impl Workspace {
-	pub fn render_welcome(&self, cx: &mut Context<Self>) -> AnyElement {
+	pub fn render_welcome(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
 		let p = self.palette;
 
 		let disks: Vec<AnyElement> = self
@@ -131,7 +133,7 @@ impl Workspace {
 			.flex()
 			.flex_col()
 			.size_full()
-			.child(self.render_toolbar(None, chips, cx))
+			.child(self.render_toolbar(None, chips, window, cx))
 			.child(
 				div()
 					.id("welcome")

@@ -3,6 +3,7 @@
 // macOS, an administrator on Windows) are each one issue with a button.
 
 use crate::controls::{ButtonKind, button, chip, icon, icon_button, modal_card, scrim};
+use crate::window_frame::ALL_CORNERS;
 use crate::workspace::Workspace;
 use gpui::{AnyElement, Context, FontWeight, MouseButton, div, prelude::*, px};
 use observatory_core::ScanError;
@@ -359,7 +360,8 @@ impl Workspace {
 				),
 			);
 		Some(
-			scrim(&p)
+			self.frame
+				.round(scrim(&p), &ALL_CORNERS)
 				.on_mouse_down(
 					MouseButton::Left,
 					cx.listener(move |this, _, _, cx| close(this, cx)),

@@ -3,6 +3,7 @@
 // into the window is one to scan.
 
 use crate::controls::{ButtonKind, button, modal_card, scrim};
+use crate::window_frame::ALL_CORNERS;
 use crate::workspace::Workspace;
 use gpui::{AnyElement, Context, FontWeight, MouseButton, div, prelude::*, px};
 use observatory_core::access::FULL_DISK_ACCESS_SETTINGS;
@@ -168,7 +169,8 @@ impl Workspace {
 		// Escape, or a click outside: neither scans nor answers, so the
 		// next scan asks again.
 		Some(
-			scrim(&p)
+			self.frame
+				.round(scrim(&p), &ALL_CORNERS)
 				.on_mouse_down(
 					MouseButton::Left,
 					cx.listener(|this, _, _, cx| {

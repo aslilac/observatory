@@ -37,6 +37,7 @@ icons![
 	"list-tree",
 	"list",
 	"loader-circle",
+	"menu",
 	"minus",
 	"moon",
 	"rotate-cw",

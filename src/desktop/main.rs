@@ -63,6 +63,7 @@ fn main() {
 			fonts::register(cx);
 			text_input::bind_keys(cx);
 			menus::bind_keys(cx);
+			window_frame::follow_button_layout(cx);
 
 			let bounds = Bounds::centered(None, size(px(1100.), px(760.)), cx);
 			let window = cx

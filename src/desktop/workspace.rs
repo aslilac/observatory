@@ -124,6 +124,8 @@ pub struct Workspace {
 	// The edge of the window the pointer is at, where the app resizes its
 	// own window (see window_frame.rs).
 	pub resize_edge: Option<gpui::ResizeEdge>,
+	// The window's frame, as of the last time it was drawn.
+	pub frame: crate::window_frame::Frame,
 }
 
 impl Focusable for Workspace {
@@ -154,9 +156,15 @@ impl Workspace {
 		let store = Store::open();
 		let dark = store.dark().unwrap_or_else(|| is_dark(window.appearance()));
 		// Until the user picks a theme, the OS's is followed.
+		// On Wayland, gpui calls this while it holds its client state, which
+		// setting the menus borrows too, so the change waits for the event loop.
 		cx.observe_window_appearance(window, |this, window, cx| {
 			if this.store.dark().is_none() {
-				this.set_dark(is_dark(window.appearance()), cx);
+				let dark = is_dark(window.appearance());
+				cx.spawn(async move |this, cx| {
+					this.update(cx, |this, cx| this.set_dark(dark, cx)).ok();
+				})
+				.detach();
 			}
 		})
 		.detach();
@@ -245,6 +253,7 @@ impl Workspace {
 			app_menu_bounds: HashMap::new(),
 			update: None,
 			resize_edge: None,
+			frame: Default::default(),
 		};
 		this.watch_for_updates(window, cx);
 		this.read_recent_usage(cx);

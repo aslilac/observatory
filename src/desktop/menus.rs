@@ -34,6 +34,7 @@ actions!(
 		PastePath,
 		VisitGitHub,
 		ReportIssue,
+		ShowMenu,
 		Minimize,
 		Zoom,
 		CloseWindow,
@@ -184,6 +185,54 @@ pub fn app_menus(recents: &[RecentScan], dark: bool) -> Vec<Menu> {
 	menus
 }
 
+/// What's behind the button at the end of the toolbar where that's where the
+/// menus are (Linux, as in a GNOME app's primary menu or a KDE app's with its
+/// menu bar hidden): the menu bar's items, less what the toolbar has buttons
+/// for already (going back and forward, home).
+pub fn primary_menu(recents: &[RecentScan], dark: bool) -> Vec<MenuItem> {
+	let mut items = vec![MenuItem::action("Open Folder…", OpenFolder)];
+	let recent: Vec<MenuItem> = recents
+		.iter()
+		.map(|scan| {
+			MenuItem::action(
+				basename(&scan.path).to_string(),
+				OpenRecent {
+					path: scan.path.clone(),
+				},
+			)
+		})
+		.collect();
+	if !recent.is_empty() {
+		items.push(MenuItem::submenu(Menu {
+			name: "Recent".into(),
+			items: recent,
+		}));
+	}
+	items.extend([
+		MenuItem::separator(),
+		MenuItem::action("Rescan", Rescan),
+		MenuItem::action(REVEAL, Reveal),
+		MenuItem::separator(),
+		MenuItem::action("Find…", Find),
+		MenuItem::action("Show Cleanup", ToggleCleanup),
+		MenuItem::action("Toggle Full Screen", ToggleFullScreen),
+		MenuItem::separator(),
+		MenuItem::action(
+			if dark {
+				"Switch to Light Mode"
+			} else {
+				"Switch to Dark Mode"
+			},
+			ToggleDark,
+		),
+		MenuItem::separator(),
+		MenuItem::action("Visit GitHub", VisitGitHub),
+		MenuItem::action("Report an Issue", ReportIssue),
+		MenuItem::action("About Observatory", About),
+	]);
+	items
+}
+
 pub fn bind_keys(cx: &mut App) {
 	#[cfg(target_os = "macos")]
 	cx.bind_keys([
@@ -213,6 +262,9 @@ pub fn bind_keys(cx: &mut App) {
 		KeyBinding::new("f11", ToggleFullScreen, None),
 		KeyBinding::new("ctrl-q", Quit, None),
 	]);
+	// GNOME's key for an app's primary menu.
+	#[cfg(not(any(target_os = "macos", windows)))]
+	cx.bind_keys([KeyBinding::new("f10", ShowMenu, None)]);
 	cx.bind_keys([
 		KeyBinding::new("escape", Escape, None),
 		// In the find field, the arrows and Enter go through what it
@@ -252,6 +304,7 @@ pub fn register(window: WindowHandle<Workspace>, cx: &mut App) {
 		SuggestNext => on_suggest_next,
 		SuggestPick => on_suggest_pick,
 		PastePath => on_paste_path,
+		ShowMenu => on_show_menu,
 	];
 	// The Window menu's are about whichever window is in front, which may be
 	// the About window.
@@ -408,5 +461,9 @@ impl Workspace {
 		if let Some(text) = cx.read_from_clipboard().and_then(|item| item.text()) {
 			self.pasted(&text, cx);
 		}
+	}
+
+	fn on_show_menu(&mut self, _: &ShowMenu, _: &mut Window, cx: &mut Cx) {
+		self.toggle_primary_menu(cx);
 	}
 }
