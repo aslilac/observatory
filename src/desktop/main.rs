@@ -1,6 +1,10 @@
 // Observatory, drawn with gpui. Everything it knows about disks, scans, and
 // the sunburst's shape is `observatory-core`'s; what's here is the window.
 
+// On Windows, a release build is an app with a window, not a program that
+// brings a console up behind it.
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 mod about;
 mod assets;
 mod chrome;

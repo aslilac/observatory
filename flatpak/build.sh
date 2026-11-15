@@ -4,7 +4,7 @@ set -e
 cd "$(dirname "$0")"
 
 # The build's copy of the checkout leaves .git out, so the commit (for the
-# about window and bug reports, see electron.vite.config.ts) goes in .commit,
+# about window and bug reports, see src/desktop/build.rs) goes in .commit,
 # marked -dirty if there are changes.
 if sha=$(git rev-parse HEAD 2>/dev/null); then
 	[ -z "$(git status --porcelain)" ] || sha="$sha-dirty"

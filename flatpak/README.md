@@ -1,6 +1,8 @@
 # Flatpak
 
-`ooo.lilac.observatory.yml` builds Observatory from this checkout on the Electron base app, all of it inside the Freedesktop SDK: pnpm install, the Rust scanner, `electron-vite build` and `electron-forge package`. The build has network access, so pnpm, cargo and Electron fetch what they need as they would anywhere else. That's fine for building it yourself, though Flathub would want every download listed as a source.
+`ooo.lilac.observatory.yml` builds Observatory (the gpui app, `src/desktop`) from this checkout inside the Freedesktop SDK: one `cargo build`, and the program, its desktop entry, and its icons installed. It runs on the plain Freedesktop runtime, with no base app. The build has network access, so cargo fetches the crates as it would anywhere else. That's fine for building it yourself, though Flathub would want every crate listed as a source.
+
+A Flatpak copy doesn't look for new versions: Flatpak updates it.
 
 ```sh
 ./build.sh                      # build and install for this user

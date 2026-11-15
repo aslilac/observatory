@@ -39,6 +39,13 @@ jobs:
           key: cargo-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: cargo-${{ github.workflow }}-${{ github.job }}-
 
+      # What gpui draws and reads input through on Linux, to build the app.
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev \
+            libx11-xcb-dev libxcb1-dev libfontconfig1-dev libfreetype-dev libvulkan-dev
+        name: Install
+
       - run: cargo clippy
         name: Lint
 
