@@ -1,0 +1,17 @@
+[package]
+name = "observatory-core"
+version = "1.0.0"
+edition = "2024"
+authors = ["McKayla Washburn-Love <kayla@tree.camp>"]
+license = "MPL-2.0"
+publish = false
+
+[lib]
+path = "./lib.rs"
+
+[dependencies]
+observatory-scan = { path = "../scanner" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+fs4 = { version = "0.13", default-features = false, features = ["sync"] }
+trash = "5"

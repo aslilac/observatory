@@ -1,5 +1,5 @@
 [workspace]
-members = ["src/scanner"]
+members = ["src/scanner", "src/core", "src/desktop"]
 resolver = "3"
 
 # Cargo reads profiles only from the workspace root.

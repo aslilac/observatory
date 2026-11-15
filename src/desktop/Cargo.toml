@@ -1,0 +1,18 @@
+[package]
+name = "observatory"
+version = "1.0.0"
+edition = "2024"
+authors = ["McKayla Washburn-Love <kayla@tree.camp>"]
+license = "MPL-2.0"
+publish = false
+
+[[bin]]
+name = "observatory"
+path = "./main.rs"
+
+[dependencies]
+observatory-core = { path = "../core" }
+# runtime_shaders: the Metal shaders are compiled when the app starts rather
+# than by the build, which would need Xcode's separate Metal Toolchain.
+gpui = { version = "0.2.2", features = ["runtime_shaders"] }
+futures = "0.3"
