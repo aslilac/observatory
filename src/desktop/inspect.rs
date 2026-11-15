@@ -2,6 +2,7 @@
 // listed beside, and find over both.
 
 use crate::controls::{ButtonKind, button, icon, icon_button, tip};
+use crate::lists::CHECKBOX_MARGIN;
 use crate::popup::{PopupItem, SORT_MENU};
 use crate::workspace::Workspace;
 use gpui::{
@@ -111,6 +112,8 @@ impl Workspace {
 								.size_full()
 								.overflow_y_scroll()
 								.p(px(16.))
+								// The rows' checkboxes are in this margin.
+								.pl(px(CHECKBOX_MARGIN + 5.))
 								// Room to scroll the last rows out from
 								// under it.
 								.when(selecting, |this| this.pb(px(72.)))

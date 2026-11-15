@@ -7,8 +7,8 @@ use crate::palette::hsla;
 use crate::popup::item_menu;
 use crate::workspace::Workspace;
 use gpui::{
-	AnyElement, Context, Div, ElementId, FontWeight, Hsla, MouseButton, MouseDownEvent, Stateful,
-	div, prelude::*, px,
+	AnyElement, Context, Div, ElementId, FontWeight, Hsla, MouseButton, MouseDownEvent,
+	SharedString, Stateful, div, prelude::*, px,
 };
 use observatory_core::Finder;
 use observatory_core::color::{Kind, sunburst_color};
@@ -26,6 +26,10 @@ fn dot(color: Option<Hsla>, outline: Hsla) -> Div {
 		None => dot.border_1().border_color(outline),
 	}
 }
+
+/// How far to the left of its row a checkbox sits: the list's left margin
+/// has to have room for it.
+pub const CHECKBOX_MARGIN: f32 = 19.;
 
 fn size_column(size: u64, color: Hsla) -> Div {
 	div()
@@ -50,6 +54,10 @@ impl Workspace {
 		let for_menu = item.clone();
 		let row = div()
 			.id(id)
+			// Its checkbox hangs off its left edge, and shows while the
+			// pointer's on the row.
+			.relative()
+			.group(SharedString::from(item.path.clone()))
 			.flex()
 			.items_center()
 			.gap(px(8.))
@@ -68,20 +76,34 @@ impl Workspace {
 		draggable(row, self.dragged_with(item), p)
 	}
 
-	fn item_checkbox(
-		&self,
-		id: impl Into<ElementId>,
-		item: &Item,
-		cx: &mut Context<Self>,
-	) -> Stateful<Div> {
+	// A row's checkbox. It isn't in the row with the rest: it sits to the
+	// left of it, in the list's margin, so what's in the rows lines up with
+	// the heading over them. One that isn't checked is only seen while the
+	// pointer's on its row, or on it.
+	fn item_checkbox(&self, id: impl Into<ElementId>, item: &Item, cx: &mut Context<Self>) -> Div {
 		let p = self.palette;
+		let checked = self.is_selected(&item.path);
+		let row = SharedString::from(item.path.clone());
 		let item = item.clone();
-		checkbox(id, self.is_selected(&item.path), &p).on_click(cx.listener(
-			move |this, _, _, cx| {
+		let default = p.default;
+		let checkbox = checkbox(id, checked, &p)
+			.when(!checked, |this| {
+				this.opacity(0.)
+					.group_hover(row, |style| style.opacity(1.))
+					.hover(move |style| style.opacity(1.).border_color(default))
+			})
+			.on_click(cx.listener(move |this, _, _, cx| {
 				cx.stop_propagation();
 				this.toggle_selected(&item, cx);
-			},
-		))
+			}));
+		div()
+			.absolute()
+			.left(px(-CHECKBOX_MARGIN))
+			.top_0()
+			.bottom_0()
+			.flex()
+			.items_center()
+			.child(checkbox)
 	}
 
 	// A file or folder's name, as the lists write it: a folder's with a
@@ -182,7 +204,6 @@ impl Workspace {
 				.gap(px(8.))
 				.px(px(8.))
 				.py(px(5.))
-				.child(div().w(px(14.)).flex_none())
 				.child(dot)
 				.child(div().flex_1().text_color(p.muted).child(label))
 				.child(size_column(size, p.muted))
