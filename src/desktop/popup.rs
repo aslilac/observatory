@@ -244,7 +244,7 @@ impl Workspace {
 
 	/// A menu of `items`, for whoever puts it somewhere: at a point (the one
 	/// above), or under the thing that opened it (the title bar's menus). It
-	/// shuts on a press anywhere else.
+	/// shuts on a press anywhere else, which does nothing more than that.
 	pub fn render_menu(&self, items: &[PopupItem], cx: &mut Context<Self>) -> AnyElement {
 		let p = self.palette;
 		let rows = items.iter().enumerate().map(|(index, item)| match item {
@@ -318,6 +318,9 @@ impl Workspace {
 				this.popup = None;
 				this.app_menu_open = None;
 				cx.notify();
+				// And that's all the press does: it isn't also a press on
+				// whatever it landed on.
+				cx.stop_propagation();
 			}))
 			.children(rows);
 		menu.into_any_element()
