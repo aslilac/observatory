@@ -464,6 +464,9 @@ struct TextElement {
 
 struct PrepaintState {
 	line: Option<ShapedLine>,
+	// Asked for here and not while painting: something drawn over the rest
+	// (`deferred`) is painted without the text style it's inside of.
+	line_height: Pixels,
 	cursor: Option<PaintQuad>,
 	selection: Option<PaintQuad>,
 }
@@ -594,6 +597,7 @@ impl Element for TextElement {
 		};
 		PrepaintState {
 			line: Some(line),
+			line_height: window.line_height(),
 			cursor,
 			selection,
 		}
@@ -619,7 +623,7 @@ impl Element for TextElement {
 			window.paint_quad(selection)
 		}
 		let line = prepaint.line.take().unwrap();
-		line.paint(bounds.origin, window.line_height(), window, cx)
+		line.paint(bounds.origin, prepaint.line_height, window, cx)
 			.unwrap();
 
 		if focus_handle.is_focused(window)
