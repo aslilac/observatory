@@ -5,12 +5,10 @@
 // No async, no tokio — Linux/macOS metadata syscalls don't have meaningful
 // async equivalents anyway.
 //
-// Output mirrors the `Ob.VfsDirectory` / `Ob.ScanError` / `Ob.PerfNode`
-// shapes from `src/@types/Observatory.d.ts` so a future napi-rs binding
-// (or child-process JSON bridge) can hand the result straight to the
-// renderer with no reshaping.
+// The app (`src/core`) calls this directly, and the CLI (`main.rs`) writes
+// what it finds as JSON.
 //
-// Platform parity with the JS scanner:
+// What it does on each platform:
 // - Linux: skip /dev and /proc by absolute path, and go where the mount
 //   table says (mounts.rs): into every btrfs subvolume of the disk being
 //   scanned, into each folder a bind mount shows only once, and not into
@@ -148,7 +146,7 @@ impl VfsNode {
 		}
 	}
 
-	// In milliseconds, as JSON has it for JS's `Date`.
+	// In milliseconds, as the JSON has it.
 	pub fn mtime_ms(&self) -> u64 {
 		u64::from(self.mtime()) * 1000
 	}
@@ -303,8 +301,8 @@ pub struct PerfNode {
 }
 
 // The live, mutable perf tree built during a scan. Wrapped in Arc<Mutex>
-// per-node so the JS side polling `Scan::progress()` can take a snapshot
-// at any time without coordinating with the threadpool worker. Each scan
+// per-node so a snapshot can be taken at any time, from any thread, without
+// coordinating with the threads doing the scan. Each scan
 // builds nodes top-down (created on `scan_dir` entry, registered with the
 // parent) and settles them bottom-up (totals written on exit). `snapshot`
 // walks this graph to produce the serializable `PerfNode` form — for
@@ -398,8 +396,7 @@ pub struct ScanResult {
 	pub reserved: Vec<Reserved>,
 	pub counts: CountsSnapshot,
 	pub errors: Vec<ScanError>,
-	// Serialized as `null` when perf isn't enabled — matches the
-	// `Ob.PerfNode | null` shape on the JS side and keeps the JSON
+	// Serialized as `null` when perf isn't enabled, which keeps the JSON
 	// schema stable regardless of OB_PERF.
 	pub perf: Option<PerfNode>,
 }
@@ -409,9 +406,9 @@ pub struct ScanConfig {
 	pub perf: bool,
 }
 
-// Shared scan state. Lives in an `Arc` so the napi `Scan` handle can read
-// counts / currentPath / errors from the JS thread while the scan is still
-// running on a libuv worker. Counts are lockless (AtomicU64); the
+// Shared scan state. Lives in an `Arc` so the app can read the counts, the
+// current path and the errors from its own thread while the scan is still
+// running on another. Counts are lockless (AtomicU64); the
 // short-lived locks on `current_path` and `errors` only contend for a few
 // µs at directory boundaries and won't stall progress polling.
 pub struct ScanState {
@@ -468,8 +465,8 @@ impl ScanState {
 	}
 
 	// For a scan of `path`. Resolves the root's device via stat (follows
-	// symlinks), matching what the JS scanner does in `_performScan`, and
-	// errors if it can't: we can't meaningfully scan a path we can't stat.
+	// symlinks), and errors if it can't: we can't meaningfully scan a path
+	// we can't stat.
 	pub fn for_path(path: &Path, perf: bool) -> io::Result<Self> {
 		let root_meta = fs::metadata(path)?;
 		// Before the walk, since it's what lets an administrator in.
@@ -588,9 +585,9 @@ pub fn scan(path: &Path, config: ScanConfig) -> std::io::Result<ScanResult> {
 	run_scan(path, &state)
 }
 
-// Internal entry point used by both the free `scan()` function and the
-// napi `Scan` class. Takes a borrowed ScanState so the class can pre-build
-// one, share it via Arc, and pull progress from the JS thread.
+// What both the free `scan()` function and the app run. Takes a borrowed
+// ScanState so the app can build one first, share it via Arc, and read
+// progress from another thread while the scan runs.
 pub fn run_scan(path: &Path, state: &ScanState) -> std::io::Result<ScanResult> {
 	let name = state.names().get_or_intern(
 		path.file_name()
@@ -673,10 +670,10 @@ fn scan_dir(
 ) -> VfsNode {
 	let display_path = path.to_string_lossy().into_owned();
 
-	// Update currentPath so the JS side polling `progress()` sees roughly
+	// Update `current_path` so whoever's watching the scan sees roughly
 	// where we are. Recursion is parallel via rayon, so this is "the most
 	// recently entered directory on any thread" rather than a precise BFS
-	// frontier — good enough for a status line, matches the JS behavior.
+	// frontier — good enough for a status line.
 	if let Ok(mut cp) = state.current_path.lock() {
 		*cp = Some(display_path.clone());
 	}
@@ -779,8 +776,8 @@ fn scan_dir(
 	}
 }
 
-// `DirEntry::metadata` does not follow symlinks (lstat semantics) — matches
-// what the JS scanner uses for entry-level decisions.
+// `DirEntry::metadata` does not follow symlinks (lstat semantics), which is
+// what entry-level decisions want.
 fn classify(
 	entry: fs::DirEntry,
 	depth: u64,
@@ -1132,15 +1129,6 @@ fn errno_name(n: i32) -> Option<String> {
 fn errno_name(n: i32) -> Option<String> {
 	Some(format!("E{n}"))
 }
-
-// N-API bindings — gated behind the `napi` feature so the CLI / unit tests
-// can build without paying for the napi-rs link or its transitive deps.
-// Build with: cargo build --release --lib --features napi
-// Output is a cdylib (.so / .dylib / .dll) that becomes a .node when
-// renamed; the bindings module's #[napi] functions are the entry points
-// the wrapper JS sees.
-#[cfg(feature = "napi")]
-mod bindings;
 
 pub mod admin;
 pub mod find;

@@ -1,13 +1,12 @@
 // The volumes there are to scan, as the OS's own file manager would list
 // them: disks attached to this machine, and shares mounted from others (SMB,
-// NFS, …). The main process polls this for the home screen.
+// NFS, …). The app polls this for the welcome screen.
 //
 // Everything here comes from what the OS already knows (the mount table,
 // disk descriptions, labels), and nothing asks a file server anything, so a
 // share whose server has gone away still lists instantly. How full each
-// volume is comes from statfs on the JS side.
+// volume is the app asks for itself (`src/core/drives.rs`).
 
-#[cfg_attr(feature = "napi", napi_derive::napi(object))]
 pub struct Volume {
 	/// Where it's mounted: `/`, `/Volumes/Backup`, `C:\`.
 	pub path: String,

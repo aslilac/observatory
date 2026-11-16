@@ -51,7 +51,7 @@ if [ -x "$ICTOOL" ]; then
 fi
 uv run --no-project --with pillow python preview.py
 
-# What the app ships goes into build-resources/, where forge.config.js picks it up
+# What the app ships goes into build-resources/, where its builds pick it up
 cp out/macos/icon.icns out/windows/icon.ico out/linux/icon.png ../build-resources/
 if [ -f out/macos/Assets.car ]; then
   cp out/macos/Assets.car ../build-resources/

@@ -11,32 +11,27 @@ Observatory checks all the boxes that no one else does.
 
 ## Build
 
-To build Observatory, you'll first need to install the latest versions of [Node](https://nodejs.org), [pnpm](https://pnpm.io/installation), and [Rust](https://rustup.rs).
-
-Install dependencies:
-
-```shell
-pnpm install
-pnpm build.native
-```
+Observatory is written in Rust, and drawn with [gpui](https://gpui.rs). To build it, you'll need the latest version of [Rust](https://rustup.rs), and on Linux, the libraries gpui draws and reads input through (`libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev libx11-xcb-dev libxcb1-dev libfontconfig1-dev libfreetype-dev libvulkan-dev` on Debian and Ubuntu).
 
 To run in development:
 
 ```shell
-pnpm dev
+cargo run -p observatory
 ```
 
-Test a production build:
+Run the tests:
 
 ```shell
-pnpm preview
+cargo test
 ```
 
-Build an installer:
+Build it for release:
 
 ```shell
-pnpm build.forge
+cargo build --release -p observatory
 ```
+
+On macOS, `macos/build.sh` packages that as `Observatory.app` in a `.dmg`, and on Linux `flatpak/build.sh` builds and installs it as a Flatpak.
 
 ## Performance comparisons
 

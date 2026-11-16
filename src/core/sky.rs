@@ -6,9 +6,9 @@
 // ring of sky sets it apart from the other stars.
 //
 // It's worked out a pixel at a time, into a plain RGBA picture, so whatever
-// can show a picture can show it. The Electron app's is the same sky drawn
-// by a browser (`views/about/about.css` and `sky.ts`, which this follows
-// number for number, down to the random stars).
+// can show a picture can show it. It began as a sky a browser drew, out of
+// gradients and layers it turned (the site's hero still is one, in
+// `site/src/stars.ts`), and keeps that one's numbers, down to the random stars.
 
 use serde::Deserialize;
 use std::f32::consts::{PI, TAU};
@@ -76,8 +76,8 @@ fn mix(a: Rgb, b: Rgb, t: f32) -> Rgb {
 	]
 }
 
-// The same sky every time the window opens, and the same as the Electron
-// app's: its generator (mulberry32) and its seed.
+// The same sky every time the window opens: a generator of its own
+// (mulberry32), from the same seed.
 struct Random(u32);
 
 impl Random {
@@ -454,8 +454,8 @@ mod tests {
 	use super::*;
 
 	#[test]
-	fn the_stars_are_the_electron_apps() {
-		// mulberry32 from seed 7, as `sky.ts` has it.
+	fn the_stars_are_the_same_every_time() {
+		// mulberry32 from seed 7.
 		let mut random = Random(7);
 		let first = random.next();
 		assert!((0.0..1.0).contains(&first));

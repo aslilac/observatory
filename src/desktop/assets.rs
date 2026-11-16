@@ -53,7 +53,7 @@ icons![
 ];
 
 // The render of the observatory across the bottom of the About window, the
-// same crop the Electron app's has (`site/scene/about.py` makes it).
+// cropped from the site's (`site/scene/about.py` makes it).
 const SCENE: (&str, &[u8]) = (
 	"about/scene.webp",
 	include_bytes!("../../build-resources/about/scene.webp"),

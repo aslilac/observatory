@@ -1,4 +1,4 @@
-// The app's typeface: Inter, as the Electron app's is, built into the binary
+// The app's typeface: Inter, built into the binary
 // so it's the same on every platform. The files in `fonts/` are Inter 4.1's
 // static ones (SIL Open Font License, see `fonts/LICENSE.txt`), one per
 // weight the app sets anything in, since gpui picks a weight from a family's
@@ -26,7 +26,7 @@ pub fn register(cx: &mut App) {
 pub fn inter() -> Font {
 	Font {
 		family: "Inter".into(),
-		// The alternates the Electron app turns on: open digits, a
+		// The alternates it's set with: open digits, a
 		// single-storey a, and a lowercase l with a tail.
 		features: FontFeatures(Arc::new(vec![
 			("ss01".into(), 1),

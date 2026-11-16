@@ -209,7 +209,7 @@ impl Workspace {
 					.rounded(px(6.))
 					.map(|this| {
 						if row.dashed {
-							// In the color the Electron app's is: `line` is too
+							// In a stronger color than the rest: `line` is too
 							// faint for the dashes to read as an outline.
 							this.border_1().border_dashed().border_color(p.faint)
 						} else {

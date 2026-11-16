@@ -47,10 +47,7 @@ modules:
         skip:
           - .git
           - node_modules
-          - build
-          - out
           - target
-          - src/scanner/observatory_scan.node
           - icon/out
           - icon/renders
           - flatpak/.flatpak-builder

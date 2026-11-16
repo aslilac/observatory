@@ -409,8 +409,8 @@ impl Render for About {
 			.line_height(px(22.5))
 			.font(crate::fonts::inter())
 			.font_weight(FontWeight::LIGHT)
-			// The whole window is something to move it by, as the Electron
-			// one's is, but for its links. Windows does the moving, told
+			// The whole window is something to move it by, but for its
+			// links. Windows does the moving, told
 			// that all of it is as good as a title bar; elsewhere a press
 			// starts it.
 			.when(cfg!(windows), |this| {
