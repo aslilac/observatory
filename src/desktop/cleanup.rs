@@ -124,6 +124,11 @@ const CARD_WIDTH: f32 = 340.;
 const SEGMENTS: usize = 24;
 // How tall a row of the queue is.
 const ROW: f32 = 26.;
+// How wide a queued thing's size is, and its name: what's left of the card
+// after its border, the rows' padding and their own, the dot, the size, the
+// x, and the gaps between.
+const QUEUED_SIZE: f32 = 64.;
+const QUEUED_NAME: f32 = CARD_WIDTH - 2. - 16. - 10. - 8. - QUEUED_SIZE - 20. - 24.;
 
 // The color something queued has in the card: its dot's, and its segment's in
 // the bar. It's the one it had in the sunburst it was queued from. Where
@@ -788,16 +793,23 @@ impl Workspace {
 							.rounded(px(2.))
 							.bg(queued_color(&self.store, path, &p)),
 					)
+					// The name's width is said outright, and the size's so
+					// that it can be: gpui keeps a text's first measuring,
+					// and a name that's left to take what room there is is
+					// first measured with none said, so it's never cut to an
+					// ellipsis, only clipped.
 					.child(
 						div()
-							.flex_1()
-							.min_w_0()
+							.flex_none()
+							.w(px(QUEUED_NAME))
 							.truncate()
 							.child(basename(path).to_string()),
 					)
 					.child(
 						div()
 							.flex_none()
+							.w(px(QUEUED_SIZE))
+							.text_right()
 							.text_size(px(11.))
 							.text_color(p.muted)
 							.child(readable_size(*size)),
@@ -1055,7 +1067,14 @@ impl Workspace {
 		let failures = run.failed.iter().map(|(path, why)| {
 			div()
 				.py(px(5.))
-				.child(div().truncate().child(basename(path).to_string()))
+				// As wide as the box it's in, said outright (see the queue's
+				// rows).
+				.child(
+					div()
+						.w(px(CARD_WIDTH - 2. - 32. - 2. - 20.))
+						.truncate()
+						.child(basename(path).to_string()),
+				)
 				.child(
 					div()
 						.text_size(px(11.))
