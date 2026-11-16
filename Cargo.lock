@@ -3755,6 +3755,7 @@ dependencies = [
  "chrono",
  "dirs 6.0.0",
  "fs4",
+ "libc",
  "observatory-scan",
  "serde",
  "serde_json",

@@ -102,15 +102,47 @@ pub fn read_volume_usage(path: &str, patience: Duration) -> Option<Usage> {
 	let (answer, answered) = mpsc::channel();
 	let asked = path.to_string();
 	std::thread::spawn(move || {
-		let usage = fs4::statvfs(&asked).ok().map(|stats| Usage {
-			total: stats.total_space(),
-			used: stats.total_space().saturating_sub(stats.free_space()),
-			available: stats.available_space(),
-		});
+		let usage = ask_volume(&asked);
 		out().remove(&asked);
 		let _ = answer.send(usage);
 	});
 	answered.recv_timeout(patience).ok().flatten()
+}
+
+#[cfg(not(target_os = "macos"))]
+fn ask_volume(path: &str) -> Option<Usage> {
+	let stats = fs4::statvfs(path).ok()?;
+	Some(Usage {
+		total: stats.total_space(),
+		used: stats.total_space().saturating_sub(stats.free_space()),
+		available: stats.available_space(),
+	})
+}
+
+// macOS's statvfs counts blocks in 32 bits, so a big volume with small
+// blocks (a 6 TB share in 1 KB ones) wraps around and comes back as a small
+// one. statfs counts them in 64.
+#[cfg(target_os = "macos")]
+fn ask_volume(path: &str) -> Option<Usage> {
+	let path = std::ffi::CString::new(path).ok()?;
+	let mut stats = std::mem::MaybeUninit::<libc::statfs>::uninit();
+	// SAFETY: `path` is a C string, and statfs fills `stats` in when it
+	// returns 0.
+	let stats = unsafe {
+		if libc::statfs(path.as_ptr(), stats.as_mut_ptr()) != 0 {
+			return None;
+		}
+		stats.assume_init()
+	};
+	let block = u64::from(stats.f_bsize);
+	Some(Usage {
+		total: stats.f_blocks.saturating_mul(block),
+		used: stats
+			.f_blocks
+			.saturating_sub(stats.f_bfree)
+			.saturating_mul(block),
+		available: stats.f_bavail.saturating_mul(block),
+	})
 }
 
 /// The drives there are now. `before` is what the last poll found: a share
