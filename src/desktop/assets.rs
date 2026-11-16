@@ -25,6 +25,7 @@ icons![
 	"chevron-right",
 	"circle-alert",
 	"code-xml",
+	"construction",
 	"copy",
 	"disc",
 	"file",
@@ -48,7 +49,6 @@ icons![
 	"text-search",
 	"trash",
 	"weight",
-	"wrench",
 	"x",
 ];
 

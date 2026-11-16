@@ -237,7 +237,7 @@ impl Workspace {
 		// What's only for working on the app, in builds that aren't for
 		// release.
 		if cfg!(debug_assertions) {
-			let developer = icon_button("developer", "wrench", true, &p)
+			let developer = icon_button("developer", "construction", true, &p)
 				.occlude()
 				.tooltip(tip("Developer"));
 			tools.push(
