@@ -12,9 +12,9 @@ use crate::window_frame::{
 };
 use crate::workspace::{Screen, Workspace};
 use gpui::{
-	AnyElement, Context, Corner, DragMoveEvent, Edges, ExternalPaths, FontWeight, HitboxBehavior,
-	MenuItem, MouseButton, MouseMoveEvent, NavigationDirection, Window, anchored, canvas, deferred,
-	div, prelude::*, px,
+	AnyElement, Context, Corner, DragMoveEvent, Edges, ExternalPaths, Font, FontWeight,
+	HitboxBehavior, MenuItem, MouseButton, MouseMoveEvent, NavigationDirection, TextRun, Window,
+	anchored, canvas, deferred, div, prelude::*, px,
 };
 
 pub const TITLE_BAR_HEIGHT: f32 = 36.;
@@ -469,8 +469,62 @@ impl Workspace {
 						}))
 						.into_any_element(),
 				);
-				// Deep in, only the last few folders are named.
-				let first = depth.saturating_sub(3);
+				// Deep in, the folders nearest are named, as many as there's
+				// room for, and the rest are a "…". How wide the bar's other
+				// things are isn't known until it's laid out, so they're
+				// allowed for generously: better a folder short than the
+				// one the user's in pushed off the end.
+				let wide = |label: &str, from: usize| {
+					let run = TextRun {
+						len: label.len(),
+						font: Font {
+							weight: FontWeight::SEMIBOLD,
+							..crate::fonts::inter()
+						},
+						color: p.default,
+						background_color: None,
+						underline: None,
+						strikethrough: None,
+					};
+					// A line is all it can measure, and a name can have a
+					// line break in it.
+					let label = label.replace('\n', " ");
+					let run = TextRun {
+						len: label.len(),
+						..run
+					};
+					let line = window
+						.text_system()
+						.shape_line(label.into(), px(13.), &[run], None);
+					// With its padding, and the chevron before it.
+					f32::from(line.width).min(208.) + 12. + if from > 0 { 12. } else { 0. }
+				};
+				let find_showing = self.find_open || self.suggesting || self.finding_something(cx);
+				let others = 20.
+					+ 2. * (26. + 6.)
+					+ chips.len() as f32 * 150.
+					+ match right {
+						Some(_) if find_showing => 340.,
+						Some(_) => 80.,
+						None => 0.,
+					} + if HEADER_BAR { 240. } else { 0. };
+				let room = f32::from(window.viewport_size().width)
+					- others - wide("Disks and folders", 0)
+					- wide(&self.root_name(path), 1);
+				// The "…" and its chevron, where there is one.
+				let rest = 36.;
+				let mut first = depth;
+				let mut taken = 0.;
+				while first > 0 {
+					let next = taken + wide(&place.cursor[first - 1], first + 1);
+					let fits = next + if first > 1 { rest } else { 0. } <= room;
+					// The folder the user's in is named whatever the room.
+					if !fits && first < depth {
+						break;
+					}
+					taken = next;
+					first -= 1;
+				}
 				if first > 0 {
 					crumbs.push(rule());
 					crumbs.push(
