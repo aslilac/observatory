@@ -6,6 +6,7 @@ observatory.py) and the aperture drawings renders/aperture-<style>-<detail>.svg
   macos/Observatory.icon     Icon Composer document (macOS 26+): sky + building layers
   macos/icon.iconset         legacy squircle art on the Big Sur grid (macOS 15 and earlier)
   windows/png, windows/icon.ico   the Windows aperture, filling the 48px grid
+  windows/msix               the same, as the logos a Windows package (an MSIX) has
   linux/hicolor/...          the GNOME aperture on GNOME's grid, named by app id: PNGs,
                              a scalable SVG, and the symbolic icon (symbolic.svg)
 The apertures are rasterized from the SVG at each size rather than scaled down.
@@ -346,6 +347,34 @@ def scalable(p, dst):
 
 WIN_SIZES = [16, 20, 24, 30, 32, 36, 40, 48, 60, 64, 72, 80, 96, 256]
 LINUX_SIZES = [16, 22, 24, 32, 48, 64, 128, 256, 512]
+# The sizes Windows asks a package (an MSIX) for its small logo in, as it is in a
+# list and on the taskbar.
+MSIX_SIZES = [16, 24, 32, 48, 256]
+
+
+def msix_logos(dst):
+    """The logos a Windows package (an MSIX) has, named as its manifest names them
+    (windows/AppxManifest.xml), with the bigger and smaller ones Windows picks from
+    by what's after the name (windows/build.ps1 indexes them)."""
+    os.makedirs(dst, exist_ok=True)
+
+    def save(name, size, art=None):
+        # A tile's art is smaller than the tile, in the middle of it.
+        art = art or size
+        out = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+        out.alpha_composite(aperture(WINDOWS, art), ((size - art) // 2,) * 2)
+        out.save(os.path.join(dst, name))
+
+    save("Square44x44Logo.png", 44)
+    save("Square44x44Logo.scale-200.png", 88)
+    for n in MSIX_SIZES:
+        # On a plate of the system's color, and (unplated) on nothing: the same art.
+        save(f"Square44x44Logo.targetsize-{n}.png", n)
+        save(f"Square44x44Logo.targetsize-{n}_altform-unplated.png", n)
+    save("Square150x150Logo.png", 150, 80)
+    save("Square150x150Logo.scale-200.png", 300, 160)
+    save("StoreLogo.png", 50)
+    save("StoreLogo.scale-200.png", 100)
 
 
 def main():
@@ -389,6 +418,7 @@ def main():
         sizes=[(n, n) for n in WIN_SIZES],
         append_images=[win[n] for n in WIN_SIZES if n != 256],
     )
+    msix_logos(os.path.join(OUT, "windows", "msix"))
     print("windows done")
 
     # Linux

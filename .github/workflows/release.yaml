@@ -83,8 +83,9 @@ jobs:
           if-no-files-found: error
 
   # The portable build: the program by itself, in a zip, with its icon in it
-  # (src/desktop/build.rs). The Store's package is still to come, and goes
-  # out beside this, not in place of it.
+  # (src/desktop/build.rs). And beside it the package, an MSIX, for people
+  # to download and install (windows/build.ps1). The Store's package is
+  # still to come, and will be another again.
   windows:
     strategy:
       fail-fast: false
@@ -103,6 +104,13 @@ jobs:
     needs:
       - version
 
+    # The certificate the package is signed with: a .pfx in base64, and its
+    # password. Windows only installs a package signed by someone the PC
+    # trusts, so without these there's no package, only the zip.
+    env:
+      WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+      WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+
     steps:
       - uses: actions/checkout@v7
         name: Checkout
@@ -120,11 +128,22 @@ jobs:
             -DestinationPath "Observatory-${{ matrix.release.target }}-${{ needs.version.outputs.version }}.zip"
         name: Package
 
+      # A release goes out without the package if it can't be made: the zip
+      # is still the app.
+      - run: |
+          ./windows/build.ps1
+          Copy-Item target/windows/*.msix .
+        if: env.WINDOWS_CERTIFICATE != ''
+        continue-on-error: true
+        name: Package (MSIX)
+
       - uses: actions/upload-artifact@v7
         name: Upload
         with:
           name: package-${{ matrix.release.target }}
-          path: "*.zip"
+          path: |
+            *.zip
+            *.msix
           if-no-files-found: error
 
   # The program by itself, in a zip, for anywhere the Flatpak isn't wanted.
@@ -275,12 +294,20 @@ jobs:
           fail_on_unmatched_files: true
           generate_release_notes: true
 
+      # The Windows packages, which a release has only when there was a
+      # certificate to sign them with.
+      - uses: softprops/action-gh-release@v3
+        name: Release (MSIX)
+        if: hashFiles('dist/**/*.msix') != ''
+        with:
+          files: dist/**/*.msix
+
       # What the app updates from (see src/core/updates.rs): the Mac app's
-      # zip, and latest.json, which names the newest version, its page, and
-      # where that zip is. The zip goes up first, and what points at it
-      # last, so an app never finds a version that isn't there yet.
-      # latest.json is never cached, and the build is cached for good, since
-      # a version's never rebuilt.
+      # zip and the Windows packages, and latest.json, which names the newest
+      # version, its page, and where those are. The builds go up first, and
+      # what points at them last, so an app never finds a version that isn't
+      # there yet. latest.json is never cached, and the builds are cached
+      # for good, since a version's never rebuilt.
       - run: |
           version='${{ needs.version.outputs.version }}'
           base="https://releases.mckayla.dev/observatory"
@@ -290,11 +317,23 @@ jobs:
           aws s3 cp --endpoint-url "$RELEASES_ENDPOINT" --acl public-read \
             "$(find dist -name "$zip" | head -1)" "$s3/darwin/arm64/$zip" \
             --cache-control 'public, max-age=31536000, immutable'
+          downloads="$(jq -n --arg zip "$base/darwin/arm64/$zip" '{"darwin-arm64": $zip}')"
+
+          for arch in x64 arm64; do
+            msix="Observatory-win32-$arch-$version.msix"
+            built="$(find dist -name "$msix" | head -1)"
+            [ -n "$built" ] || continue
+            aws s3 cp --endpoint-url "$RELEASES_ENDPOINT" --acl public-read \
+              "$built" "$s3/win32/$arch/$msix" \
+              --cache-control 'public, max-age=31536000, immutable'
+            downloads="$(jq --arg platform "win32-$arch" --arg msix "$base/win32/$arch/$msix" \
+              '. + {($platform): $msix}' <<< "$downloads")"
+          done
 
           jq -n --arg version "$version" \
             --arg url "https://github.com/$GITHUB_REPOSITORY/releases/tag/v$version" \
-            --arg zip "$base/darwin/arm64/$zip" \
-            '{version: $version, url: $url, downloads: {"darwin-arm64": $zip}}' > latest.json
+            --argjson downloads "$downloads" \
+            '{version: $version, url: $url, downloads: $downloads}' > latest.json
           aws s3 cp --endpoint-url "$RELEASES_ENDPOINT" --acl public-read \
             latest.json "$s3/latest.json" --cache-control no-cache
         if: env.RELEASES_BUCKET != ''

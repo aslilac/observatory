@@ -56,6 +56,9 @@ cp out/macos/icon.icns out/windows/icon.ico out/linux/icon.png ../build-resource
 if [ -f out/macos/Assets.car ]; then
   cp out/macos/Assets.car ../build-resources/
 fi
+# The Windows package's logos (windows/build.ps1)
+rm -rf ../build-resources/msix
+cp -R out/windows/msix ../build-resources/
 # Linux packages (the Flatpak) install the GNOME icons into the icon theme
 rm -rf ../build-resources/hicolor
 cp -R out/linux/hicolor ../build-resources/

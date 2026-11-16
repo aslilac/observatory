@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  What the Windows package (the MSIX) says it is. build.ps1 fills in what's
+  in braces: the version, the processor, and the publisher, which has to be
+  the subject of the certificate the package is signed with, to the letter.
+
+  This is the package people download and install themselves. The Store's
+  will be another, under the name and publisher the Store gives it.
+-->
+<Package
+	xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+	xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+	xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+	IgnorableNamespaces="uap rescap">
+	<Identity
+		Name="ooo.lilac.observatory"
+		Publisher="{PUBLISHER}"
+		Version="{VERSION}"
+		ProcessorArchitecture="{ARCH}" />
+	<Properties>
+		<DisplayName>Observatory</DisplayName>
+		<PublisherDisplayName>McKayla Washburn-Love</PublisherDisplayName>
+		<Logo>Assets\StoreLogo.png</Logo>
+	</Properties>
+	<Dependencies>
+		<TargetDeviceFamily
+			Name="Windows.Desktop"
+			MinVersion="10.0.17763.0"
+			MaxVersionTested="10.0.26100.0" />
+	</Dependencies>
+	<Resources>
+		<Resource Language="en-US" />
+	</Resources>
+	<Applications>
+		<Application
+			Id="Observatory"
+			Executable="Observatory.exe"
+			EntryPoint="Windows.FullTrustApplication">
+			<uap:VisualElements
+				DisplayName="Observatory"
+				Description="See what's taking up space on your disks"
+				BackgroundColor="transparent"
+				Square150x150Logo="Assets\Square150x150Logo.png"
+				Square44x44Logo="Assets\Square44x44Logo.png" />
+		</Application>
+	</Applications>
+	<Capabilities>
+		<!-- An ordinary program, with the run of the disks it's there to scan. -->
+		<rescap:Capability Name="runFullTrust" />
+		<!-- "Restart as administrator", for the folders Windows keeps a scan out of. -->
+		<rescap:Capability Name="allowElevation" />
+	</Capabilities>
+</Package>
