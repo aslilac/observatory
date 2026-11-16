@@ -123,6 +123,8 @@ pub struct Workspace {
 
 	// A newer version than this one, once one's been found.
 	pub update: Option<Update>,
+	// Its package is being downloaded, to hand to Windows.
+	pub update_fetching: bool,
 
 	// The edge of the window the pointer is at, where the app resizes its
 	// own window (see window_frame.rs).
@@ -260,6 +262,7 @@ impl Workspace {
 			app_menu_open: None,
 			app_menu_hovered: None,
 			update: None,
+			update_fetching: false,
 			resize_edge: None,
 			frame: Default::default(),
 		};

@@ -1,7 +1,8 @@
 // New versions, as the window has them: a button in the title bar that says
 // one is out, or on macOS, once it's been downloaded and checked, that
-// restarting will put it in place. Finding and fetching them is
-// `observatory_core::updates`'s.
+// restarting will put it in place. On Windows, for a copy installed as a
+// package by hand, a press on it downloads the new package and hands it to
+// Windows. Finding and fetching them is `observatory_core::updates`'s.
 
 use crate::controls::{ButtonKind, button, icon};
 use crate::workspace::Workspace;
@@ -38,8 +39,14 @@ fn looks_for_updates() -> bool {
 	std::env::var_os("OBSERVATORY_UPDATE_FEED").is_some()
 		|| matches!(
 			describe_installation(cfg!(debug_assertions)),
-			"App" | "Portable"
+			"App" | "Portable" | "MSIX"
 		)
+}
+
+// Whether this copy is a package Windows will take a newer one of: one
+// installed by hand, not the Store's.
+fn takes_packages() -> bool {
+	cfg!(windows) && describe_installation(cfg!(debug_assertions)) == "MSIX"
 }
 
 // Looks for a newer release than this copy, and where the app can install
@@ -90,25 +97,65 @@ impl Workspace {
 		.detach();
 	}
 
+	// Downloads the new version's package and opens it, which brings up
+	// Windows' installer to ask about updating. If it can't be had, the
+	// release's page is still somewhere to get it.
+	fn fetch_package(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+		let Some(Update::Available(release)) = &self.update else {
+			return;
+		};
+		if self.update_fetching {
+			return;
+		}
+		let release = release.clone();
+		let page = release.page.clone();
+		self.update_fetching = true;
+		cx.notify();
+		cx.spawn_in(window, async move |this, cx| {
+			let opened = cx
+				.background_executor()
+				.spawn(async move {
+					updates::stage_package(&release).and_then(|msix| updates::open_package(&msix))
+				})
+				.await;
+			let _ = this.update(cx, |this, cx| {
+				this.update_fetching = false;
+				if opened.is_err() {
+					cx.open_url(&page);
+				}
+				cx.notify();
+			});
+		})
+		.detach();
+	}
+
 	pub fn render_update_button(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
 		let p = self.palette;
 		let update = self.update.as_ref()?;
 		let button = match update {
 			Update::Available(release) => {
 				let page = release.page.clone();
-				button(
-					"update",
-					format!("Version {} is out", release.version),
-					ButtonKind::Default,
-					true,
-					&p,
-				)
-				.gap(px(4.))
-				.child(icon("arrow-up-right", 12., p.muted))
-				.on_click(move |_, _, cx| {
-					cx.stop_propagation();
-					cx.open_url(&page);
-				})
+				// A package can be fetched for Windows to install; anything
+				// else is got from the release's page.
+				let package = takes_packages() && release.download.is_some();
+				let says = if self.update_fetching {
+					format!("Downloading {}…", release.version)
+				} else {
+					format!("Version {} is out", release.version)
+				};
+				button("update", says, ButtonKind::Default, true, &p)
+					.gap(px(4.))
+					.when(!package, |this| {
+						this.child(icon("arrow-up-right", 12., p.muted))
+					})
+					.on_click(cx.listener(move |this, _, window, cx| {
+						cx.stop_propagation();
+						if package {
+							this.fetch_package(window, cx);
+						} else {
+							cx.open_url(&page);
+						}
+					}))
 			}
 			#[cfg(target_os = "macos")]
 			Update::Ready(..) => {

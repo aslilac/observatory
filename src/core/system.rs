@@ -39,8 +39,9 @@ pub fn describe_system() -> String {
 }
 
 /// How this copy of the app got onto the machine, where there's more than
-/// one way: from the Microsoft Store or as a bare program on Windows, as a
-/// Flatpak or a bare program on Linux, and as an app on macOS. It says
+/// one way: from the Microsoft Store, as a package installed by hand (an
+/// MSIX), or as a bare program on Windows, as a Flatpak or a bare program
+/// on Linux, and as an app on macOS. It says
 /// nothing of how the copy is signed. `development` is for a build that
 /// isn't for release, wherever it's run from.
 pub fn describe_installation(development: bool) -> &'static str {
@@ -55,10 +56,10 @@ pub fn describe_installation(development: bool) -> &'static str {
 	}
 	#[cfg(windows)]
 	{
-		if windows_packaged() {
-			"Microsoft Store"
-		} else {
-			"Portable"
+		match windows_package_origin() {
+			None => "Portable",
+			Some(PACKAGE_ORIGIN_STORE) => "Microsoft Store",
+			Some(_) => "MSIX",
 		}
 	}
 	#[cfg(all(unix, not(target_os = "macos")))]
@@ -71,20 +72,41 @@ pub fn describe_installation(development: bool) -> &'static str {
 	}
 }
 
-// Whether the app is running as a package (an MSIX), which is how the Store
-// installs it: only a packaged app has a package name to ask for.
+// Windows' `PackageOrigin_Store`: a package the Store installed.
 #[cfg(windows)]
-fn windows_packaged() -> bool {
+const PACKAGE_ORIGIN_STORE: u32 = 3;
+
+// Where the package the app is running as (an MSIX) came from, as Windows'
+// `PackageOrigin` has it: the Store, or anything else for one somebody
+// installed themselves (0 if Windows won't say). None when the app isn't
+// running as a package at all: only a packaged app has a package name to
+// ask for.
+#[cfg(windows)]
+fn windows_package_origin() -> Option<u32> {
 	const APPMODEL_ERROR_NO_PACKAGE: i32 = 15700;
 	#[link(name = "kernel32")]
 	unsafe extern "system" {
 		fn GetCurrentPackageFullName(length: *mut u32, name: *mut u16) -> i32;
+		fn GetStagedPackageOrigin(name: *const u16, origin: *mut u32) -> i32;
 	}
 	let mut length = 0u32;
 	// SAFETY: with no buffer and a length of zero, the call only says
 	// whether there's a name and how long it is.
 	let status = unsafe { GetCurrentPackageFullName(&mut length, std::ptr::null_mut()) };
-	status != APPMODEL_ERROR_NO_PACKAGE
+	if status == APPMODEL_ERROR_NO_PACKAGE {
+		return None;
+	}
+	let mut name = vec![0u16; length as usize + 1];
+	let mut origin = 0u32;
+	// SAFETY: `name` is as long as the call said the name is, and a zero
+	// longer, so it's a string with an end whatever comes back, and
+	// `origin` is somewhere to put the answer.
+	unsafe {
+		if GetCurrentPackageFullName(&mut length, name.as_mut_ptr()) == 0 {
+			GetStagedPackageOrigin(name.as_ptr(), &mut origin);
+		}
+	}
+	Some(origin)
 }
 
 /// The processor the app was built for, as it's usually written: "arm64",

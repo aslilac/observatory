@@ -8,8 +8,12 @@
 // app, checks it's signed by the same team as the copy that's running, and
 // swaps the two when the user says to restart. An app that isn't signed
 // with a certificate (an ad hoc build) has no team to check against, so it
-// only ever says there's a new version. On Windows the Store does the
-// updating, and on Linux Flatpak does.
+// only ever says there's a new version.
+//
+// On Windows, a copy installed as a package by hand (an MSIX from the site)
+// downloads the new package and hands it to Windows, which asks before it
+// updates and does the rest. A copy from the Store is the Store's to update,
+// and on Linux a Flatpak is Flatpak's.
 
 use crate::version::is_newer;
 use serde_json::Value;
@@ -39,13 +43,23 @@ pub struct Release {
 /// What a build for this platform is listed under, in `latest.json`'s
 /// `downloads`, where the app can install one itself.
 fn platform() -> Option<&'static str> {
-	cfg!(all(target_os = "macos", target_arch = "aarch64")).then_some("darwin-arm64")
+	if cfg!(all(target_os = "macos", target_arch = "aarch64")) {
+		Some("darwin-arm64")
+	} else if cfg!(all(windows, target_arch = "x86_64")) {
+		Some("win32-x64")
+	} else if cfg!(all(windows, target_arch = "aarch64")) {
+		Some("win32-arm64")
+	} else {
+		None
+	}
 }
 
 // What the release's build for this platform is called, among a GitHub
-// release's files (see macos/build.sh).
+// release's files (see macos/build.sh and windows/build.ps1): the app in a
+// zip on macOS, and the package on Windows.
 fn asset_name(version: &str) -> Option<String> {
-	Some(format!("Observatory-{}-{version}.zip", platform()?))
+	let kind = if cfg!(windows) { "msix" } else { "zip" };
+	Some(format!("Observatory-{}-{version}.{kind}", platform()?))
 }
 
 // `latest.json`: `{ "version", "url", "downloads": { "<platform>": "<url>" } }`.
@@ -127,6 +141,62 @@ pub fn fetch(url: &str) -> io::Result<Vec<u8>> {
 
 #[cfg(target_os = "macos")]
 pub use install::{Installed, Staged, installed, relaunch, stage};
+
+pub use package::{open_package, package_name, stage_package};
+
+// A new package, for a copy on Windows that was installed as one by hand.
+// There's nothing of Windows' in it but the program it ends by starting, so
+// it's built everywhere, and kept in working order from a machine that isn't
+// Windows.
+mod package {
+	use super::{LARGEST, Release, request};
+	use std::io::{self, Read};
+	use std::path::{Path, PathBuf};
+	use std::process::Command;
+
+	/// What the download of `version`'s package is called. The version is
+	/// whatever the feed said, so only what a version is made of is kept:
+	/// nothing that could put the file somewhere else.
+	pub fn package_name(version: &str) -> String {
+		let version: String = version
+			.chars()
+			.filter(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-'))
+			.collect();
+		format!("Observatory-{}.msix", version.trim_matches('.'))
+	}
+
+	/// Downloads `release`'s package to the Downloads folder, and says where
+	/// it is. It's there because it's somewhere Windows shows a packaged app
+	/// as it is (what one writes under AppData goes somewhere of its own,
+	/// which the installer couldn't find it in), and where a download is
+	/// looked for anyway.
+	///
+	/// Nothing's checked here, because Windows checks it all when the
+	/// package is opened: that it's whole, that it's signed by someone the
+	/// PC trusts, and before it will take the place of the copy that's
+	/// running, that it's the same app from the same publisher, and newer.
+	pub fn stage_package(release: &Release) -> Result<PathBuf, String> {
+		let url = release.download.as_deref().ok_or("no build to download")?;
+		let folder = dirs::download_dir().ok_or("no Downloads folder")?;
+		let msix = folder.join(package_name(&release.version));
+		let response = request(url).map_err(|error| error.to_string())?;
+		let mut file = std::fs::File::create(&msix).map_err(|error| error.to_string())?;
+		io::copy(&mut response.into_reader().take(LARGEST), &mut file)
+			.map_err(|error| error.to_string())?;
+		Ok(msix)
+	}
+
+	/// Opens the package as a double click on it would: Windows' installer
+	/// comes up, says what it is and who it's from, and on a yes, shuts the
+	/// app, updates it, and starts it again.
+	pub fn open_package(msix: &Path) -> Result<(), String> {
+		Command::new("explorer.exe")
+			.arg(msix)
+			.spawn()
+			.map(|_| ())
+			.map_err(|error| error.to_string())
+	}
+}
 
 // Replacing the app with a new one, on macOS.
 #[cfg(target_os = "macos")]
@@ -380,7 +450,11 @@ mod tests {
 	const FEED_JSON: &str = r#"{
 		"version": "1.2.0",
 		"url": "https://github.com/aslilac/observatory/releases/tag/v1.2.0",
-		"downloads": { "darwin-arm64": "https://releases.example/Observatory-darwin-arm64-1.2.0.zip" }
+		"downloads": {
+			"darwin-arm64": "https://releases.example/Observatory-darwin-arm64-1.2.0.zip",
+			"win32-x64": "https://releases.example/Observatory-win32-x64-1.2.0.msix",
+			"win32-arm64": "https://releases.example/Observatory-win32-arm64-1.2.0.msix"
+		}
 	}"#;
 
 	const GITHUB_JSON: &str = r#"[
@@ -393,6 +467,18 @@ mod tests {
 				{
 					"name": "Observatory-darwin-arm64-1.2.0.zip",
 					"browser_download_url": "https://example/Observatory-darwin-arm64-1.2.0.zip"
+				},
+				{
+					"name": "Observatory-win32-x64-1.2.0.zip",
+					"browser_download_url": "https://example/portable.zip"
+				},
+				{
+					"name": "Observatory-win32-x64-1.2.0.msix",
+					"browser_download_url": "https://example/Observatory-win32-x64-1.2.0.msix"
+				},
+				{
+					"name": "Observatory-win32-arm64-1.2.0.msix",
+					"browser_download_url": "https://example/Observatory-win32-arm64-1.2.0.msix"
 				}
 			]
 		}
@@ -439,6 +525,19 @@ mod tests {
 				);
 			}
 		}
+	}
+
+	#[test]
+	fn a_package_is_downloaded_under_a_plain_name() {
+		assert_eq!(
+			package_name("1.2.0-beta.3"),
+			"Observatory-1.2.0-beta.3.msix"
+		);
+		// Whatever the feed says the version is, it's a file in the folder.
+		assert_eq!(
+			package_name("..\\..\\Startup/evil"),
+			"Observatory-Startupevil.msix"
+		);
 	}
 
 	#[test]
