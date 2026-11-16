@@ -373,7 +373,6 @@ impl Workspace {
 			})
 			.collect();
 
-		let all = items.clone();
 		div()
 			.flex()
 			.flex_col()
@@ -411,25 +410,7 @@ impl Workspace {
 									.text_color(p.muted)
 									.child(subtitle),
 							),
-					)
-					.when(!items.is_empty(), |this| {
-						this.child(
-							button(
-								"find-all-to-cleanup",
-								if truncated {
-									format!("Move top {} to cleanup", grouped(items.len() as u64))
-								} else {
-									"Move all to cleanup".to_string()
-								},
-								ButtonKind::Default,
-								true,
-								&p,
-							)
-							.on_click(cx.listener(move |this, _, _, cx| {
-								this.move_to_cleanup(all.clone(), cx)
-							})),
-						)
-					}),
+					),
 			)
 			.children(rows)
 			.when(items.is_empty(), |this| {
