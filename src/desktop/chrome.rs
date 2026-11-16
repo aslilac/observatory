@@ -93,7 +93,7 @@ impl Render for Workspace {
 					.flex()
 					.flex_col()
 					.child(screen)
-					.children(self.render_cleanup(cx)),
+					.children(self.render_cleanup(window, cx)),
 			)
 			.children(self.render_issues(cx))
 			.children(self.render_ask(cx))

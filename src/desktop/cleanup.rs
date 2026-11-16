@@ -11,9 +11,9 @@ use crate::workspace::Workspace;
 use futures::StreamExt;
 use futures::channel::mpsc;
 use gpui::{
-	Animation, AnimationExt, AnyElement, Bounds, Context, Div, DragMoveEvent, FontWeight, Hsla,
-	MouseButton, MouseDownEvent, Pixels, Point, Stateful, Transformation, Window, canvas, div,
-	fill, percentage, point, prelude::*, px, relative, size,
+	Animation, AnimationExt, AnyElement, App, Bounds, Context, Div, DragMoveEvent, FontWeight,
+	Hsla, MouseButton, MouseDownEvent, Pixels, Point, SharedString, Stateful, TextRun,
+	Transformation, Window, canvas, div, fill, percentage, point, prelude::*, px, relative, size,
 };
 use observatory_core::cleanup::{DeleteMode, Step, delete_files};
 use observatory_core::color::{Color, Kind, sunburst_color};
@@ -124,11 +124,42 @@ const CARD_WIDTH: f32 = 340.;
 const SEGMENTS: usize = 24;
 // How tall a row of the queue is.
 const ROW: f32 = 26.;
-// How wide a queued thing's size is, and its name: what's left of the card
-// after its border, the rows' padding and their own, the dot, the size, the
-// x, and the gaps between.
-const QUEUED_SIZE: f32 = 64.;
-const QUEUED_NAME: f32 = CARD_WIDTH - 2. - 16. - 10. - 8. - QUEUED_SIZE - 20. - 24.;
+// How wide a row of the queue is but for its name and its size: the card's
+// border, the rows' padding and the row's own, the dot, the x, and the gaps
+// between.
+const ROW_FIXED: f32 = 2. + 16. + 10. + 8. + 20. + 24.;
+
+// `text` as it fits in `width` at `size`, ending in an ellipsis if it had to
+// be cut. gpui will do this itself where it's asked (`truncate`), but in the
+// card what comes of that is the name clipped mid-letter, so it's cut here
+// before it's handed over.
+fn fitted(text: &str, width: f32, size: f32, cx: &App) -> SharedString {
+	let mut wrapper = cx
+		.text_system()
+		.line_wrapper(crate::fonts::inter(), px(size));
+	wrapper.truncate_line(
+		text.replace('\n', " ").into(),
+		px(width),
+		"…",
+		&mut Vec::new(),
+	)
+}
+
+// How wide `text` is at `size`.
+fn width_of(text: &str, size: f32, window: &Window) -> f32 {
+	let run = TextRun {
+		len: text.len(),
+		font: crate::fonts::inter(),
+		color: Hsla::default(),
+		background_color: None,
+		underline: None,
+		strikethrough: None,
+	};
+	let line = window
+		.text_system()
+		.shape_line(text.to_string().into(), px(size), &[run], None);
+	f32::from(line.width)
+}
 
 // The color something queued has in the card: its dot's, and its segment's in
 // the bar. It's the one it had in the sunburst it was queued from. Where
@@ -341,7 +372,11 @@ impl Workspace {
 	/// being dragged, or deleted).
 	/// Open, it's a card that's the queue, then the question before anything
 	/// goes, then how the deleting's going, then how it went.
-	pub fn render_cleanup(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
+	pub fn render_cleanup(
+		&self,
+		window: &mut Window,
+		cx: &mut Context<Self>,
+	) -> Option<AnyElement> {
 		let queued = !self.store.cleanup().is_empty();
 		let dragging = self.dragging_items && cx.has_active_drag();
 		Some(match &self.deletion {
@@ -350,7 +385,7 @@ impl Workspace {
 			Some(run) if self.cleanup_open => self.render_deleting(run, cx),
 			Some(_) => self.render_pill(cx),
 			None if self.cleanup_confirming && queued => self.render_confirmation(cx),
-			None if self.cleanup_open => self.render_queue(cx),
+			None if self.cleanup_open => self.render_queue(window, cx),
 			None if dragging => self.render_landing(cx),
 			// With nothing queued it's still there over a scan's results,
 			// so it's plain there's somewhere to drag things to.
@@ -737,7 +772,7 @@ impl Workspace {
 	}
 
 	// The card open on the queue.
-	fn render_queue(&self, cx: &mut Context<Self>) -> AnyElement {
+	fn render_queue(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
 		let p = self.palette;
 		let shut = self.card_x("Close", |this| this.cleanup_open = false, cx);
 		let queued = self.queued_by_size();
@@ -775,6 +810,7 @@ impl Workspace {
 		for (index, (path, size)) in queued.iter().enumerate() {
 			let (remove, menu) = (path.clone(), path.clone());
 			let fill = p.fill;
+			let says = readable_size(*size);
 			rows.push(
 				div()
 					.id(("queued", index))
@@ -793,26 +829,28 @@ impl Workspace {
 							.rounded(px(2.))
 							.bg(queued_color(&self.store, path, &p)),
 					)
-					// The name's width is said outright, and the size's so
-					// that it can be: gpui keeps a text's first measuring,
-					// and a name that's left to take what room there is is
-					// first measured with none said, so it's never cut to an
-					// ellipsis, only clipped.
+					// The name has all of the row that the rest of it
+					// leaves, less a little for what measuring it a letter
+					// at a time misses.
 					.child(
 						div()
-							.flex_none()
-							.w(px(QUEUED_NAME))
-							.truncate()
-							.child(basename(path).to_string()),
+							.flex_1()
+							.min_w_0()
+							.overflow_hidden()
+							.whitespace_nowrap()
+							.child(fitted(
+								basename(path),
+								CARD_WIDTH - ROW_FIXED - width_of(&says, 11., window) - 2.,
+								12.,
+								cx,
+							)),
 					)
 					.child(
 						div()
 							.flex_none()
-							.w(px(QUEUED_SIZE))
-							.text_right()
 							.text_size(px(11.))
 							.text_color(p.muted)
-							.child(readable_size(*size)),
+							.child(says),
 					)
 					.child(
 						icon_button(("unqueue", index), "x", true, &p)
@@ -1067,14 +1105,14 @@ impl Workspace {
 		let failures = run.failed.iter().map(|(path, why)| {
 			div()
 				.py(px(5.))
-				// As wide as the box it's in, said outright (see the queue's
-				// rows).
-				.child(
-					div()
-						.w(px(CARD_WIDTH - 2. - 32. - 2. - 20.))
-						.truncate()
-						.child(basename(path).to_string()),
-				)
+				.child(div().overflow_hidden().whitespace_nowrap().child(fitted(
+					basename(path),
+					// The card, less its border and the box's
+					// margins, border and padding.
+					CARD_WIDTH - 2. - 32. - 2. - 20. - 2.,
+					12.,
+					cx,
+				)))
 				.child(
 					div()
 						.text_size(px(11.))
