@@ -82,10 +82,6 @@ impl Workspace {
 			.progress
 			.as_ref()
 			.map_or(0, |progress| progress.counts.total_entries());
-		let current = self
-			.progress
-			.as_ref()
-			.and_then(|progress| progress.current_path.clone());
 		let elapsed = self.scan_shown.map(|shown| shown.elapsed());
 		// What's been found, once it's past its first moments.
 		let filling: Option<&Progress> = self
@@ -326,19 +322,7 @@ impl Workspace {
 							.flex_col()
 							.items_center()
 							.justify_center()
-							.gap(px(6.))
-							.child(picture)
-							.child(
-								div()
-									.h(px(15.))
-									.max_w_full()
-									.px(px(24.))
-									.truncate()
-									.text_size(px(11.))
-									.line_height(px(15.))
-									.text_color(p.muted)
-									.children(current),
-							),
+							.child(picture),
 					)
 					.child(list),
 			)
