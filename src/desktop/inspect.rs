@@ -376,8 +376,12 @@ impl Workspace {
 					.inset_0()
 					.occlude()
 					.on_any_mouse_down(cx.listener(|this, _, window, cx| {
-						// The field losing the focus is what shuts them.
+						// The field losing the focus would shut them too, but
+						// only once something else draws the window again.
+						this.suggesting = false;
+						this.find_open = false;
 						window.focus(&this.focus);
+						cx.notify();
 						cx.stop_propagation();
 					})),
 			)
