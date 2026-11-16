@@ -330,7 +330,8 @@ impl Workspace {
 	}
 
 	/// Cleanup, floating in the window's bottom-left corner. Shut, it's a
-	/// pill, there while anything's queued (or being dragged, or deleted).
+	/// pill, there over a scan's results and while anything's queued (or
+	/// being dragged, or deleted).
 	/// Open, it's a card that's the queue, then the question before anything
 	/// goes, then how the deleting's going, then how it went.
 	pub fn render_cleanup(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
@@ -344,7 +345,9 @@ impl Workspace {
 			None if self.cleanup_confirming && queued => self.render_confirmation(cx),
 			None if self.cleanup_open => self.render_queue(cx),
 			None if dragging => self.render_landing(cx),
-			None if queued => self.render_pill(cx),
+			// With nothing queued it's still there over a scan's results,
+			// so it's plain there's somewhere to drag things to.
+			None if queued || self.tree.is_some() => self.render_pill(cx),
 			None => return None,
 		})
 	}
@@ -459,6 +462,8 @@ impl Workspace {
 	// changes its edge and its words and nothing jumps.
 	fn render_pill(&self, cx: &mut Context<Self>) -> AnyElement {
 		let p = self.palette;
+		// With nothing in it, it's quieter, and says what it's for.
+		let empty = self.deletion.is_none() && self.store.cleanup().is_empty();
 		let (mark, title, says) = match &self.deletion {
 			Some(run) if run.running => (
 				spinner("pill-spinner", 15., p.muted),
@@ -473,6 +478,11 @@ impl Workspace {
 					run.items.len(),
 					readable_size(run.freed)
 				),
+			),
+			_ if empty => (
+				icon("trash", 15., p.muted).into_any_element(),
+				"Cleanup",
+				"Drag things here to delete".to_string(),
 			),
 			_ => (
 				icon("trash", 15., p.default).into_any_element(),
@@ -501,7 +511,13 @@ impl Workspace {
 			.bg(p.background)
 			.border_1()
 			.border_color(p.line)
-			.shadow_lg()
+			.map(|this| {
+				if empty {
+					this.border_dashed()
+				} else {
+					this.shadow_lg()
+				}
+			})
 			.text_size(px(12.))
 			.cursor_pointer()
 			.hover(move |style| style.border_color(muted))
