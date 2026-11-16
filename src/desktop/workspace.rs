@@ -97,6 +97,8 @@ pub struct Workspace {
 
 	pub progress: Option<Progress>,
 	polling: Option<Task<()>>,
+	// When the scan that's running came up on screen.
+	pub scan_shown: Option<Instant>,
 
 	// What's open over the window.
 	pub cleanup_open: bool,
@@ -242,6 +244,7 @@ impl Workspace {
 			summaries_for: None,
 			progress: None,
 			polling: None,
+			scan_shown: None,
 			cleanup_open: false,
 			dragging_items: false,
 			dragging_size: 0,
@@ -340,6 +343,7 @@ impl Workspace {
 			_ => {
 				self.polling = None;
 				self.progress = None;
+				self.scan_shown = None;
 			}
 		}
 		window.set_window_title(&self.title());
@@ -459,16 +463,18 @@ impl Workspace {
 		}
 	}
 
-	// While a scan's running, how far along it is, four times a second.
+	// While a scan's running, how far along it is, ten times a second: often
+	// enough that what it's found grows rather than jumps.
 	fn poll_progress(&mut self, path: String, cx: &mut Context<Self>) {
 		if self.polling.is_some() {
 			return;
 		}
+		self.scan_shown = Some(Instant::now());
 		self.progress = self.scans.progress(&path);
 		self.polling = Some(cx.spawn(async move |this, cx| {
 			loop {
 				cx.background_executor()
-					.timer(Duration::from_millis(250))
+					.timer(Duration::from_millis(100))
 					.await;
 				let alive = this.update(cx, |this, cx| {
 					this.progress = this.scans.progress(&path);
