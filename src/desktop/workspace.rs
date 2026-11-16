@@ -447,7 +447,9 @@ impl Workspace {
 			.show(view, wedges, self.epoch.elapsed(), still);
 	}
 
-	fn title(&self) -> String {
+	/// What the window's called: the OS's title for it, and what the title
+	/// bar says.
+	pub fn title(&self) -> String {
 		let place = self.nav.current();
 		let Some(path) = &place.inspecting else {
 			return "Observatory".to_string();

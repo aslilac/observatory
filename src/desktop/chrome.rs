@@ -179,7 +179,8 @@ impl Workspace {
 	fn render_title_bar(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
 		let p = self.palette;
 		let mac = cfg!(target_os = "macos");
-		let title = self.title_bar_text();
+		// The same words the OS has for the window, wherever it shows them.
+		let title = self.title();
 		// The window's own buttons, off macOS, where they're the app's to
 		// draw. They go right to the bar's end.
 		let buttons = caption_buttons(window, p.muted, p.fill);
@@ -333,17 +334,6 @@ impl Workspace {
 				cx.listener(|this, _, _, cx| this.toggle_primary_menu(cx)),
 			)
 			.into_any_element()
-	}
-
-	fn title_bar_text(&self) -> String {
-		let place = self.nav.current();
-		match (&place.inspecting, &self.tree) {
-			(Some(_), Some(tree)) => match place.cursor.last() {
-				Some(folder) => format!("{folder} — {}", tree.name),
-				None => tree.name.clone(),
-			},
-			_ => "Observatory".to_string(),
-		}
 	}
 
 	// The menu bar, where the app draws it. It works as one does: a press
