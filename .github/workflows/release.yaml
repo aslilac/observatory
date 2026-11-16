@@ -3,9 +3,17 @@ name: Release
 on:
   push:
     tags: ["v*.*.*"]
+  # A dry run, of whichever branch it's started on: everything's built,
+  # signed, and packaged as a release's would be, and can be downloaded from
+  # the run to try, but nothing's published. What would have been is listed
+  # in the run's summary.
+  workflow_dispatch:
 
 permissions:
   contents: read
+
+env:
+  DRY_RUN: ${{ github.event_name == 'workflow_dispatch' }}
 
 jobs:
   version:
@@ -21,10 +29,10 @@ jobs:
         name: Checkout
 
       # The builds are named after the app's version, which is the desktop
-      # crate's.
+      # crate's. A dry run has no tag to check it against.
       - run: |
           version="$(sed -n 's/^version = "\(.*\)"$/\1/p' src/desktop/Cargo.toml | head -1)"
-          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+          if [ "$DRY_RUN" != true ] && [ "v$version" != "$GITHUB_REF_NAME" ]; then
             echo "tag $GITHUB_REF_NAME does not match version $version in src/desktop/Cargo.toml"
             exit 1
           fi
@@ -129,12 +137,14 @@ jobs:
         name: Package
 
       # A release goes out without the package if it can't be made: the zip
-      # is still the app.
+      # is still the app. A dry run is there to find that out, so it fails,
+      # and makes the package without a certificate too (unsigned, which
+      # Windows won't install, but the packaging's been tried).
       - run: |
           ./windows/build.ps1
           Copy-Item target/windows/*.msix .
-        if: env.WINDOWS_CERTIFICATE != ''
-        continue-on-error: true
+        if: env.WINDOWS_CERTIFICATE != '' || env.DRY_RUN == 'true'
+        continue-on-error: ${{ github.event_name != 'workflow_dispatch' }}
         name: Package (MSIX)
 
       - uses: actions/upload-artifact@v7
@@ -284,8 +294,24 @@ jobs:
 
       # The app looks here too, when it can't reach the bucket: the Mac zip
       # is found by its name (see src/core/updates.rs).
+      # In a dry run, what the release would have had, in place of one.
+      - run: |
+          {
+            echo "### Dry run of ${{ needs.version.outputs.version }}: nothing was published"
+            echo
+            echo "The release would have had:"
+            echo
+            echo '```'
+            find dist -type f \( -name '*.dmg' -o -name '*.zip' -o -name '*.flatpak' -o -name '*.msix' \) \
+              -exec du -h {} + | sort -k 2
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+        if: env.DRY_RUN == 'true'
+        name: Release (dry run)
+
       - uses: softprops/action-gh-release@v3
         name: Release
+        if: env.DRY_RUN != 'true'
         with:
           files: |
             dist/**/*.dmg
@@ -298,7 +324,7 @@ jobs:
       # certificate to sign them with.
       - uses: softprops/action-gh-release@v3
         name: Release (MSIX)
-        if: hashFiles('dist/**/*.msix') != ''
+        if: env.DRY_RUN != 'true' && hashFiles('dist/**/*.msix') != ''
         with:
           files: dist/**/*.msix
 
@@ -307,25 +333,34 @@ jobs:
       # version, its page, and where those are. The builds go up first, and
       # what points at them last, so an app never finds a version that isn't
       # there yet. latest.json is never cached, and the builds are cached
-      # for good, since a version's never rebuilt.
+      # for good, since a version's never rebuilt. A dry run goes through all
+      # of it but the uploads, and says what latest.json would have been.
       - run: |
           version='${{ needs.version.outputs.version }}'
           base="https://releases.mckayla.dev/observatory"
-          s3="s3://$RELEASES_BUCKET/observatory"
+          s3="s3://${RELEASES_BUCKET:-bucket}/observatory"
           zip="Observatory-darwin-arm64-$version.zip"
 
-          aws s3 cp --endpoint-url "$RELEASES_ENDPOINT" --acl public-read \
-            "$(find dist -name "$zip" | head -1)" "$s3/darwin/arm64/$zip" \
-            --cache-control 'public, max-age=31536000, immutable'
+          # put <file> <where> <cache-control>
+          put() {
+            if [ "$DRY_RUN" = true ]; then
+              echo "would upload $1 to $2 ($3)"
+            else
+              aws s3 cp --endpoint-url "$RELEASES_ENDPOINT" --acl public-read \
+                "$1" "$2" --cache-control "$3"
+            fi
+          }
+
+          built="$(find dist -name "$zip" | head -1)"
+          [ -n "$built" ] || { echo "there's no $zip"; exit 1; }
+          put "$built" "$s3/darwin/arm64/$zip" 'public, max-age=31536000, immutable'
           downloads="$(jq -n --arg zip "$base/darwin/arm64/$zip" '{"darwin-arm64": $zip}')"
 
           for arch in x64 arm64; do
             msix="Observatory-win32-$arch-$version.msix"
             built="$(find dist -name "$msix" | head -1)"
             [ -n "$built" ] || continue
-            aws s3 cp --endpoint-url "$RELEASES_ENDPOINT" --acl public-read \
-              "$built" "$s3/win32/$arch/$msix" \
-              --cache-control 'public, max-age=31536000, immutable'
+            put "$built" "$s3/win32/$arch/$msix" 'public, max-age=31536000, immutable'
             downloads="$(jq --arg platform "win32-$arch" --arg msix "$base/win32/$arch/$msix" \
               '. + {($platform): $msix}' <<< "$downloads")"
           done
@@ -334,7 +369,17 @@ jobs:
             --arg url "https://github.com/$GITHUB_REPOSITORY/releases/tag/v$version" \
             --argjson downloads "$downloads" \
             '{version: $version, url: $url, downloads: $downloads}' > latest.json
-          aws s3 cp --endpoint-url "$RELEASES_ENDPOINT" --acl public-read \
-            latest.json "$s3/latest.json" --cache-control no-cache
-        if: env.RELEASES_BUCKET != ''
+          put latest.json "$s3/latest.json" no-cache
+
+          if [ "$DRY_RUN" = true ]; then
+            {
+              echo
+              echo "And \`latest.json\`, which the app updates from, would have been:"
+              echo
+              echo '```json'
+              cat latest.json
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+        if: env.RELEASES_BUCKET != '' || env.DRY_RUN == 'true'
         name: Feed
