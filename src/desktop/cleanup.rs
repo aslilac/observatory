@@ -19,8 +19,8 @@ use observatory_core::cleanup::{DeleteMode, Step, delete_files};
 use observatory_core::color::{Color, Kind, sunburst_color};
 use observatory_core::drives::{Drive, Usage, drive_of};
 use observatory_core::format::{plural, readable_size};
-use observatory_core::paths::basename;
-use observatory_core::store::Store;
+use observatory_core::paths::{basename, parts_below};
+use observatory_core::store::{CleanupItem, Tint};
 use observatory_core::tree::Item;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -82,6 +82,8 @@ pub fn draggable(element: Stateful<Div>, items: Vec<Item>, p: Palette) -> Statef
 /// card's said how it went. Nothing waits on it: the card (or the pill, with
 /// the card shut) follows it while the user carries on.
 pub struct Deletion {
+	// The scan whose queue it's of.
+	scan: String,
 	// When it began, which is also which one it is, to a timer that outlives
 	// it.
 	started: Instant,
@@ -165,11 +167,8 @@ fn width_of(text: &str, size: f32, window: &Window) -> f32 {
 // the bar. It's the one it had in the sunburst it was queued from. Where
 // that isn't known (it was queued by an earlier version), it's one made up
 // from its path, so it at least keeps it while the queue changes.
-fn queued_color(store: &Store, path: &str, p: &Palette) -> Hsla {
-	let queued = store
-		.cleanup()
-		.iter()
-		.find(|queued| queued.item.path == path);
+fn queued_color(queue: &[CleanupItem], path: &str, p: &Palette) -> Hsla {
+	let queued = queue.iter().find(|queued| queued.item.path == path);
 	if let Some(queued) = queued
 		&& let Some(tint) = queued.tint
 	{
@@ -209,16 +208,89 @@ impl Workspace {
 		self.deletion.as_ref().is_some_and(|run| run.running)
 	}
 
+	// The scan whose cleanup this is: the one being looked at, once it's
+	// finished. Each scan has its own, and there's none anywhere else.
+	fn cleanup_scan(&self) -> Option<&str> {
+		self.inspecting().map(|scan| scan.path.as_str())
+	}
+
+	// What's queued from the scan being looked at.
+	fn queue(&self) -> &[CleanupItem] {
+		self.cleanup_scan()
+			.map_or(&[], |scan| self.store.cleanup(scan))
+	}
+
+	fn queued_size(&self) -> u64 {
+		self.queue().iter().map(|queued| queued.item.size).sum()
+	}
+
+	/// Whether `path` goes out with the cleanup of the scan being looked at.
+	pub fn in_cleanup(&self, path: &str) -> bool {
+		self.cleanup_scan()
+			.is_some_and(|scan| self.store.in_cleanup(scan, path))
+	}
+
+	/// Queues `items` from the scan being looked at.
+	pub fn move_to_cleanup(&mut self, items: Vec<Item>, cx: &mut Context<Self>) {
+		let Some(scan) = self.cleanup_scan().map(str::to_string) else {
+			return;
+		};
+		// Each keeps the color it has in the sunburst it's taken from.
+		let scans = &self.scans;
+		self.store.add_to_cleanup(&scan, items, |item| {
+			let (hue, depth) = scans.tint(&scan, &item.path)?;
+			Some(Tint {
+				hue: hue.rem_euclid(360.).round() as u16,
+				depth: depth.min(u16::MAX as usize) as u16,
+			})
+		});
+		cx.notify();
+	}
+
+	pub fn move_selected_to_cleanup(&mut self, cx: &mut Context<Self>) {
+		let items = std::mem::take(&mut self.selection);
+		self.move_to_cleanup(items, cx);
+	}
+
+	/// Takes `path` back out of the queue.
+	pub fn unqueue(&mut self, path: &str, cx: &mut Context<Self>) {
+		if let Some(scan) = self.cleanup_scan().map(str::to_string) {
+			self.store.remove_from_cleanup(&scan, path);
+		}
+		cx.notify();
+	}
+
+	// Shows where something queued is: the folder it's in, where it's in the
+	// list (struck through) and the sunburst.
+	fn show_queued(&mut self, path: &str, window: &mut Window, cx: &mut Context<Self>) {
+		let Some(scan) = self.cleanup_scan() else {
+			return;
+		};
+		let mut cursor = parts_below(scan, path);
+		cursor.pop();
+		// What find found would be in the list's place.
+		self.clear_find(cx);
+		self.set_cursor(cursor, window, cx);
+	}
+
+	// The deletion, if it's of the scan being looked at.
+	fn deletion_here(&self) -> Option<&Deletion> {
+		let scan = self.cleanup_scan()?;
+		self.deletion.as_ref().filter(|run| run.scan == scan)
+	}
+
 	// What the confirmation's buttons do: everything queued goes.
 	fn delete_queued(&mut self, mode: DeleteMode, window: &mut Window, cx: &mut Context<Self>) {
 		self.cleanup_confirming = false;
+		let Some(scan) = self.cleanup_scan().map(str::to_string) else {
+			return;
+		};
 		let queued = self
-			.store
-			.cleanup()
+			.queue()
 			.iter()
 			.map(|queued| (queued.item.path.clone(), queued.item.size))
 			.collect();
-		self.delete_paths(queued, mode, window, cx);
+		self.delete_paths(scan, queued, mode, window, cx);
 	}
 
 	// Another go at what the last deletion couldn't delete, if it's still
@@ -228,20 +300,22 @@ impl Workspace {
 			return;
 		};
 		let mode = run.mode;
+		let scan = run.scan.clone();
 		let queued = self
 			.store
-			.cleanup()
+			.cleanup(&scan)
 			.iter()
 			.filter(|queued| run.failed.iter().any(|(path, _)| *path == queued.item.path))
 			.map(|queued| (queued.item.path.clone(), queued.item.size))
 			.collect();
-		self.delete_paths(queued, mode, window, cx);
+		self.delete_paths(scan, queued, mode, window, cx);
 	}
 
-	// Deletes `queued` (paths, with their sizes) on another thread, keeping
-	// `self.deletion` up with how it's going.
+	// Deletes `queued` (paths, with their sizes) from `scan`'s queue on
+	// another thread, keeping `self.deletion` up with how it's going.
 	fn delete_paths(
 		&mut self,
+		scan: String,
 		queued: Vec<(String, u64)>,
 		mode: DeleteMode,
 		window: &mut Window,
@@ -254,6 +328,7 @@ impl Workspace {
 		let started = Instant::now();
 		let stop = Arc::new(AtomicBool::new(false));
 		self.deletion = Some(Deletion {
+			scan,
 			started,
 			mode,
 			items: queued.clone(),
@@ -290,7 +365,7 @@ impl Workspace {
 								.iter()
 								.find(|(queued, _)| *queued == path)
 								.map_or(0, |(_, size)| *size);
-							this.store.remove_from_cleanup(&path);
+							this.store.remove_deleted(&path);
 							this.selection.retain(|item| item.path != path);
 							// It's out of the scans' trees too.
 							this.sync(window, cx);
@@ -333,7 +408,14 @@ impl Workspace {
 				cx.background_executor().timer(wait).await;
 				let gone = this.update(cx, |this, cx| {
 					match &this.deletion {
-						Some(run) if run.started == started && run.hovered => return false,
+						// (Only where it's showing: the pointer can't be said
+						// to have left a card that's gone with its scan.)
+						Some(run)
+							if run.started == started
+								&& run.hovered && this.deletion_here().is_some() =>
+						{
+							return false;
+						}
 						Some(run) if run.started == started => {
 							this.deletion = None;
 							cx.notify();
@@ -367,19 +449,21 @@ impl Workspace {
 		Some((disk.title(), disk.usage.clone()?))
 	}
 
-	/// Cleanup, floating in the window's bottom-left corner. Shut, it's a
-	/// pill, there over a scan's results and while anything's queued (or
-	/// being dragged, or deleted).
-	/// Open, it's a card that's the queue, then the question before anything
-	/// goes, then how the deleting's going, then how it went.
+	/// Cleanup, floating in the window's bottom-left corner, over a scan's
+	/// results and nowhere else: it's that scan's. Shut, it's a pill. Open,
+	/// it's a card that's the queue, then the question before anything goes,
+	/// then how the deleting's going, then how it went.
 	pub fn render_cleanup(
 		&self,
 		window: &mut Window,
 		cx: &mut Context<Self>,
 	) -> Option<AnyElement> {
-		let queued = !self.store.cleanup().is_empty();
+		if self.tree.is_none() || self.cleanup_scan().is_none() {
+			return None;
+		}
+		let queued = !self.queue().is_empty();
 		let dragging = self.dragging_items && cx.has_active_drag();
-		Some(match &self.deletion {
+		Some(match self.deletion_here() {
 			// How it went is said whether or not the card was open.
 			Some(run) if !run.running => self.render_deleted(run, cx),
 			Some(run) if self.cleanup_open => self.render_deleting(run, cx),
@@ -387,10 +471,9 @@ impl Workspace {
 			None if self.cleanup_confirming && queued => self.render_confirmation(cx),
 			None if self.cleanup_open => self.render_queue(window, cx),
 			None if dragging => self.render_landing(cx),
-			// With nothing queued it's still there over a scan's results,
-			// so it's plain there's somewhere to drag things to.
-			None if queued || self.tree.is_some() => self.render_pill(cx),
-			None => return None,
+			// With nothing queued it's still there, so it's plain there's
+			// somewhere to drag things to.
+			None => self.render_pill(cx),
 		})
 	}
 
@@ -401,8 +484,8 @@ impl Workspace {
 		let p = self.palette;
 		let over = self.drop_over;
 		let warm = reclaim_color();
-		let queued = self.store.cleanup_size();
-		let count = self.store.cleanup().len() as u64;
+		let queued = self.queued_size();
+		let count = self.queue().len() as u64;
 		let says = match (over, count) {
 			(false, 0) => "Nothing queued yet".to_string(),
 			(false, _) => format!("{count} queued · {}", readable_size(queued)),
@@ -505,8 +588,8 @@ impl Workspace {
 	fn render_pill(&self, cx: &mut Context<Self>) -> AnyElement {
 		let p = self.palette;
 		// With nothing in it, it's quieter, and says what it's for.
-		let empty = self.deletion.is_none() && self.store.cleanup().is_empty();
-		let (mark, title, says) = match &self.deletion {
+		let empty = self.deletion_here().is_none() && self.queue().is_empty();
+		let (mark, title, says) = match self.deletion_here() {
 			Some(run) if run.running => (
 				spinner("pill-spinner", 15., p.muted),
 				match run.mode {
@@ -531,8 +614,8 @@ impl Workspace {
 				"Cleanup",
 				format!(
 					"{} queued · {}",
-					self.store.cleanup().len(),
-					readable_size(self.store.cleanup_size())
+					self.queue().len(),
+					readable_size(self.queued_size())
 				),
 			),
 		};
@@ -743,8 +826,7 @@ impl Workspace {
 	// What's queued, largest first: what's worth the most to be rid of.
 	fn queued_by_size(&self) -> Vec<(String, u64)> {
 		let mut queued: Vec<(String, u64)> = self
-			.store
-			.cleanup()
+			.queue()
 			.iter()
 			.map(|queued| (queued.item.path.clone(), queued.item.size))
 			.collect();
@@ -808,7 +890,7 @@ impl Workspace {
 
 		let mut rows = Vec::new();
 		for (index, (path, size)) in queued.iter().enumerate() {
-			let (remove, menu) = (path.clone(), path.clone());
+			let (remove, menu, show) = (path.clone(), path.clone(), path.clone());
 			let fill = p.fill;
 			let says = readable_size(*size);
 			rows.push(
@@ -821,13 +903,18 @@ impl Workspace {
 					.pr(px(2.))
 					.h(px(ROW))
 					.rounded(px(5.))
+					.cursor_pointer()
 					.hover(move |style| style.bg(fill))
+					// A click on it goes to where it is.
+					.on_click(
+						cx.listener(move |this, _, window, cx| this.show_queued(&show, window, cx)),
+					)
 					.child(
 						div()
 							.flex_none()
 							.size(px(8.))
 							.rounded(px(2.))
-							.bg(queued_color(&self.store, path, &p)),
+							.bg(queued_color(self.queue(), path, &p)),
 					)
 					// The name has all of the row that the rest of it
 					// leaves, less a little for what measuring it a letter
@@ -856,8 +943,9 @@ impl Workspace {
 						icon_button(("unqueue", index), "x", true, &p)
 							.size(px(20.))
 							.on_click(cx.listener(move |this, _, _, cx| {
-								this.store.remove_from_cleanup(&remove);
-								cx.notify();
+								// Not a click on the row as well.
+								cx.stop_propagation();
+								this.unqueue(&remove, cx);
 							})),
 					)
 					.on_mouse_down(
@@ -871,7 +959,7 @@ impl Workspace {
 		let deleting = self.deleting();
 		let body = div()
 			.child(self.queued_total(&queued))
-			.child(reclaim_bar(&self.store, &queued, None, &p))
+			.child(reclaim_bar(self.queue(), &queued, None, &p))
 			.child(
 				// The one part of the card that gives when the window isn't
 				// tall enough for all of it.
@@ -897,7 +985,9 @@ impl Workspace {
 					.child(
 						button("cleanup-clear", "Clear", ButtonKind::Default, true, &p).on_click(
 							cx.listener(|this, _, _, cx| {
-								this.store.clear_cleanup();
+								if let Some(scan) = this.cleanup_scan().map(str::to_string) {
+									this.store.clear_cleanup(&scan);
+								}
 								cx.notify();
 							}),
 						),
@@ -934,7 +1024,7 @@ impl Workspace {
 		let disk = self.disk_of(queued.iter().map(|(path, _)| path.as_str()));
 		let body = div()
 			.child(self.queued_total(&queued))
-			.child(reclaim_bar(&self.store, &queued, None, &p))
+			.child(reclaim_bar(self.queue(), &queued, None, &p))
 			.children(disk.map(|(_, usage)| disk_bar(&usage, size, true, &p)))
 			.child(div().px(px(16.)).pt(px(10.)).text_color(p.muted).child(
 				"Deleting permanently frees the space right away and can't be undone. The \
@@ -1007,7 +1097,7 @@ impl Workspace {
 				],
 				&p,
 			))
-			.child(reclaim_bar(&self.store, &run.items, Some(&run.gone), &p))
+			.child(reclaim_bar(self.queue(), &run.items, Some(&run.gone), &p))
 			.child(
 				div()
 					.flex()
@@ -1232,7 +1322,7 @@ fn total(size: String, beside: [String; 2], p: &Palette) -> Div {
 // have. While they're deleted (`gone` is which have been), those that are
 // gone are solid and the rest wait, pale.
 fn reclaim_bar(
-	store: &Store,
+	queue: &[CleanupItem],
 	items: &[(String, u64)],
 	gone: Option<&[String]>,
 	p: &Palette,
@@ -1247,7 +1337,7 @@ fn reclaim_bar(
 			.bg(color)
 	};
 	let colored = items.iter().take(SEGMENTS).map(|(path, share)| {
-		let mut color = queued_color(store, path, p);
+		let mut color = queued_color(queue, path, p);
 		if let Some(gone) = gone {
 			if gone.contains(path) {
 				color = p.default;

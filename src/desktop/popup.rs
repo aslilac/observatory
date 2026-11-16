@@ -113,8 +113,7 @@ pub fn queued_menu(path: &str) -> Vec<PopupItem> {
 	items.push(PopupItem::action(
 		"Remove from cleanup",
 		move |this, _, cx| {
-			this.store.remove_from_cleanup(&path);
-			cx.notify();
+			this.unqueue(&path, cx);
 		},
 	));
 	items

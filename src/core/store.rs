@@ -1,5 +1,5 @@
 // What the app remembers from one run to the next: the theme, the folders
-// scanned lately, and what's waiting in cleanup. One JSON file in the user's
+// scanned lately, and what each scan has waiting in cleanup. One JSON file in the user's
 // config folder, written whenever any of it changes. Best-effort all the
 // way: a file that's missing or mangled is the same as a first run, and one
 // that can't be written just isn't remembered.
@@ -8,7 +8,7 @@ use crate::format::now_ms;
 use crate::paths::is_within;
 use crate::tree::Item;
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -48,7 +48,10 @@ struct Remembered {
 	// None until the user picks one, when the OS's is followed.
 	dark: Option<bool>,
 	recent_scans: Vec<RecentScan>,
-	cleanup: Vec<CleanupItem>,
+	// A queue for each scan that has anything in one, by the scan's path.
+	// (Before, there was one for them all, `cleanup`, which is left behind:
+	// there's no saying which scan each thing in it was queued from.)
+	cleanups: BTreeMap<String, Vec<CleanupItem>>,
 	// macOS: the first scan asks for Full Disk Access, once.
 	full_disk_access_asked: bool,
 }
@@ -58,8 +61,8 @@ pub struct Store {
 	// None for a store that's only in memory.
 	file: Option<PathBuf>,
 	remembered: Remembered,
-	// The cleanup queue's paths, kept alongside it for `in_cleanup`.
-	queued: HashSet<String>,
+	// Each cleanup queue's paths, kept alongside it for `in_cleanup`.
+	queued: HashMap<String, HashSet<String>>,
 }
 
 impl Store {
@@ -77,9 +80,12 @@ impl Store {
 			.and_then(|json| serde_json::from_slice(&json).ok())
 			.unwrap_or_default();
 		let queued = remembered
-			.cleanup
+			.cleanups
 			.iter()
-			.map(|queued| queued.item.path.clone())
+			.map(|(scan, queue)| {
+				let paths = queue.iter().map(|queued| queued.item.path.clone());
+				(scan.clone(), paths.collect())
+			})
 			.collect();
 		Self {
 			file,
@@ -146,58 +152,100 @@ impl Store {
 		self.save();
 	}
 
-	/// What's waiting to be cleaned up, in the order it was added.
-	pub fn cleanup(&self) -> &[CleanupItem] {
-		&self.remembered.cleanup
+	// Cleanup. Each scan has a queue of its own, named here by the scan's
+	// path (`scan`): what's queued while looking at one scan is that scan's to
+	// clean up, and isn't there in another.
+
+	/// What's waiting to be cleaned up from `scan`, in the order it was
+	/// added.
+	pub fn cleanup(&self, scan: &str) -> &[CleanupItem] {
+		self.remembered
+			.cleanups
+			.get(scan)
+			.map_or(&[], Vec::as_slice)
 	}
 
-	pub fn cleanup_size(&self) -> u64 {
-		self.remembered.cleanup.iter().map(|q| q.item.size).sum()
+	pub fn cleanup_size(&self, scan: &str) -> u64 {
+		self.cleanup(scan).iter().map(|q| q.item.size).sum()
 	}
 
-	/// Whether `path` goes out with the cleanup: it's queued, or a folder
-	/// it's in is.
-	pub fn in_cleanup(&self, path: &str) -> bool {
-		is_within(path, &self.queued)
+	/// Whether `path` goes out with `scan`'s cleanup: it's queued, or a
+	/// folder it's in is.
+	pub fn in_cleanup(&self, scan: &str, path: &str) -> bool {
+		self.queued
+			.get(scan)
+			.is_some_and(|queued| is_within(path, queued))
 	}
 
 	/// Queues whatever of `items` isn't already, each with the color `tint`
 	/// says it has. Says whether any were.
 	pub fn add_to_cleanup(
 		&mut self,
+		scan: &str,
 		items: impl IntoIterator<Item = Item>,
 		tint: impl Fn(&Item) -> Option<Tint>,
 	) -> bool {
 		let added_at = now_ms();
-		let before = self.queued.len();
+		let mut added = false;
 		for item in items {
-			if self.queued.insert(item.path.clone()) {
+			let queued = self.queued.entry(scan.to_string()).or_default();
+			if queued.insert(item.path.clone()) {
 				let tint = tint(&item);
-				self.remembered.cleanup.push(CleanupItem {
+				let queue = self.remembered.cleanups.entry(scan.to_string());
+				queue.or_default().push(CleanupItem {
 					item,
 					added_at,
 					tint,
 				});
+				added = true;
 			}
 		}
-		let added = self.queued.len() > before;
 		if added {
 			self.save();
 		}
 		added
 	}
 
-	pub fn remove_from_cleanup(&mut self, path: &str) {
-		if self.queued.remove(path) {
-			self.remembered.cleanup.retain(|q| q.item.path != path);
+	pub fn remove_from_cleanup(&mut self, scan: &str, path: &str) {
+		if self.unqueue(scan, path) {
 			self.save();
 		}
 	}
 
-	pub fn clear_cleanup(&mut self) {
-		if !self.queued.is_empty() {
-			self.queued.clear();
-			self.remembered.cleanup.clear();
+	/// `path` has been deleted: it's out of every scan's queue, since scans
+	/// can overlap (a disk, and a folder on it).
+	pub fn remove_deleted(&mut self, path: &str) {
+		let scans: Vec<String> = self.queued.keys().cloned().collect();
+		let mut removed = false;
+		for scan in scans {
+			removed |= self.unqueue(&scan, path);
+		}
+		if removed {
+			self.save();
+		}
+	}
+
+	// Takes `path` out of `scan`'s queue, and says whether it was in it. A
+	// queue with nothing left in it isn't kept.
+	fn unqueue(&mut self, scan: &str, path: &str) -> bool {
+		let Some(queued) = self.queued.get_mut(scan) else {
+			return false;
+		};
+		if !queued.remove(path) {
+			return false;
+		}
+		if queued.is_empty() {
+			self.queued.remove(scan);
+			self.remembered.cleanups.remove(scan);
+		} else if let Some(queue) = self.remembered.cleanups.get_mut(scan) {
+			queue.retain(|q| q.item.path != path);
+		}
+		true
+	}
+
+	pub fn clear_cleanup(&mut self, scan: &str) {
+		if self.queued.remove(scan).is_some() {
+			self.remembered.cleanups.remove(scan);
 			self.save();
 		}
 	}
@@ -227,8 +275,8 @@ mod tests {
 		store.push_recent("/a");
 		store.push_recent("/b");
 		store.push_recent("/a");
-		assert!(store.add_to_cleanup([item("/a/x", 5), item("/a/y", 7)], |_| None));
-		assert!(!store.add_to_cleanup([item("/a/x", 5)], |_| None));
+		assert!(store.add_to_cleanup("/a", [item("/a/x", 5), item("/a/y", 7)], |_| None));
+		assert!(!store.add_to_cleanup("/a", [item("/a/x", 5)], |_| None));
 
 		let store = Store::at(Some(file.clone()));
 		assert_eq!(store.dark(), Some(true));
@@ -238,10 +286,31 @@ mod tests {
 			.map(|r| r.path.as_str())
 			.collect();
 		assert_eq!(recent, ["/a", "/b"]);
-		assert_eq!(store.cleanup_size(), 12);
-		assert!(store.in_cleanup("/a/x/deep/inside"));
-		assert!(!store.in_cleanup("/a/z"));
+		assert_eq!(store.cleanup_size("/a"), 12);
+		assert!(store.in_cleanup("/a", "/a/x/deep/inside"));
+		assert!(!store.in_cleanup("/a", "/a/z"));
 		let _ = std::fs::remove_file(&file);
+	}
+
+	#[test]
+	fn each_scan_has_its_own_cleanup() {
+		let mut store = Store::at(None);
+		store.add_to_cleanup("/", [item("/a/x", 5), item("/b", 3)], |_| None);
+		store.add_to_cleanup("/a", [item("/a/x", 5), item("/a/y", 7)], |_| None);
+		assert_eq!(store.cleanup_size("/"), 8);
+		assert_eq!(store.cleanup_size("/a"), 12);
+		assert!(store.in_cleanup("/", "/b"));
+		assert!(!store.in_cleanup("/a", "/b"));
+		assert!(store.cleanup("/elsewhere").is_empty());
+
+		store.remove_from_cleanup("/a", "/a/y");
+		assert_eq!(store.cleanup_size("/a"), 5);
+		// Once it's deleted, it's queued nowhere.
+		store.remove_deleted("/a/x");
+		assert_eq!(store.cleanup_size("/"), 3);
+		assert!(store.cleanup("/a").is_empty());
+		store.clear_cleanup("/");
+		assert!(!store.in_cleanup("/", "/b"));
 	}
 
 	#[test]

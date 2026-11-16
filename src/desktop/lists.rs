@@ -112,7 +112,7 @@ impl Workspace {
 	// slash, and struck through once it's queued for cleanup.
 	fn item_name(&self, item: &Item) -> Div {
 		let p = self.palette;
-		let queued = self.store.in_cleanup(&item.path);
+		let queued = self.in_cleanup(&item.path);
 		div()
 			.flex_1()
 			.min_w_0()

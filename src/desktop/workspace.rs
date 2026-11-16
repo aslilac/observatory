@@ -22,7 +22,7 @@ use observatory_core::navigation::{Navigation, Place};
 use observatory_core::paths::join_path;
 use observatory_core::reserved::{ReservedGroup, group_reserved};
 use observatory_core::scans::{Change, FAKE, Progress, ScanInfo, Scans, Status};
-use observatory_core::store::{Store, Tint};
+use observatory_core::store::Store;
 use observatory_core::sunburst::{Hit, LayoutInput, Sunburst, View, layout_wedges};
 use observatory_core::tree::{Item, RenderTree};
 use observatory_core::{Finder, Found, Query, Summary, access, color, fake_disk};
@@ -382,6 +382,9 @@ impl Workspace {
 			// Navigating around inside a scan keeps whatever's checked, so
 			// the user can browse for more; a different scan starts over.
 			self.selection.clear();
+			// Cleanup is each scan's own, so its card doesn't come along.
+			self.cleanup_open = false;
+			self.cleanup_confirming = false;
 			self.sort = SortMode::Size;
 			self.clear_find(cx);
 			self.summaries = None;
@@ -728,25 +731,6 @@ impl Workspace {
 		} else {
 			vec![item.clone()]
 		}
-	}
-
-	pub fn move_to_cleanup(&mut self, items: Vec<Item>, cx: &mut Context<Self>) {
-		// Each keeps the color it has in the sunburst it's taken from.
-		let scans = &self.scans;
-		let root = self.shown.as_ref().map(|(root, ..)| root.as_str());
-		self.store.add_to_cleanup(items, |item| {
-			let (hue, depth) = scans.tint(root?, &item.path)?;
-			Some(Tint {
-				hue: hue.rem_euclid(360.).round() as u16,
-				depth: depth.min(u16::MAX as usize) as u16,
-			})
-		});
-		cx.notify();
-	}
-
-	pub fn move_selected_to_cleanup(&mut self, cx: &mut Context<Self>) {
-		let items = std::mem::take(&mut self.selection);
-		self.move_to_cleanup(items, cx);
 	}
 
 	// Find.

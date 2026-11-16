@@ -64,7 +64,7 @@ impl Render for Workspace {
 							.drag(cx)
 							.0
 							.iter()
-							.filter(|item| !this.store.in_cleanup(&item.path))
+							.filter(|item| !this.in_cleanup(&item.path))
 							.map(|item| item.size)
 							.sum();
 						this.dragging_items = true;

@@ -72,7 +72,7 @@ impl Workspace {
 					let queued = wedge
 						.cleanup_path
 						.as_deref()
-						.is_some_and(|path| self.store.in_cleanup(path));
+						.is_some_and(|path| self.in_cleanup(path));
 					if queued {
 						opacity *= 0.3;
 					}

@@ -416,7 +416,8 @@ impl Workspace {
 	}
 
 	fn on_toggle_cleanup(&mut self, _: &ToggleCleanup, _: &mut Window, cx: &mut Cx) {
-		self.cleanup_open = !self.cleanup_open;
+		// There's only one over a scan's results.
+		self.cleanup_open = !self.cleanup_open && self.inspecting().is_some();
 		cx.notify();
 	}
 
