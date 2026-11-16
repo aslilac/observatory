@@ -237,7 +237,13 @@ impl Workspace {
 		// What's only for working on the app, in builds that aren't for
 		// release.
 		if cfg!(debug_assertions) {
-			let developer = icon_button("developer", "construction", true, &p)
+			// In the orange of the barrier it is, so it's plain it isn't
+			// part of the app proper.
+			let barrier = crate::palette::Palette {
+				muted: crate::palette::hsla(observatory_core::color::Color::oklch(0.74, 0.17, 55.)),
+				..p
+			};
+			let developer = icon_button("developer", "construction", true, &barrier)
 				.occlude()
 				.tooltip(tip("Developer"));
 			tools.push(
