@@ -35,8 +35,18 @@ fn main() {
 				println!("cargo:rerun-if-changed={}", top.join(path).display());
 			}
 		}
-		let changed =
-			git(&top, &["status", "--porcelain"]).is_some_and(|status| !status.is_empty());
+		// And an edit, or the undoing of one, changes one of these. Without
+		// them the answer is only what it was the last time something above
+		// changed: "modified" long after the change was put back, or not when
+		// there's one since.
+		for file in git(&top, &["ls-files"]).unwrap_or_default().lines() {
+			println!("cargo:rerun-if-changed={}", top.join(file).display());
+		}
+		// Only what git keeps counts, as for `git describe --dirty`: a stray
+		// file beside the source isn't a change to it (and nothing above
+		// would notice it come or go).
+		let changed = git(&top, &["status", "--porcelain", "--untracked-files=no"])
+			.is_some_and(|status| !status.is_empty());
 		if changed {
 			format!("{commit}-dirty")
 		} else {
