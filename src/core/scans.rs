@@ -13,7 +13,8 @@ use crate::paths::parts_below;
 use crate::tree::{RenderTree, assemble};
 use observatory_scan::find::{self, Found, Query, Summary};
 use observatory_scan::{
-	CountsSnapshot, Reserved, ScanError, ScanErrorKind, ScanState, Tree, run_scan, tree,
+	CountsSnapshot, Reserved, ScanError, ScanErrorKind, ScanState, TopSnapshot, Tree, run_scan,
+	tree,
 };
 use std::io;
 use std::path::Path;
@@ -52,6 +53,18 @@ pub struct ScanDrive {
 pub struct Progress {
 	pub counts: CountsSnapshot,
 	pub current_path: Option<String>,
+	/// The folders in the scan's root, by name, and how much has been found
+	/// in each so far. Empty until the root's been listed.
+	pub tops: Vec<TopSnapshot>,
+	/// The size of the files in the root itself so far.
+	pub loose: u64,
+}
+
+impl Progress {
+	/// How much has been found so far.
+	pub fn found(&self) -> u64 {
+		self.loose + self.tops.iter().map(|top| top.size).sum::<u64>()
+	}
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -224,9 +237,14 @@ impl Scans {
 		let entries = lock(&self.inner.entries);
 		let (_, entry) = entries.iter().find(|(p, _)| p == path)?;
 		let state = entry.state.as_ref()?;
+		// By name, so each keeps its place for as long as the scan runs.
+		let mut tops = state.tops();
+		tops.sort_by_cached_key(|top| top.name.to_lowercase());
 		Some(Progress {
 			counts: state.counts.snapshot(),
 			current_path: lock(&state.current_path).clone(),
+			tops,
+			loose: state.loose(),
 		})
 	}
 

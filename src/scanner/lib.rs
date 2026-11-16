@@ -77,6 +77,31 @@ impl CountsSnapshot {
 	}
 }
 
+// One of the folders directly in the scan's root, and how much the walk has
+// found in it so far. The tree itself is only there once the walk is done;
+// these are what there is to show of it meanwhile.
+struct Top {
+	name: String,
+	size: AtomicU64,
+	started: AtomicBool,
+	done: AtomicBool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TopState {
+	// Not come to yet.
+	Waiting,
+	Reading,
+	Done,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TopSnapshot {
+	pub name: String,
+	pub size: u64,
+	pub state: TopState,
+}
+
 // A name, as kept in a tree's `Names`.
 pub type Name = SymbolU32;
 // The names in a tree, each kept once. Names repeat across a disk (every app
@@ -404,6 +429,10 @@ pub struct ScanState {
 	displaced: Mutex<Vec<PathBuf>>,
 	// The names in the tree so far, handed to it when the walk is done.
 	names: Mutex<Names>,
+	// The root's folders, from when the root's been listed, and the size of
+	// the files that are in the root itself.
+	tops: Mutex<Vec<Arc<Top>>>,
+	loose: AtomicU64,
 	// Checked once up front; macOS only applies a change on relaunch anyway.
 	pub full_disk_access: bool,
 	// Windows: the app isn't an administrator, and the scan is of this
@@ -429,6 +458,8 @@ impl ScanState {
 			links: Default::default(),
 			displaced: Mutex::new(Vec::new()),
 			names: Mutex::default(),
+			tops: Mutex::default(),
+			loose: AtomicU64::new(0),
 			full_disk_access: has_full_disk_access(),
 			admin_would_help: false,
 			perf,
@@ -455,6 +486,57 @@ impl ScanState {
 	// still guards a good set of names.
 	fn names(&self) -> MutexGuard<'_, Names> {
 		self.names.lock().unwrap_or_else(PoisonError::into_inner)
+	}
+
+	/// The folders in the scan's root, in the order the root listed them,
+	/// with how much has been found in each so far. Empty until the root's
+	/// been listed. A file with several hard links can be counted in two of
+	/// them for a while (see `counts_here`), so these are for showing how a
+	/// scan's going, not for adding up.
+	pub fn tops(&self) -> Vec<TopSnapshot> {
+		let tops = self.tops.lock().unwrap_or_else(PoisonError::into_inner);
+		tops.iter()
+			.map(|top| TopSnapshot {
+				name: top.name.clone(),
+				size: top.size.load(Ordering::Relaxed),
+				state: if top.done.load(Ordering::Relaxed) {
+					TopState::Done
+				} else if top.started.load(Ordering::Relaxed) {
+					TopState::Reading
+				} else {
+					TopState::Waiting
+				},
+			})
+			.collect()
+	}
+
+	/// The size of the files found in the scan's root itself so far.
+	pub fn loose(&self) -> u64 {
+		self.loose.load(Ordering::Relaxed)
+	}
+
+	// Makes a `Top` for each folder among the root's entries, one per entry
+	// (None for what isn't a folder), and keeps them for `tops`. This goes
+	// by what the listing said each is, which costs nothing more, so a
+	// folder the walk then leaves out (another disk's mount) gets one too,
+	// and ends up done with nothing in it.
+	fn list_tops(&self, entries: &[fs::DirEntry]) -> Vec<Option<Arc<Top>>> {
+		let tops: Vec<Option<Arc<Top>>> = entries
+			.iter()
+			.map(|entry| {
+				entry.file_type().ok()?.is_dir().then(|| {
+					Arc::new(Top {
+						name: entry.file_name().to_string_lossy().into_owned(),
+						size: AtomicU64::new(0),
+						started: AtomicBool::new(false),
+						done: AtomicBool::new(false),
+					})
+				})
+			})
+			.collect();
+		*self.tops.lock().unwrap_or_else(PoisonError::into_inner) =
+			tops.iter().flatten().cloned().collect();
+		tops
 	}
 }
 
@@ -515,7 +597,7 @@ pub fn run_scan(path: &Path, state: &ScanState) -> std::io::Result<ScanResult> {
 			.unwrap_or(path.as_os_str())
 			.to_string_lossy(),
 	);
-	let mut root = scan_dir(path, name, 0, state, None);
+	let mut root = scan_dir(path, name, 0, state, None, None);
 	// The links are only needed during the walk, and the state is kept for as
 	// long as the tree is.
 	for shard in &state.links {
@@ -586,6 +668,8 @@ fn scan_dir(
 	depth: u64,
 	state: &ScanState,
 	parent_perf: Option<&Arc<PerfNodeShared>>,
+	// The folder in the root that this is, or is in.
+	top: Option<&Top>,
 ) -> VfsNode {
 	let display_path = path.to_string_lossy().into_owned();
 
@@ -655,10 +739,29 @@ fn scan_dir(
 		.map(|t| t.elapsed().as_secs_f64() * 1000.0)
 		.unwrap_or(0.0);
 
-	let mut children: Box<[VfsNode]> = entries
-		.into_par_iter()
-		.filter_map(|entry| classify(entry, depth + 1, state, my_perf.as_ref()))
-		.collect();
+	let mut children: Box<[VfsNode]> = if depth == 0 {
+		let tops = state.list_tops(&entries);
+		entries
+			.into_par_iter()
+			.zip(tops)
+			.filter_map(|(entry, own)| {
+				let own = own.as_deref();
+				if let Some(own) = own {
+					own.started.store(true, Ordering::Relaxed);
+				}
+				let node = classify(entry, 1, state, my_perf.as_ref(), own);
+				if let Some(own) = own {
+					own.done.store(true, Ordering::Relaxed);
+				}
+				node
+			})
+			.collect()
+	} else {
+		entries
+			.into_par_iter()
+			.filter_map(|entry| classify(entry, depth + 1, state, my_perf.as_ref(), top))
+			.collect()
+	};
 
 	children.sort_by_key(|b| cmp::Reverse(b.size()));
 	let size = children.iter().map(|n| n.size()).sum();
@@ -683,6 +786,7 @@ fn classify(
 	depth: u64,
 	state: &ScanState,
 	parent_perf: Option<&Arc<PerfNodeShared>>,
+	top: Option<&Top>,
 ) -> Option<VfsNode> {
 	if state.aborted.load(Ordering::Relaxed) {
 		return None;
@@ -725,6 +829,10 @@ fn classify(
 		} else {
 			0
 		};
+		match top {
+			Some(top) => top.size.fetch_add(size, Ordering::Relaxed),
+			None => state.loose.fetch_add(size, Ordering::Relaxed),
+		};
 		Some(VfsNode::File {
 			name: intern(),
 			size,
@@ -735,7 +843,14 @@ fn classify(
 		if should_skip_dir(&entry_path, depth, entry_dev_id(&meta), state) {
 			return None;
 		}
-		Some(scan_dir(&entry_path, intern(), depth, state, parent_perf))
+		Some(scan_dir(
+			&entry_path,
+			intern(),
+			depth,
+			state,
+			parent_perf,
+			top,
+		))
 	} else if ft.is_symlink() {
 		state.counts.symlinks.fetch_add(1, Ordering::Relaxed);
 		None
@@ -1130,6 +1245,34 @@ mod tests {
 			result.tree.root.size(),
 			on_disk(&sub.join("deep.bin")) + on_disk(&dir.join("top.bin")),
 		);
+
+		cleanup(&dir);
+	}
+
+	#[test]
+	fn says_how_much_is_in_each_of_the_roots_folders() {
+		let dir = tmpdir("tops");
+		fs::create_dir_all(dir.join("big/deeper")).unwrap();
+		fs::create_dir(dir.join("empty")).unwrap();
+		write(&dir.join("big/a.bin"), 100_000);
+		write(&dir.join("big/deeper/b.bin"), 50_000);
+		write(&dir.join("top.bin"), 10_000);
+
+		let state = ScanState::for_path(&dir, false).unwrap();
+		assert!(state.tops().is_empty());
+		let result = run_scan(&dir, &state).unwrap();
+
+		let mut tops = state.tops();
+		tops.sort_by(|a, b| a.name.cmp(&b.name));
+		let top = |name: &str, size| TopSnapshot {
+			name: name.to_string(),
+			size,
+			state: TopState::Done,
+		};
+		let big = on_disk(&dir.join("big/a.bin")) + on_disk(&dir.join("big/deeper/b.bin"));
+		assert_eq!(tops, [top("big", big), top("empty", 0)]);
+		assert_eq!(state.loose(), on_disk(&dir.join("top.bin")));
+		assert_eq!(result.tree.root.size(), big + state.loose());
 
 		cleanup(&dir);
 	}

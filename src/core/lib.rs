@@ -28,4 +28,6 @@ pub mod version;
 pub use observatory_scan::admin;
 pub use observatory_scan::find::{Finder, Found, Match, Query, Summary};
 pub use observatory_scan::reserved::ReservedKind;
-pub use observatory_scan::{CountsSnapshot, Reserved, ScanError, ScanErrorKind};
+pub use observatory_scan::{
+	CountsSnapshot, Reserved, ScanError, ScanErrorKind, TopSnapshot, TopState,
+};
