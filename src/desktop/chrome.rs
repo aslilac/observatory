@@ -412,7 +412,7 @@ impl Workspace {
 	}
 
 	/// The bar under the title bar: back and forward, where the user is,
-	/// and whatever the screen puts at its right (`right`, then `chips`).
+	/// and whatever the screen puts at its right (`chips`, then `right`).
 	///
 	/// On Linux it's the window's one bar: the window's moved by it, and the
 	/// tools, the menus, and the window's buttons are in it too.
@@ -541,8 +541,10 @@ impl Workspace {
 				.items_center()
 				.children(crumbs),
 		)
-		.children(right.map(own))
+		// The chips come and go, so they're before what's always there,
+		// which then stays where it is.
 		.children(chips.into_iter().map(own))
+		.children(right.map(own))
 		.when(HEADER_BAR, |this| {
 			this.child(div().flex_none().w(px(2.)))
 				.children(self.render_bar_tools(cx))
