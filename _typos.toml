@@ -1,0 +1,13 @@
+# What the spellcheck (check.yaml) takes for typos, and aren't.
+
+[default.extend-words]
+# macOS Big Sur
+Sur = "Sur"
+# Names in the icon's and the site's scripts: an angle, and a pixel's row.
+gam = "gam"
+iy = "iy"
+
+[default.extend-identifiers]
+# Pillow's premultiplied RGBA.
+RGBa = "RGBa"
+PNGs = "PNGs"
