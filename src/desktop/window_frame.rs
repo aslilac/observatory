@@ -315,7 +315,9 @@ impl Default for ButtonLayout {
 impl ButtonLayout {
 	/// GNOME's way of putting it: the left end's, a colon, the right end's,
 	/// each a list with commas. What isn't a button ("appmenu", "icon",
-	/// "spacer") is left out.
+	/// "spacer") is left out. Only a Linux desktop says it, so it's only
+	/// built there, and for the tests.
+	#[cfg(any(target_os = "linux", target_os = "freebsd", test))]
 	pub fn parse(layout: &str) -> Self {
 		let side = |names: &str| {
 			names
