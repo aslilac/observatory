@@ -11,9 +11,9 @@ use crate::workspace::Workspace;
 use futures::StreamExt;
 use futures::channel::mpsc;
 use gpui::{
-	Animation, AnimationExt, AnyElement, Context, Div, DragMoveEvent, FontWeight, Hsla,
-	MouseButton, MouseDownEvent, Pixels, Point, Stateful, Transformation, Window, div, percentage,
-	prelude::*, px, relative,
+	Animation, AnimationExt, AnyElement, Bounds, Context, Div, DragMoveEvent, FontWeight, Hsla,
+	MouseButton, MouseDownEvent, Pixels, Point, Stateful, Transformation, Window, canvas, div,
+	fill, percentage, point, prelude::*, px, relative, size,
 };
 use observatory_core::cleanup::{DeleteMode, Step, delete_files};
 use observatory_core::color::{Color, Kind, sunburst_color};
@@ -122,9 +122,8 @@ const CARD_WIDTH: f32 = 340.;
 // How many of what's queued have a segment of their own in the bar, before
 // the rest share one.
 const SEGMENTS: usize = 24;
-// How tall a row of the queue is, and how many show before it scrolls.
+// How tall a row of the queue is.
 const ROW: f32 = 26.;
-const ROWS: usize = 12;
 
 // The color something queued has in the card: its dot's, and its segment's in
 // the bar. It's the one it had in the sunburst it was queued from. Where
@@ -581,12 +580,10 @@ impl Workspace {
 	) -> AnyElement {
 		let p = self.palette;
 		let leads = back.is_some();
-		div()
+		let card = div()
 			.id("cleanup")
-			.absolute()
-			.bottom(px(14.))
-			.left(px(14.))
-			.w(px(CARD_WIDTH))
+			.max_h_full()
+			.min_h_0()
 			.occlude()
 			.flex()
 			.flex_col()
@@ -638,7 +635,20 @@ impl Workspace {
 					)
 					.children(actions),
 			)
-			.child(body)
+			.child(body.flex().flex_col().min_h_0());
+		// It sits at the bottom of the room there is for it, the window's
+		// height less a margin, and is never taller than that: what's in it
+		// that can scroll does, past there.
+		div()
+			.absolute()
+			.top(px(14.))
+			.bottom(px(14.))
+			.left(px(14.))
+			.w(px(CARD_WIDTH))
+			.flex()
+			.flex_col()
+			.justify_end()
+			.child(card)
 			.into_any_element()
 	}
 
@@ -661,26 +671,33 @@ impl Workspace {
 
 	// The bar down the side of the queue's rows that says there are more than
 	// show, and where among them it's scrolled to. Only that: it isn't
-	// something to drag. The rows are all one height, so how much there is to
-	// scroll is known without waiting to be told.
-	fn queue_scrollbar(&self, rows: usize) -> Option<Div> {
-		if rows <= ROWS {
-			return None;
-		}
-		let view = ROW * ROWS as f32;
-		let beyond = ROW * (rows - ROWS) as f32;
-		let scrolled = (-f32::from(self.cleanup_scroll.offset().y) / beyond).clamp(0., 1.);
-		let length = (view * view / (view + beyond)).max(24.);
-		Some(
-			div()
-				.absolute()
-				.top(px((view - length) * scrolled))
-				.right(px(3.))
-				.w(px(4.))
-				.h(px(length))
-				.rounded_full()
-				.bg(self.palette.faint),
+	// something to drag. It's painted, not laid out, since how much there is
+	// to scroll isn't known until the rows have been.
+	fn queue_scrollbar(&self) -> impl IntoElement + use<> {
+		let scroll = self.cleanup_scroll.clone();
+		let color = self.palette.faint;
+		canvas(
+			|_, _, _| (),
+			move |bounds, _, window, _| {
+				let view = f32::from(bounds.size.height);
+				let beyond = f32::from(scroll.max_offset().height);
+				if view < 1. || beyond < 1. {
+					return;
+				}
+				let scrolled = (-f32::from(scroll.offset().y) / beyond).clamp(0., 1.);
+				let length = (view * view / (view + beyond)).max(24.).min(view);
+				let thumb = Bounds::new(
+					point(
+						bounds.right() - px(7.),
+						bounds.top() + px((view - length) * scrolled),
+					),
+					size(px(4.), px(length)),
+				);
+				window.paint_quad(fill(thumb, color).corner_radii(px(2.)));
+			},
 		)
+		.absolute()
+		.size_full()
 	}
 
 	// What's queued, largest first: what's worth the most to be rid of.
@@ -806,19 +823,24 @@ impl Workspace {
 			.child(self.queued_total(&queued))
 			.child(reclaim_bar(&self.store, &queued, None, &p))
 			.child(
+				// The one part of the card that gives when the window isn't
+				// tall enough for all of it.
 				div()
 					.relative()
 					.mt(px(8.))
+					.min_h(px(ROW * 2.))
+					.flex()
+					.flex_col()
 					.child(
 						div()
 							.id("cleanup-items")
 							.px(px(8.))
-							.max_h(px(ROW * ROWS as f32))
+							.min_h_0()
 							.overflow_y_scroll()
 							.track_scroll(&self.cleanup_scroll)
 							.children(rows),
 					)
-					.children(self.queue_scrollbar(queued.len())),
+					.child(self.queue_scrollbar()),
 			)
 			.child(
 				footer(&p)
