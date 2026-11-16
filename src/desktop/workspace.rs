@@ -109,6 +109,8 @@ pub struct Workspace {
 	pub dragging_size: u64,
 	pub drop_over: bool,
 	pub cleanup_confirming: bool,
+	// Where the queue's rows are scrolled to.
+	pub cleanup_scroll: gpui::ScrollHandle,
 	pub deletion: Option<Deletion>,
 	pub issues: Option<IssuesModal>,
 	pub ask: Option<Ask>,
@@ -250,6 +252,7 @@ impl Workspace {
 			dragging_size: 0,
 			drop_over: false,
 			cleanup_confirming: false,
+			cleanup_scroll: gpui::ScrollHandle::new(),
 			deletion: None,
 			issues: None,
 			ask: None,

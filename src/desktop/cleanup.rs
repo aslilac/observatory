@@ -122,6 +122,9 @@ const CARD_WIDTH: f32 = 340.;
 // How many of what's queued have a segment of their own in the bar, before
 // the rest share one.
 const SEGMENTS: usize = 24;
+// How tall a row of the queue is, and how many show before it scrolls.
+const ROW: f32 = 26.;
+const ROWS: usize = 12;
 
 // The color something queued has in the card: its dot's, and its segment's in
 // the bar. It's the one it had in the sunburst it was queued from. Where
@@ -570,11 +573,14 @@ impl Workspace {
 	fn card(
 		&self,
 		title: String,
+		// What goes back a step, before the title.
+		back: Option<AnyElement>,
 		actions: Vec<AnyElement>,
 		body: Div,
 		cx: &mut Context<Self>,
 	) -> AnyElement {
 		let p = self.palette;
+		let leads = back.is_some();
 		div()
 			.id("cleanup")
 			.absolute()
@@ -617,8 +623,9 @@ impl Workspace {
 					.items_center()
 					.gap(px(4.))
 					.h(px(34.))
-					.pl(px(16.))
+					.pl(px(if leads { 8. } else { 16. }))
 					.pr(px(8.))
+					.children(back)
 					.child(
 						div()
 							.flex_1()
@@ -650,6 +657,30 @@ impl Workspace {
 				cx.notify();
 			}))
 			.into_any_element()
+	}
+
+	// The bar down the side of the queue's rows that says there are more than
+	// show, and where among them it's scrolled to. Only that: it isn't
+	// something to drag. The rows are all one height, so how much there is to
+	// scroll is known without waiting to be told.
+	fn queue_scrollbar(&self, rows: usize) -> Option<Div> {
+		if rows <= ROWS {
+			return None;
+		}
+		let view = ROW * ROWS as f32;
+		let beyond = ROW * (rows - ROWS) as f32;
+		let scrolled = (-f32::from(self.cleanup_scroll.offset().y) / beyond).clamp(0., 1.);
+		let length = (view * view / (view + beyond)).max(24.);
+		Some(
+			div()
+				.absolute()
+				.top(px((view - length) * scrolled))
+				.right(px(3.))
+				.w(px(4.))
+				.h(px(length))
+				.rounded_full()
+				.bg(self.palette.faint),
+		)
 	}
 
 	// What's queued, largest first: what's worth the most to be rid of.
@@ -715,7 +746,7 @@ impl Workspace {
 						 cleanup. Nothing is deleted until you say so."
 					})),
 			);
-			return self.card("CLEANUP".into(), vec![shut], body, cx);
+			return self.card("CLEANUP".into(), None, vec![shut], body, cx);
 		}
 
 		let mut rows = Vec::new();
@@ -730,7 +761,7 @@ impl Workspace {
 					.gap(px(8.))
 					.pl(px(8.))
 					.pr(px(2.))
-					.h(px(26.))
+					.h(px(ROW))
 					.rounded(px(5.))
 					.hover(move |style| style.bg(fill))
 					.child(
@@ -776,12 +807,18 @@ impl Workspace {
 			.child(reclaim_bar(&self.store, &queued, None, &p))
 			.child(
 				div()
-					.id("cleanup-items")
+					.relative()
 					.mt(px(8.))
-					.px(px(8.))
-					.max_h(px(160.))
-					.overflow_y_scroll()
-					.children(rows),
+					.child(
+						div()
+							.id("cleanup-items")
+							.px(px(8.))
+							.max_h(px(ROW * ROWS as f32))
+							.overflow_y_scroll()
+							.track_scroll(&self.cleanup_scroll)
+							.children(rows),
+					)
+					.children(self.queue_scrollbar(queued.len())),
 			)
 			.child(
 				footer(&p)
@@ -805,7 +842,7 @@ impl Workspace {
 							})),
 					),
 			);
-		self.card("YOU'LL RECLAIM".into(), vec![shut], body, cx)
+		self.card("YOU'LL RECLAIM".into(), None, vec![shut], body, cx)
 	}
 
 	// The card asking before anything goes, and how it should: what there
@@ -814,11 +851,14 @@ impl Workspace {
 		let p = self.palette;
 		let queued = self.queued_by_size();
 		let size: u64 = queued.iter().map(|(_, size)| size).sum();
-		let back = self.card_x(
-			"Back to the queue",
-			|this| this.cleanup_confirming = false,
-			cx,
-		);
+		let back = icon_button("cleanup-back", "arrow-left", true, &p)
+			.size(px(22.))
+			.tooltip(tip("Back to the queue"))
+			.on_click(cx.listener(|this, _, _, cx| {
+				this.cleanup_confirming = false;
+				cx.notify();
+			}))
+			.into_any_element();
 		let disk = self.disk_of(queued.iter().map(|(path, _)| path.as_str()));
 		let body = div()
 			.child(self.queued_total(&queued))
@@ -859,7 +899,7 @@ impl Workspace {
 			"DELETE {}?",
 			plural(queued.len() as u64, "item").to_uppercase()
 		);
-		self.card(title, vec![back], body, cx)
+		self.card(title, Some(back), Vec::new(), body, cx)
 	}
 
 	// The card while things are deleted: the total counts up, and the bar
@@ -922,7 +962,7 @@ impl Workspace {
 			DeleteMode::Delete => "RECLAIMING",
 			DeleteMode::Trash => "MOVING TO THE TRASH",
 		};
-		self.card(title.into(), actions, body, cx)
+		self.card(title.into(), None, actions, body, cx)
 	}
 
 	// The card once the deleting's done: what was reclaimed and what the
@@ -987,7 +1027,7 @@ impl Workspace {
 						.map(|(_, usage)| disk_bar(usage, run.freed, trash, &p)),
 				)
 				.child(div().h(px(14.)));
-			return self.card(title.into(), vec![dismiss], body, cx);
+			return self.card(title.into(), None, vec![dismiss], body, cx);
 		}
 
 		let failures = run.failed.iter().map(|(path, why)| {
@@ -1062,7 +1102,7 @@ impl Workspace {
 						)
 					}),
 			);
-		self.card(title.into(), vec![dismiss], body, cx)
+		self.card(title.into(), None, vec![dismiss], body, cx)
 	}
 }
 
