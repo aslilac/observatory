@@ -194,9 +194,9 @@
 								<p>x64 and arm64 &middot; Windows 10 or later</p>
 							</header>
 							<ul class="files">
-								<li data-asset="win32-x64.exe">
+								<li data-asset="win32-x64.msix">
 									<a href="https://github.com/aslilac/observatory/releases">
-										<span class="what">Installer</span>
+										<span class="what">Installer (.msix)</span>
 										<span class="kind">x64</span>
 										<span class="size"></span>
 										<svg class="icon" viewBox="0 0 16 16" aria-hidden="true">
@@ -204,9 +204,9 @@
 										</svg>
 									</a>
 								</li>
-								<li data-asset="win32-arm64.exe">
+								<li data-asset="win32-arm64.msix">
 									<a href="https://github.com/aslilac/observatory/releases">
-										<span class="what">Installer</span>
+										<span class="what">Installer (.msix)</span>
 										<span class="kind">arm64</span>
 										<span class="size"></span>
 										<svg class="icon" viewBox="0 0 16 16" aria-hidden="true">
@@ -236,15 +236,19 @@
 								</li>
 							</ul>
 							<div class="how">
+								<p data-with-asset="win32-x64.msix">
+									Open the installer and Windows sets Observatory up, with a
+									place in the Start menu. Observatory says when there's a newer
+									version, and gets it for you.
+								</p>
 								<p>
-									The installer sets Observatory up for your account, with no
-									admin rights needed, and opens it. Or unzip the portable build
-									anywhere and run <code>Observatory.exe</code>.
+									The portable build has nothing to install: unzip it anywhere
+									and run <code>Observatory.exe</code>.
 								</p>
 								<div class="heads-up">
 									<p>
-										Observatory isn't code-signed yet, so SmartScreen may stop
-										the installer. Choose <strong>More info</strong>, then
+										The portable build isn't code-signed yet, so SmartScreen may
+										stop it. Choose <strong>More info</strong>, then
 										<strong>Run anyway</strong>.
 									</p>
 								</div>

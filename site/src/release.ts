@@ -33,14 +33,11 @@ export interface GitHubRelease {
 	}[];
 }
 
-// "Observatory-darwin-arm64-1.0.0-beta.1.zip" is "darwin-arm64.zip". Squirrel's
-// installer ("Observatory-1.0.0-beta.1.Setup.exe") doesn't say, and is for x64.
+// "Observatory-darwin-arm64-1.0.0-beta.1.zip" is "darwin-arm64.zip".
 export function assetKey(name: string): string | undefined {
-	const kind = /\.(zip|flatpak|exe|dmg|deb|rpm|AppImage)$/.exec(name)?.[1];
+	const kind = /\.(zip|flatpak|msix|dmg|deb|rpm|AppImage)$/.exec(name)?.[1];
 	if (!kind) return undefined;
-	const target =
-		/(darwin|linux|win32)-(x64|arm64|universal)/.exec(name)?.[0] ??
-		(kind === "exe" ? "win32-x64" : undefined);
+	const target = /(darwin|linux|win32)-(x64|arm64|universal)/.exec(name)?.[0];
 	return target && `${target}.${kind}`;
 }
 

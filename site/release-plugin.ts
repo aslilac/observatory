@@ -10,6 +10,8 @@
 //                                       its <span class="size"> the file's size. If
 //                                       the release doesn't have that file, the
 //                                       <li> is left out.
+//   <p data-with-asset="win32-x64.msix"> left out too, if the release doesn't
+//                                       have that file
 //   data-asset-name="linux-x64.flatpak" the element's text becomes the file's name
 //   data-release="version" | "date"     the element's text becomes the version or
 //                                       the date (and a date is unhidden)
@@ -66,6 +68,10 @@ export function fill(html: string, r: Release): string {
 							`$1${formatSize(a.size)}`,
 						);
 				},
+			)
+			.replace(
+				/<p\b[^>]*\bdata-with-asset="([^"]+)"[^>]*>[\s\S]*?<\/p>/g,
+				(p, key: string) => (r.assets[key] ? p : ""),
 			)
 			.replace(
 				/(<[^>]*\bdata-asset-name="([^"]+)"[^>]*>)[^<]*/g,
