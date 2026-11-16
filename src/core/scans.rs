@@ -8,7 +8,7 @@
 // poll of the drives.
 
 use crate::color::hues_by_position;
-use crate::drives::{self, Drive};
+use crate::drives::{self, Drive, Usage};
 use crate::paths::parts_below;
 use crate::tree::{RenderTree, assemble};
 use observatory_scan::find::{self, Found, Query, Summary};
@@ -42,10 +42,15 @@ pub struct ScanInfo {
 	pub revision: u64,
 }
 
-/// The name and capacity of the disk a scan covers the whole of.
+/// The name of the disk a scan covers the whole of, and what the scan is
+/// measured against.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ScanDrive {
 	pub name: String,
+	/// What the scan found and what the disk had free when it finished,
+	/// together: not the disk's size, since what else is on it (other
+	/// shares on the same storage, other volumes, what couldn't be read)
+	/// is neither the scan's nor free.
 	pub capacity: Option<u64>,
 }
 
@@ -317,7 +322,9 @@ impl Scans {
 				let revision = entry.revision + 1;
 				match result {
 					Ok(result) => {
-						entry.drive = scan_drive(&lock(&inner.drives), &path);
+						let found = result.tree.root.size()
+							+ result.reserved.iter().map(|r| r.size).sum::<u64>();
+						entry.drive = scan_drive(&lock(&inner.drives), &path, found);
 						entry.reserved = result.reserved;
 						entry.errors = Arc::new(result.errors);
 						entry.tree = Some(Arc::new(RwLock::new(result.tree)));
@@ -455,16 +462,24 @@ fn info(path: &str, entry: &Entry) -> ScanInfo {
 	}
 }
 
-// If the scan's root is a drive's mount path, the drive's name and capacity.
-// The capacity is what the legend's free-space row and the root sunburst are
-// measured against, and the name is what the scan is called in the title bar.
-// The scanner itself doesn't know about drives, by design.
-fn scan_drive(drives: &[Drive], path: &str) -> Option<ScanDrive> {
+// If the scan's root is a drive's mount path, the drive's name and what the
+// scan (which found `found` bytes) is measured against: the legend's
+// free-space row and the root sunburst. The name is what the scan is called
+// in the title bar. The scanner itself doesn't know about drives, by design.
+fn scan_drive(drives: &[Drive], path: &str, found: u64) -> Option<ScanDrive> {
 	let drive = drives.iter().find(|drive| drive.mount_path == path)?;
 	Some(ScanDrive {
 		name: drive.title(),
-		capacity: drive.usage.map(|usage| usage.total),
+		capacity: drive.usage.map(|usage| measure(found, usage)),
 	})
+}
+
+// What a scan that found `found` bytes on a disk is measured against: that,
+// and what the disk says is free. Free is what's left of the disk after
+// everything on it, not after what the scan found, which can be far less: a
+// network share's storage is often other shares' too.
+fn measure(found: u64, usage: Usage) -> u64 {
+	found + usage.total.saturating_sub(usage.used)
 }
 
 fn failed(id: u64, path: &str, error: &io::Error, revision: u64) -> Entry {
@@ -502,6 +517,18 @@ fn root_error(path: &str, error: &io::Error) -> ScanError {
 mod tests {
 	use super::*;
 	use std::sync::mpsc;
+
+	#[test]
+	fn a_share_is_measured_against_what_its_storage_has_free() {
+		// 500 found on storage of 6000 that other shares have 3000 of: what's
+		// free is the 2500 nobody has, not the 5500 this share doesn't.
+		let usage = Usage {
+			total: 6000,
+			used: 3500,
+			available: 2500,
+		};
+		assert_eq!(measure(500, usage), 3000);
+	}
 
 	const DISK: &str = r#"{"type":"directory","name":"Disk","size":30,"mtime":0,"files":[
 		{"type":"directory","name":"a","size":20,"mtime":0,"files":[

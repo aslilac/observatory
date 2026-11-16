@@ -84,11 +84,13 @@ impl Workspace {
 			.as_ref()
 			.map_or(0, |progress| progress.counts.total_entries());
 		let elapsed = self.scan_shown.map(|shown| shown.elapsed());
-		// How much the disk says is on it, if it's a whole disk.
+		// How much the disk says is on it, if it's a whole disk. Not a
+		// network share, which is as a folder is: what its storage has on it
+		// is often mostly other shares', so the scan would never get there.
 		let of = self
 			.drives
 			.iter()
-			.find(|drive| drive.mount_path == scan.path)
+			.find(|drive| drive.mount_path == scan.path && !drive.network)
 			.and_then(|drive| drive.usage)
 			.map(|usage| usage.used)
 			.filter(|used| *used > 0);

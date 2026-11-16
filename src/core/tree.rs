@@ -85,8 +85,9 @@ pub struct RenderTree {
 	pub cursor: Vec<String>,
 	pub root_capacity: u64,
 	pub root_size: u64,
-	/// What a full turn of the sunburst stands for: the folder's size, or
-	/// the disk's capacity at the root of a whole-disk scan.
+	/// What a full turn of the sunburst stands for: the folder's size, or at
+	/// the root of a whole-disk scan, what was found and what the disk has
+	/// free (`ScanDrive::capacity`).
 	pub capacity: u64,
 	/// Where this directory starts, as a share of the root's size.
 	pub position: f64,

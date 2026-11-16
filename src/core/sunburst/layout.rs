@@ -44,8 +44,8 @@ pub struct LayoutInput<'a> {
 	pub root: &'a str,
 	pub cursor: &'a [String],
 	pub files: &'a [Arc<Node>],
-	// What a full turn stands for: the folder's size, or the disk's capacity
-	// at the root of a whole-disk scan.
+	// What a full turn stands for: the folder's size, or at the root of a
+	// whole-disk scan, what was found and what the disk has free.
 	pub capacity: u64,
 	pub size: u64,
 	pub root_size: u64,
