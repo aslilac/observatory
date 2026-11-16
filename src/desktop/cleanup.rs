@@ -412,7 +412,8 @@ impl Workspace {
 						// to have left a card that's gone with its scan.)
 						Some(run)
 							if run.started == started
-								&& run.hovered && this.deletion_here().is_some() =>
+								&& run.hovered
+								&& this.deletion_here().is_some() =>
 						{
 							return false;
 						}

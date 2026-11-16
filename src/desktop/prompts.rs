@@ -89,13 +89,15 @@ impl Workspace {
 								false,
 								&p,
 							)
-							.on_click(cx.listener(|this, _, window, cx| {
-								// Asked and answered: it doesn't ask again.
-								this.store.set_full_disk_access_asked();
-								if let Some(Ask::FullDiskAccess(path)) = this.ask.take() {
-									this.open_now(&path, window, cx);
-								}
-							})),
+							.on_click(cx.listener(
+								|this, _, window, cx| {
+									// Asked and answered: it doesn't ask again.
+									this.store.set_full_disk_access_asked();
+									if let Some(Ask::FullDiskAccess(path)) = this.ask.take() {
+										this.open_now(&path, window, cx);
+									}
+								},
+							)),
 						)
 						.child(
 							button(

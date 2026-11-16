@@ -497,9 +497,11 @@ impl Workspace {
 						Some(_) if find_showing => 340.,
 						Some(_) => 80.,
 						None => 0.,
-					} + if HEADER_BAR { 240. } else { 0. };
+					}
+					+ if HEADER_BAR { 240. } else { 0. };
 				let room = f32::from(window.viewport_size().width)
-					- others - wide("Disks and folders", 0)
+					- others
+					- wide("Disks and folders", 0)
 					- wide(&self.root_name(path), 1);
 				// The "…" and its chevron, where there is one.
 				let rest = 36.;
