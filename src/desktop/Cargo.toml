@@ -1,0 +1,44 @@
+[package]
+name = "observatory"
+version = "1.0.0-beta.3"
+edition = "2024"
+authors = ["McKayla Washburn-Love <kayla@tree.camp>"]
+license = "MPL-2.0"
+publish = false
+
+[[bin]]
+name = "observatory"
+path = "./main.rs"
+
+[features]
+default = ["runtime-shaders"]
+# The Metal shaders are compiled when the app starts rather than by the
+# build, which would need Xcode's separate Metal Toolchain. A build for
+# release turns it off where the toolchain's there (macos/build.sh).
+runtime-shaders = ["gpui/runtime_shaders"]
+
+[dependencies]
+observatory-core = { path = "../core" }
+gpui = "0.2.2"
+futures = "0.3"
+unicode-segmentation = "1"
+anyhow = "1"
+# What gpui takes a picture as: the About window's sky is one.
+image = { version = "0.25", default-features = false }
+smallvec = "1"
+
+# Builds the icon into the exe (build.rs). It's the machine doing the build
+# that this goes by, which for Windows is always Windows.
+[target.'cfg(windows)'.build-dependencies]
+winresource = "0.1"
+
+# For moving the About window by a press anywhere in it, which gpui leaves
+# to AppKit on macOS.
+[target.'cfg(target_os = "macos")'.dependencies]
+objc = "0.2"
+raw-window-handle = "0.6"
+
+# For which window buttons a GNOME desktop wants, and on which side, from the
+# desktop portal's settings. The same as gpui's, so nothing more is built.
+[target.'cfg(any(target_os = "linux", target_os = "freebsd"))'.dependencies]
+ashpd = { version = "0.11", default-features = false, features = ["async-std"] }

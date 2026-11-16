@@ -61,9 +61,9 @@ function options(p: Platform): Option[] {
 		const name = arch === "arm64" ? "Arm" : "64-bit";
 		return [
 			{
-				key: `win32-${arch}.exe`,
+				key: `win32-${arch}.msix`,
 				detail: `${name} installer`,
-				after: "Run the installer, and Observatory opens when it's done.",
+				after: "Open it, and Windows installs Observatory.",
 			},
 			{
 				key: `win32-${arch}.zip`,

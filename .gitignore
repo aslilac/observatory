@@ -5,14 +5,12 @@
 .vscode/
 __pycache__/
 build/
-coverage/
 dist/
 node_modules/
 out/
 target/
 *.log
 *.tsbuildinfo
-*.node
 .fallow/
 .flatpak-builder/
 .commit

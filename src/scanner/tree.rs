@@ -1,12 +1,8 @@
 // Queries over a finished scan tree.
 //
-// The tree stays on the Rust side for the life of a scan instead of being
-// handed to JS. A whole disk is millions of nodes: a lot of V8 heap (which
-// Electron caps at 4 GB), and as one JSON document, longer than V8 allows a
-// string to be. Nothing in the app needs all of it at once anyway. The
-// renderer only ever sees a pruned slice around the current directory (or
-// a capped list of what find.rs finds), so those are cut here and only they
-// cross into JS.
+// A whole disk is millions of nodes, and nothing in the app needs all of
+// them at once: a view only ever shows a pruned slice around the current
+// directory (or a capped list of what find.rs finds), so those are cut here.
 
 use crate::{Name, Tree, VfsNode};
 use serde::Serialize;
@@ -17,9 +13,8 @@ const SUNBURST_MIN_SHARE: f64 = 0.003;
 // Rings the sunburst draws below its innermost one.
 const SUNBURST_DEPTH: u32 = 6;
 
-/// What the renderer needs to draw one directory. The main process adds the
-/// drive glue (label, capacity) and the alphabetical tree view, which wants
-/// locale-aware collation that JS already has.
+/// What a view needs to draw one directory. The app adds the drive glue
+/// (label, capacity) and the alphabetical tree view (`src/core/tree.rs`).
 #[derive(Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct RenderSlice<'a> {

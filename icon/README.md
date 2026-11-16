@@ -39,20 +39,21 @@ Needs Blender at `/Applications/Blender.app` (or `BLENDER=...`), `uv` (for Pillo
 | --- | --- | --- |
 | macOS 26+ | building rising up into a night sky, cut off by the bottom edge. macOS draws the rounded mask and shadow | `out/macos/Observatory.icon` (Icon Composer document), `out/macos/Assets.car` (compiled from it) |
 | macOS 15 and earlier | the same art on the Big Sur grid (824px squircle in 1024, baked shadows) | `out/macos/icon.icns` |
-| Windows | the aperture in the Windows style, filling the 48px grid, no shadow outside the shape | `out/windows/icon.ico` (16–256, 14 sizes), `out/windows/png/` |
+| Windows | the aperture in the Windows style, filling the 48px grid, no shadow outside the shape | `out/windows/icon.ico` (16–256, 14 sizes), `out/windows/png/`, `out/windows/msix/` (the logos a package has: the Start menu's and taskbar's, the tile, and the Store's) |
 | Linux | the aperture in the GNOME style, on GNOME's grid | `out/linux/hicolor/scalable/apps/ooo.lilac.observatory.svg`, `out/linux/hicolor/<size>/apps/ooo.lilac.observatory.png`, `out/linux/icon.png` |
 | GNOME symbolic | a one-colour 16px glyph: the ring, the sunburst as three segments, the hexagonal secondary | `symbolic.svg` → `out/linux/hicolor/symbolic/apps/ooo.lilac.observatory-symbolic.svg` |
 
 The macOS renders use `--rising`: the plinth is left out and the drum carries on below the frame, so the bottom edge only ever cuts through brick. Below 40px, the building is rendered with `--simple` (no windows, seam or grooves, and two chunky rings of tiles instead of three). `out/preview.png` shows every size on light and dark, and `out/macos/previews/` has the Default, Dark, Tinted and Clear renditions macOS makes from the `.icon`.
 
-## Using it in the Electron app
+## Using it in the app
 
-`build.sh` ends by copying what the app ships into `build-resources/`, where `forge.config.js` picks it up. A `SAMPLES=32` quick look lands there too, so don't commit that one.
+`build.sh` ends by copying what the app ships into `build-resources/`, where its builds pick it up. A `SAMPLES=32` quick look lands there too, so don't commit that one.
 
-- `icon.icns` and `icon.ico`: Forge's `packagerConfig.icon: "./build-resources/icon"` picks the extension per platform. The `.ico` is also Squirrel's `setupIcon`.
-- `Assets.car`: a `packageAfterCopy` hook puts it in `Contents/Resources` (macOS builds only), and `extendInfo` names it with `CFBundleIconName: "Observatory"`. macOS 26+ draws the icon from it, and older systems fall back to the `.icns`.
-- `hicolor/`: the GNOME icons as an icon theme, for Linux packages (see below). `icon.png` is the 512px one, which nothing uses yet.
+- `icon.icns` and `Assets.car`: `macos/build.sh` puts both in the app's `Contents/Resources`, and `macos/Info.plist` names them (`CFBundleIconFile`, and `CFBundleIconName: "Observatory"` for the `.car`). macOS 26+ draws the icon from the `.car`, and older systems fall back to the `.icns`.
+- `icon.ico`: `src/desktop/build.rs` builds it into the Windows program as resource 1, which Explorer shows and gpui gives the window and the taskbar.
+- `msix/`: `windows/build.ps1` puts these in the package as its `Assets`, and indexes them (`resources.pri`) so Windows picks each by size. The `altform-unplated` ones are what the taskbar shows without a plate behind them.
+- `hicolor/`: the GNOME icons as an icon theme, for Linux packages (see below). `icon.png` is the 1024px one, which nothing uses yet.
 
 You can open `out/macos/Observatory.icon` in Icon Composer to adjust the layers (glass, shadow, translucency) by hand.
 
-On Linux the icon comes from the `.desktop` file a package installs (GNOME on Wayland matches windows to it by app id, and ignores `BrowserWindow`'s `icon`). The Flatpak (`flatpak/`) installs `build-resources/hicolor/` into `/app/share/icons/hicolor/` and names it with `Icon=ooo.lilac.observatory`, and `desktopName` in package.json gives the window the same app id.
+On Linux the icon comes from the `.desktop` file a package installs (GNOME on Wayland matches windows to it by app id). The Flatpak (`flatpak/`) installs `build-resources/hicolor/` into `/app/share/icons/hicolor/` and names it with `Icon=ooo.lilac.observatory`.

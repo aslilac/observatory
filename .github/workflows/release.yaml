@@ -3,9 +3,17 @@ name: Release
 on:
   push:
     tags: ["v*.*.*"]
+  # A dry run, of whichever branch it's started on: everything's built,
+  # signed, and packaged as a release's would be, and can be downloaded from
+  # the run to try, but nothing's published. What would have been is listed
+  # in the run's summary.
+  workflow_dispatch:
 
 permissions:
   contents: read
+
+env:
+  DRY_RUN: ${{ github.event_name == 'workflow_dispatch' }}
 
 jobs:
   version:
@@ -20,31 +28,77 @@ jobs:
       - uses: actions/checkout@v7
         name: Checkout
 
-      # Forge names the builds after the version in package.json.
+      # The builds are named after the app's version, which is the desktop
+      # crate's. A dry run has no tag to check it against.
       - run: |
-          version="$(node -p 'require("./package.json").version')"
-          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
-            echo "tag $GITHUB_REF_NAME does not match version $version in package.json"
+          version="$(sed -n 's/^version = "\(.*\)"$/\1/p' src/desktop/Cargo.toml | head -1)"
+          if [ "$DRY_RUN" != true ] && [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "tag $GITHUB_REF_NAME does not match version $version in src/desktop/Cargo.toml"
             exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
         id: verify
         name: Verify version
 
-  package:
+  # Observatory.app in a .dmg to install from, and in a .zip for the app to
+  # update itself from. Apple silicon only.
+  macos:
+    runs-on: macos-latest
+
+    name: Package.darwin-arm64
+
+    needs:
+      - version
+
+    # With these, the build is signed with a Developer ID and notarized
+    # (see macos/build.sh), which it has to be to update itself. Without,
+    # it's signed ad hoc, and only says when there's a new version.
+    env:
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+    steps:
+      - uses: actions/checkout@v7
+        name: Checkout
+
+      - uses: apple-actions/import-codesign-certs@v7
+        name: Import Developer ID
+        if: env.APPLE_TEAM_ID != ''
+        with:
+          p12-file-base64: ${{ secrets.APPLE_CERTIFICATE }}
+          p12-password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+
+      - uses: dtolnay/rust-toolchain@stable
+        name: Configure Rust
+
+      # So the build compiles gpui's shaders, rather than the app each time
+      # it starts. Newer Xcodes keep the compiler apart; older ones have it
+      # already, and nothing by this name to download.
+      - run: xcodebuild -downloadComponent MetalToolchain || true
+        name: Metal toolchain
+
+      - run: macos/build.sh
+        name: Package
+
+      - uses: actions/upload-artifact@v7
+        name: Upload
+        with:
+          name: package-darwin-arm64
+          path: |
+            target/macos/*.dmg
+            target/macos/*.zip
+          if-no-files-found: error
+
+  # The portable build: the program by itself, in a zip, with its icon in it
+  # (src/desktop/build.rs). And beside it the package, an MSIX, for people
+  # to download and install (windows/build.ps1). The Store's package is
+  # still to come, and will be another again.
+  windows:
     strategy:
       fail-fast: false
       matrix:
         release:
-          - os: macos-latest
-            target: darwin-arm64
-
-          - os: ubuntu-latest
-            target: linux-x64
-
-          - os: ubuntu-24.04-arm
-            target: linux-arm64
-
           - os: windows-latest
             target: win32-x64
 
@@ -58,63 +112,104 @@ jobs:
     needs:
       - version
 
-    # With these, the Mac build is signed with a Developer ID and notarized
-    # (see forge.config.js), which it has to be to update itself. Without,
-    # it's signed ad hoc, and only says when there's a new version.
+    # The certificate the package is signed with: a .pfx in base64, and its
+    # password. Windows only installs a package signed by someone the PC
+    # trusts, so without these there's no package, only the zip.
     env:
-      APPLE_ID: ${{ secrets.APPLE_ID }}
-      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+      WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
 
     steps:
       - uses: actions/checkout@v7
         name: Checkout
 
-      - uses: apple-actions/import-codesign-certs@v7
-        name: Import Developer ID
-        if: runner.os == 'macOS' && env.APPLE_TEAM_ID != ''
-        with:
-          p12-file-base64: ${{ secrets.APPLE_CERTIFICATE }}
-          p12-password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-
       - uses: dtolnay/rust-toolchain@stable
         name: Configure Rust
 
-      - uses: pnpm/action-setup@v6
-        name: Configure pnpm
-        with:
-          version: 12.12.0
-
-      - uses: actions/setup-node@v7
-        name: Configure Node
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-
-      - run: pnpm install --frozen-lockfile
-        name: Install
-
-      - run: node scripts/build-native.mjs
-        name: Build scanner
-
-      - run: pnpm exec electron-vite build
+      - run: cargo build --release -p observatory
         name: Build
 
-      # A zip everywhere, and a Squirrel installer on Windows.
-      - run: pnpm exec electron-forge make
+      - run: |
+          New-Item -ItemType Directory -Force out | Out-Null
+          Copy-Item target/release/observatory.exe out/Observatory.exe
+          Compress-Archive -Path out/Observatory.exe `
+            -DestinationPath "Observatory-${{ matrix.release.target }}-${{ needs.version.outputs.version }}.zip"
         name: Package
 
-      # On Windows, also what Squirrel updates from: its list of packages,
-      # and the package on it.
+      # A release goes out without the package if it can't be made: the zip
+      # is still the app. A dry run is there to find that out, so it fails,
+      # and makes the package without a certificate too (unsigned, which
+      # Windows won't install, but the packaging's been tried).
+      - run: |
+          ./windows/build.ps1
+          Copy-Item target/windows/*.msix .
+        if: env.WINDOWS_CERTIFICATE != '' || env.DRY_RUN == 'true'
+        continue-on-error: ${{ github.event_name != 'workflow_dispatch' }}
+        name: Package (MSIX)
+
       - uses: actions/upload-artifact@v7
         name: Upload
         with:
           name: package-${{ matrix.release.target }}
           path: |
-            out/make/zip/**/*.zip
-            out/make/squirrel.windows/**/*.exe
-            out/make/squirrel.windows/**/RELEASES
-            out/make/squirrel.windows/**/*.nupkg
+            *.zip
+            *.msix
+          if-no-files-found: error
+
+  # The program by itself, in a zip, for anywhere the Flatpak isn't wanted.
+  # It isn't static, and can't be: it draws with the GPU, whose driver is
+  # the system's own and loaded when it runs. So it's built on the oldest
+  # Ubuntu there is to build on, to ask for no newer a C library than it
+  # has to, and expects what a desktop has anyway (Wayland or X11,
+  # xkbcommon, fontconfig, Vulkan).
+  linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        release:
+          - os: ubuntu-22.04
+            target: linux-x64
+
+          - os: ubuntu-22.04-arm
+            target: linux-arm64
+
+    name: Package.${{ matrix.release.target }}
+
+    runs-on: ${{ matrix.release.os }}
+
+    needs:
+      - version
+
+    steps:
+      - uses: actions/checkout@v7
+        name: Checkout
+
+      - uses: dtolnay/rust-toolchain@stable
+        name: Configure Rust
+
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev \
+            libx11-xcb-dev libxcb1-dev libfontconfig1-dev libfreetype-dev libvulkan-dev
+        name: Install
+
+      - run: cargo build --release --locked -p observatory
+        name: Build
+
+      # With zip rather than an action, which keeps it a program that can
+      # be run.
+      - run: |
+          mkdir out
+          cp target/release/observatory out/observatory
+          cd out
+          zip "../Observatory-${{ matrix.release.target }}-${{ needs.version.outputs.version }}.zip" observatory
+        name: Package
+
+      - uses: actions/upload-artifact@v7
+        name: Upload
+        with:
+          name: package-${{ matrix.release.target }}
+          path: "*.zip"
           if-no-files-found: error
 
   flatpak:
@@ -146,9 +241,9 @@ jobs:
         name: Checkout
 
       # The build's copy of the checkout leaves .git out, so the commit
-      # (for the about window and bug reports) goes in .commit. It's from
-      # Actions rather than git, which won't read a checkout the container's
-      # user doesn't own.
+      # (for the about window and bug reports) goes in .commit, where
+      # src/desktop/build.rs looks. It's from Actions rather than git, which
+      # won't read a checkout the container's user doesn't own.
       - name: Commit
         run: echo "$GITHUB_SHA" > .commit
 
@@ -174,7 +269,9 @@ jobs:
 
     needs:
       - version
-      - package
+      - macos
+      - windows
+      - linux
       - flatpak
 
     permissions:
@@ -195,62 +292,94 @@ jobs:
           path: dist
           merge-multiple: true
 
+      # The app looks here too, when it can't reach the bucket: the Mac zip
+      # is found by its name (see src/core/updates.rs).
+      # In a dry run, what the release would have had, in place of one.
+      - run: |
+          {
+            echo "### Dry run of ${{ needs.version.outputs.version }}: nothing was published"
+            echo
+            echo "The release would have had:"
+            echo
+            echo '```'
+            find dist -type f \( -name '*.dmg' -o -name '*.zip' -o -name '*.flatpak' -o -name '*.msix' \) \
+              -exec du -h {} + | sort -k 2
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+        if: env.DRY_RUN == 'true'
+        name: Release (dry run)
+
       - uses: softprops/action-gh-release@v3
         name: Release
+        if: env.DRY_RUN != 'true'
         with:
           files: |
+            dist/**/*.dmg
             dist/**/*.zip
-            dist/**/*.exe
             dist/**/*.flatpak
           fail_on_unmatched_files: true
           generate_release_notes: true
 
-      # What the app updates from (see src/main/updates.ts): each Mac zip
-      # with a manifest for Squirrel.Mac, each Windows arch's Squirrel
-      # package and list, and latest.json for everywhere else. The builds go
-      # up first, and what points at them last, so an app never finds a
-      # version that isn't there yet. Those few are never cached, and the
-      # builds are cached for good, since a version's never rebuilt.
+      # The Windows packages, which a release has only when there was a
+      # certificate to sign them with.
+      - uses: softprops/action-gh-release@v3
+        name: Release (MSIX)
+        if: env.DRY_RUN != 'true' && hashFiles('dist/**/*.msix') != ''
+        with:
+          files: dist/**/*.msix
+
+      # What the app updates from (see src/core/updates.rs): the Mac app's
+      # zip and the Windows packages, and latest.json, which names the newest
+      # version, its page, and where those are. The builds go up first, and
+      # what points at them last, so an app never finds a version that isn't
+      # there yet. latest.json is never cached, and the builds are cached
+      # for good, since a version's never rebuilt. A dry run goes through all
+      # of it but the uploads, and says what latest.json would have been.
       - run: |
           version='${{ needs.version.outputs.version }}'
           base="https://releases.mckayla.dev/observatory"
+          s3="s3://${RELEASES_BUCKET:-bucket}/observatory"
+          zip="Observatory-darwin-arm64-$version.zip"
+
+          # put <file> <where> <cache-control>
           put() {
-            aws s3 cp --endpoint-url "$RELEASES_ENDPOINT" --acl public-read \
-              "$@" --cache-control 'public, max-age=31536000, immutable'
+            if [ "$DRY_RUN" = true ]; then
+              echo "would upload $1 to $2 ($3)"
+            else
+              aws s3 cp --endpoint-url "$RELEASES_ENDPOINT" --acl public-read \
+                "$1" "$2" --cache-control "$3"
+            fi
           }
-          point() {
-            aws s3 cp --endpoint-url "$RELEASES_ENDPOINT" --acl public-read \
-              "$@" --cache-control no-cache
-          }
-          s3="s3://$RELEASES_BUCKET/observatory"
-          manifests="$(mktemp -d)"
 
-          for zip in $(find dist -path '*/zip/darwin/*' -name '*.zip'); do
-            arch="$(basename "$(dirname "$zip")")"
-            name="$(basename "$zip")"
-            put "$zip" "$s3/darwin/$arch/$name"
-            mkdir -p "$manifests/darwin/$arch"
-            jq -n --arg version "$version" --arg url "$base/darwin/$arch/$name" \
-              --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-              '{currentRelease: $version, releases: [{version: $version, updateTo: {
-                version: $version, name: "Observatory \($version)",
-                pub_date: $date, notes: "", url: $url}}]}' \
-              > "$manifests/darwin/$arch/RELEASES.json"
-          done
+          built="$(find dist -name "$zip" | head -1)"
+          [ -n "$built" ] || { echo "there's no $zip"; exit 1; }
+          put "$built" "$s3/darwin/arm64/$zip" 'public, max-age=31536000, immutable'
+          downloads="$(jq -n --arg zip "$base/darwin/arm64/$zip" '{"darwin-arm64": $zip}')"
 
-          for list in $(find dist -path '*/squirrel.windows/*' -name RELEASES); do
-            dir="$(dirname "$list")"
-            arch="$(basename "$dir")"
-            for nupkg in "$dir"/*.nupkg; do
-              put "$nupkg" "$s3/win32/$arch/$(basename "$nupkg")"
-            done
-            mkdir -p "$manifests/win32/$arch"
-            cp "$list" "$manifests/win32/$arch/RELEASES"
+          for arch in x64 arm64; do
+            msix="Observatory-win32-$arch-$version.msix"
+            built="$(find dist -name "$msix" | head -1)"
+            [ -n "$built" ] || continue
+            put "$built" "$s3/win32/$arch/$msix" 'public, max-age=31536000, immutable'
+            downloads="$(jq --arg platform "win32-$arch" --arg msix "$base/win32/$arch/$msix" \
+              '. + {($platform): $msix}' <<< "$downloads")"
           done
 
           jq -n --arg version "$version" \
             --arg url "https://github.com/$GITHUB_REPOSITORY/releases/tag/v$version" \
-            '{version: $version, url: $url}' > "$manifests/latest.json"
-          point "$manifests" "$s3" --recursive
-        if: env.RELEASES_BUCKET != ''
+            --argjson downloads "$downloads" \
+            '{version: $version, url: $url, downloads: $downloads}' > latest.json
+          put latest.json "$s3/latest.json" no-cache
+
+          if [ "$DRY_RUN" = true ]; then
+            {
+              echo
+              echo "And \`latest.json\`, which the app updates from, would have been:"
+              echo
+              echo '```json'
+              cat latest.json
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+        if: env.RELEASES_BUCKET != '' || env.DRY_RUN == 'true'
         name: Feed

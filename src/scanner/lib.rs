@@ -5,12 +5,10 @@
 // No async, no tokio — Linux/macOS metadata syscalls don't have meaningful
 // async equivalents anyway.
 //
-// Output mirrors the `Ob.VfsDirectory` / `Ob.ScanError` / `Ob.PerfNode`
-// shapes from `src/@types/Observatory.d.ts` so a future napi-rs binding
-// (or child-process JSON bridge) can hand the result straight to the
-// renderer with no reshaping.
+// The app (`src/core`) calls this directly, and the CLI (`main.rs`) writes
+// what it finds as JSON.
 //
-// Platform parity with the JS scanner:
+// What it does on each platform:
 // - Linux: skip /dev and /proc by absolute path, and go where the mount
 //   table says (mounts.rs): into every btrfs subvolume of the disk being
 //   scanned, into each folder a bind mount shows only once, and not into
@@ -77,6 +75,31 @@ impl CountsSnapshot {
 	}
 }
 
+// One of the folders directly in the scan's root, and how much the walk has
+// found in it so far. The tree itself is only there once the walk is done;
+// these are what there is to show of it meanwhile.
+struct Top {
+	name: String,
+	size: AtomicU64,
+	started: AtomicBool,
+	done: AtomicBool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TopState {
+	// Not come to yet.
+	Waiting,
+	Reading,
+	Done,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TopSnapshot {
+	pub name: String,
+	pub size: u64,
+	pub state: TopState,
+}
+
 // A name, as kept in a tree's `Names`.
 pub type Name = SymbolU32;
 // The names in a tree, each kept once. Names repeat across a disk (every app
@@ -123,7 +146,7 @@ impl VfsNode {
 		}
 	}
 
-	// In milliseconds, as JSON has it for JS's `Date`.
+	// In milliseconds, as the JSON has it.
 	pub fn mtime_ms(&self) -> u64 {
 		u64::from(self.mtime()) * 1000
 	}
@@ -278,8 +301,8 @@ pub struct PerfNode {
 }
 
 // The live, mutable perf tree built during a scan. Wrapped in Arc<Mutex>
-// per-node so the JS side polling `Scan::progress()` can take a snapshot
-// at any time without coordinating with the threadpool worker. Each scan
+// per-node so a snapshot can be taken at any time, from any thread, without
+// coordinating with the threads doing the scan. Each scan
 // builds nodes top-down (created on `scan_dir` entry, registered with the
 // parent) and settles them bottom-up (totals written on exit). `snapshot`
 // walks this graph to produce the serializable `PerfNode` form — for
@@ -373,8 +396,7 @@ pub struct ScanResult {
 	pub reserved: Vec<Reserved>,
 	pub counts: CountsSnapshot,
 	pub errors: Vec<ScanError>,
-	// Serialized as `null` when perf isn't enabled — matches the
-	// `Ob.PerfNode | null` shape on the JS side and keeps the JSON
+	// Serialized as `null` when perf isn't enabled, which keeps the JSON
 	// schema stable regardless of OB_PERF.
 	pub perf: Option<PerfNode>,
 }
@@ -384,9 +406,9 @@ pub struct ScanConfig {
 	pub perf: bool,
 }
 
-// Shared scan state. Lives in an `Arc` so the napi `Scan` handle can read
-// counts / currentPath / errors from the JS thread while the scan is still
-// running on a libuv worker. Counts are lockless (AtomicU64); the
+// Shared scan state. Lives in an `Arc` so the app can read the counts, the
+// current path and the errors from its own thread while the scan is still
+// running on another. Counts are lockless (AtomicU64); the
 // short-lived locks on `current_path` and `errors` only contend for a few
 // µs at directory boundaries and won't stall progress polling.
 pub struct ScanState {
@@ -404,6 +426,10 @@ pub struct ScanState {
 	displaced: Mutex<Vec<PathBuf>>,
 	// The names in the tree so far, handed to it when the walk is done.
 	names: Mutex<Names>,
+	// The root's folders, from when the root's been listed, and the size of
+	// the files that are in the root itself.
+	tops: Mutex<Vec<Arc<Top>>>,
+	loose: AtomicU64,
 	// Checked once up front; macOS only applies a change on relaunch anyway.
 	pub full_disk_access: bool,
 	// Windows: the app isn't an administrator, and the scan is of this
@@ -429,6 +455,8 @@ impl ScanState {
 			links: Default::default(),
 			displaced: Mutex::new(Vec::new()),
 			names: Mutex::default(),
+			tops: Mutex::default(),
+			loose: AtomicU64::new(0),
 			full_disk_access: has_full_disk_access(),
 			admin_would_help: false,
 			perf,
@@ -437,8 +465,8 @@ impl ScanState {
 	}
 
 	// For a scan of `path`. Resolves the root's device via stat (follows
-	// symlinks), matching what the JS scanner does in `_performScan`, and
-	// errors if it can't: we can't meaningfully scan a path we can't stat.
+	// symlinks), and errors if it can't: we can't meaningfully scan a path
+	// we can't stat.
 	pub fn for_path(path: &Path, perf: bool) -> io::Result<Self> {
 		let root_meta = fs::metadata(path)?;
 		// Before the walk, since it's what lets an administrator in.
@@ -455,6 +483,57 @@ impl ScanState {
 	// still guards a good set of names.
 	fn names(&self) -> MutexGuard<'_, Names> {
 		self.names.lock().unwrap_or_else(PoisonError::into_inner)
+	}
+
+	/// The folders in the scan's root, in the order the root listed them,
+	/// with how much has been found in each so far. Empty until the root's
+	/// been listed. A file with several hard links can be counted in two of
+	/// them for a while (see `counts_here`), so these are for showing how a
+	/// scan's going, not for adding up.
+	pub fn tops(&self) -> Vec<TopSnapshot> {
+		let tops = self.tops.lock().unwrap_or_else(PoisonError::into_inner);
+		tops.iter()
+			.map(|top| TopSnapshot {
+				name: top.name.clone(),
+				size: top.size.load(Ordering::Relaxed),
+				state: if top.done.load(Ordering::Relaxed) {
+					TopState::Done
+				} else if top.started.load(Ordering::Relaxed) {
+					TopState::Reading
+				} else {
+					TopState::Waiting
+				},
+			})
+			.collect()
+	}
+
+	/// The size of the files found in the scan's root itself so far.
+	pub fn loose(&self) -> u64 {
+		self.loose.load(Ordering::Relaxed)
+	}
+
+	// Makes a `Top` for each folder among the root's entries, one per entry
+	// (None for what isn't a folder), and keeps them for `tops`. This goes
+	// by what the listing said each is, which costs nothing more, so a
+	// folder the walk then leaves out (another disk's mount) gets one too,
+	// and ends up done with nothing in it.
+	fn list_tops(&self, entries: &[fs::DirEntry]) -> Vec<Option<Arc<Top>>> {
+		let tops: Vec<Option<Arc<Top>>> = entries
+			.iter()
+			.map(|entry| {
+				entry.file_type().ok()?.is_dir().then(|| {
+					Arc::new(Top {
+						name: entry.file_name().to_string_lossy().into_owned(),
+						size: AtomicU64::new(0),
+						started: AtomicBool::new(false),
+						done: AtomicBool::new(false),
+					})
+				})
+			})
+			.collect();
+		*self.tops.lock().unwrap_or_else(PoisonError::into_inner) =
+			tops.iter().flatten().cloned().collect();
+		tops
 	}
 }
 
@@ -506,16 +585,16 @@ pub fn scan(path: &Path, config: ScanConfig) -> std::io::Result<ScanResult> {
 	run_scan(path, &state)
 }
 
-// Internal entry point used by both the free `scan()` function and the
-// napi `Scan` class. Takes a borrowed ScanState so the class can pre-build
-// one, share it via Arc, and pull progress from the JS thread.
+// What both the free `scan()` function and the app run. Takes a borrowed
+// ScanState so the app can build one first, share it via Arc, and read
+// progress from another thread while the scan runs.
 pub fn run_scan(path: &Path, state: &ScanState) -> std::io::Result<ScanResult> {
 	let name = state.names().get_or_intern(
 		path.file_name()
 			.unwrap_or(path.as_os_str())
 			.to_string_lossy(),
 	);
-	let mut root = scan_dir(path, name, 0, state, None);
+	let mut root = scan_dir(path, name, 0, state, None, None);
 	// The links are only needed during the walk, and the state is kept for as
 	// long as the tree is.
 	for shard in &state.links {
@@ -586,13 +665,15 @@ fn scan_dir(
 	depth: u64,
 	state: &ScanState,
 	parent_perf: Option<&Arc<PerfNodeShared>>,
+	// The folder in the root that this is, or is in.
+	top: Option<&Top>,
 ) -> VfsNode {
 	let display_path = path.to_string_lossy().into_owned();
 
-	// Update currentPath so the JS side polling `progress()` sees roughly
+	// Update `current_path` so whoever's watching the scan sees roughly
 	// where we are. Recursion is parallel via rayon, so this is "the most
 	// recently entered directory on any thread" rather than a precise BFS
-	// frontier — good enough for a status line, matches the JS behavior.
+	// frontier — good enough for a status line.
 	if let Ok(mut cp) = state.current_path.lock() {
 		*cp = Some(display_path.clone());
 	}
@@ -655,10 +736,29 @@ fn scan_dir(
 		.map(|t| t.elapsed().as_secs_f64() * 1000.0)
 		.unwrap_or(0.0);
 
-	let mut children: Box<[VfsNode]> = entries
-		.into_par_iter()
-		.filter_map(|entry| classify(entry, depth + 1, state, my_perf.as_ref()))
-		.collect();
+	let mut children: Box<[VfsNode]> = if depth == 0 {
+		let tops = state.list_tops(&entries);
+		entries
+			.into_par_iter()
+			.zip(tops)
+			.filter_map(|(entry, own)| {
+				let own = own.as_deref();
+				if let Some(own) = own {
+					own.started.store(true, Ordering::Relaxed);
+				}
+				let node = classify(entry, 1, state, my_perf.as_ref(), own);
+				if let Some(own) = own {
+					own.done.store(true, Ordering::Relaxed);
+				}
+				node
+			})
+			.collect()
+	} else {
+		entries
+			.into_par_iter()
+			.filter_map(|entry| classify(entry, depth + 1, state, my_perf.as_ref(), top))
+			.collect()
+	};
 
 	children.sort_by_key(|b| cmp::Reverse(b.size()));
 	let size = children.iter().map(|n| n.size()).sum();
@@ -676,13 +776,14 @@ fn scan_dir(
 	}
 }
 
-// `DirEntry::metadata` does not follow symlinks (lstat semantics) — matches
-// what the JS scanner uses for entry-level decisions.
+// `DirEntry::metadata` does not follow symlinks (lstat semantics), which is
+// what entry-level decisions want.
 fn classify(
 	entry: fs::DirEntry,
 	depth: u64,
 	state: &ScanState,
 	parent_perf: Option<&Arc<PerfNodeShared>>,
+	top: Option<&Top>,
 ) -> Option<VfsNode> {
 	if state.aborted.load(Ordering::Relaxed) {
 		return None;
@@ -725,6 +826,10 @@ fn classify(
 		} else {
 			0
 		};
+		match top {
+			Some(top) => top.size.fetch_add(size, Ordering::Relaxed),
+			None => state.loose.fetch_add(size, Ordering::Relaxed),
+		};
 		Some(VfsNode::File {
 			name: intern(),
 			size,
@@ -735,7 +840,14 @@ fn classify(
 		if should_skip_dir(&entry_path, depth, entry_dev_id(&meta), state) {
 			return None;
 		}
-		Some(scan_dir(&entry_path, intern(), depth, state, parent_perf))
+		Some(scan_dir(
+			&entry_path,
+			intern(),
+			depth,
+			state,
+			parent_perf,
+			top,
+		))
 	} else if ft.is_symlink() {
 		state.counts.symlinks.fetch_add(1, Ordering::Relaxed);
 		None
@@ -1018,15 +1130,6 @@ fn errno_name(n: i32) -> Option<String> {
 	Some(format!("E{n}"))
 }
 
-// N-API bindings — gated behind the `napi` feature so the CLI / unit tests
-// can build without paying for the napi-rs link or its transitive deps.
-// Build with: cargo build --release --lib --features napi
-// Output is a cdylib (.so / .dylib / .dll) that becomes a .node when
-// renamed; the bindings module's #[napi] functions are the entry points
-// the wrapper JS sees.
-#[cfg(feature = "napi")]
-mod bindings;
-
 pub mod admin;
 pub mod find;
 pub mod reserved;
@@ -1130,6 +1233,34 @@ mod tests {
 			result.tree.root.size(),
 			on_disk(&sub.join("deep.bin")) + on_disk(&dir.join("top.bin")),
 		);
+
+		cleanup(&dir);
+	}
+
+	#[test]
+	fn says_how_much_is_in_each_of_the_roots_folders() {
+		let dir = tmpdir("tops");
+		fs::create_dir_all(dir.join("big/deeper")).unwrap();
+		fs::create_dir(dir.join("empty")).unwrap();
+		write(&dir.join("big/a.bin"), 100_000);
+		write(&dir.join("big/deeper/b.bin"), 50_000);
+		write(&dir.join("top.bin"), 10_000);
+
+		let state = ScanState::for_path(&dir, false).unwrap();
+		assert!(state.tops().is_empty());
+		let result = run_scan(&dir, &state).unwrap();
+
+		let mut tops = state.tops();
+		tops.sort_by(|a, b| a.name.cmp(&b.name));
+		let top = |name: &str, size| TopSnapshot {
+			name: name.to_string(),
+			size,
+			state: TopState::Done,
+		};
+		let big = on_disk(&dir.join("big/a.bin")) + on_disk(&dir.join("big/deeper/b.bin"));
+		assert_eq!(tops, [top("big", big), top("empty", 0)]);
+		assert_eq!(state.loose(), on_disk(&dir.join("top.bin")));
+		assert_eq!(result.tree.root.size(), big + state.loose());
 
 		cleanup(&dir);
 	}

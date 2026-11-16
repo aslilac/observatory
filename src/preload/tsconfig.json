@@ -1,9 +1,0 @@
-{
-	"extends": "../../tsconfig.json",
-	"compilerOptions": {
-		"composite": true,
-		"lib": ["dom", "esnext"],
-		"outDir": "../.build/preload/"
-	},
-	"include": ["**/*", "../@types/**/*"]
-}

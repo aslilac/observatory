@@ -70,8 +70,8 @@ pub fn relaunch_elevated(
 }
 
 // Joins `args` into one command line the way the program on the other end
-// (anything using the C runtime's or CommandLineToArgvW's rules, Electron
-// included) splits it back up. Backslashes are only special before a quote,
+// (anything using the C runtime's or CommandLineToArgvW's rules, Rust's
+// `std::env::args` included) splits it back up. Backslashes are only special before a quote,
 // so `C:\` stays as it is, but in quotes it has to be `"C:\\"`.
 #[cfg_attr(not(windows), allow(dead_code))]
 fn command_line(args: &[String]) -> String {

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Observatory.app's Info.plist. build.sh fills in the two versions. -->
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleDisplayName</key>
+	<string>Observatory</string>
+	<key>CFBundleExecutable</key>
+	<string>Observatory</string>
+	<!-- macOS 26 draws the icon from Assets.car, by this name; older systems
+	     use the .icns. -->
+	<key>CFBundleIconFile</key>
+	<string>icon.icns</string>
+	<key>CFBundleIconName</key>
+	<string>Observatory</string>
+	<key>CFBundleIdentifier</key>
+	<string>ooo.lilac.observatory</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>Observatory</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.0.0</string>
+	<key>CFBundleVersion</key>
+	<string>0.0.0</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.utilities</string>
+	<!-- Apple silicon only, which starts at Big Sur. -->
+	<key>LSArchitecturePriority</key>
+	<array>
+		<string>arm64</string>
+	</array>
+	<key>LSMinimumSystemVersion</key>
+	<string>11.0</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSHumanReadableCopyright</key>
+	<string>© 2019-2026 McKayla Washburn-Love ♥</string>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
+	<!-- Follows the system between light and dark. -->
+	<key>NSRequiresAquaSystemAppearance</key>
+	<false/>
+	<key>NSSupportsAutomaticGraphicsSwitching</key>
+	<true/>
+	<!-- What macOS says when it asks whether a scan may go into each of
+	     these, the first time one does. -->
+	<key>NSDesktopFolderUsageDescription</key>
+	<string>Observatory reads this folder to measure what's in it.</string>
+	<key>NSDocumentsFolderUsageDescription</key>
+	<string>Observatory reads this folder to measure what's in it.</string>
+	<key>NSDownloadsFolderUsageDescription</key>
+	<string>Observatory reads this folder to measure what's in it.</string>
+	<key>NSNetworkVolumesUsageDescription</key>
+	<string>Observatory reads network volumes to measure what's on them.</string>
+	<key>NSRemovableVolumesUsageDescription</key>
+	<string>Observatory reads removable volumes to measure what's on them.</string>
+</dict>
+</plist>

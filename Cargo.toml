@@ -1,8 +1,13 @@
 [workspace]
-members = ["src/scanner"]
+members = ["src/scanner", "src/core", "src/desktop"]
 resolver = "3"
 
 # Cargo reads profiles only from the workspace root.
+# The About window's sky is worked out a pixel at a time, several times a
+# second: too slow to watch unoptimized.
+[profile.dev.package.observatory-core]
+opt-level = 3
+
 [profile.release]
 lto = "thin"
 codegen-units = 1

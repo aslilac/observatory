@@ -1,56 +1,18 @@
 {
 	"private": true,
 	"name": "observatory",
-	"version": "1.0.0-beta.3",
 	"description": "A cross platform disk usage analyzer with a modern UI",
 	"license": "MPL-2.0",
 	"author": "McKayla Washburn-Love <kayla@tree.camp>",
 	"repository": "https://github.com/aslilac/observatory",
-	"desktopName": "ooo.lilac.observatory.desktop",
 	"scripts": {
 		"check.health": "fallow",
 		"check.lint": "oxlint --fix",
-		"check.test": "vitest run",
-		"check.test.w": "vitest",
-		"check.types": "tsc -b .",
-		"fmt": "oxfmt",
-		"test": "pnpm check.test",
-		"build": "electron-vite build",
-		"build.native": "node ./scripts/build-native.mjs",
-		"build.forge": "pnpm build.native && pnpm build && electron-forge make",
-		"dev": "electron-vite dev",
-		"preview": "electron-vite preview",
-		"postinstall": "node ./scripts/install-electron.mjs && node ./scripts/build-native.mjs"
-	},
-	"dependencies": {
-		"electron-squirrel-startup": "^1.0.1"
+		"fmt": "oxfmt"
 	},
 	"devDependencies": {
-		"@base-ui/react": "^1.9.0",
-		"@electron-forge/cli": "^8.0.1",
-		"@electron-forge/maker-squirrel": "^8.0.1",
-		"@electron-forge/maker-zip": "^8.0.1",
-		"@fontsource-variable/inter": "^5.3.0",
-		"@tailwindcss/vite": "^4.3.3",
-		"@types/react": "^19.3.0",
-		"@types/react-dom": "^19.3.0",
-		"@vitejs/plugin-react": "^6.1.2",
-		"electron": "^45.2.1",
-		"electron-vite": "^6.0.0",
 		"fallow": "^2.69.0",
-		"lucide-react": "^1.61.0",
-		"oxc-transform-react": "^0.156.0",
 		"oxfmt": "^0.74.0",
-		"oxlint": "^1.89.0",
-		"react": "^19.3.1",
-		"react-dom": "^19.3.1",
-		"tailwindcss": "^4.3.3",
-		"typescript": "~7.0.2",
-		"vite": "^8.3.5",
-		"vitest": "^5.0.5"
-	},
-	"main": "./build/main/index.js",
-	"config": {
-		"forge": "forge.config.js"
+		"oxlint": "^1.89.0"
 	}
 }
