@@ -39,6 +39,12 @@ const IDENTITY: ViewMapping = ViewMapping {
 	shift: 0.0,
 };
 
+// Whether there's any of `x` to scale by: more than nothing, which something
+// that isn't a number at all isn't either.
+fn positive(x: f64) -> bool {
+	x > 0.0
+}
+
 // How the `next` view maps onto `prev`, through the folder one of them is
 // centered on, which is a wedge in the other. None if they don't share one
 // (a jump elsewhere in the scan, or that wedge was too small to draw), when
@@ -59,7 +65,7 @@ pub fn view_mapping(
 	if next.cursor.starts_with(&prev.cursor) {
 		// In: the new center was a wedge in the old view.
 		let opened = prev_sweep(&wedge_key(root, &next.cursor))?;
-		if !(next.span > 0.0) {
+		if !positive(next.span) {
 			return None;
 		}
 		return Some(ViewMapping {
@@ -71,10 +77,11 @@ pub fn view_mapping(
 	if prev.cursor.starts_with(&next.cursor) {
 		// Out: the old center is a wedge in the new view.
 		let closed = next_sweep(&wedge_key(root, &prev.cursor))?;
-		if !(prev.span > 0.0) || !(closed.x1 > closed.x0) {
+		let turn = closed.x1 - closed.x0;
+		if !positive(prev.span) || !positive(turn) {
 			return None;
 		}
-		let scale = prev.span / (closed.x1 - closed.x0);
+		let scale = prev.span / turn;
 		return Some(ViewMapping {
 			scale,
 			offset: -closed.x0 * scale,

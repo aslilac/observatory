@@ -160,7 +160,7 @@ fn windows_version() -> Option<(u32, u32, u32)> {
 
 // The fields of an os-release file: `KEY=value` a line, the value maybe in
 // quotes.
-fn os_release_field<'a>(release: &'a str, key: &str) -> Option<String> {
+fn os_release_field(release: &str, key: &str) -> Option<String> {
 	release.lines().find_map(|line| {
 		let value = line.trim().strip_prefix(key)?.strip_prefix('=')?.trim();
 		let value = match value.as_bytes() {

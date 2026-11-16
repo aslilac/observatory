@@ -447,7 +447,7 @@ impl Workspace {
 			disk = Some(drive);
 		}
 		let disk = disk?;
-		Some((disk.title(), disk.usage.clone()?))
+		Some((disk.title(), disk.usage?))
 	}
 
 	/// Cleanup, floating in the window's bottom-left corner, over a scan's
