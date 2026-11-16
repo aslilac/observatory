@@ -133,7 +133,7 @@ impl Workspace {
 				format!("{}%", (part * 100.) as u32),
 				format!("of {}", rounded_size(of.unwrap_or(0))),
 			),
-			(Some(_), None) => (readable_size(found), "so far".to_string()),
+			(Some(_), None) => (readable_size(found), String::new()),
 		};
 		let picture = div()
 			.relative()
@@ -189,7 +189,9 @@ impl Workspace {
 								.child(big),
 						)
 					})
-					.child(div().text_size(px(10.)).opacity(0.6).child(small)),
+					.when(!small.is_empty(), |this| {
+						this.child(div().text_size(px(10.)).opacity(0.6).child(small))
+					}),
 			);
 
 		let name = self.root_name(&scan.path);
@@ -274,7 +276,7 @@ impl Workspace {
 								Some(of) => {
 									format!("{} of {}", readable_size(found), rounded_size(of))
 								}
-								None => format!("{} so far", readable_size(found)),
+								None => readable_size(found),
 							})),
 					),
 			)
