@@ -121,6 +121,9 @@ impl Deletion {
 // How long the card of a deletion that went well stays.
 const NOTICE: Duration = Duration::from_secs(6);
 const CARD_WIDTH: f32 = 340.;
+// The card shut, and the place to drop things it turns into: wide enough for
+// the longest thing either says under its name.
+const PILL_WIDTH: f32 = 252.;
 // How many of what's queued have a segment of their own in the bar, before
 // the rest share one.
 const SEGMENTS: usize = 24;
@@ -506,7 +509,7 @@ impl Workspace {
 			.flex()
 			.items_center()
 			.gap(px(12.))
-			.w(px(236.))
+			.w(px(PILL_WIDTH))
 			.px(px(16.))
 			.py(px(14.))
 			.rounded(px(14.))
@@ -630,7 +633,7 @@ impl Workspace {
 			.flex()
 			.items_center()
 			.gap(px(12.))
-			.w(px(236.))
+			.w(px(PILL_WIDTH))
 			.px(px(16.))
 			.py(px(14.))
 			.rounded(px(14.))

@@ -213,10 +213,6 @@ impl Workspace {
 			})
 			.on_click(move |_, window, _| window.focus(&input_focus));
 
-		let suggestions = self
-			.suggesting
-			.then(|| self.render_suggestions(&scope_name, cx));
-
 		let sort = (!finding).then(|| {
 			self.opens_menu(
 				tool("sort", "list-filter", "Sort"),
@@ -238,13 +234,21 @@ impl Workspace {
 			)
 		});
 
-		let find = if self.find_open || self.suggesting || finding {
-			div()
-				.relative()
-				.flex_none()
-				.child(field)
-				.children(suggestions)
-				.into_any_element()
+		let find = if self.suggesting {
+			// The field and what it suggests are drawn over what's behind
+			// them while they're up (`render_find_backdrop`), as one thing: a
+			// press on either is still theirs.
+			deferred(
+				div()
+					.relative()
+					.flex_none()
+					.child(field)
+					.child(self.render_suggestions(&scope_name, cx)),
+			)
+			.with_priority(1)
+			.into_any_element()
+		} else if self.find_open || finding {
+			div().flex_none().child(field).into_any_element()
 		} else {
 			tool("find", "search", "Find")
 				.on_click(cx.listener(|this, _, window, cx| this.open_find(window, cx)))
@@ -341,23 +345,45 @@ impl Workspace {
 			});
 		// Under the field, wider than it, with their right edges in line:
 		// the field's at the toolbar's end.
-		deferred(
-			div()
-				.absolute()
-				.top(px(32.))
-				.right_0()
-				.w(px(SUGGESTIONS_WIDTH))
-				.occlude()
-				.p(px(4.))
-				.rounded(px(8.))
-				.bg(p.background)
-				.border_1()
-				.border_color(p.line)
-				.shadow_lg()
-				.children(rows),
+		div()
+			.absolute()
+			.top(px(32.))
+			.right_0()
+			.w(px(SUGGESTIONS_WIDTH))
+			.occlude()
+			.p(px(4.))
+			.rounded(px(8.))
+			.bg(p.background)
+			.border_1()
+			.border_color(p.line)
+			.shadow_lg()
+			.children(rows)
+			.into_any_element()
+	}
+
+	/// What's behind the find field while it's suggesting, and in front of
+	/// everything else, as a menu has (`render_menu_backdrop`): nothing seen,
+	/// but nothing under it lights up, and a press on it only puts the
+	/// suggestions away. It isn't also a press on whatever it landed on.
+	pub fn render_find_backdrop(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
+		if !self.suggesting {
+			return None;
+		}
+		Some(
+			deferred(
+				div()
+					.absolute()
+					.inset_0()
+					.occlude()
+					.on_any_mouse_down(cx.listener(|this, _, window, cx| {
+						// The field losing the focus is what shuts them.
+						window.focus(&this.focus);
+						cx.stop_propagation();
+					})),
+			)
+			.with_priority(0)
+			.into_any_element(),
 		)
-		.with_priority(1)
-		.into_any_element()
 	}
 
 	// What's checked and what to do with it, floating at the bottom while
