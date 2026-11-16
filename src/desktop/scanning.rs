@@ -23,9 +23,10 @@ use std::time::Duration;
 const PICTURE: f32 = 340.;
 // How long the arc takes to go round.
 const TURN_SECONDS: f32 = 1.2;
-// How long a scan shows nothing of what it's found: its first moments are
-// when that changes fastest, and a scan that's over by then never has to
-// show any of it.
+// How long a scan of a folder shows nothing of what it's found: its first
+// moments are when the wedges' shares of the circle change fastest, and a
+// scan that's over by then never has to show any of it. A disk's wedges only
+// ever grow, and it's never over that soon, so it shows them from the start.
 const HOLD: Duration = Duration::from_millis(2500);
 // The space between two wedges, in turns.
 const GAP: f32 = 0.0015;
@@ -83,11 +84,6 @@ impl Workspace {
 			.as_ref()
 			.map_or(0, |progress| progress.counts.total_entries());
 		let elapsed = self.scan_shown.map(|shown| shown.elapsed());
-		// What's been found, once it's past its first moments.
-		let filling: Option<&Progress> = self
-			.progress
-			.as_ref()
-			.filter(|_| elapsed.is_some_and(|elapsed| elapsed >= HOLD));
 		// How much the disk says is on it, if it's a whole disk.
 		let of = self
 			.drives
@@ -96,6 +92,12 @@ impl Workspace {
 			.and_then(|drive| drive.usage)
 			.map(|usage| usage.used)
 			.filter(|used| *used > 0);
+		// What's been found: of a disk from the start, and of a folder once
+		// it's past its first moments.
+		let filling: Option<&Progress> = self
+			.progress
+			.as_ref()
+			.filter(|_| of.is_some() || elapsed.is_some_and(|elapsed| elapsed >= HOLD));
 		let found = filling.map_or(0, Progress::found);
 		// Never all of it until it's done: the disk's count and the scan's
 		// don't agree to the byte.
