@@ -253,7 +253,7 @@ jobs:
       - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
         name: Build
         with:
-          manifest-path: flatpak/ooo.lilac.observatory.yml
+          manifest-path: flatpak/ooo.lilac.observatory.yaml
           arch: ${{ matrix.release.arch }}
           bundle: Observatory-${{ matrix.release.target }}-${{ needs.version.outputs.version }}.flatpak
           artifact-name: flatpak-${{ matrix.release.target }}

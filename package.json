@@ -6,12 +6,10 @@
 	"author": "McKayla Washburn-Love <kayla@tree.camp>",
 	"repository": "https://github.com/aslilac/observatory",
 	"scripts": {
-		"check.health": "fallow",
 		"check.lint": "oxlint --fix",
 		"fmt": "oxfmt"
 	},
 	"devDependencies": {
-		"fallow": "^2.69.0",
 		"oxfmt": "^0.74.0",
 		"oxlint": "^1.89.0"
 	}

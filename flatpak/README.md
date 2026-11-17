@@ -1,6 +1,6 @@
 # Flatpak
 
-`ooo.lilac.observatory.yml` builds Observatory (the gpui app, `src/desktop`) from this checkout inside the Freedesktop SDK: one `cargo build`, and the program, its desktop entry, and its icons installed. It runs on the plain Freedesktop runtime, with no base app. The build has network access, so cargo fetches the crates as it would anywhere else. That's fine for building it yourself, though Flathub would want every crate listed as a source.
+`ooo.lilac.observatory.yaml` builds Observatory (the gpui app, `src/desktop`) from this checkout inside the Freedesktop SDK: one `cargo build`, and the program, its desktop entry, and its icons installed. It runs on the plain Freedesktop runtime, with no base app. The build has network access, so cargo fetches the crates as it would anywhere else. That's fine for building it yourself, though Flathub would want every crate listed as a source.
 
 A Flatpak copy doesn't look for new versions: Flatpak updates it.
 

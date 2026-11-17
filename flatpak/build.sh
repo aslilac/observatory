@@ -16,5 +16,5 @@ fi
 flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 flatpak install --user --noninteractive flathub org.flatpak.Builder
 flatpak run org.flatpak.Builder --user --install --install-deps-from=flathub --force-clean \
-	build ooo.lilac.observatory.yml
+	build ooo.lilac.observatory.yaml
 echo "installed: flatpak run ooo.lilac.observatory"

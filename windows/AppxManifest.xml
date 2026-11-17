@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8" ?>
 <!--
   What the Windows package (the MSIX) says it is. build.ps1 fills in what's
   in braces: the version, the processor, and the publisher, which has to be
@@ -11,12 +11,14 @@
 	xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
 	xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
 	xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-	IgnorableNamespaces="uap rescap">
+	IgnorableNamespaces="uap rescap"
+>
 	<Identity
 		Name="ooo.lilac.observatory"
-		Publisher="{PUBLISHER}"
+		Publisher="{PUBLISHER}, OID.2.25.311729368913984317654407730594956997722=1"
 		Version="{VERSION}"
-		ProcessorArchitecture="{ARCH}" />
+		ProcessorArchitecture="{ARCH}"
+	/>
 	<Properties>
 		<DisplayName>Observatory</DisplayName>
 		<PublisherDisplayName>McKayla Washburn-Love</PublisherDisplayName>
@@ -26,7 +28,8 @@
 		<TargetDeviceFamily
 			Name="Windows.Desktop"
 			MinVersion="10.0.17763.0"
-			MaxVersionTested="10.0.26100.0" />
+			MaxVersionTested="10.0.26100.0"
+		/>
 	</Dependencies>
 	<Resources>
 		<Resource Language="en-US" />
@@ -35,13 +38,15 @@
 		<Application
 			Id="Observatory"
 			Executable="Observatory.exe"
-			EntryPoint="Windows.FullTrustApplication">
+			EntryPoint="Windows.FullTrustApplication"
+		>
 			<uap:VisualElements
 				DisplayName="Observatory"
 				Description="See what's taking up space on your disks"
 				BackgroundColor="transparent"
 				Square150x150Logo="Assets\Square150x150Logo.png"
-				Square44x44Logo="Assets\Square44x44Logo.png" />
+				Square44x44Logo="Assets\Square44x44Logo.png"
+			/>
 		</Application>
 	</Applications>
 	<Capabilities>

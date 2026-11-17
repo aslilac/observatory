@@ -1,23 +1,23 @@
 // The sky over the observatory: stars turning around the pole (the point the
-// telescope is aimed at), each drawing a trail as it goes, like a long exposure
-// that started when the page opened. Around the pole, the stars are only in three
-// bands, and their trails take the colours of the sunburst on the telescope's
-// mirror, by where they sit around it, so the longer you stay, the more the sky
-// becomes the chart. A clear ring of sky sets it apart from the other stars.
+// telescope is aimed at), each with a trail behind it, like a long exposure.
+// Around the pole, the stars are only in three bands, and their trails take the
+// colours of the sunburst on the telescope's mirror, by where they sit around it,
+// so the sky there is the chart. A clear ring of sky sets it apart from the other
+// stars.
 //
 // Every star turns with the sky, so the stars and their trails are drawn on one
 // canvas centred on the pole, and the browser's compositor turns it with a CSS
-// animation, without the page drawing anything per frame. The trails grow a few
-// times a second until they're full length (at their tail ends, fainter as they
-// get longer, so they fade toward the tail), and after that the page does nothing.
-//
-// ?exposure=120 starts the page as if it had been open for 120 seconds.
+// animation, without the page drawing anything per frame. The trails are drawn
+// once, at their full length, fading toward the tail, and after that the page
+// does nothing.
 
 const PERIOD = 480_000; // ms for the sky to turn once: eight minutes
-const TURN = (2 * Math.PI) / PERIOD; // radians a millisecond
-const TRAIL_MAX = (2 * Math.PI) / 7; // the longest a trail gets
-const DENSITY = 1 / 3000; // stars per square pixel
-const GROW_EVERY = 250; // ms between growing the trails
+const TRAIL = (2 * Math.PI) / 8; // how long a trail is, at the pole
+// A trail the same angle everywhere is longest at the edge of the sky, so the
+// angle narrows going out: at the edge it's this much of TRAIL.
+const TRAIL_AT_EDGE = 0.5;
+const TRAIL_PIECES = 48; // a trail is drawn in this many, each fainter than the last
+const DENSITY = 1 / 3750; // stars per square pixel
 
 // The sky moves less than a pixel in a thirtieth of a second, even at the corners,
 // so it turns in steps, 30 a second, rather than at the display's rate (120 on a
@@ -50,6 +50,7 @@ interface Star {
 	size: number;
 	alpha: number;
 	colour: string;
+	trail: number; // the angle its trail covers
 	trailColour: string;
 	trailAlpha: number;
 	trailWidth: number;
@@ -83,8 +84,6 @@ function canvas2d(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
 
 function sky(hero: HTMLElement, scene: HTMLElement, field: HTMLElement): void {
 	const still = matchMedia("(prefers-reduced-motion: reduce)");
-	const params = new URLSearchParams(location.search);
-	const exposure = 1000 * Number(params.get("exposure") ?? 0);
 
 	// the sky, centred on the pole: a canvas with the stars and their trails
 	const turning = document.createElement("div");
@@ -93,8 +92,7 @@ function sky(hero: HTMLElement, scene: HTMLElement, field: HTMLElement): void {
 	turning.append(skyCanvas);
 	field.append(turning);
 
-	// anticlockwise, as around the north pole. Its time is how long the sky has
-	// been exposed, which stops while the hero is out of view.
+	// anticlockwise, as around the north pole
 	const turn = turning.animate(
 		[{ transform: "rotate(0turn)" }, { transform: "rotate(-1turn)" }],
 		{
@@ -103,11 +101,8 @@ function sky(hero: HTMLElement, scene: HTMLElement, field: HTMLElement): void {
 			easing: `steps(${Math.round(PERIOD * STEPS)})`,
 		},
 	);
-	turn.currentTime = exposure;
-	const clock = (): number => Number(turn.currentTime ?? 0);
 
 	let stars: Star[] = [];
-	let trail = 0; // how long the trails are on the sky canvas so far
 	let laidOut = "";
 
 	function layout(): void {
@@ -168,12 +163,12 @@ function sky(hero: HTMLElement, scene: HTMLElement, field: HTMLElement): void {
 				size: 0.45 + 1.3 * m,
 				alpha: 0.35 + 0.65 * m,
 				colour: tint,
+				trail: TRAIL * (1 - (1 - TRAIL_AT_EDGE) * (r / R)),
 				trailColour: coloured ? sectorColour(theta) : tint,
 				trailAlpha: coloured ? 0.55 + 0.45 * m : 0.3 * (0.35 + 0.65 * m),
 				trailWidth: coloured ? 1.1 + 0.9 * m : 0.4 + 1.1 * m,
 			});
 		}
-		trail = 0;
 		for (const st of stars) {
 			skyCtx.globalAlpha = st.alpha;
 			skyCtx.fillStyle = st.colour;
@@ -189,21 +184,15 @@ function sky(hero: HTMLElement, scene: HTMLElement, field: HTMLElement): void {
 		}
 		skyCtx.globalAlpha = 1;
 
-		growTrails(exposed());
-	}
-
-	// grow the trails on the sky canvas out to `to`: each new piece at the tail,
-	// fainter, in short pieces so a long jump (a resize, ?exposure) still fades
-	function growTrails(to: number): void {
-		while (to > trail + 1e-4) {
-			const next = Math.min(to, trail + TRAIL_MAX / 48);
-			paintTrails(trail, next);
-			trail = next;
+		for (let i = 0; i < TRAIL_PIECES; i++) {
+			paintTrails(i / TRAIL_PIECES, (i + 1) / TRAIL_PIECES);
 		}
 	}
 
+	// a piece of every star's trail (from and to are fractions of its length),
+	// fainter the further back it is
 	function paintTrails(from: number, to: number): void {
-		const fade = (1 - (from + to) / 2 / TRAIL_MAX) ** 1.6;
+		const fade = (1 - (from + to) / 2) ** 1.6;
 		skyCtx.lineCap = "butt";
 		skyCtx.globalCompositeOperation = "lighter"; // where trails cross, they glow
 		for (const st of stars) {
@@ -212,29 +201,18 @@ function sky(hero: HTMLElement, scene: HTMLElement, field: HTMLElement): void {
 			skyCtx.lineWidth = st.trailWidth;
 			skyCtx.beginPath();
 			// the stars turn anticlockwise, so a trail runs back clockwise from each one
-			skyCtx.arc(0, 0, st.r, st.theta + from, st.theta + to, false);
+			skyCtx.arc(
+				0,
+				0,
+				st.r,
+				st.theta + from * st.trail,
+				st.theta + to * st.trail,
+				false,
+			);
 			skyCtx.stroke();
 		}
 		skyCtx.globalAlpha = 1;
 		skyCtx.globalCompositeOperation = "source-over";
-	}
-
-	function exposed(): number {
-		return Math.min(TRAIL_MAX, TURN * clock());
-	}
-
-	// while the sky turns and the trails aren't full length, grow them now and then
-	let grower: ReturnType<typeof setInterval> | undefined;
-	function stopGrowing(): void {
-		clearInterval(grower);
-		grower = undefined;
-	}
-	function keepGrowing(): void {
-		if (grower !== undefined || trail >= TRAIL_MAX - 1e-4) return;
-		grower = setInterval(() => {
-			growTrails(exposed());
-			if (trail >= TRAIL_MAX - 1e-4) stopGrowing();
-		}, GROW_EVERY);
 	}
 
 	// the sky turns while the hero is in view, unless motion is turned down
@@ -242,10 +220,8 @@ function sky(hero: HTMLElement, scene: HTMLElement, field: HTMLElement): void {
 	function update(): void {
 		if (inView && !still.matches) {
 			turn.play();
-			keepGrowing();
 		} else {
 			turn.pause();
-			stopGrowing();
 		}
 	}
 

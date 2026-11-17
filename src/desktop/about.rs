@@ -79,6 +79,7 @@ pub fn open(cx: &mut App) {
 				// No title bar but what the app draws, which here is only
 				// the button that closes it (see window_frame.rs).
 				window_decorations: Some(WindowDecorations::Client),
+				app_id: Some(crate::APP_ID.into()),
 				is_resizable: false,
 				is_minimizable: false,
 				..Default::default()

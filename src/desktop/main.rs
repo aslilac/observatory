@@ -33,6 +33,11 @@ use gpui::{
 };
 use workspace::Workspace;
 
+// What the windows say they're of, on Linux: the name of the desktop file,
+// which is how a taskbar finds the app's icon (and its name, and that the
+// window belongs to its launcher). Without it KDE shows the icon for nothing.
+const APP_ID: &str = "ooo.lilac.observatory";
+
 // What the command line asks for: `--demo` for the fake disk, or a folder to
 // scan (`--scan=<path>`, or just the path).
 enum Start {
@@ -79,6 +84,7 @@ fn main() {
 							traffic_light_position: Some(point(px(12.), px(12.))),
 						}),
 						window_decorations: Some(WindowDecorations::Client),
+						app_id: Some(APP_ID.into()),
 						..Default::default()
 					},
 					|window, cx| cx.new(|cx| Workspace::new(window, cx)),

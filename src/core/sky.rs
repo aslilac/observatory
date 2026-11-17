@@ -38,8 +38,11 @@ pub fn scene_height(width: f32) -> f32 {
 	width / scene().aspect
 }
 
-const TRAIL: f32 = TAU / 7.0; // how far around the pole a trail reaches
-const DENSITY: f32 = 1.0 / 1200.0; // stars per square pixel
+const TRAIL: f32 = TAU / 8.0; // how far around the pole a trail reaches, at the pole
+// A trail the same angle everywhere is longest at the edge of the sky, so the
+// angle narrows going out: at the edge it's this much of TRAIL.
+const TRAIL_AT_EDGE: f32 = 0.5;
+const DENSITY: f32 = 1.0 / 1500.0; // stars per square pixel
 
 // The mirror's sunburst: each top-level folder's hue, and its share of the
 // circle, starting at the top and going clockwise, as on the icon. The bands
@@ -109,6 +112,8 @@ struct Star {
 	size: f32,
 	alpha: f32,
 	color: Rgb,
+	// How far around the pole its trail reaches.
+	trail: f32,
 	trail_color: Rgb,
 	trail_alpha: f32,
 	trail_width: f32,
@@ -145,6 +150,7 @@ fn stars(reach: f32, chart: f32) -> Vec<Star> {
 			size: 0.45 + 1.3 * m,
 			alpha: 0.35 + 0.65 * m,
 			color: tint,
+			trail: TRAIL * (1.0 - (1.0 - TRAIL_AT_EDGE) * (r / reach)),
 			trail_color: if colored { sector_color(theta) } else { tint },
 			trail_alpha: if colored {
 				0.55 + 0.45 * m
@@ -410,10 +416,10 @@ impl Sky {
 						behind += TAU;
 					}
 					let off = (radius - star.r).abs();
-					if behind < TRAIL {
+					if behind < star.trail {
 						let covered = covers(star.trail_width / 2.0, off);
 						if covered > 0.0 {
-							let fade = (1.0 - behind / TRAIL).powf(1.6);
+							let fade = (1.0 - behind / star.trail).powf(1.6);
 							let alpha = star.trail_alpha * fade * covered;
 							for (sum, c) in light.iter_mut().zip(star.trail_color) {
 								*sum += c * alpha;
