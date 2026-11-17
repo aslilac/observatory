@@ -1,6 +1,6 @@
 [package]
 name = "observatory"
-version = "1.0.0-beta.3"
+version = "1.0.0-beta.4"
 edition = "2024"
 authors = ["McKayla Washburn-Love <kayla@tree.camp>"]
 license = "MPL-2.0"
