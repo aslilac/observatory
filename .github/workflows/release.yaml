@@ -114,7 +114,9 @@ jobs:
 
     # The certificate the package is signed with: a .pfx in base64, and its
     # password. Windows only installs a package signed by someone the PC
-    # trusts, so without these there's no package, only the zip.
+    # trusts, so without these the package is unsigned and named for it
+    # (-unsigned.msix): something to try the packaging with, from PowerShell
+    # (Add-AppxPackage -AllowUnsigned), and not what anyone's offered.
     env:
       WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
       WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
@@ -137,13 +139,10 @@ jobs:
         name: Package
 
       # A release goes out without the package if it can't be made: the zip
-      # is still the app. A dry run is there to find that out, so it fails,
-      # and makes the package without a certificate too (unsigned, which
-      # Windows won't install, but the packaging's been tried).
+      # is still the app. A dry run is there to find that out, so it fails.
       - run: |
           ./windows/build.ps1
           Copy-Item target/windows/*.msix .
-        if: env.WINDOWS_CERTIFICATE != '' || env.DRY_RUN == 'true'
         continue-on-error: ${{ github.event_name != 'workflow_dispatch' }}
         name: Package (MSIX)
 
@@ -320,8 +319,9 @@ jobs:
           fail_on_unmatched_files: true
           generate_release_notes: true
 
-      # The Windows packages, which a release has only when there was a
-      # certificate to sign them with.
+      # The Windows packages, which a release has only if they could be
+      # made. Unsigned ones (with no certificate) go on the release too, but
+      # the feed below only takes a package by its signed name.
       - uses: softprops/action-gh-release@v3
         name: Release (MSIX)
         if: env.DRY_RUN != 'true' && hashFiles('dist/**/*.msix') != ''

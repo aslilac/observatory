@@ -2,8 +2,10 @@
 # download and install themselves. It lands in target/windows/, for the
 # processor this machine's Rust builds for.
 #
-#   windows/build.ps1            not signed: Windows won't install it, so it's
-#                                only good for looking at what's in it
+#   windows/build.ps1            not signed, and named for it (-unsigned.msix):
+#                                opening it installs nothing, but Windows 11
+#                                takes it from PowerShell, as administrator,
+#                                with Add-AppxPackage -AllowUnsigned
 #   $env:WINDOWS_CERTIFICATE = …; $env:WINDOWS_CERTIFICATE_PASSWORD = …
 #   windows/build.ps1            signed with that certificate (a .pfx, in
 #                                base64), which a PC has to trust already
@@ -80,7 +82,10 @@ if ($LASTEXITCODE -ne 0) {
 
 $out = "target\windows"
 $package = Join-Path $out "package"
-$msix = Join-Path $out "Observatory-win32-$arch-$version.msix"
+# A package that isn't signed is called so, which also keeps it from being
+# taken for the release's package by the updater, the feed, and the site.
+$signed = [bool]$env:WINDOWS_CERTIFICATE
+$msix = Join-Path $out "Observatory-win32-$arch-$version$(if (-not $signed) { '-unsigned' }).msix"
 Remove-Item -Recurse -Force $out -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force (Join-Path $package "Assets") | Out-Null
 Copy-Item target\release\observatory.exe (Join-Path $package "Observatory.exe")
@@ -90,7 +95,7 @@ Copy-Item build-resources\msix\*.png (Join-Path $package "Assets")
 # nobody's in particular.
 $pfx = $null
 $publisher = "CN=Observatory (not signed)"
-if ($env:WINDOWS_CERTIFICATE) {
+if ($signed) {
 	$pfx = Join-Path (Resolve-Path $out) "signing.pfx"
 	[IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE))
 	$certificate = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2(
@@ -131,7 +136,8 @@ try {
 			"/tr", "http://timestamp.digicert.com", "/td", "SHA256", $msix)
 		Write-Output "signed as $publisher"
 	} else {
-		Write-Output "not signed: Windows won't install this one"
+		Write-Output "not signed: to install it, as administrator,"
+		Write-Output "  Add-AppxPackage -AllowUnsigned -Path $msix"
 	}
 } finally {
 	if ($pfx) {

@@ -33,8 +33,10 @@ export interface GitHubRelease {
 	}[];
 }
 
-// "Observatory-darwin-arm64-1.0.0-beta.1.zip" is "darwin-arm64.zip".
+// "Observatory-darwin-arm64-1.0.0-beta.1.zip" is "darwin-arm64.zip". An
+// unsigned Windows package ("-unsigned.msix") isn't a download to offer.
 export function assetKey(name: string): string | undefined {
+	if (name.endsWith("-unsigned.msix")) return undefined;
 	const kind = /\.(zip|flatpak|msix|dmg|deb|rpm|AppImage)$/.exec(name)?.[1];
 	if (!kind) return undefined;
 	const target = /(darwin|linux|win32)-(x64|arm64|universal)/.exec(name)?.[0];
