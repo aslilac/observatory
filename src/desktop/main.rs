@@ -10,6 +10,7 @@ mod assets;
 mod chrome;
 mod cleanup;
 mod controls;
+mod find;
 mod fonts;
 mod inspect;
 mod issues;

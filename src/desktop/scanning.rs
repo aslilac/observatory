@@ -12,13 +12,13 @@
 use crate::controls::{ButtonKind, button};
 use crate::palette::{Palette, hsla};
 use crate::shapes::{band, circle, filled, ring};
-use crate::workspace::Workspace;
-use gpui::{AnyElement, Context, Div, FontWeight, Hsla, Window, canvas, div, prelude::*, px};
+use crate::workspace::{Scan, ScanState, Screen, Workspace};
+use gpui::{AnyElement, Context, Div, FontWeight, Hsla, Task, Window, canvas, div, prelude::*, px};
 use observatory_core::color::{Kind, sunburst_color};
 use observatory_core::format::{compact_number, grouped, readable_size, rounded_size};
-use observatory_core::scans::{Progress, ScanInfo};
-use observatory_core::{ScanErrorKind, TopState};
-use std::time::Duration;
+use observatory_core::scans::{Progress, Scans};
+use observatory_core::{ScanError, ScanErrorKind, TopState};
+use std::time::{Duration, Instant};
 
 const PICTURE: f32 = 340.;
 // How long the arc takes to go round.
@@ -63,15 +63,61 @@ fn row(dot: Hsla, name: impl IntoElement, says: impl IntoElement) -> Div {
 		.child(div().flex_none().text_size(px(12.)).child(says))
 }
 
+/// A scan that's running, as it's on screen.
+pub struct Scanning {
+	/// How far along it is, as of the last look. None until the scanner has
+	/// anything to say.
+	progress: Option<Progress>,
+	// When it came up on screen.
+	shown: Instant,
+	// Looks again, for as long as this is on screen.
+	_polling: Task<()>,
+}
+
+impl Scanning {
+	/// The scan of `path`, on screen from now. It's asked how far along it
+	/// is ten times a second: often enough that what it's found grows rather
+	/// than jumps.
+	pub fn of(path: &str, scans: &Scans, cx: &mut Context<Workspace>) -> Self {
+		let polled = path.to_string();
+		let polling = cx.spawn(async move |this, cx| {
+			loop {
+				cx.background_executor()
+					.timer(Duration::from_millis(100))
+					.await;
+				let alive = this.update(cx, |this, cx| {
+					if let Screen::Scan(Scan {
+						state: ScanState::Scanning(scanning),
+						..
+					}) = &mut this.screen
+					{
+						scanning.progress = this.scans.progress(&polled);
+					}
+					cx.notify();
+				});
+				if alive.is_err() {
+					break;
+				}
+			}
+		});
+		Self {
+			progress: scans.progress(path),
+			shown: Instant::now(),
+			_polling: polling,
+		}
+	}
+}
+
 impl Workspace {
 	pub fn render_scanning(
 		&self,
-		scan: &ScanInfo,
+		root: &str,
+		scanning: &Scanning,
 		window: &mut Window,
 		cx: &mut Context<Self>,
 	) -> AnyElement {
 		let p = self.palette;
-		let path = scan.path.clone();
+		let path = root.to_string();
 		let cancel = button("cancel-scan", "Cancel scan", ButtonKind::Default, true, &p)
 			.on_click(cx.listener(move |this, _, window, cx| {
 				this.scans.cancel(&path);
@@ -79,27 +125,27 @@ impl Workspace {
 			}))
 			.into_any_element();
 
-		let count = self
+		let count = scanning
 			.progress
 			.as_ref()
 			.map_or(0, |progress| progress.counts.total_entries());
-		let elapsed = self.scan_shown.map(|shown| shown.elapsed());
+		let elapsed = scanning.shown.elapsed();
 		// How much the disk says is on it, if it's a whole disk. Not a
 		// network share, which is as a folder is: what its storage has on it
 		// is often mostly other shares', so the scan would never get there.
 		let of = self
 			.drives
 			.iter()
-			.find(|drive| drive.mount_path == scan.path && !drive.network)
+			.find(|drive| drive.mount_path == root && !drive.network)
 			.and_then(|drive| drive.usage)
 			.map(|usage| usage.used)
 			.filter(|used| *used > 0);
 		// What's been found: of a disk from the start, and of a folder once
 		// it's past its first moments.
-		let filling: Option<&Progress> = self
+		let filling: Option<&Progress> = scanning
 			.progress
 			.as_ref()
-			.filter(|_| of.is_some() || elapsed.is_some_and(|elapsed| elapsed >= HOLD));
+			.filter(|_| of.is_some() || elapsed >= HOLD);
 		let found = filling.map_or(0, Progress::found);
 		// Never all of it until it's done: the disk's count and the scan's
 		// don't agree to the byte.
@@ -194,7 +240,7 @@ impl Workspace {
 					}),
 			);
 
-		let name = self.root_name(&scan.path);
+		let name = self.root_name(root);
 		let rows: Vec<Div> = match filling {
 			// Places for what's coming.
 			None => (0..6)
@@ -307,14 +353,14 @@ impl Workspace {
 					} else {
 						"indexing".to_string()
 					})
-					.children(elapsed.map(clock)),
+					.child(clock(elapsed)),
 			);
 
 		div()
 			.flex()
 			.flex_col()
 			.size_full()
-			.child(self.render_toolbar(Some(cancel), Vec::new(), window, cx))
+			.child(self.render_toolbar(Some((cancel, 80.)), Vec::new(), window, cx))
 			.child(
 				div()
 					.flex_1()
@@ -337,13 +383,14 @@ impl Workspace {
 
 	pub fn render_failed(
 		&self,
-		scan: &ScanInfo,
+		path: &str,
+		error: Option<&ScanError>,
 		window: &mut Window,
 		cx: &mut Context<Self>,
 	) -> AnyElement {
 		let p = self.palette;
-		let root = self.root_name(&scan.path);
-		let kind = scan.error.as_ref().map(|error| &error.kind);
+		let root = self.root_name(path);
+		let kind = error.map(|error| &error.kind);
 		let (title, detail) = match kind {
 			Some(ScanErrorKind::Missing) => (
 				format!("“{root}” couldn't be found"),
@@ -364,7 +411,7 @@ impl Workspace {
 				"Something went wrong reading this folder.",
 			),
 		};
-		let path = scan.path.clone();
+		let path = path.to_string();
 		let chips = Vec::new();
 		div()
 			.flex()
@@ -400,7 +447,7 @@ impl Workspace {
 							.truncate()
 							.text_size(px(11.))
 							.text_color(p.faint)
-							.child(scan.path.clone()),
+							.child(path.clone()),
 					)
 					.child(
 						button("try-again", "Try again", ButtonKind::Primary, false, &p)

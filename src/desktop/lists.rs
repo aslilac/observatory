@@ -3,6 +3,8 @@
 
 use crate::cleanup::draggable;
 use crate::controls::{ButtonKind, button, checkbox, icon, icon_button, tip};
+use crate::find::Search;
+use crate::inspect::Inspect;
 use crate::palette::hsla;
 use crate::popup::item_menu;
 use crate::workspace::Workspace;
@@ -10,13 +12,13 @@ use gpui::{
 	AnyElement, Context, Div, ElementId, FontWeight, Hsla, MouseButton, MouseDownEvent,
 	SharedString, Stateful, div, prelude::*, px,
 };
-use observatory_core::Finder;
 use observatory_core::color::{Kind, sunburst_color};
 use observatory_core::finders::finder_info;
 use observatory_core::format::{grouped, now_ms, plural, readable_date, readable_size};
 use observatory_core::listing::listing;
 use observatory_core::paths::{basename, join_path};
 use observatory_core::tree::{Item, Node};
+use observatory_core::{Finder, Query};
 
 // A dot of one of the sunburst's colors, or a ring for what has none.
 fn dot(color: Option<Hsla>, outline: Hsla) -> Div {
@@ -46,6 +48,7 @@ impl Workspace {
 	// right-click, and drags to cleanup.
 	fn item_row(
 		&self,
+		inspect: &Inspect,
 		id: impl Into<ElementId>,
 		item: &Item,
 		cx: &mut Context<Self>,
@@ -65,7 +68,7 @@ impl Workspace {
 			.py(px(7.))
 			.rounded(px(5.))
 			.cursor_pointer()
-			.when(self.is_selected(&item.path), |this| this.bg(p.fill))
+			.when(inspect.is_selected(&item.path), |this| this.bg(p.fill))
 			.hover(move |style| style.bg(p.fill))
 			.on_mouse_down(
 				MouseButton::Right,
@@ -73,16 +76,22 @@ impl Workspace {
 					this.show_popup(event.position, item_menu(&for_menu), cx)
 				}),
 			);
-		draggable(row, self.dragged_with(item), p)
+		draggable(row, inspect.dragged_with(item), p)
 	}
 
 	// A row's checkbox. It isn't in the row with the rest: it sits to the
 	// left of it, in the list's margin, so what's in the rows lines up with
 	// the heading over them. One that isn't checked is only seen while the
 	// pointer's on its row, or on it.
-	fn item_checkbox(&self, id: impl Into<ElementId>, item: &Item, cx: &mut Context<Self>) -> Div {
+	fn item_checkbox(
+		&self,
+		inspect: &Inspect,
+		id: impl Into<ElementId>,
+		item: &Item,
+		cx: &mut Context<Self>,
+	) -> Div {
 		let p = self.palette;
-		let checked = self.is_selected(&item.path);
+		let checked = inspect.is_selected(&item.path);
 		let row = SharedString::from(item.path.clone());
 		let item = item.clone();
 		let checkbox = checkbox(id, checked, &p).on_click(cx.listener(move |this, _, _, cx| {
@@ -109,10 +118,11 @@ impl Workspace {
 	}
 
 	// A file or folder's name, as the lists write it: a folder's with a
-	// slash, and struck through once it's queued for cleanup.
-	fn item_name(&self, item: &Item) -> Div {
+	// slash, and struck through once it's queued for cleanup (the cleanup of
+	// the scan at `root`, which it's in).
+	fn item_name(&self, root: &str, item: &Item) -> Div {
 		let p = self.palette;
-		let queued = self.in_cleanup(&item.path);
+		let queued = self.store.in_cleanup(root, &item.path);
 		div()
 			.flex_1()
 			.min_w_0()
@@ -137,13 +147,16 @@ impl Workspace {
 
 	/// What's in the folder, largest first unless sorted otherwise, each with
 	/// its color in the sunburst.
-	pub fn render_legend(&self, root: &str, cx: &mut Context<Self>) -> AnyElement {
+	pub fn render_legend(
+		&self,
+		root: &str,
+		inspect: &Inspect,
+		cx: &mut Context<Self>,
+	) -> AnyElement {
 		let p = self.palette;
-		let Some(tree) = &self.tree else {
-			return div().into_any_element();
-		};
-		let listed = listing(&tree.list, self.sort, self.show_all);
-		let dates = self.sort.shows_dates();
+		let tree = &inspect.tree;
+		let listed = listing(&tree.list, inspect.sort, inspect.show_all);
+		let dates = inspect.sort.shows_dates();
 		let now = now_ms();
 		let depth = tree.cursor.len();
 		let item_of = |node: &Node| Item {
@@ -160,11 +173,11 @@ impl Workspace {
 			} else {
 				Kind::File
 			};
-			let hue = self.hues.get(&node.name).copied().unwrap_or(0.0);
+			let hue = inspect.hues.get(&node.name).copied().unwrap_or(0.0);
 			let (name, for_click) = (node.name.clone(), item.clone());
 			let directory = node.directory;
-			self.item_row(("legend", index), &item, cx)
-				.child(self.item_checkbox(("legend-check", index), &item, cx))
+			self.item_row(inspect, ("legend", index), &item, cx)
+				.child(self.item_checkbox(inspect, ("legend-check", index), &item, cx))
 				.child(dot(
 					Some(hsla(sunburst_color(hue, depth, kind, p.dark))),
 					p.line,
@@ -174,7 +187,7 @@ impl Workspace {
 					13.,
 					p.faint,
 				))
-				.child(self.item_name(&item))
+				.child(self.item_name(root, &item))
 				.when(dates, |this| {
 					this.child(
 						div()
@@ -197,7 +210,7 @@ impl Workspace {
 		});
 
 		// Under the files: what else the disk's space goes to.
-		let reserved: u64 = self.reserved.iter().map(|group| group.size).sum();
+		let reserved: u64 = inspect.reserved.iter().map(|group| group.size).sum();
 		let free = tree.capacity.saturating_sub(tree.size + reserved);
 		let footer_row = |dot: Div, label: &'static str, size: u64| {
 			div()
@@ -211,14 +224,15 @@ impl Workspace {
 				.child(size_column(size, p.muted))
 		};
 		let gray = hsla(sunburst_color(0.0, 0, Kind::Reserved, p.dark));
-		let footer = (free > 0 || !self.reserved.is_empty()).then(|| {
+		let footer = (free > 0 || !inspect.reserved.is_empty()).then(|| {
 			div()
 				.mt(px(6.))
 				.pt(px(6.))
 				.border_t_1()
 				.border_color(p.line_soft)
 				.children(
-					self.reserved
+					inspect
+						.reserved
 						.iter()
 						.map(|group| footer_row(dot(Some(gray), p.line), group.label, group.size)),
 				)
@@ -268,7 +282,9 @@ impl Workspace {
 							&p,
 						)
 						.on_click(cx.listener(|this, _, _, cx| {
-							this.show_all = true;
+							if let Some((_, inspect)) = this.screen.inspecting_mut() {
+								inspect.show_all = true;
+							}
 							cx.notify();
 						})),
 					),
@@ -287,21 +303,26 @@ impl Workspace {
 			.into_any_element()
 	}
 
-	/// What the query found, in the list's place, largest first.
-	pub fn render_find_results(&self, cx: &mut Context<Self>) -> AnyElement {
+	/// What `search` found, in the list's place, largest first.
+	pub fn render_find_results(
+		&self,
+		root: &str,
+		inspect: &Inspect,
+		search: &Search,
+		cx: &mut Context<Self>,
+	) -> AnyElement {
 		let p = self.palette;
-		let text = self.find_text(cx);
-		let scope = self.scope();
-		let scope_name = self.scope_name();
-		let title = match self.finder {
-			Some(finder) if text.is_empty() => finder_info(finder).label.to_string(),
-			_ => format!("Names with “{text}”"),
+		let scope = &search.scope;
+		let scope_name = inspect.scope_name();
+		let title = match &search.query {
+			Query::Finder(finder) => finder_info(*finder).label.to_string(),
+			Query::Name(text) => format!("Names with “{text}”"),
 		};
-		let dates = self.finder == Some(Finder::Old) && text.is_empty();
+		let dates = search.finder() == Some(Finder::Old);
 		let now = now_ms();
-		let found = self.found.clone();
+		let found = &search.found;
 
-		let subtitle = match &found {
+		let subtitle = match found {
 			Some(found) => format!(
 				"{} in {scope_name} · {}",
 				plural(found.total_count, "item"),
@@ -329,8 +350,8 @@ impl Workspace {
 			.map(|(index, (found, item))| {
 				let mut to = scope.clone();
 				to.extend(found.within.iter().cloned());
-				self.item_row(("found", index), item, cx)
-					.child(self.item_checkbox(("found-check", index), item, cx))
+				self.item_row(inspect, ("found", index), item, cx)
+					.child(self.item_checkbox(inspect, ("found-check", index), item, cx))
 					.child(icon(
 						if item.directory { "folder" } else { "file" },
 						13.,
@@ -342,7 +363,7 @@ impl Workspace {
 							.min_w_0()
 							.flex()
 							.flex_col()
-							.child(self.item_name(item))
+							.child(self.item_name(root, item))
 							.when(!found.within.is_empty(), |this| {
 								this.child(
 									div()
@@ -415,7 +436,7 @@ impl Workspace {
 			.children(rows)
 			.when(items.is_empty(), |this| {
 				this.child(div().px(px(8.)).py(px(12.)).text_color(p.muted).child(
-					if found.is_none() || self.finding {
+					if found.is_none() || search.looking() {
 						"Looking…"
 					} else {
 						"Nothing here."

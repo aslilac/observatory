@@ -55,7 +55,7 @@ impl Finder {
 }
 
 /// `{ "name": "…" }` or `{ "finder": "…" }`, as `Ob.FindQuery` has it.
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Clone, Debug)]
 #[serde(rename_all = "lowercase")]
 pub enum Query {
 	/// Names that contain this, ignoring case.

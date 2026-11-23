@@ -3,6 +3,7 @@
 // macOS, an administrator on Windows) are each one issue with a button.
 
 use crate::controls::{ButtonKind, button, chip, icon, icon_button, modal_card, scrim};
+use crate::inspect::Inspect;
 use crate::window_frame::ALL_CORNERS;
 use crate::workspace::Workspace;
 use gpui::{AnyElement, Context, FontWeight, MouseButton, div, prelude::*, px};
@@ -10,7 +11,6 @@ use observatory_core::ScanError;
 use observatory_core::access::FULL_DISK_ACCESS_SETTINGS;
 use observatory_core::format::grouped;
 use observatory_core::issues::{LISTED_MAX, group_issues};
-use observatory_core::scans::ScanInfo;
 
 #[derive(Default)]
 pub struct IssuesModal {
@@ -22,13 +22,15 @@ pub struct IssuesModal {
 }
 
 impl Workspace {
-	pub fn render_issues_chip(
-		&self,
-		scan: &ScanInfo,
-		cx: &mut Context<Self>,
-	) -> Option<AnyElement> {
+	// The modal, while it's up.
+	fn issues_mut(&mut self) -> Option<&mut IssuesModal> {
+		let (_, inspect) = self.screen.inspecting_mut()?;
+		inspect.issues.as_mut()
+	}
+
+	pub fn render_issues_chip(&self, root: &str, cx: &mut Context<Self>) -> Option<AnyElement> {
 		let p = self.palette;
-		let count = self.scans.errors(&scan.path).len();
+		let count = self.scans.errors(root).len();
 		if count == 0 {
 			return None;
 		}
@@ -37,7 +39,9 @@ impl Workspace {
 				.child(icon("circle-alert", 13., p.muted))
 				.child(grouped(count as u64))
 				.on_click(cx.listener(|this, _, _, cx| {
-					this.issues = Some(IssuesModal::default());
+					if let Some((_, inspect)) = this.screen.inspecting_mut() {
+						inspect.issues = Some(IssuesModal::default());
+					}
 					cx.notify();
 				}))
 				.into_any_element(),
@@ -67,17 +71,22 @@ impl Workspace {
 			}
 			Err(error) => Some(error.to_string()),
 		};
-		if let Some(modal) = &mut self.issues {
+		if let Some(modal) = self.issues_mut() {
 			modal.failure = failure;
 		}
 		cx.notify();
 	}
 
-	pub fn render_issues(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
+	/// The modal over the scan at `root`, if it's up.
+	pub fn render_issues(
+		&self,
+		root: &str,
+		inspect: &Inspect,
+		cx: &mut Context<Self>,
+	) -> Option<AnyElement> {
 		let p = self.palette;
-		let modal = self.issues.as_ref()?;
-		let scan = self.inspecting()?;
-		let errors = self.scans.errors(&scan.path);
+		let modal = inspect.issues.as_ref()?;
+		let errors = self.scans.errors(root);
 		let issues = group_issues(&errors);
 		let many = |count: usize, one: &str, more: &str| {
 			if count == 1 {
@@ -233,7 +242,7 @@ impl Workspace {
 						&p,
 					)
 					.on_click(cx.listener(|this, _, _, cx| {
-						if let Some(modal) = &mut this.issues {
+						if let Some(modal) = this.issues_mut() {
 							modal.show_protected = !modal.show_protected;
 						}
 						cx.notify();
@@ -249,7 +258,7 @@ impl Workspace {
 		if !issues.admin.is_empty() {
 			let count = issues.admin.len();
 			let shown = modal.show_admin;
-			let path = scan.path.clone();
+			let path = root.to_string();
 			body = body.child(fixable(
 				format!(
 					"{} an administrator",
@@ -283,7 +292,7 @@ impl Workspace {
 						&p,
 					)
 					.on_click(cx.listener(|this, _, _, cx| {
-						if let Some(modal) = &mut this.issues {
+						if let Some(modal) = this.issues_mut() {
 							modal.show_admin = !modal.show_admin;
 						}
 						cx.notify();
@@ -310,7 +319,9 @@ impl Workspace {
 		}
 
 		let close = |this: &mut Self, cx: &mut Context<Self>| {
-			this.issues = None;
+			if let Some((_, inspect)) = this.screen.inspecting_mut() {
+				inspect.issues = None;
+			}
 			cx.notify();
 		};
 		let card = modal_card(560., &p)

@@ -2,42 +2,46 @@
 // puts under it (on Linux, the one bar), and the layers (the cleanup drawer, modals, menus) that go
 // over whichever screen is showing.
 
-use crate::cleanup::DraggedItems;
 use crate::controls::{icon, icon_button, tip};
 use crate::menus;
-use crate::popup::{DEVELOPER_MENU, PopupItem};
+use crate::popup::{MenuButton, OpenMenu, PopupItem};
 use crate::window_frame::{
 	Frame, HEADER_BAR, caption_buttons, has_native_title_bar, header_buttons, moves_window,
 	resize_cursor, resize_edge,
 };
-use crate::workspace::{Screen, Workspace};
+use crate::workspace::{Scan, ScanState, Screen, Workspace};
 use gpui::{
-	AnyElement, Context, Corner, DragMoveEvent, Edges, ExternalPaths, Font, FontWeight,
-	HitboxBehavior, MenuItem, MouseButton, MouseMoveEvent, NavigationDirection, TextRun, Window,
-	anchored, canvas, deferred, div, prelude::*, px,
+	AnyElement, Context, Corner, Edges, ExternalPaths, Font, FontWeight, HitboxBehavior, MenuItem,
+	MouseButton, MouseMoveEvent, NavigationDirection, TextRun, Window, anchored, canvas, deferred,
+	div, prelude::*, px,
 };
 
 pub const TITLE_BAR_HEIGHT: f32 = 36.;
 pub const TOOLBAR_HEIGHT: f32 = 44.;
-
-// What stands for the primary menu's button among the menu bar's menus, in
-// `app_menu_open` and `app_menu_hovered`.
-const PRIMARY_MENU: usize = usize::MAX;
 
 impl Render for Workspace {
 	fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
 		let p = self.palette;
 		self.frame = Frame::of(window);
 		let frame = self.frame;
-		if !cx.has_active_drag() {
-			self.dragging_items = false;
-			self.drop_over = false;
+		if !cx.has_active_drag()
+			&& let Some((_, inspect)) = self.screen.inspecting_mut()
+		{
+			inspect.cleanup.drag = None;
 		}
-		let screen = match self.screen() {
-			Screen::Welcome => self.render_welcome(window, cx),
-			Screen::Scanning(scan) => self.render_scanning(&scan, window, cx),
-			Screen::Failed(scan) => self.render_failed(&scan, window, cx),
-			Screen::Inspect(scan) => self.render_inspect(&scan, window, cx),
+		// The screen, and what it has over the whole window.
+		let (mut issues, mut find_backdrop) = (None, None);
+		let screen = match &self.screen {
+			Screen::Menu => self.render_welcome(window, cx),
+			Screen::Scan(Scan { path, state }) => match state {
+				ScanState::Scanning(scanning) => self.render_scanning(path, scanning, window, cx),
+				ScanState::Failed(error) => self.render_failed(path, error.as_ref(), window, cx),
+				ScanState::Inspect(inspect) => {
+					issues = self.render_issues(path, inspect, cx);
+					find_backdrop = self.render_find_backdrop(inspect, cx);
+					self.render_inspect(path, inspect, window, cx)
+				}
+			},
 		};
 		let workspace = div()
 			.id("workspace")
@@ -54,25 +58,6 @@ impl Render for Workspace {
 			.on_drop(cx.listener(|this, paths: &ExternalPaths, window, cx| {
 				this.dropped(paths, window, cx)
 			}))
-			// Something of the app's own being dragged brings out somewhere
-			// to drop it (cleanup's landing pad), which says how much would
-			// be added.
-			.on_drag_move(
-				cx.listener(|this, event: &DragMoveEvent<DraggedItems>, _, cx| {
-					if !this.dragging_items {
-						let size = event
-							.drag(cx)
-							.0
-							.iter()
-							.filter(|item| !this.in_cleanup(&item.path))
-							.map(|item| item.size)
-							.sum();
-						this.dragging_items = true;
-						this.dragging_size = size;
-						cx.notify();
-					}
-				}),
-			)
 			// The mouse's own back and forward buttons.
 			.on_mouse_down(
 				MouseButton::Navigate(NavigationDirection::Back),
@@ -92,12 +77,11 @@ impl Render for Workspace {
 					.min_h_0()
 					.flex()
 					.flex_col()
-					.child(screen)
-					.children(self.render_cleanup(window, cx)),
+					.child(screen),
 			)
-			.children(self.render_issues(cx))
+			.children(issues)
 			.children(self.render_ask(cx))
-			.children(self.render_find_backdrop(cx))
+			.children(find_backdrop)
 			.children(self.render_menu_backdrop())
 			.children(self.render_popup(cx));
 		// Where the app decorates its own window (Linux), the window's drawn
@@ -251,9 +235,9 @@ impl Workspace {
 			tools.push(
 				self.opens_menu(
 					developer,
-					DEVELOPER_MENU,
+					MenuButton::Developer,
 					Corner::TopRight,
-					|_| {
+					|| {
 						vec![PopupItem::action("Load fake disk", |this, window, cx| {
 							this.load_demo_disk(window, cx)
 						})]
@@ -286,8 +270,7 @@ impl Workspace {
 
 	/// Opens the primary menu under its button, or shuts it if it's open.
 	pub fn toggle_primary_menu(&mut self, cx: &mut Context<Self>) {
-		self.popup = None;
-		self.app_menu_open = (self.app_menu_open != Some(PRIMARY_MENU)).then_some(PRIMARY_MENU);
+		self.toggle_menu(MenuButton::Primary);
 		cx.notify();
 	}
 
@@ -296,7 +279,7 @@ impl Workspace {
 	// menu bar's are, with its right edge under the button's.
 	fn render_primary_menu_button(&self, cx: &mut Context<Self>) -> AnyElement {
 		let p = self.palette;
-		let open = self.app_menu_open == Some(PRIMARY_MENU);
+		let open = self.menu_open(MenuButton::Primary);
 		icon_button("primary-menu", "menu", true, &p)
 			.relative()
 			.occlude()
@@ -323,11 +306,7 @@ impl Workspace {
 			// The pointer being on the button is what tells a press on it
 			// from a press outside the open menu.
 			.on_hover(cx.listener(|this, over: &bool, _, cx| {
-				if *over {
-					this.app_menu_hovered = Some(PRIMARY_MENU);
-				} else if this.app_menu_hovered == Some(PRIMARY_MENU) {
-					this.app_menu_hovered = None;
-				}
+				this.hover_menu(MenuButton::Primary, *over);
 				cx.notify();
 			}))
 			.on_mouse_down(
@@ -348,7 +327,8 @@ impl Workspace {
 			.into_iter()
 			.enumerate()
 			.map(|(index, menu)| {
-				let open = self.app_menu_open == Some(index);
+				let name = MenuButton::Bar(index);
+				let open = self.menu_open(name);
 				div()
 					.id(("app-menu", index))
 					.relative()
@@ -378,22 +358,21 @@ impl Workspace {
 					.on_mouse_down(
 						MouseButton::Left,
 						cx.listener(move |this, _, _, cx| {
-							this.popup = None;
-							this.app_menu_open =
-								(this.app_menu_open != Some(index)).then_some(index);
+							this.toggle_menu(name);
 							cx.notify();
 						}),
 					)
 					.on_hover(cx.listener(move |this, over: &bool, _, cx| {
 						// Which name the pointer's on is what tells a press
 						// on one from a press outside the open menu.
-						if *over {
-							this.app_menu_hovered = Some(index);
-							if this.app_menu_open.is_some_and(|open| open != index) {
-								this.app_menu_open = Some(index);
-							}
-						} else if this.app_menu_hovered == Some(index) {
-							this.app_menu_hovered = None;
+						this.hover_menu(name, *over);
+						// With a menu open, the pointer going over another's
+						// name switches to that.
+						if *over
+							&& let Some(OpenMenu::Under(open)) = this.menu
+							&& open != name
+						{
+							this.menu = Some(OpenMenu::Under(name));
 						}
 						cx.notify();
 					}))
@@ -403,13 +382,14 @@ impl Workspace {
 	}
 
 	/// The bar under the title bar: back and forward, where the user is,
-	/// and whatever the screen puts at its right (`chips`, then `right`).
+	/// and whatever the screen puts at its right (`chips`, then `right`,
+	/// with about how wide it is).
 	///
 	/// On Linux it's the window's one bar: the window's moved by it, and the
 	/// tools, the menus, and the window's buttons are in it too.
 	pub fn render_toolbar(
 		&self,
-		right: Option<AnyElement>,
+		right: Option<(AnyElement, f32)>,
 		chips: Vec<AnyElement>,
 		window: &mut Window,
 		cx: &mut Context<Self>,
@@ -490,15 +470,10 @@ impl Workspace {
 					// With its padding, and the chevron before it.
 					f32::from(line.width).min(208.) + 12. + if from > 0 { 12. } else { 0. }
 				};
-				let find_showing = self.find_open || self.suggesting || self.finding_something(cx);
 				let others = 20.
 					+ 2. * (26. + 6.)
 					+ chips.len() as f32 * 150.
-					+ match right {
-						Some(_) if find_showing => 340.,
-						Some(_) => 80.,
-						None => 0.,
-					}
+					+ right.as_ref().map_or(0., |(_, width)| *width)
 					+ if HEADER_BAR { 240. } else { 0. };
 				let room = f32::from(window.viewport_size().width)
 					- others
@@ -591,7 +566,7 @@ impl Workspace {
 		// The chips come and go, so they're before what's always there,
 		// which then stays where it is.
 		.children(chips.into_iter().map(own))
-		.children(right.map(own))
+		.children(right.map(|(right, _)| own(right)))
 		.when(HEADER_BAR, |this| {
 			this.child(div().flex_none().w(px(2.)))
 				.children(self.render_bar_tools(cx))

@@ -17,12 +17,24 @@ use std::rc::Rc;
 
 type Run = Rc<dyn Fn(&mut Workspace, &mut Window, &mut Context<Workspace>)>;
 
-// The menus that hang from a button of their own (`opens_menu`), as
-// `app_menu_open` and `app_menu_hovered` know them: the menu bar's are counted
-// from 0, and the primary menu is the last number there is.
-pub const DEVELOPER_MENU: usize = usize::MAX - 1;
-// The least of them: anything under it is one of the menu bar's.
-pub const SORT_MENU: usize = usize::MAX - 2;
+/// The menu that's open. There's one at a time.
+pub enum OpenMenu {
+	/// At a point: a right-click menu.
+	At(Popup),
+	/// Hanging from what opened it, which draws it.
+	Under(MenuButton),
+}
+
+/// The things a menu hangs from.
+#[derive(Clone, Copy, PartialEq)]
+pub enum MenuButton {
+	/// One of the names in the menu bar, where the title bar draws it.
+	Bar(usize),
+	/// The button the menus are behind, where there's no menu bar.
+	Primary,
+	Developer,
+	Sort,
+}
 
 pub enum PopupItem {
 	Action {
@@ -162,16 +174,39 @@ impl Workspace {
 		items: Vec<PopupItem>,
 		cx: &mut Context<Self>,
 	) {
-		self.popup = Some(Popup {
+		self.menu = Some(OpenMenu::At(Popup {
 			position,
 			corner: Corner::TopLeft,
 			items,
-		});
+		}));
 		cx.notify();
 	}
 
+	/// Whether the menu that hangs from `button` is open.
+	pub fn menu_open(&self, button: MenuButton) -> bool {
+		matches!(self.menu, Some(OpenMenu::Under(open)) if open == button)
+	}
+
+	/// A press on `button`: opens its menu, or shuts it if it's the one
+	/// open.
+	pub fn toggle_menu(&mut self, button: MenuButton) {
+		self.menu = (!self.menu_open(button)).then_some(OpenMenu::Under(button));
+	}
+
+	/// The pointer's come over `button`, or left it. Which one it's on is
+	/// what tells a press on it from a press outside the open menu.
+	pub fn hover_menu(&mut self, button: MenuButton, over: bool) {
+		if over {
+			self.menu_hovered = Some(button);
+		} else if self.menu_hovered == Some(button) {
+			self.menu_hovered = None;
+		}
+	}
+
 	pub fn render_popup(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
-		let popup = self.popup.as_ref()?;
+		let Some(OpenMenu::At(popup)) = &self.menu else {
+			return None;
+		};
 		Some(
 			deferred(
 				anchored()
@@ -192,11 +227,10 @@ impl Workspace {
 	/// title bar out, since the pointer going over another menu's name is
 	/// what switches to it.
 	pub fn render_menu_backdrop(&self) -> Option<AnyElement> {
-		let in_menu_bar = self.app_menu_open.is_some_and(|menu| menu < SORT_MENU);
-		if self.popup.is_none() && self.app_menu_open.is_none() {
-			return None;
-		}
-		let top = if in_menu_bar { TITLE_BAR_HEIGHT } else { 0. };
+		let top = match self.menu.as_ref()? {
+			OpenMenu::Under(MenuButton::Bar(_)) => TITLE_BAR_HEIGHT,
+			OpenMenu::At(_) | OpenMenu::Under(_) => 0.,
+		};
 		Some(
 			deferred(
 				div()
@@ -215,17 +249,17 @@ impl Workspace {
 	/// Makes `button` what opens a menu, which hangs from it: under it, with
 	/// their left edges in line (`Corner::TopLeft`) or their right ones. A
 	/// press on the button opens the menu, and another shuts it. `menu` is
-	/// which one it is, among the menu bar's.
+	/// which one it is.
 	pub fn opens_menu(
 		&self,
 		button: Stateful<Div>,
-		menu: usize,
+		menu: MenuButton,
 		corner: Corner,
-		items: impl FnOnce(&Self) -> Vec<PopupItem>,
+		items: impl FnOnce() -> Vec<PopupItem>,
 		cx: &mut Context<Self>,
 	) -> Stateful<Div> {
 		let p = self.palette;
-		let open = self.app_menu_open == Some(menu);
+		let open = self.menu_open(menu);
 		button
 			.relative()
 			.when(open, |this| {
@@ -244,27 +278,20 @@ impl Workspace {
 								.snap_to_window_with_margin(Edges::all(
 									px(8.) + self.frame.margin(),
 								))
-								.child(self.render_menu(&items(self), cx)),
+								.child(self.render_menu(&items(), cx)),
 						)
 						.with_priority(3),
 					),
 				)
 			})
-			// The pointer being on the button is what tells a press on it
-			// from a press outside the open menu.
 			.on_hover(cx.listener(move |this, over: &bool, _, cx| {
-				if *over {
-					this.app_menu_hovered = Some(menu);
-				} else if this.app_menu_hovered == Some(menu) {
-					this.app_menu_hovered = None;
-				}
+				this.hover_menu(menu, *over);
 				cx.notify();
 			}))
 			.on_mouse_down(
 				MouseButton::Left,
 				cx.listener(move |this, _, _, cx| {
-					this.popup = None;
-					this.app_menu_open = (this.app_menu_open != Some(menu)).then_some(menu);
+					this.toggle_menu(menu);
 					cx.notify();
 				}),
 			)
@@ -316,8 +343,7 @@ impl Workspace {
 					})
 					.child(label.clone())
 					.on_click(cx.listener(move |this, _, window, cx| {
-						this.popup = None;
-						this.app_menu_open = None;
+						this.menu = None;
 						run(this, window, cx);
 						cx.notify();
 					}))
@@ -340,11 +366,12 @@ impl Workspace {
 				// A press on what the open menu hangs from (its name in the
 				// menu bar, its button) is that's to answer: it shuts the
 				// menu.
-				if this.app_menu_open.is_some() && this.app_menu_hovered == this.app_menu_open {
+				if let Some(OpenMenu::Under(open)) = this.menu
+					&& this.menu_hovered == Some(open)
+				{
 					return;
 				}
-				this.popup = None;
-				this.app_menu_open = None;
+				this.menu = None;
 				cx.notify();
 				// And that's all the press does: it isn't also a press on
 				// whatever it landed on.

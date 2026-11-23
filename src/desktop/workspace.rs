@@ -1,49 +1,77 @@
-// The window's one view, and everything it knows: where the user is, what
-// that shows, and what's open over it. The screens are drawn by `impl
-// Workspace` blocks in the files named for them; what's here is the state
-// and what changes it.
+// The window's one view: what the app knows wherever the user is (the scans,
+// the store, the theme, where they've been), the screen they're on, and
+// what's open over the window. What a screen knows is the screen's (`Screen`,
+// and what's in it), so it's only there while that screen is. The screens are
+// drawn by `impl Workspace` blocks in the files named for them; what's here
+// is which one is showing, and what changes that.
 
 use crate::cleanup::Deletion;
-use crate::issues::IssuesModal;
+use crate::find::Field;
+use crate::inspect::Inspect;
 use crate::palette::Palette;
-use crate::popup::Popup;
-use crate::text_input::{self, TextInput};
+use crate::popup::{MenuButton, OpenMenu};
+use crate::scanning::Scanning;
+use crate::sunburst::Pointer;
 use crate::updating::Update;
 use crate::{menus, prompts::Ask};
 use futures::StreamExt;
 use futures::channel::mpsc;
-use gpui::{
-	App, AppContext, Bounds, Context, Entity, ExternalPaths, FocusHandle, Focusable, Pixels, Point,
-	Task, Window, WindowAppearance,
-};
+use gpui::{App, Context, ExternalPaths, FocusHandle, Focusable, Window, WindowAppearance};
 use observatory_core::drives::{Drive, Usage, place_name, read_volume_usage};
-use observatory_core::listing::SortMode;
 use observatory_core::navigation::{Navigation, Place};
-use observatory_core::paths::join_path;
-use observatory_core::reserved::{ReservedGroup, group_reserved};
-use observatory_core::scans::{Change, FAKE, Progress, ScanInfo, Scans, Status};
+use observatory_core::scans::{Change, FAKE, ScanInfo, Scans, Status};
 use observatory_core::store::Store;
-use observatory_core::sunburst::{Hit, LayoutInput, Sunburst, View, layout_wedges};
-use observatory_core::tree::{Item, RenderTree};
-use observatory_core::{Finder, Found, Query, Summary, access, color, fake_disk};
+use observatory_core::{ScanError, access, fake_disk};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-/// What the pointer is over in the sunburst, and where it is.
-#[derive(Clone, Copy, PartialEq)]
-pub struct Hover {
-	pub hit: Hit,
-	pub position: Point<Pixels>,
+/// What the window is showing.
+pub enum Screen {
+	/// The disks and folders there are to scan.
+	Menu,
+	/// One of the scans.
+	Scan(Scan),
 }
 
-/// What the window is showing, going by where the user is and how that
-/// scan is doing.
-pub enum Screen {
-	Welcome,
-	Scanning(ScanInfo),
-	Failed(ScanInfo),
-	Inspect(ScanInfo),
+/// The scan on screen.
+pub struct Scan {
+	/// Its root.
+	pub path: String,
+	pub state: ScanState,
+}
+
+/// How the scan on screen is doing, and what there is to show of it.
+pub enum ScanState {
+	Scanning(Scanning),
+	/// With why, if the scanner said.
+	Failed(Option<ScanError>),
+	// Boxed, since there's a good deal more to it than to the others.
+	Inspect(Box<Inspect>),
+}
+
+impl Screen {
+	/// The finished scan on screen, if that's what's on it: its root, and
+	/// the folder of it that's showing.
+	pub fn inspecting(&self) -> Option<(&str, &Inspect)> {
+		match self {
+			Screen::Scan(Scan {
+				path,
+				state: ScanState::Inspect(inspect),
+			}) => Some((path.as_str(), &**inspect)),
+			_ => None,
+		}
+	}
+
+	pub fn inspecting_mut(&mut self) -> Option<(&str, &mut Inspect)> {
+		match self {
+			Screen::Scan(Scan {
+				path,
+				state: ScanState::Inspect(inspect),
+			}) => Some((path.as_str(), &mut **inspect)),
+			_ => None,
+		}
+	}
 }
 
 pub struct Workspace {
@@ -59,72 +87,23 @@ pub struct Workspace {
 	// The clock the sunburst's transitions run on.
 	pub epoch: Instant,
 
-	// The folder being inspected: a slice of the scan's tree, and what's
-	// worked out from it.
-	pub tree: Option<Arc<RenderTree>>,
-	// What `tree` is of: the scan, the cursor, and the scan's revision.
-	shown: Option<(String, Vec<String>, u64)>,
-	pub reserved: Vec<ReservedGroup>,
-	pub hues: HashMap<String, f64>,
-	pub sunburst: Sunburst,
-	// Where the sunburst was last drawn, for finding what the pointer's on.
-	pub sunburst_bounds: Bounds<Pixels>,
-	pub hover: Option<Hover>,
-	pub hover_since: Instant,
+	// Where the user is (`nav`) and how that scan is doing, as what there is
+	// to show of it. `sync` keeps it so.
+	pub screen: Screen,
 
-	pub sort: SortMode,
-	pub show_all: bool,
-	// What's checked, in the order it was.
-	pub selection: Vec<Item>,
-
-	// Find: what a finder finds, or what has a name, in place of the list
-	// while there's a query. It looks in the folder that was showing when
-	// the query started, and keeps to it while the user goes through the
-	// matches in the sunburst.
-	pub find_input: Entity<TextInput>,
-	pub finder: Option<Finder>,
-	pub find_scope: Option<Vec<String>>,
-	// The field has been asked for (it's a button in the toolbar until it
-	// is), and hasn't been left since.
-	pub find_open: bool,
-	pub suggesting: bool,
-	pub suggestion: usize,
-	pub found: Option<Arc<Found>>,
-	pub finding: bool,
-	find_generation: u64,
-	pub summaries: Option<Arc<Vec<Summary>>>,
-	summaries_for: Option<(String, Vec<String>, u64)>,
-
-	pub progress: Option<Progress>,
-	polling: Option<Task<()>>,
-	// When the scan that's running came up on screen.
-	pub scan_shown: Option<Instant>,
-
-	// What's open over the window.
-	pub cleanup_open: bool,
-	// Files or folders of a scan are being dragged.
-	pub dragging_items: bool,
-	// How much they come to that isn't queued already, and whether they're
-	// over where cleanup takes them.
-	pub dragging_size: u64,
-	pub drop_over: bool,
-	pub cleanup_confirming: bool,
-	// Where the queue's rows are scrolled to.
-	pub cleanup_scroll: gpui::ScrollHandle,
+	// What's open over the window, whatever the screen.
+	//
+	// A deletion carries on while the user's elsewhere, though it only shows
+	// over the scan it's of.
 	pub deletion: Option<Deletion>,
-	pub issues: Option<IssuesModal>,
 	pub ask: Option<Ask>,
-	pub popup: Option<Popup>,
-	// Which of the title bar's menus is open, where there's no native menu
-	// bar.
-	pub app_menu_open: Option<usize>,
-	// And which of their names the pointer is over.
-	pub app_menu_hovered: Option<usize>,
+	// The one menu that's open, and which of the things a menu hangs from
+	// the pointer is over.
+	pub menu: Option<OpenMenu>,
+	pub menu_hovered: Option<MenuButton>,
 
 	// A newer version than this one, once one's been found.
 	pub update: Option<Update>,
-	// Its package is being downloaded, to hand to Windows.
-	pub update_fetching: bool,
 
 	// The edge of the window the pointer is at, where the app resizes its
 	// own window (see window_frame.rs).
@@ -174,43 +153,6 @@ impl Workspace {
 		})
 		.detach();
 
-		let find_input = cx.new(|cx| {
-			let mut input = TextInput::new("Find…", cx);
-			input.placeholder_color = Palette::named(dark).faint;
-			input
-		});
-		cx.subscribe_in(
-			&find_input,
-			window,
-			|this, _, _: &text_input::Changed, _, cx| this.find_text_changed(cx),
-		)
-		.detach();
-		// Backspace in the empty field takes the finder's chip away.
-		cx.subscribe_in(
-			&find_input,
-			window,
-			|this, _, _: &text_input::BackspacedEmpty, _, cx| {
-				if this.finder.is_some() {
-					this.clear_finder(cx);
-				}
-			},
-		)
-		.detach();
-		let find_focus = find_input.focus_handle(cx);
-		cx.on_focus(&find_focus, window, |this, _, cx| {
-			this.suggesting = true;
-			this.suggestion = 0;
-			this.load_summaries(cx);
-			cx.notify();
-		})
-		.detach();
-		cx.on_blur(&find_focus, window, |this, _, cx| {
-			this.suggesting = false;
-			this.find_open = false;
-			cx.notify();
-		})
-		.detach();
-
 		let focus = cx.focus_handle();
 		window.focus(&focus);
 
@@ -224,45 +166,12 @@ impl Workspace {
 			nav: Navigation::starting_at(None),
 			recent_usage: HashMap::new(),
 			epoch: Instant::now(),
-			tree: None,
-			shown: None,
-			reserved: Vec::new(),
-			hues: HashMap::new(),
-			sunburst: Sunburst::new(),
-			sunburst_bounds: Bounds::default(),
-			hover: None,
-			hover_since: Instant::now(),
-			sort: SortMode::Size,
-			show_all: false,
-			selection: Vec::new(),
-			find_input,
-			finder: None,
-			find_scope: None,
-			find_open: false,
-			suggesting: false,
-			suggestion: 0,
-			found: None,
-			finding: false,
-			find_generation: 0,
-			summaries: None,
-			summaries_for: None,
-			progress: None,
-			polling: None,
-			scan_shown: None,
-			cleanup_open: false,
-			dragging_items: false,
-			dragging_size: 0,
-			drop_over: false,
-			cleanup_confirming: false,
-			cleanup_scroll: gpui::ScrollHandle::new(),
+			screen: Screen::Menu,
 			deletion: None,
-			issues: None,
 			ask: None,
-			popup: None,
-			app_menu_open: None,
-			app_menu_hovered: None,
+			menu: None,
+			menu_hovered: None,
 			update: None,
-			update_fetching: false,
 			resize_edge: None,
 			frame: Default::default(),
 		};
@@ -285,41 +194,16 @@ impl Workspace {
 		}
 	}
 
-	pub fn screen(&self) -> Screen {
-		let scan = self
-			.nav
-			.current()
-			.inspecting
-			.as_deref()
-			.and_then(|path| self.scan(path));
-		match scan {
-			None => Screen::Welcome,
-			Some(scan) => match scan.status {
-				Status::Building => Screen::Scanning(scan.clone()),
-				Status::Failed => Screen::Failed(scan.clone()),
-				Status::Complete => Screen::Inspect(scan.clone()),
-			},
-		}
-	}
-
 	pub fn scan(&self, path: &str) -> Option<&ScanInfo> {
 		self.scan_list.iter().find(|scan| scan.path == path)
-	}
-
-	/// The scan being looked at, if it's finished.
-	pub fn inspecting(&self) -> Option<&ScanInfo> {
-		let path = self.nav.current().inspecting.as_deref()?;
-		self.scan(path)
-			.filter(|scan| scan.status == Status::Complete)
 	}
 
 	pub fn cursor(&self) -> &[String] {
 		&self.nav.current().cursor
 	}
 
-	/// Brings what's showing in line with where the user is and how the
-	/// scans are doing. Called after anything that might have changed
-	/// either.
+	/// Brings the screen in line with where the user is and how the scans
+	/// are doing. Called after anything that might have changed either.
 	pub fn sync(&mut self, window: &mut Window, cx: &mut Context<Self>) {
 		self.scan_list = self.scans.list();
 		let place = self.nav.current().clone();
@@ -328,126 +212,129 @@ impl Workspace {
 			.as_deref()
 			.and_then(|path| self.scan(path))
 			.cloned();
-		match &scan {
-			Some(scan) if scan.status == Status::Complete => {
-				let key = (scan.path.clone(), place.cursor.clone(), scan.revision);
-				if self.shown.as_ref() != Some(&key) {
-					self.show_folder(scan, place.cursor, cx);
+		match scan {
+			None => self.show(Screen::Menu, window, cx),
+			Some(scan) => match scan.status {
+				Status::Building => {
+					// One that's already on screen carries on as it was.
+					let showing = matches!(
+						&self.screen,
+						Screen::Scan(Scan { path, state: ScanState::Scanning(_) })
+							if *path == scan.path
+					);
+					if !showing {
+						let scanning = Scanning::of(&scan.path, &self.scans, cx);
+						let state = ScanState::Scanning(scanning);
+						self.show_scan(scan.path, state, window, cx);
+					}
 				}
-			}
-			_ => {
-				self.tree = None;
-				self.shown = None;
-				self.hover = None;
-				self.sunburst = Sunburst::new();
-			}
-		}
-		match &scan {
-			Some(scan) if scan.status == Status::Building => {
-				self.poll_progress(scan.path.clone(), cx)
-			}
-			_ => {
-				self.polling = None;
-				self.progress = None;
-				self.scan_shown = None;
-			}
+				Status::Failed => {
+					self.show_scan(scan.path, ScanState::Failed(scan.error), window, cx)
+				}
+				Status::Complete => self.show_folder(&scan, place.cursor, window, cx),
+			},
 		}
 		window.set_window_title(&self.title());
 		cx.notify();
 	}
 
-	// Cuts the slice of `scan` at `cursor`, and lays the sunburst out for
-	// it.
-	fn show_folder(&mut self, scan: &ScanInfo, mut cursor: Vec<String>, cx: &mut Context<Self>) {
+	// Puts another screen up. The one it takes the place of goes, with
+	// everything it had.
+	fn show(&mut self, screen: Screen, window: &mut Window, cx: &mut Context<Self>) {
+		// The find field goes with it: if the keys were going there, they're
+		// the window's again.
+		if let Some((_, inspect)) = self.screen.inspecting()
+			&& inspect.find.input.focus_handle(cx).is_focused(window)
+		{
+			window.focus(&self.focus);
+		}
+		self.screen = screen;
+	}
+
+	fn show_scan(
+		&mut self,
+		path: String,
+		state: ScanState,
+		window: &mut Window,
+		cx: &mut Context<Self>,
+	) {
+		self.show(Screen::Scan(Scan { path, state }), window, cx);
+	}
+
+	// Cuts the slice of `scan` at `cursor`, and shows it: in the scan that's
+	// on screen if it's this one, so what's checked and what's being looked
+	// for stay while the user goes from folder to folder, and otherwise
+	// starting over.
+	fn show_folder(
+		&mut self,
+		scan: &ScanInfo,
+		mut cursor: Vec<String>,
+		window: &mut Window,
+		cx: &mut Context<Self>,
+	) {
+		let showing = self
+			.screen
+			.inspecting()
+			.filter(|(path, _)| *path == scan.path);
+		// It's what's showing already.
+		if showing.is_some_and(|(_, inspect)| {
+			inspect.revision == scan.revision && inspect.tree.cursor == cursor
+		}) {
+			return;
+		}
 		let tree = loop {
 			match self.scans.render_tree(&scan.path, &cursor) {
-				Some(tree) => break tree,
+				Some(tree) => break Arc::new(tree),
 				// The folder's gone (deleted, or not there in a rescan): its
 				// nearest parent that isn't.
 				None if !cursor.is_empty() => {
 					cursor.pop();
 				}
 				None => {
-					self.tree = None;
-					self.shown = None;
+					self.show(Screen::Menu, window, cx);
 					return;
 				}
 			}
 		};
 		if cursor != self.cursor() {
-			self.nav.set_cursor(cursor.clone());
+			self.nav.set_cursor(cursor);
 		}
 
-		let before = self.shown.take();
-		let same_scan = before.as_ref().is_some_and(|(path, ..)| *path == scan.path);
-		let same_folder = same_scan && before.as_ref().is_some_and(|(_, at, _)| *at == cursor);
-		if !same_scan {
-			// Navigating around inside a scan keeps whatever's checked, so
-			// the user can browse for more; a different scan starts over.
-			self.selection.clear();
-			// Cleanup is each scan's own, so its card doesn't come along.
-			self.cleanup_open = false;
-			self.cleanup_confirming = false;
-			self.sort = SortMode::Size;
-			self.clear_find(cx);
-			self.summaries = None;
-			self.summaries_for = None;
+		let (palette, now) = (self.palette, self.epoch.elapsed());
+		match self
+			.screen
+			.inspecting_mut()
+			.filter(|(path, _)| *path == scan.path)
+		{
+			Some((root, inspect)) => {
+				let same_folder = inspect.tree.cursor == tree.cursor;
+				inspect.revision = scan.revision;
+				inspect.tree = tree;
+				inspect.sunburst.pointer = Pointer::Away;
+				inspect.lay_out(root, palette.dark, now, false);
+				if same_folder {
+					// The same folder of a scan that's changed (something was
+					// deleted): what was found is out of date.
+					self.run_find(false, cx);
+				} else {
+					// Each folder starts collapsed again.
+					inspect.show_all = false;
+				}
+			}
+			None => {
+				let inspect = Inspect::new(tree, scan, &palette, now, window, cx);
+				let state = ScanState::Inspect(Box::new(inspect));
+				self.show_scan(scan.path.clone(), state, window, cx);
+			}
 		}
-		if !same_folder {
-			// Each folder starts collapsed again.
-			self.show_all = false;
-		} else {
-			// The same folder of a scan that's changed (something was
-			// deleted): what was found is out of date.
-			self.run_find(false, cx);
-		}
-		self.hover = None;
-		self.shown = Some((scan.path.clone(), cursor, scan.revision));
-		self.tree = Some(Arc::new(tree));
-		self.lay_out(false);
-		if self.suggesting {
+		// What the finders find is counted below the folder that's showing.
+		let suggesting = self
+			.screen
+			.inspecting()
+			.is_some_and(|(_, inspect)| matches!(inspect.find.field, Field::Suggesting { .. }));
+		if suggesting {
 			self.load_summaries(cx);
 		}
-	}
-
-	// Works out the sunburst's wedges for `tree`, and has it show them.
-	fn lay_out(&mut self, still: bool) {
-		let (Some(tree), Some((root, ..))) = (&self.tree, &self.shown) else {
-			return;
-		};
-		self.reserved = group_reserved(&tree.reserved);
-		self.hues = tree
-			.list
-			.iter()
-			.map(|file| file.name.clone())
-			.zip(color::hues_by_position(
-				tree.list.iter().map(|file| file.size),
-				tree.position,
-				tree.root_size,
-			))
-			.collect();
-		let wedges = layout_wedges(&LayoutInput {
-			root,
-			cursor: &tree.cursor,
-			files: &tree.sunburst,
-			capacity: tree.capacity,
-			size: tree.size,
-			root_size: tree.root_size,
-			position: tree.position,
-			reserved: &self.reserved,
-			dark: self.palette.dark,
-		});
-		let view = View {
-			root: root.clone(),
-			cursor: tree.cursor.clone(),
-			span: if tree.capacity > 0 {
-				tree.size as f64 / tree.capacity as f64
-			} else {
-				0.0
-			},
-		};
-		self.sunburst
-			.show(view, wedges, self.epoch.elapsed(), still);
 	}
 
 	/// What the window's called: the OS's title for it, and what the title
@@ -468,34 +355,10 @@ impl Workspace {
 	/// drive's name, or the folder's. A scan that's running or has failed is
 	/// called what it will be once it's done.
 	pub fn root_name(&self, path: &str) -> String {
-		match &self.tree {
-			Some(tree) => tree.name.clone(),
+		match self.screen.inspecting() {
+			Some((_, inspect)) => inspect.tree.name.clone(),
 			None => place_name(&self.drives, path),
 		}
-	}
-
-	// While a scan's running, how far along it is, ten times a second: often
-	// enough that what it's found grows rather than jumps.
-	fn poll_progress(&mut self, path: String, cx: &mut Context<Self>) {
-		if self.polling.is_some() {
-			return;
-		}
-		self.scan_shown = Some(Instant::now());
-		self.progress = self.scans.progress(&path);
-		self.polling = Some(cx.spawn(async move |this, cx| {
-			loop {
-				cx.background_executor()
-					.timer(Duration::from_millis(100))
-					.await;
-				let alive = this.update(cx, |this, cx| {
-					this.progress = this.scans.progress(&path);
-					cx.notify();
-				});
-				if alive.is_err() {
-					break;
-				}
-			}
-		}));
 	}
 
 	// Recent folders say how much room is left on their volume. A volume
@@ -599,7 +462,14 @@ impl Workspace {
 			return;
 		}
 		self.scans.rescan(path);
-		self.shown = None;
+		// What's showing of it is of the scan that was.
+		if self
+			.screen
+			.inspecting()
+			.is_some_and(|(root, _)| root == path)
+		{
+			self.show(Screen::Menu, window, cx);
+		}
 		self.sync(window, cx);
 	}
 
@@ -669,7 +539,6 @@ impl Workspace {
 	}
 
 	pub fn go_home(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-		self.cleanup_open = false;
 		if self.nav.inspect(None) {
 			self.sync(window, cx);
 		}
@@ -697,11 +566,14 @@ impl Workspace {
 
 	pub fn set_dark(&mut self, dark: bool, cx: &mut Context<Self>) {
 		self.palette = Palette::named(dark);
-		self.find_input.update(cx, |input, _| {
-			input.placeholder_color = self.palette.faint;
-		});
-		// The wedges' colors are the theme's; they change in place.
-		self.lay_out(true);
+		let (palette, now) = (self.palette, self.epoch.elapsed());
+		if let Some((root, inspect)) = self.screen.inspecting_mut() {
+			inspect.find.input.update(cx, |input, _| {
+				input.placeholder_color = palette.faint;
+			});
+			// The wedges' colors are the theme's; they change in place.
+			inspect.lay_out(root, dark, now, true);
+		}
 		self.publish_menus(cx);
 		cx.notify();
 	}
@@ -712,199 +584,16 @@ impl Workspace {
 		self.set_dark(dark, cx);
 	}
 
-	// What's checked.
-
-	pub fn is_selected(&self, path: &str) -> bool {
-		self.selection.iter().any(|item| item.path == path)
-	}
-
-	pub fn toggle_selected(&mut self, item: &Item, cx: &mut Context<Self>) {
-		match self.selection.iter().position(|it| it.path == item.path) {
-			Some(at) => {
-				self.selection.remove(at);
-			}
-			None => self.selection.push(item.clone()),
-		}
-		cx.notify();
-	}
-
-	/// What a drag of `item` carries: everything checked, if it's one of
-	/// them, or just it.
-	pub fn dragged_with(&self, item: &Item) -> Vec<Item> {
-		if self.is_selected(&item.path) {
-			self.selection.clone()
-		} else {
-			vec![item.clone()]
-		}
-	}
-
-	// Find.
-
-	/// Brings out the find field, which is a button in the toolbar until
-	/// it's wanted, and puts the cursor in it.
-	pub fn open_find(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-		self.find_open = true;
-		let focus = self.find_input.focus_handle(cx);
-		window.focus(&focus);
-		cx.notify();
-	}
-
-	pub fn find_text(&self, cx: &App) -> String {
-		self.find_input.read(cx).text().trim().to_string()
-	}
-
-	/// The folder find looks in: where it started, or where the user is.
-	pub fn scope(&self) -> Vec<String> {
-		self.find_scope
-			.clone()
-			.unwrap_or_else(|| self.cursor().to_vec())
-	}
-
-	/// Whether there's a query, so its results take the list's place.
-	pub fn finding_something(&self, cx: &App) -> bool {
-		self.finder.is_some() || !self.find_text(cx).is_empty()
-	}
-
-	fn find_text_changed(&mut self, cx: &mut Context<Self>) {
-		let text = self.find_text(cx);
-		self.suggestion = 0;
-		if !text.is_empty() {
-			self.finder = None;
-			if self.find_scope.is_none() {
-				self.find_scope = Some(self.cursor().to_vec());
-			}
-		} else if self.finder.is_none() {
-			self.find_scope = None;
-		}
-		self.run_find(true, cx);
-	}
-
-	pub fn pick_finder(&mut self, finder: Finder, window: &mut Window, cx: &mut Context<Self>) {
-		let scope = self.scope();
-		self.find_input
-			.update(cx, |input, cx| input.set_text("", cx));
-		self.finder = Some(finder);
-		self.find_scope = Some(scope);
-		window.focus(&self.focus);
-		self.run_find(false, cx);
-	}
-
-	pub fn clear_finder(&mut self, cx: &mut Context<Self>) {
-		self.finder = None;
-		self.find_scope = None;
-		self.run_find(false, cx);
-	}
-
-	pub fn clear_find(&mut self, cx: &mut Context<Self>) {
-		self.find_input
-			.update(cx, |input, cx| input.set_text("", cx));
-		self.finder = None;
-		self.find_scope = None;
-		self.run_find(false, cx);
-	}
-
-	// Looks for whatever the query is now, off to the side. A name being
-	// typed waits a moment for the next letter (`settle`).
-	fn run_find(&mut self, settle: bool, cx: &mut Context<Self>) {
-		self.find_generation += 1;
-		let generation = self.find_generation;
-		let text = self.find_text(cx);
-		let query = if !text.is_empty() {
-			Query::Name(text)
-		} else if let Some(finder) = self.finder {
-			Query::Finder(finder)
-		} else {
-			self.found = None;
-			self.finding = false;
-			cx.notify();
-			return;
-		};
-		let Some(scan) = self.inspecting() else {
-			return;
-		};
-		let (path, scope) = (scan.path.clone(), self.scope());
-		let scans = self.scans.clone();
-		let wait = settle && matches!(query, Query::Name(_));
-		self.finding = true;
-		cx.notify();
-		cx.spawn(async move |this, cx| {
-			if wait {
-				cx.background_executor()
-					.timer(Duration::from_millis(180))
-					.await;
-				let current = this.read_with(cx, |this, _| this.find_generation == generation);
-				if !current.unwrap_or(false) {
-					return;
-				}
-			}
-			let found = cx
-				.background_executor()
-				.spawn(async move { scans.find(&path, &scope, &query) })
-				.await;
-			this.update(cx, |this, cx| {
-				if this.find_generation == generation {
-					this.found = found.map(Arc::new);
-					this.finding = false;
-					cx.notify();
-				}
-			})
-			.ok();
-		})
-		.detach();
-	}
-
-	// How much each finder finds below the folder find looks in, for the
-	// suggestions.
-	pub fn load_summaries(&mut self, cx: &mut Context<Self>) {
-		let Some(scan) = self.inspecting() else {
-			return;
-		};
-		let key = (scan.path.clone(), self.scope(), scan.revision);
-		if self.summaries_for.as_ref() == Some(&key) {
-			return;
-		}
-		self.summaries_for = Some(key.clone());
-		self.summaries = None;
-		let scans = self.scans.clone();
-		cx.spawn(async move |this, cx| {
-			let (path, scope) = (key.0.clone(), key.1.clone());
-			let summaries = cx
-				.background_executor()
-				.spawn(async move { scans.summarize(&path, &scope) })
-				.await;
-			this.update(cx, |this, cx| {
-				if this.summaries_for.as_ref() == Some(&key) {
-					this.summaries = summaries.map(Arc::new);
-					cx.notify();
-				}
-			})
-			.ok();
-		})
-		.detach();
-	}
-
-	/// The path on disk of `names` below the scan's root.
-	pub fn path_of(&self, root: &str, names: &[String]) -> String {
-		join_path(root, names)
-	}
-
 	/// Escape: shuts the topmost thing that's open, or failing that clears
 	/// what's found, then what's checked.
 	pub fn escape(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-		if self.popup.take().is_some() || self.app_menu_open.take().is_some() {
-		} else if self.cleanup_confirming {
-			self.cleanup_confirming = false;
-		} else if self.ask.take().is_some() || self.issues.take().is_some() {
-		} else if self.suggesting {
-			window.focus(&self.focus);
-		} else if self.finding_something(cx) {
-			self.clear_find(cx);
-		} else if self.cleanup_open {
-			self.cleanup_open = false;
-		} else {
-			self.selection.clear();
-		}
 		cx.notify();
+		if self.menu.take().is_some() || self.ask.take().is_some() {
+			return;
+		}
+		if let Some((_, inspect)) = self.screen.inspecting_mut() {
+			inspect.escape(&self.focus, window, cx);
+		}
 	}
 }
 

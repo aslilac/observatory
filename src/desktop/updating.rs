@@ -17,6 +17,8 @@ const EVERY: Duration = Duration::from_secs(60 * 60);
 pub enum Update {
 	/// There's a newer version, to go and get.
 	Available(Release),
+	/// Its package is being downloaded, to hand to Windows.
+	Fetching(Release),
 	/// It's here, checked, and takes the app's place on a restart.
 	#[cfg(target_os = "macos")]
 	Ready(updates::Staged, Release),
@@ -25,7 +27,7 @@ pub enum Update {
 impl Update {
 	fn version(&self) -> &str {
 		match self {
-			Self::Available(release) => &release.version,
+			Self::Available(release) | Self::Fetching(release) => &release.version,
 			#[cfg(target_os = "macos")]
 			Self::Ready(_, release) => &release.version,
 		}
@@ -104,24 +106,24 @@ impl Workspace {
 		let Some(Update::Available(release)) = &self.update else {
 			return;
 		};
-		if self.update_fetching {
-			return;
-		}
 		let release = release.clone();
-		let page = release.page.clone();
-		self.update_fetching = true;
+		let fetched = release.clone();
+		self.update = Some(Update::Fetching(release.clone()));
 		cx.notify();
 		cx.spawn_in(window, async move |this, cx| {
 			let opened = cx
 				.background_executor()
 				.spawn(async move {
-					updates::stage_package(&release).and_then(|msix| updates::open_package(&msix))
+					updates::stage_package(&fetched).and_then(|msix| updates::open_package(&msix))
 				})
 				.await;
 			let _ = this.update(cx, |this, cx| {
-				this.update_fetching = false;
 				if opened.is_err() {
-					cx.open_url(&page);
+					cx.open_url(&release.page);
+				}
+				// Unless one newer still has turned up meanwhile.
+				if let Some(Update::Fetching(_)) = this.update {
+					this.update = Some(Update::Available(release));
 				}
 				cx.notify();
 			});
@@ -133,15 +135,14 @@ impl Workspace {
 		let p = self.palette;
 		let update = self.update.as_ref()?;
 		let button = match update {
-			Update::Available(release) => {
+			Update::Available(release) | Update::Fetching(release) => {
 				let page = release.page.clone();
 				// A package can be fetched for Windows to install; anything
 				// else is got from the release's page.
 				let package = takes_packages() && release.download.is_some();
-				let says = if self.update_fetching {
-					format!("Downloading {}…", release.version)
-				} else {
-					format!("Version {} is out", release.version)
+				let says = match update {
+					Update::Fetching(_) => format!("Downloading {}…", release.version),
+					_ => format!("Version {} is out", release.version),
 				};
 				button("update", says, ButtonKind::Default, true, &p)
 					.gap(px(4.))

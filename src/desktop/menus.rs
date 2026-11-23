@@ -2,11 +2,12 @@
 // handled app-wide rather than by whatever has the focus, since there's one
 // window and they're all about it.
 
+use crate::cleanup::Card;
 use crate::workspace::Workspace;
 use gpui::{
 	Action, App, ClipboardItem, Context, KeyBinding, Menu, MenuItem, Window, WindowHandle, actions,
 };
-use observatory_core::paths::basename;
+use observatory_core::paths::{basename, join_path};
 use observatory_core::scans::FAKE;
 use observatory_core::store::RecentScan;
 use observatory_core::system;
@@ -380,7 +381,7 @@ impl Workspace {
 		if root.starts_with(FAKE) {
 			return None;
 		}
-		Some(self.path_of(root, &place.cursor))
+		Some(join_path(root, &place.cursor))
 	}
 
 	fn on_open_folder(&mut self, _: &OpenFolder, window: &mut Window, cx: &mut Cx) {
@@ -410,15 +411,18 @@ impl Workspace {
 	}
 
 	fn on_find(&mut self, _: &Find, window: &mut Window, cx: &mut Cx) {
-		if self.inspecting().is_some() {
-			self.open_find(window, cx);
-		}
+		self.open_find(window, cx);
 	}
 
 	fn on_toggle_cleanup(&mut self, _: &ToggleCleanup, _: &mut Window, cx: &mut Cx) {
 		// There's only one over a scan's results.
-		self.cleanup_open = !self.cleanup_open && self.inspecting().is_some();
-		cx.notify();
+		if let Some((_, inspect)) = self.screen.inspecting_mut() {
+			inspect.cleanup.card = match inspect.cleanup.card {
+				Card::Shut => Card::Queue,
+				Card::Queue | Card::Confirming => Card::Shut,
+			};
+			cx.notify();
+		}
 	}
 
 	fn on_toggle_dark(&mut self, _: &ToggleDark, _: &mut Window, cx: &mut Cx) {
@@ -454,7 +458,7 @@ impl Workspace {
 	}
 
 	fn on_suggest_pick(&mut self, _: &SuggestPick, window: &mut Window, cx: &mut Cx) {
-		self.pick_suggestion(self.suggestion, window, cx);
+		self.pick_suggested(window, cx);
 	}
 
 	fn on_paste_path(&mut self, _: &PastePath, _: &mut Window, cx: &mut Cx) {

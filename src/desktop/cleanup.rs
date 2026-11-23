@@ -5,6 +5,7 @@
 // and how it went.
 
 use crate::controls::{ButtonKind, button, icon, icon_button, tip};
+use crate::inspect::Inspect;
 use crate::palette::{Palette, hsla};
 use crate::popup::queued_menu;
 use crate::workspace::Workspace;
@@ -12,8 +13,9 @@ use futures::StreamExt;
 use futures::channel::mpsc;
 use gpui::{
 	Animation, AnimationExt, AnyElement, App, Bounds, Context, Div, DragMoveEvent, FontWeight,
-	Hsla, MouseButton, MouseDownEvent, Pixels, Point, SharedString, Stateful, TextRun,
-	Transformation, Window, canvas, div, fill, percentage, point, prelude::*, px, relative, size,
+	Hsla, MouseButton, MouseDownEvent, Pixels, Point, ScrollHandle, SharedString, Stateful,
+	TextRun, Transformation, Window, canvas, div, fill, percentage, point, prelude::*, px,
+	relative, size,
 };
 use observatory_core::cleanup::{DeleteMode, Step, delete_files};
 use observatory_core::color::{Color, Kind, sunburst_color};
@@ -25,6 +27,45 @@ use observatory_core::tree::Item;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
+
+/// Cleanup as it is over one scan's results: how its card is, and what's on
+/// its way to it. What's queued is the store's.
+pub struct Cleanup {
+	pub card: Card,
+	// Where the queue's rows are scrolled to.
+	scroll: ScrollHandle,
+	/// Files or folders of the scan are being dragged.
+	pub drag: Option<Drag>,
+}
+
+/// Which way up the card is, while nothing's being deleted.
+#[derive(Clone, Copy, PartialEq)]
+pub enum Card {
+	/// A pill in the corner.
+	Shut,
+	/// Open on the queue (or on the deleting, while there's some).
+	Queue,
+	/// Asking whether to delete what's queued, and how.
+	Confirming,
+}
+
+/// A drag of things that could go to cleanup.
+pub struct Drag {
+	/// How much they come to that isn't queued already.
+	pub size: u64,
+	/// Whether they're over where cleanup takes them.
+	pub over: bool,
+}
+
+impl Cleanup {
+	pub fn new() -> Self {
+		Self {
+			card: Card::Shut,
+			scroll: ScrollHandle::new(),
+			drag: None,
+		}
+	}
+}
 
 /// What a drag out of a list or the sunburst carries.
 #[derive(Clone)]
@@ -199,6 +240,10 @@ fn queued_color(queue: &[CleanupItem], path: &str, p: &Palette) -> Hsla {
 	))
 }
 
+fn queued_size(queue: &[CleanupItem]) -> u64 {
+	queue.iter().map(|queued| queued.item.size).sum()
+}
+
 // What cleanup takes off a disk is drawn in this, between what's used and
 // what's free.
 fn reclaim_color() -> Hsla {
@@ -211,33 +256,13 @@ impl Workspace {
 		self.deletion.as_ref().is_some_and(|run| run.running)
 	}
 
-	// The scan whose cleanup this is: the one being looked at, once it's
-	// finished. Each scan has its own, and there's none anywhere else.
-	fn cleanup_scan(&self) -> Option<&str> {
-		self.inspecting().map(|scan| scan.path.as_str())
-	}
-
-	// What's queued from the scan being looked at.
-	fn queue(&self) -> &[CleanupItem] {
-		self.cleanup_scan()
-			.map_or(&[], |scan| self.store.cleanup(scan))
-	}
-
-	fn queued_size(&self) -> u64 {
-		self.queue().iter().map(|queued| queued.item.size).sum()
-	}
-
-	/// Whether `path` goes out with the cleanup of the scan being looked at.
-	pub fn in_cleanup(&self, path: &str) -> bool {
-		self.cleanup_scan()
-			.is_some_and(|scan| self.store.in_cleanup(scan, path))
-	}
-
-	/// Queues `items` from the scan being looked at.
+	/// Queues `items` from the scan being looked at. Each scan has a cleanup
+	/// of its own, and there's none anywhere else.
 	pub fn move_to_cleanup(&mut self, items: Vec<Item>, cx: &mut Context<Self>) {
-		let Some(scan) = self.cleanup_scan().map(str::to_string) else {
+		let Some((scan, _)) = self.screen.inspecting() else {
 			return;
 		};
+		let scan = scan.to_string();
 		// Each keeps the color it has in the sunburst it's taken from.
 		let scans = &self.scans;
 		self.store.add_to_cleanup(&scan, items, |item| {
@@ -251,22 +276,31 @@ impl Workspace {
 	}
 
 	pub fn move_selected_to_cleanup(&mut self, cx: &mut Context<Self>) {
-		let items = std::mem::take(&mut self.selection);
-		self.move_to_cleanup(items, cx);
+		if let Some((_, inspect)) = self.screen.inspecting_mut() {
+			let items = std::mem::take(&mut inspect.selection);
+			self.move_to_cleanup(items, cx);
+		}
 	}
 
 	/// Takes `path` back out of the queue.
 	pub fn unqueue(&mut self, path: &str, cx: &mut Context<Self>) {
-		if let Some(scan) = self.cleanup_scan().map(str::to_string) {
-			self.store.remove_from_cleanup(&scan, path);
+		if let Some((scan, _)) = self.screen.inspecting() {
+			self.store.remove_from_cleanup(scan, path);
 		}
 		cx.notify();
+	}
+
+	// Turns the card of the scan being looked at.
+	fn turn_card(&mut self, card: Card) {
+		if let Some((_, inspect)) = self.screen.inspecting_mut() {
+			inspect.cleanup.card = card;
+		}
 	}
 
 	// Shows where something queued is: the folder it's in, where it's in the
 	// list (struck through) and the sunburst.
 	fn show_queued(&mut self, path: &str, window: &mut Window, cx: &mut Context<Self>) {
-		let Some(scan) = self.cleanup_scan() else {
+		let Some((scan, _)) = self.screen.inspecting() else {
 			return;
 		};
 		let mut cursor = parts_below(scan, path);
@@ -276,20 +310,29 @@ impl Workspace {
 		self.set_cursor(cursor, window, cx);
 	}
 
-	// The deletion, if it's of the scan being looked at.
-	fn deletion_here(&self) -> Option<&Deletion> {
-		let scan = self.cleanup_scan()?;
+	// The deletion, if it's of the scan being looked at, which is where it
+	// shows.
+	fn deletion_of_screen(&self) -> Option<&Deletion> {
+		let (scan, _) = self.screen.inspecting()?;
+		self.deletion_of(scan)
+	}
+
+	// The deletion, if it's of `scan`'s queue.
+	fn deletion_of(&self, scan: &str) -> Option<&Deletion> {
 		self.deletion.as_ref().filter(|run| run.scan == scan)
 	}
 
 	// What the confirmation's buttons do: everything queued goes.
 	fn delete_queued(&mut self, mode: DeleteMode, window: &mut Window, cx: &mut Context<Self>) {
-		self.cleanup_confirming = false;
-		let Some(scan) = self.cleanup_scan().map(str::to_string) else {
+		let Some((scan, inspect)) = self.screen.inspecting_mut() else {
 			return;
 		};
+		// The card goes back to the queue, which is where the deleting shows.
+		inspect.cleanup.card = Card::Queue;
+		let scan = scan.to_string();
 		let queued = self
-			.queue()
+			.store
+			.cleanup(&scan)
 			.iter()
 			.map(|queued| (queued.item.path.clone(), queued.item.size))
 			.collect();
@@ -369,7 +412,9 @@ impl Workspace {
 								.find(|(queued, _)| *queued == path)
 								.map_or(0, |(_, size)| *size);
 							this.store.remove_deleted(&path);
-							this.selection.retain(|item| item.path != path);
+							if let Some((_, inspect)) = this.screen.inspecting_mut() {
+								inspect.selection.retain(|item| item.path != path);
+							}
 							// It's out of the scans' trees too.
 							this.sync(window, cx);
 						}
@@ -393,11 +438,14 @@ impl Workspace {
 					// What failed is for the user to see, and stays until
 					// they've dismissed it.
 					let stays = !run.failed.is_empty();
-					if !stays {
+					if !stays
+						&& let Some((scan, inspect)) = this.screen.inspecting_mut()
+						&& scan == run.scan
+					{
 						// With the card that says how it went, cleanup's
 						// done: what comes after it is the pill, if
 						// anything's still queued.
-						this.cleanup_open = false;
+						inspect.cleanup.card = Card::Shut;
 					}
 					stays
 				})
@@ -416,7 +464,7 @@ impl Workspace {
 						Some(run)
 							if run.started == started
 								&& run.hovered
-								&& this.deletion_here().is_some() =>
+								&& this.deletion_of_screen().is_some() =>
 						{
 							return false;
 						}
@@ -459,45 +507,50 @@ impl Workspace {
 	/// then how the deleting's going, then how it went.
 	pub fn render_cleanup(
 		&self,
+		root: &str,
+		inspect: &Inspect,
 		window: &mut Window,
 		cx: &mut Context<Self>,
-	) -> Option<AnyElement> {
-		if self.tree.is_none() || self.cleanup_scan().is_none() {
-			return None;
-		}
-		let queued = !self.queue().is_empty();
-		let dragging = self.dragging_items && cx.has_active_drag();
-		Some(match self.deletion_here() {
+	) -> AnyElement {
+		let cleanup = &inspect.cleanup;
+		let queued = !self.store.cleanup(root).is_empty();
+		let drag = cleanup.drag.as_ref().filter(|_| cx.has_active_drag());
+		match (self.deletion_of(root), cleanup.card) {
 			// How it went is said whether or not the card was open.
-			Some(run) if !run.running => self.render_deleted(run, cx),
-			Some(run) if self.cleanup_open => self.render_deleting(run, cx),
-			Some(_) => self.render_pill(cx),
-			None if self.cleanup_confirming && queued => self.render_confirmation(cx),
-			None if self.cleanup_open => self.render_queue(window, cx),
-			None if dragging => self.render_landing(cx),
-			// With nothing queued it's still there, so it's plain there's
-			// somewhere to drag things to.
-			None => self.render_pill(cx),
-		})
+			(Some(run), _) if !run.running => self.render_deleted(run, cx),
+			(Some(run), Card::Queue | Card::Confirming) => self.render_deleting(root, run, cx),
+			(Some(run), Card::Shut) => self.render_pill(root, Some(run), cx),
+			(None, Card::Confirming) if queued => self.render_confirmation(root, cx),
+			(None, Card::Queue | Card::Confirming) => {
+				self.render_queue(root, cleanup, drag.is_some(), window, cx)
+			}
+			(None, Card::Shut) => match drag {
+				Some(drag) => self.render_landing(root, drag, cx),
+				// With nothing queued it's still there, so it's plain
+				// there's somewhere to drag things to.
+				None => self.render_pill(root, None, cx),
+			},
+		}
 	}
 
 	// What the pill opens out into while something's being dragged: somewhere
 	// to land it, bigger than the pill and with a quiet dashed edge. With the
 	// drag over it, it fills in and says what the queue would come to.
-	fn render_landing(&self, cx: &mut Context<Self>) -> AnyElement {
+	fn render_landing(&self, root: &str, drag: &Drag, cx: &mut Context<Self>) -> AnyElement {
 		let p = self.palette;
-		let over = self.drop_over;
+		let over = drag.over;
 		let warm = reclaim_color();
-		let queued = self.queued_size();
-		let count = self.queue().len() as u64;
+		let queue = self.store.cleanup(root);
+		let queued = queued_size(queue);
+		let count = queue.len() as u64;
 		let says = match (over, count) {
 			(false, 0) => "Nothing queued yet".to_string(),
 			(false, _) => format!("{count} queued · {}", readable_size(queued)),
-			(true, 0) => format!("+ {}", readable_size(self.dragging_size)),
+			(true, 0) => format!("+ {}", readable_size(drag.size)),
 			(true, _) => format!(
 				"{} → {}",
 				readable_size(queued),
-				readable_size(queued + self.dragging_size)
+				readable_size(queued + drag.size)
 			),
 		};
 		div()
@@ -530,8 +583,11 @@ impl Workspace {
 			.on_drag_move(
 				cx.listener(|this, event: &DragMoveEvent<DraggedItems>, _, cx| {
 					let over = event.bounds.contains(&event.event.position);
-					if over != this.drop_over {
-						this.drop_over = over;
+					if let Some((_, inspect)) = this.screen.inspecting_mut()
+						&& let Some(drag) = &mut inspect.cleanup.drag
+						&& drag.over != over
+					{
+						drag.over = over;
 						cx.notify();
 					}
 				}),
@@ -589,11 +645,17 @@ impl Workspace {
 	// The card shut: what opens it, and how a deletion's going meanwhile. It's
 	// the landing pad at rest, the same size and in the same place, so a drag
 	// changes its edge and its words and nothing jumps.
-	fn render_pill(&self, cx: &mut Context<Self>) -> AnyElement {
+	fn render_pill(
+		&self,
+		root: &str,
+		run: Option<&Deletion>,
+		cx: &mut Context<Self>,
+	) -> AnyElement {
 		let p = self.palette;
+		let queue = self.store.cleanup(root);
 		// With nothing in it, it's quieter, and says what it's for.
-		let empty = self.deletion_here().is_none() && self.queue().is_empty();
-		let (mark, title, says) = match self.deletion_here() {
+		let empty = run.is_none() && queue.is_empty();
+		let (mark, title, says) = match run {
 			Some(run) if run.running => (
 				spinner("pill-spinner", 15., p.muted),
 				match run.mode {
@@ -618,8 +680,8 @@ impl Workspace {
 				"Cleanup",
 				format!(
 					"{} queued · {}",
-					self.queue().len(),
-					readable_size(self.queued_size())
+					queue.len(),
+					readable_size(queued_size(queue))
 				),
 			),
 		};
@@ -656,7 +718,7 @@ impl Workspace {
 				this.move_to_cleanup(dragged.0.clone(), cx)
 			}))
 			.on_click(cx.listener(|this, _, _, cx| {
-				this.cleanup_open = true;
+				this.turn_card(Card::Queue);
 				cx.notify();
 			}))
 			.child(
@@ -728,9 +790,10 @@ impl Workspace {
 			// have: the card isn't in the way of the rest, so a row can be
 			// dragged from behind it and land on the pad.
 			.on_mouse_down_out(cx.listener(|this, _, _, cx| {
-				if this.cleanup_open || this.cleanup_confirming {
-					this.cleanup_open = false;
-					this.cleanup_confirming = false;
+				if let Some((_, inspect)) = this.screen.inspecting_mut()
+					&& inspect.cleanup.card != Card::Shut
+				{
+					inspect.cleanup.card = Card::Shut;
 					cx.notify();
 				}
 			}))
@@ -800,8 +863,8 @@ impl Workspace {
 	// show, and where among them it's scrolled to. Only that: it isn't
 	// something to drag. It's painted, not laid out, since how much there is
 	// to scroll isn't known until the rows have been.
-	fn queue_scrollbar(&self) -> impl IntoElement + use<> {
-		let scroll = self.cleanup_scroll.clone();
+	fn queue_scrollbar(&self, cleanup: &Cleanup) -> impl IntoElement + use<> {
+		let scroll = cleanup.scroll.clone();
 		let color = self.palette.faint;
 		canvas(
 			|_, _, _| (),
@@ -828,9 +891,10 @@ impl Workspace {
 	}
 
 	// What's queued, largest first: what's worth the most to be rid of.
-	fn queued_by_size(&self) -> Vec<(String, u64)> {
+	fn queued_by_size(&self, root: &str) -> Vec<(String, u64)> {
 		let mut queued: Vec<(String, u64)> = self
-			.queue()
+			.store
+			.cleanup(root)
 			.iter()
 			.map(|queued| (queued.item.path.clone(), queued.item.size))
 			.collect();
@@ -857,13 +921,21 @@ impl Workspace {
 		)
 	}
 
-	// The card open on the queue.
-	fn render_queue(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+	// The card open on the queue. `dragging` is whether something's on its
+	// way to it.
+	fn render_queue(
+		&self,
+		root: &str,
+		cleanup: &Cleanup,
+		dragging: bool,
+		window: &mut Window,
+		cx: &mut Context<Self>,
+	) -> AnyElement {
 		let p = self.palette;
-		let shut = self.card_x("Close", |this| this.cleanup_open = false, cx);
-		let queued = self.queued_by_size();
+		let shut = self.card_x("Close", |this| this.turn_card(Card::Shut), cx);
+		let queue = self.store.cleanup(root);
+		let queued = self.queued_by_size(root);
 		if queued.is_empty() {
-			let dragging = self.dragging_items && cx.has_active_drag();
 			let body = div().px(px(16.)).pb(px(16.)).child(
 				div()
 					.px(px(16.))
@@ -918,7 +990,7 @@ impl Workspace {
 							.flex_none()
 							.size(px(8.))
 							.rounded(px(2.))
-							.bg(queued_color(self.queue(), path, &p)),
+							.bg(queued_color(queue, path, &p)),
 					)
 					// The name has all of the row that the rest of it
 					// leaves, less a little for what measuring it a letter
@@ -963,7 +1035,7 @@ impl Workspace {
 		let deleting = self.deleting();
 		let body = div()
 			.child(self.queued_total(&queued))
-			.child(reclaim_bar(self.queue(), &queued, None, &p))
+			.child(reclaim_bar(queue, &queued, None, &p))
 			.child(
 				// The one part of the card that gives when the window isn't
 				// tall enough for all of it.
@@ -979,18 +1051,18 @@ impl Workspace {
 							.px(px(8.))
 							.min_h_0()
 							.overflow_y_scroll()
-							.track_scroll(&self.cleanup_scroll)
+							.track_scroll(&cleanup.scroll)
 							.children(rows),
 					)
-					.child(self.queue_scrollbar()),
+					.child(self.queue_scrollbar(cleanup)),
 			)
 			.child(
 				footer(&p)
 					.child(
 						button("cleanup-clear", "Clear", ButtonKind::Default, true, &p).on_click(
 							cx.listener(|this, _, _, cx| {
-								if let Some(scan) = this.cleanup_scan().map(str::to_string) {
-									this.store.clear_cleanup(&scan);
+								if let Some((scan, _)) = this.screen.inspecting() {
+									this.store.clear_cleanup(scan);
 								}
 								cx.notify();
 							}),
@@ -1002,7 +1074,7 @@ impl Workspace {
 							.when(deleting, |this| this.opacity(0.5).cursor_default())
 							.on_click(cx.listener(|this, _, _, cx| {
 								if !this.deleting() {
-									this.cleanup_confirming = true;
+									this.turn_card(Card::Confirming);
 									cx.notify();
 								}
 							})),
@@ -1013,22 +1085,23 @@ impl Workspace {
 
 	// The card asking before anything goes, and how it should: what there
 	// is, and what the disk would look like without it.
-	fn render_confirmation(&self, cx: &mut Context<Self>) -> AnyElement {
+	fn render_confirmation(&self, root: &str, cx: &mut Context<Self>) -> AnyElement {
 		let p = self.palette;
-		let queued = self.queued_by_size();
+		let queue = self.store.cleanup(root);
+		let queued = self.queued_by_size(root);
 		let size: u64 = queued.iter().map(|(_, size)| size).sum();
 		let back = icon_button("cleanup-back", "arrow-left", true, &p)
 			.size(px(22.))
 			.tooltip(tip("Back to the queue"))
 			.on_click(cx.listener(|this, _, _, cx| {
-				this.cleanup_confirming = false;
+				this.turn_card(Card::Queue);
 				cx.notify();
 			}))
 			.into_any_element();
 		let disk = self.disk_of(queued.iter().map(|(path, _)| path.as_str()));
 		let body = div()
 			.child(self.queued_total(&queued))
-			.child(reclaim_bar(self.queue(), &queued, None, &p))
+			.child(reclaim_bar(queue, &queued, None, &p))
 			.children(disk.map(|(_, usage)| disk_bar(&usage, size, true, &p)))
 			.child(div().px(px(16.)).pt(px(10.)).text_color(p.muted).child(
 				"Deleting permanently frees the space right away and can't be undone. The \
@@ -1070,7 +1143,7 @@ impl Workspace {
 
 	// The card while things are deleted: the total counts up, and the bar
 	// fills in an item at a time.
-	fn render_deleting(&self, run: &Deletion, cx: &mut Context<Self>) -> AnyElement {
+	fn render_deleting(&self, root: &str, run: &Deletion, cx: &mut Context<Self>) -> AnyElement {
 		let p = self.palette;
 		let dealt_with = run.gone.len() + run.failed.len();
 		let left = run.items.len() - dealt_with;
@@ -1091,7 +1164,7 @@ impl Workspace {
 					.into_any_element(),
 			);
 		}
-		actions.push(self.card_x("Close", |this| this.cleanup_open = false, cx));
+		actions.push(self.card_x("Close", |this| this.turn_card(Card::Shut), cx));
 		let body = div()
 			.child(total(
 				readable_size(run.freed),
@@ -1101,7 +1174,12 @@ impl Workspace {
 				],
 				&p,
 			))
-			.child(reclaim_bar(self.queue(), &run.items, Some(&run.gone), &p))
+			.child(reclaim_bar(
+				self.store.cleanup(root),
+				&run.items,
+				Some(&run.gone),
+				&p,
+			))
 			.child(
 				div()
 					.flex()
@@ -1262,7 +1340,7 @@ impl Workspace {
 						)
 						.on_click(cx.listener(|this, _, _, cx| {
 							this.deletion = None;
-							this.cleanup_open = true;
+							this.turn_card(Card::Queue);
 							cx.notify();
 						})),
 					)

@@ -1,101 +1,222 @@
 // A finished scan: the sunburst of the folder the user's in, what's in it
 // listed beside, and find over both.
 
-use crate::controls::{ButtonKind, button, icon, icon_button, tip};
+use crate::cleanup::{Card, Cleanup, Drag, DraggedItems};
+use crate::controls::{ButtonKind, button, icon_button, tip};
+use crate::find::{Field, Find};
+use crate::issues::IssuesModal;
 use crate::lists::CHECKBOX_MARGIN;
-use crate::popup::{PopupItem, SORT_MENU};
+use crate::palette::Palette;
+use crate::sunburst::Sunburst;
 use crate::workspace::Workspace;
 use gpui::{
-	AnyElement, App, Context, Corner, Focusable, FontWeight, MouseButton, Window, deferred, div,
-	prelude::*, px, relative,
+	AnyElement, App, Context, DragMoveEvent, FocusHandle, FontWeight, Window, div, prelude::*, px,
+	relative,
 };
-use observatory_core::Finder;
-use observatory_core::finders::{FINDERS, finder_info};
-use observatory_core::format::{plural, readable_size};
+use observatory_core::color;
+use observatory_core::format::readable_size;
 use observatory_core::listing::SortMode;
+use observatory_core::reserved::{ReservedGroup, group_reserved};
 use observatory_core::scans::ScanInfo;
+use observatory_core::sunburst::{LayoutInput, View, layout_wedges};
+use observatory_core::tree::{Item, RenderTree};
+use std::collections::HashMap;
+use std::sync::Arc;
+use std::time::Duration;
 
-// How wide the find field is in the toolbar, and what it suggests under it.
-const FIND_WIDTH: f32 = 280.;
-const SUGGESTIONS_WIDTH: f32 = 380.;
+/// A finished scan as it's on screen: the folder of it that's showing, and
+/// everything the user has going over it. It's there for as long as the scan
+/// is on screen, whichever of its folders they're in, and gone when they
+/// leave.
+pub struct Inspect {
+	/// The folder that's showing: a slice of the scan's tree.
+	pub tree: Arc<RenderTree>,
+	/// The scan's revision when `tree` was cut from it.
+	pub revision: u64,
+	// What's worked out from `tree` when it's laid out: what Windows keeps
+	// for itself, in groups, and the hue each thing in the list has.
+	pub reserved: Vec<ReservedGroup>,
+	pub hues: HashMap<String, f64>,
+	pub sunburst: Sunburst,
 
-// One of the things the find field offers while it has the focus.
-enum Suggestion {
-	/// Whatever has the typed text in its name.
-	Name(String),
-	Finder(Finder),
+	pub sort: SortMode,
+	pub show_all: bool,
+	/// What's checked, in the order it was.
+	pub selection: Vec<Item>,
+
+	pub find: Find,
+	pub cleanup: Cleanup,
+	/// The modal that lists what the scan couldn't read, while it's up.
+	pub issues: Option<IssuesModal>,
+}
+
+impl Inspect {
+	/// The folder `tree` of `scan`, with nothing going on over it yet.
+	pub fn new(
+		tree: Arc<RenderTree>,
+		scan: &ScanInfo,
+		palette: &Palette,
+		now: Duration,
+		window: &mut Window,
+		cx: &mut Context<Workspace>,
+	) -> Self {
+		let mut this = Self {
+			tree,
+			revision: scan.revision,
+			reserved: Vec::new(),
+			hues: HashMap::new(),
+			sunburst: Sunburst::new(),
+			sort: SortMode::Size,
+			show_all: false,
+			selection: Vec::new(),
+			find: Find::new(palette, window, cx),
+			cleanup: Cleanup::new(),
+			issues: None,
+		};
+		this.lay_out(&scan.path, palette.dark, now, false);
+		this
+	}
+
+	/// Works out the sunburst's wedges for `tree`, and has it show them.
+	/// `root` is the scan's.
+	pub fn lay_out(&mut self, root: &str, dark: bool, now: Duration, still: bool) {
+		let tree = &self.tree;
+		self.reserved = group_reserved(&tree.reserved);
+		self.hues = tree
+			.list
+			.iter()
+			.map(|file| file.name.clone())
+			.zip(color::hues_by_position(
+				tree.list.iter().map(|file| file.size),
+				tree.position,
+				tree.root_size,
+			))
+			.collect();
+		let wedges = layout_wedges(&LayoutInput {
+			root,
+			cursor: &tree.cursor,
+			files: &tree.sunburst,
+			capacity: tree.capacity,
+			size: tree.size,
+			root_size: tree.root_size,
+			position: tree.position,
+			reserved: &self.reserved,
+			dark,
+		});
+		let view = View {
+			root: root.to_string(),
+			cursor: tree.cursor.clone(),
+			span: if tree.capacity > 0 {
+				tree.size as f64 / tree.capacity as f64
+			} else {
+				0.0
+			},
+		};
+		self.sunburst.show(view, wedges, now, still);
+	}
+
+	// What's checked.
+
+	pub fn is_selected(&self, path: &str) -> bool {
+		self.selection.iter().any(|item| item.path == path)
+	}
+
+	pub fn toggle_selected(&mut self, item: &Item) {
+		match self.selection.iter().position(|it| it.path == item.path) {
+			Some(at) => {
+				self.selection.remove(at);
+			}
+			None => self.selection.push(item.clone()),
+		}
+	}
+
+	/// What a drag of `item` carries: everything checked, if it's one of
+	/// them, or just it.
+	pub fn dragged_with(&self, item: &Item) -> Vec<Item> {
+		if self.is_selected(&item.path) {
+			self.selection.clone()
+		} else {
+			vec![item.clone()]
+		}
+	}
+
+	/// Escape, once nothing over the window took it: shuts the topmost thing
+	/// that's open here, or failing that clears what's found, then what's
+	/// checked. `focus` is the window's, for taking the keys back from the
+	/// find field.
+	pub fn escape(&mut self, focus: &FocusHandle, window: &mut Window, cx: &mut App) {
+		if self.cleanup.card == Card::Confirming {
+			self.cleanup.card = Card::Queue;
+		} else if self.issues.take().is_some() {
+		} else if let Field::Suggesting { .. } = self.find.field {
+			window.focus(focus);
+		} else if self.find.search.is_some() {
+			self.find.clear(cx);
+		} else if self.cleanup.card != Card::Shut {
+			self.cleanup.card = Card::Shut;
+		} else {
+			self.selection.clear();
+		}
+	}
 }
 
 impl Workspace {
-	/// What the folder find looks in is called.
-	pub fn scope_name(&self) -> String {
-		match (self.scope().last(), &self.tree) {
-			(Some(folder), _) => folder.clone(),
-			(None, Some(tree)) => tree.name.clone(),
-			(None, None) => String::new(),
-		}
-	}
-
-	// What the field suggests: the finders, narrowed by what's typed, under
-	// looking for the typed text itself.
-	fn suggestions(&self, cx: &App) -> Vec<Suggestion> {
-		let typed = self.find_text(cx);
-		let wanted = typed.to_lowercase();
-		let mut suggestions = Vec::new();
-		if !typed.is_empty() {
-			suggestions.push(Suggestion::Name(typed));
-		}
-		suggestions.extend(
-			FINDERS
-				.iter()
-				.filter(|info| info.label.to_lowercase().contains(&wanted))
-				.map(|info| Suggestion::Finder(info.finder)),
-		);
-		suggestions
-	}
-
-	pub fn move_suggestion(&mut self, by: i32, cx: &mut Context<Self>) {
-		let count = self.suggestions(cx).len() as i32;
-		if count > 0 {
-			self.suggestion = (self.suggestion as i32 + by).rem_euclid(count) as usize;
+	pub fn toggle_selected(&mut self, item: &Item, cx: &mut Context<Self>) {
+		if let Some((_, inspect)) = self.screen.inspecting_mut() {
+			inspect.toggle_selected(item);
 			cx.notify();
 		}
 	}
 
-	pub fn pick_suggestion(&mut self, index: usize, window: &mut Window, cx: &mut Context<Self>) {
-		match self.suggestions(cx).get(index) {
-			Some(Suggestion::Finder(finder)) => self.pick_finder(*finder, window, cx),
-			// What's typed is already being looked for: this just puts the
-			// suggestions away.
-			_ => window.focus(&self.focus),
-		}
-	}
-
 	pub fn render_inspect(
-		&mut self,
-		scan: &ScanInfo,
+		&self,
+		root: &str,
+		inspect: &Inspect,
 		window: &mut Window,
 		cx: &mut Context<Self>,
 	) -> AnyElement {
-		let finding = self.finding_something(cx);
-
 		let mut chips = Vec::new();
-		chips.extend(self.render_issues_chip(scan, cx));
-		let tools = self.render_find_tools(finding, cx);
-		let toolbar = self.render_toolbar(Some(tools), chips, window, cx);
-		let side = if finding {
-			self.render_find_results(cx)
-		} else {
-			self.render_legend(&scan.path, cx)
+		chips.extend(self.render_issues_chip(root, cx));
+		let tools = self.render_find_tools(inspect, cx);
+		// Find's field is a good deal wider than the button for it.
+		let tools_width = if inspect.find.showing() { 340. } else { 80. };
+		let toolbar = self.render_toolbar(Some((tools, tools_width)), chips, window, cx);
+		// What a query finds takes the list's place.
+		let side = match &inspect.find.search {
+			Some(search) => self.render_find_results(root, inspect, search, cx),
+			None => self.render_legend(root, inspect, cx),
 		};
-		let selection = self.render_selection_bar(cx);
+		let selection = self.render_selection_bar(inspect, cx);
 		let selecting = selection.is_some();
-		let sunburst = self.render_sunburst(cx);
+		let sunburst = self.render_sunburst(inspect, cx);
 
 		div()
+			.id("inspect")
+			.relative()
 			.flex()
 			.flex_col()
 			.size_full()
+			// Something of the scan's being dragged brings out somewhere to
+			// drop it (cleanup's landing pad), which says how much would be
+			// added.
+			.on_drag_move(
+				cx.listener(|this, event: &DragMoveEvent<DraggedItems>, _, cx| {
+					let Some((root, inspect)) = this.screen.inspecting_mut() else {
+						return;
+					};
+					if inspect.cleanup.drag.is_none() {
+						let size = event
+							.drag(cx)
+							.0
+							.iter()
+							.filter(|item| !this.store.in_cleanup(root, &item.path))
+							.map(|item| item.size)
+							.sum();
+						inspect.cleanup.drag = Some(Drag { size, over: false });
+						cx.notify();
+					}
+				}),
+			)
 			.child(toolbar)
 			.child(
 				div().flex_1().min_h_0().flex().child(sunburst).child(
@@ -124,282 +245,24 @@ impl Workspace {
 						.children(selection),
 				),
 			)
+			.child(self.render_cleanup(root, inspect, window, cx))
 			.into_any_element()
-	}
-
-	// What the toolbar has for the list: find, and how it's sorted. Find is
-	// a button until it's wanted. Then it's the field, there in the toolbar,
-	// with what it suggests under it while it has the focus; it's a button
-	// again once it's left with nothing in it.
-	fn render_find_tools(&self, finding: bool, cx: &mut Context<Self>) -> AnyElement {
-		let p = self.palette;
-		let fill = p.fill;
-		// Outlined, and as tall as the field one of them turns into.
-		let tool = |id: &'static str, name: &'static str, says: &'static str| {
-			div()
-				.id(id)
-				.flex()
-				.flex_none()
-				.items_center()
-				.justify_center()
-				.size(px(28.))
-				.rounded(px(7.))
-				.border_1()
-				.border_color(p.line)
-				.cursor_pointer()
-				.hover(move |style| style.bg(fill))
-				.child(icon(name, 15., p.muted))
-				.tooltip(tip(says))
-		};
-		let scope_name = self.scope_name();
-		self.find_input.update(cx, |input, _| {
-			input.placeholder = if self.finder.is_some() {
-				"".into()
-			} else {
-				format!("Find in {scope_name}…").into()
-			};
-		});
-		let input_focus = self.find_input.focus_handle(cx);
-
-		let finder_chip = self.finder.map(|finder| {
-			div()
-				.id("finder-chip")
-				.flex()
-				.flex_none()
-				.items_center()
-				.gap(px(4.))
-				.h(px(20.))
-				.pl(px(8.))
-				.pr(px(4.))
-				.rounded(px(4.))
-				.bg(p.fill_strong)
-				.text_size(px(12.))
-				.child(finder_info(finder).label)
-				.child(
-					div()
-						.id("finder-chip-x")
-						.cursor_pointer()
-						.child(icon("x", 12., p.muted))
-						.on_click(cx.listener(|this, _, _, cx| {
-							cx.stop_propagation();
-							this.clear_finder(cx);
-						})),
-				)
-		});
-
-		let field = div()
-			.id("find-field")
-			.flex()
-			.items_center()
-			.gap(px(8.))
-			.w(px(FIND_WIDTH))
-			.h(px(28.))
-			.px(px(8.))
-			.rounded(px(7.))
-			.border_1()
-			.border_color(if self.suggesting { p.muted } else { p.line })
-			.child(icon("search", 14., p.muted))
-			.children(finder_chip)
-			.child(div().flex_1().min_w_0().child(self.find_input.clone()))
-			.when(finding, |this| {
-				this.child(
-					icon_button("find-clear", "x", true, &p)
-						.size(px(20.))
-						.on_click(cx.listener(|this, _, _, cx| {
-							cx.stop_propagation();
-							this.clear_find(cx);
-						})),
-				)
-			})
-			.on_click(move |_, window, _| window.focus(&input_focus));
-
-		let sort = (!finding).then(|| {
-			self.opens_menu(
-				tool("sort", "list-filter", "Sort"),
-				SORT_MENU,
-				Corner::TopRight,
-				|this| {
-					SortMode::ALL
-						.into_iter()
-						.map(|mode| {
-							PopupItem::action(mode.label(), move |this, _, _| {
-								this.sort = mode;
-								this.show_all = false;
-							})
-							.checked(this.sort == mode)
-						})
-						.collect()
-				},
-				cx,
-			)
-		});
-
-		let find = if self.suggesting {
-			// The field and what it suggests are drawn over what's behind
-			// them while they're up (`render_find_backdrop`), as one thing: a
-			// press on either is still theirs.
-			deferred(
-				div()
-					.relative()
-					.flex_none()
-					.child(field)
-					.child(self.render_suggestions(&scope_name, cx)),
-			)
-			.with_priority(1)
-			.into_any_element()
-		} else if self.find_open || finding {
-			div().flex_none().child(field).into_any_element()
-		} else {
-			tool("find", "search", "Find")
-				.on_click(cx.listener(|this, _, window, cx| this.open_find(window, cx)))
-				.into_any_element()
-		};
-		div()
-			.flex()
-			.flex_none()
-			.items_center()
-			.gap(px(6.))
-			.child(find)
-			.children(sort)
-			.into_any_element()
-	}
-
-	fn render_suggestions(&self, scope_name: &str, cx: &mut Context<Self>) -> AnyElement {
-		let p = self.palette;
-		let rows = self
-			.suggestions(cx)
-			.into_iter()
-			.enumerate()
-			.map(|(index, suggestion)| {
-				let (name, label, description, found) = match &suggestion {
-					Suggestion::Name(typed) => (
-						"text-search",
-						format!("Names with “{typed}”"),
-						format!("In {scope_name}"),
-						None,
-					),
-					Suggestion::Finder(finder) => {
-						let info = finder_info(*finder);
-						// How much it finds here, once that's been counted.
-						let found = self.summaries.as_ref().map(|summaries| {
-							match summaries.iter().find(|summary| summary.finder == *finder) {
-								Some(summary) if summary.count > 0 => format!(
-									"{} · {}",
-									readable_size(summary.size),
-									plural(summary.count, "item")
-								),
-								_ => "None".to_string(),
-							}
-						});
-						(
-							info.icon,
-							info.label.to_string(),
-							info.description.to_string(),
-							found,
-						)
-					}
-				};
-				div()
-					.id(("suggestion", index))
-					.flex()
-					.items_center()
-					.gap(px(10.))
-					.px(px(10.))
-					.py(px(6.))
-					.rounded(px(5.))
-					.cursor_pointer()
-					.when(index == self.suggestion, |this| this.bg(p.fill))
-					.hover(move |style| style.bg(p.fill))
-					.child(icon(name, 15., p.muted))
-					.child(
-						div()
-							.flex_1()
-							.min_w_0()
-							.child(div().truncate().child(label))
-							.child(
-								div()
-									.truncate()
-									.text_size(px(11.))
-									.line_height(px(15.))
-									.text_color(p.muted)
-									.child(description),
-							),
-					)
-					.children(found.map(|found| {
-						div()
-							.flex_none()
-							.text_size(px(12.))
-							.text_color(p.muted)
-							.child(found)
-					}))
-					// On the way down, not up: the press would take the focus
-					// from the field, and the suggestions with it.
-					.on_mouse_down(
-						MouseButton::Left,
-						cx.listener(move |this, _, window, cx| {
-							cx.stop_propagation();
-							window.prevent_default();
-							this.pick_suggestion(index, window, cx);
-						}),
-					)
-			});
-		// Under the field, wider than it, with their right edges in line:
-		// the field's at the toolbar's end.
-		div()
-			.absolute()
-			.top(px(32.))
-			.right_0()
-			.w(px(SUGGESTIONS_WIDTH))
-			.occlude()
-			.p(px(4.))
-			.rounded(px(8.))
-			.bg(p.background)
-			.border_1()
-			.border_color(p.line)
-			.shadow_lg()
-			.children(rows)
-			.into_any_element()
-	}
-
-	/// What's behind the find field while it's suggesting, and in front of
-	/// everything else, as a menu has (`render_menu_backdrop`): nothing seen,
-	/// but nothing under it lights up, and a press on it only puts the
-	/// suggestions away. It isn't also a press on whatever it landed on.
-	pub fn render_find_backdrop(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
-		if !self.suggesting {
-			return None;
-		}
-		Some(
-			deferred(
-				div()
-					.absolute()
-					.inset_0()
-					.occlude()
-					.on_any_mouse_down(cx.listener(|this, _, window, cx| {
-						// The field losing the focus would shut them too, but
-						// only once something else draws the window again.
-						this.suggesting = false;
-						this.find_open = false;
-						window.focus(&this.focus);
-						cx.notify();
-						cx.stop_propagation();
-					})),
-			)
-			.with_priority(0)
-			.into_any_element(),
-		)
 	}
 
 	// What's checked and what to do with it, floating at the bottom while
 	// anything is. There's no bar there otherwise: how big the folder is is
 	// in the middle of the sunburst, and what's reserved and free is in the
 	// list.
-	fn render_selection_bar(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
-		if self.selection.is_empty() {
+	fn render_selection_bar(
+		&self,
+		inspect: &Inspect,
+		cx: &mut Context<Self>,
+	) -> Option<AnyElement> {
+		if inspect.selection.is_empty() {
 			return None;
 		}
 		let p = self.palette;
-		let size: u64 = self.selection.iter().map(|item| item.size).sum();
+		let size: u64 = inspect.selection.iter().map(|item| item.size).sum();
 		let bar = div()
 			.id("selection")
 			.occlude()
@@ -417,7 +280,7 @@ impl Workspace {
 			.child(
 				div()
 					.font_weight(FontWeight::MEDIUM)
-					.child(format!("{} selected", self.selection.len())),
+					.child(format!("{} selected", inspect.selection.len())),
 			)
 			.child(div().text_color(p.muted).child(readable_size(size)))
 			.child(
@@ -435,7 +298,9 @@ impl Workspace {
 				icon_button("selection-cancel", "x", true, &p)
 					.tooltip(tip("Clear the selection"))
 					.on_click(cx.listener(|this, _, _, cx| {
-						this.selection.clear();
+						if let Some((_, inspect)) = this.screen.inspecting_mut() {
+							inspect.selection.clear();
+						}
 						cx.notify();
 					})),
 			);
